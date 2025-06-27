@@ -364,11 +364,11 @@ export function Home() {
             {!isOffline && recentDogs.length > 0 ? (
               recentDogs.map((dog, index) => (
                 <div key={dog.id} className="text-center">
-                  <div className="bg-white rounded-lg overflow-hidden shadow-md mb-2">
+                  <div className="flex justify-center mb-2">
                     <img 
                       src={dog.image_url || `https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300`} 
                       alt={dog.name} 
-                      className="w-full h-28 object-cover"
+                      style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: '50%' }}
                       onError={(e) => {
                         e.currentTarget.src = 'https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300';
                       }}
@@ -381,11 +381,11 @@ export function Home() {
               // Fallback content when data can't be loaded or offline
               Array.from({ length: 5 }, (_, index) => (
                 <div key={index} className="text-center">
-                  <div className="bg-white rounded-lg overflow-hidden shadow-md mb-2">
+                  <div className="flex justify-center mb-2">
                     <img 
                       src={`https://images.pexels.com/photos/${[58997, 5731866, 45170, 1805164, 2023384][index]}/pexels-photo-${[58997, 5731866, 45170, 1805164, 2023384][index]}.jpeg?auto=compress&cs=tinysrgb&w=300`}
                       alt={['ポメラニアン', 'トイ・プードル', 'スコティッシュストレート', 'ミニチュア・シュナウザー', 'MIX（ハーフ）'][index]}
-                      className="w-full h-28 object-cover"
+                      style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: '50%' }}
                     />
                   </div>
                   <p className="font-medium text-gray-900">{['ポメラニアン', 'トイ・プードル', 'スコティッシュストレート', 'ミニチュア・シュナウザー', 'MIX（ハーフ）'][index]}</p>
