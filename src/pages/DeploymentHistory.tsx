@@ -10,8 +10,8 @@ import {
   RefreshCw,
   Calendar
 } from 'lucide-react';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
+import Card from '../components/Card';
+import Button from '../components/Button';
 import { DeploymentStatusChecker } from '../components/DeploymentStatusChecker';
 import { useAuth } from '../context/AuthContext';
 import { safeGetItem, safeSetItem } from '../utils/safeStorage';

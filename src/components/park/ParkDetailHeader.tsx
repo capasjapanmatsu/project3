@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Users, Coins, CheckCircle, Heart, Shield, Star, AlertTriangle } from 'lucide-react';
-import { Card } from '../Card';
-import { Button } from '../Button';
+import Card from '../Card';
+import Button from '../Button';
 import type { DogPark, Reservation } from '../../types';
 
 interface ParkDetailHeaderProps {

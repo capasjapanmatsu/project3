@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, FileText, AlertTriangle, Shield, Scale, Clock, Ban, CreditCard } from 'lucide-react';
-import { Card } from '../components/Card';
+import Card from '../components/Card';
 
 export function TermsOfService() {
   return (

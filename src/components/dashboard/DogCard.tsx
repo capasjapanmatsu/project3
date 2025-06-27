@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { PawPrint, CheckCircle, Edit, X, Save, Camera } from 'lucide-react';
-import { Card } from '../Card';
-import { Button } from '../Button';
-import { Input } from '../Input';
-import { Select } from '../Select';
+import Card from '../Card';
+import Button from '../Button';
+import Input from '../Input';
+import Select from '../Select';
 import { dogBreeds } from '../../data/dogBreeds';
 import type { Dog, VaccineCertification } from '../../types';
 

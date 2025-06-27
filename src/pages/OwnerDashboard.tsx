@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PlusCircle, MapPin, Clock, AlertTriangle, CheckCircle, FileText, QrCode, Eye, Star, DollarSign, TrendingUp, BarChart4, Building, Users, ChevronRight, Trash2, RefreshCw } from 'lucide-react';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
+import Button from '../components/Button';
+import Card from '../components/Card';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 import type { DogPark } from '../types';

@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Users, Coins, CheckCircle, Heart, Shield, Star, Calendar, Clock, AlertTriangle } from 'lucide-react';
 import { Loader } from '@googlemaps/js-api-loader';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
+import Card from '../components/Card';
+import Button from '../components/Button';
 import { supabase } from '../utils/supabase';
 import type { DogPark, Reservation } from '../types';
 

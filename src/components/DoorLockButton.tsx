@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Button } from './Button';
+import Button from './Button';
 import { useAuth } from '../context/AuthContext';
 import { Unlock, AlertTriangle, CheckCircle, Loader, Key } from 'lucide-react';
 import { supabase } from '../utils/supabase';

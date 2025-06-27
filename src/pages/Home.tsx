@@ -27,8 +27,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase, handleSupabaseError, testSupabaseConnection, safeSupabaseQuery } from '../utils/supabase';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
+import Card from '../components/Card';
+import Button from '../components/Button';
 import { useSubscription } from '../hooks/useSubscription';
 import { SubscriptionButton } from '../components/SubscriptionButton';
 import type { DogPark, NewsAnnouncement, NewParkOpening, Dog } from '../types';

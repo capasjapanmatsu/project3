@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getDeploymentStatus } from '../utils/deploymentStatus';
-import { Button } from './Button';
+import Button from './Button';
 import { CheckCircle, AlertTriangle, Loader, ExternalLink } from 'lucide-react';
 
 interface DeploymentStatusCheckerProps {

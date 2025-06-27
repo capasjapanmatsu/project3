@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Download, Calendar, DollarSign, Building, User, Search, ChevronLeft, ChevronRight, Filter, AlertTriangle, CheckCircle, Ban as Bank } from 'lucide-react';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
-import { Input } from '../components/Input';
+import Card from '../components/Card';
+import Button from '../components/Button';
+import Input from '../components/Input';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 import { downloadCSVWithBOM } from '../utils/csvExport';

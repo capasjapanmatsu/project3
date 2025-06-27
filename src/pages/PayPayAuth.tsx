@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
+import Button from '../components/Button';
+import Card from '../components/Card';
 import { AlertTriangle } from 'lucide-react';
 
 export function PayPayAuth() {

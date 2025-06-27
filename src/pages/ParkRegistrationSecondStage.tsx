@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Upload, CheckCircle, AlertTriangle, Camera, Trash2, Building, MapPin, ParkingCircle, ShowerHead, FileText, X, Image as ImageIcon, CreditCard } from 'lucide-react';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
-import { Input } from '../components/Input';
-import { Select } from '../components/Select';
+import Card from '../components/Card';
+import Button from '../components/Button';
+import Input from '../components/Input';
+import Select from '../components/Select';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 

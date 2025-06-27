@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import { Input } from '../Input';
-import { Button } from '../Button';
-import { Card } from '../Card';
+import Input from '../Input';
+import Button from '../Button';
+import Card from '../Card';
 import { Key, Clock, MapPin, Users, CheckCircle, X, AlertTriangle, Crown, Building, PawPrint, Calculator, Plus, CreditCard, Calendar, Info } from 'lucide-react';
-import type { Dog, DogPark, TimeSlot } from '../../types';
+import type { Dog, DogPark } from '../../types';
 
 interface ReservationFormProps {
   park: DogPark;
@@ -16,14 +16,14 @@ interface ReservationFormProps {
     paymentType: string;
   };
   setFormData: (data: any) => void;
-  timeSlots: TimeSlot[];
+  timeSlots: any[];
   isDateTooSoon: boolean;
   selectedDogs: string[];
   dogs: Dog[];
   handleDogSelection: (dogId: string) => void;
   handleTimeSlotSelect: (time: string) => void;
   getEndTime: (startTime: string, duration: string) => string;
-  getSlotStatus: (slot: TimeSlot) => {
+  getSlotStatus: (slot: any) => {
     label: string;
     color: string;
     icon: any;

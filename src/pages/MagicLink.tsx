@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
+import Card from '../components/Card';
+import Button from '../components/Button';
 import { Mail, CheckCircle, AlertTriangle, Loader } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { safeSetItem } from '../utils/safeStorage';

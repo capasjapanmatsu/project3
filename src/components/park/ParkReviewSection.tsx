@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, Star, PawPrint, Edit, Trash2, Plus } from 'lucide-react';
-import { Card } from '../Card';
-import { Button } from '../Button';
-import { Input } from '../Input';
-import { Select } from '../Select';
+import Card from '../Card';
+import Button from '../Button';
+import Input from '../Input';
+import Select from '../Select';
 import type { DogPark, DogParkReview, UserParkReview, Dog } from '../../types';
 
 interface ParkReviewSectionProps {
