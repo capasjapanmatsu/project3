@@ -1,0 +1,1116 @@
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { ArrowLeft, Upload, CheckCircle, AlertTriangle, Camera, Trash2, Building, MapPin, ParkingCircle, ShowerHead, FileText, X, Image as ImageIcon, CreditCard } from 'lucide-react';
+import { Card } from '../components/Card';
+import { Button } from '../components/Button';
+import { Input } from '../components/Input';
+import { Select } from '../components/Select';
+import { supabase } from '../utils/supabase';
+import { useAuth } from '../context/AuthContext';
+
+interface FacilityImage {
+  id?: string;
+  image_type: string;
+  image_url?: string;
+  is_approved?: boolean | null;
+  admin_notes?: string | null;
+  file?: File;
+  uploading?: boolean;
+  error?: string;
+}
+
+interface DogPark {
+  id: string;
+  name: string;
+  address: string;
+  status: string;
+  facilities: {
+    parking: boolean;
+    shower: boolean;
+    restroom: boolean;
+    agility: boolean;
+    rest_area: boolean;
+    water_station: boolean;
+  };
+  large_dog_area: boolean;
+  small_dog_area: boolean;
+  private_booths: boolean;
+}
+
+interface ReviewStage {
+  id: string;
+  first_stage_passed_at: string;
+  second_stage_submitted_at: string | null;
+  qr_testing_started_at: string | null;
+  approved_at: string | null;
+  rejected_at: string | null;
+  rejection_reason: string | null;
+}
+
+interface BankAccount {
+  id?: string;
+  bank_name: string;
+  bank_code: string;
+  branch_name: string;
+  branch_code: string;
+  account_type: 'ordinary' | 'checking';
+  account_number: string;
+  account_holder_name: string;
+}
+
+const IMAGE_TYPES = {
+  overview: {
+    label: '施設全景',
+    description: 'ドッグランの全体が見渡せる写真',
+    icon: Building,
+    required: true
+  },
+  entrance: {
+    label: '入口',
+    description: '入口の様子がわかる写真',
+    icon: MapPin,
+    required: true
+  },
+  large_dog_area: {
+    label: '大型犬エリア',
+    description: '大型犬用のエリアの写真',
+    icon: Building,
+    required: false,
+    conditionalOn: 'large_dog_area'
+  },
+  small_dog_area: {
+    label: '小型犬エリア',
+    description: '小型犬用のエリアの写真',
+    icon: Building,
+    required: false,
+    conditionalOn: 'small_dog_area'
+  },
+  private_booth: {
+    label: 'プライベートブース',
+    description: 'プライベートブースの内部と外観',
+    icon: Building,
+    required: false,
+    conditionalOn: 'private_booths'
+  },
+  parking: {
+    label: '駐車場',
+    description: '駐車場の様子がわかる写真',
+    icon: ParkingCircle,
+    required: false,
+    conditionalOn: 'facilities.parking'
+  },
+  shower: {
+    label: 'シャワー設備',
+    description: 'シャワー設備の写真',
+    icon: ShowerHead,
+    required: false,
+    conditionalOn: 'facilities.shower'
+  },
+  restroom: {
+    label: 'トイレ',
+    description: 'トイレ設備の写真',
+    icon: FileText,
+    required: false,
+    conditionalOn: 'facilities.restroom'
+  },
+  agility: {
+    label: 'アジリティ設備',
+    description: 'アジリティ設備の写真',
+    icon: Building,
+    required: false,
+    conditionalOn: 'facilities.agility'
+  },
+  rest_area: {
+    label: '休憩スペース',
+    description: '休憩スペースの写真',
+    icon: Building,
+    required: false,
+    conditionalOn: 'facilities.rest_area'
+  },
+  water_station: {
+    label: '給水設備',
+    description: '給水設備の写真',
+    icon: Building,
+    required: false,
+    conditionalOn: 'facilities.water_station'
+  }
+};
+
+export function ParkRegistrationSecondStage() {
+  const { parkId } = useParams<{ parkId: string }>();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [park, setPark] = useState<DogPark | null>(null);
+  const [reviewStage, setReviewStage] = useState<ReviewStage | null>(null);
+  const [images, setImages] = useState<FacilityImage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'images' | 'bank'>('images');
+  const [bankAccount, setBankAccount] = useState<BankAccount>({
+    bank_name: '',
+    bank_code: '',
+    branch_name: '',
+    branch_code: '',
+    account_type: 'ordinary',
+    account_number: '',
+    account_holder_name: ''
+  });
+  const [isSavingBank, setIsSavingBank] = useState(false);
+  const [bankError, setBankError] = useState('');
+  const [bankSuccess, setBankSuccess] = useState('');
+
+  useEffect(() => {
+    if (!user || !parkId) {
+      navigate('/owner-dashboard');
+      return;
+    }
+    
+    fetchParkData();
+  }, [user, parkId, navigate]);
+
+  const fetchParkData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Fetch park data
+      const { data: parkData, error: parkError } = await supabase
+        .from('dog_parks')
+        .select('*')
+        .eq('id', parkId)
+        .eq('owner_id', user?.id)
+        .single();
+      
+      if (parkError) throw parkError;
+      if (!parkData) {
+        navigate('/owner-dashboard');
+        return;
+      }
+      
+      setPark(parkData);
+      
+      // Fetch review stage - changed from .single() to .maybeSingle()
+      const { data: reviewData, error: reviewError } = await supabase
+        .from('dog_park_review_stages')
+        .select('*')
+        .eq('park_id', parkId)
+        .maybeSingle();
+      
+      if (!reviewError && reviewData) {
+        setReviewStage(reviewData);
+      }
+      
+      // Fetch existing images
+      const { data: imageData, error: imageError } = await supabase
+        .from('dog_park_facility_images')
+        .select('*')
+        .eq('park_id', parkId);
+      
+      if (imageError) throw imageError;
+      
+      // Initialize images array with existing images
+      const existingImages = imageData || [];
+      
+      // Create initial images array with all required types
+      const initialImages: FacilityImage[] = Object.entries(IMAGE_TYPES)
+        .filter(([key, config]) => {
+          // Include if it's required or if the conditional feature is enabled
+          if (config.required) return true;
+          
+          if (config.conditionalOn) {
+            const path = config.conditionalOn.split('.');
+            if (path.length === 1) {
+              return parkData[path[0]];
+            } else if (path.length === 2) {
+              return parkData[path[0]][path[1]];
+            }
+          }
+          
+          return false;
+        })
+        .map(([key, config]) => {
+          // Check if we have an existing image for this type
+          const existing = existingImages.find(img => img.image_type === key);
+          
+          if (existing) {
+            return {
+              id: existing.id,
+              image_type: key,
+              image_url: existing.image_url,
+              is_approved: existing.is_approved,
+              admin_notes: existing.admin_notes
+            };
+          }
+          
+          // Otherwise create a new empty entry
+          return {
+            image_type: key,
+            image_url: undefined,
+            is_approved: null
+          };
+        });
+      
+      setImages(initialImages);
+
+      // Fetch bank account information
+      const { data: bankData, error: bankError } = await supabase
+        .rpc('get_owner_bank_account');
+      
+      if (!bankError && bankData && bankData.length > 0) {
+        setBankAccount({
+          id: bankData[0].id,
+          bank_name: bankData[0].bank_name,
+          bank_code: bankData[0].bank_code,
+          branch_name: bankData[0].branch_name,
+          branch_code: bankData[0].branch_code,
+          account_type: bankData[0].account_type as 'ordinary' | 'checking',
+          account_number: bankData[0].account_number,
+          account_holder_name: bankData[0].account_holder_name
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching park data:', error);
+      setError('データの取得に失敗しました。');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleImageSelect = (imageType: string, file: File) => {
+    // Update the images array with the selected file
+    setImages(prev => prev.map(img => 
+      img.image_type === imageType 
+        ? { ...img, file, error: undefined } 
+        : img
+    ));
+  };
+
+  const handleImageUpload = async (imageType: string) => {
+    const imageToUpload = images.find(img => img.image_type === imageType);
+    if (!imageToUpload || !imageToUpload.file) return;
+    
+    try {
+      // Mark as uploading
+      setImages(prev => prev.map(img => 
+        img.image_type === imageType 
+          ? { ...img, uploading: true, error: undefined } 
+          : img
+      ));
+      
+      // Upload to storage
+      const fileExt = imageToUpload.file.name.split('.').pop();
+      const fileName = `${parkId}/${imageType}_${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('dog-park-images')
+        .upload(fileName, imageToUpload.file);
+      
+      if (uploadError) throw uploadError;
+      
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('dog-park-images')
+        .getPublicUrl(fileName);
+      
+      // Save to database
+      if (imageToUpload.id) {
+        // Update existing image
+        const { error: updateError } = await supabase
+          .from('dog_park_facility_images')
+          .update({
+            image_url: publicUrl,
+            is_approved: null, // Reset approval status
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', imageToUpload.id);
+        
+        if (updateError) throw updateError;
+      } else {
+        // Insert new image
+        const { error: insertError } = await supabase
+          .from('dog_park_facility_images')
+          .insert({
+            park_id: parkId,
+            image_type: imageType,
+            image_url: publicUrl
+          });
+        
+        if (insertError) throw insertError;
+      }
+      
+      // Refresh images
+      await fetchParkData();
+      
+      setSuccess(`${IMAGE_TYPES[imageType as keyof typeof IMAGE_TYPES].label}の画像をアップロードしました`);
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error(`Error uploading ${imageType} image:`, error);
+      
+      // Mark upload as failed
+      setImages(prev => prev.map(img => 
+        img.image_type === imageType 
+          ? { ...img, uploading: false, error: 'アップロードに失敗しました' } 
+          : img
+      ));
+    }
+  };
+
+  const handleDeleteImage = async (imageId?: string) => {
+    if (!imageId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('dog_park_facility_images')
+        .delete()
+        .eq('id', imageId);
+      
+      if (error) throw error;
+      
+      // Refresh images
+      await fetchParkData();
+      
+      setSuccess('画像を削除しました');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      setError('画像の削除に失敗しました');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleSaveBankAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingBank(true);
+    setBankError('');
+    setBankSuccess('');
+    
+    try {
+      // Validate bank account information
+      if (!bankAccount.bank_name) throw new Error('銀行名を入力してください');
+      if (!bankAccount.bank_code) throw new Error('銀行コードを入力してください');
+      if (!bankAccount.branch_name) throw new Error('支店名を入力してください');
+      if (!bankAccount.branch_code) throw new Error('支店コードを入力してください');
+      if (!bankAccount.account_number) throw new Error('口座番号を入力してください');
+      if (!bankAccount.account_holder_name) throw new Error('口座名義を入力してください');
+      
+      // Validate bank code (4 digits)
+      if (!/^\d{4}$/.test(bankAccount.bank_code)) {
+        throw new Error('銀行コードは4桁の数字で入力してください');
+      }
+      
+      // Validate branch code (3 digits)
+      if (!/^\d{3}$/.test(bankAccount.branch_code)) {
+        throw new Error('支店コードは3桁の数字で入力してください');
+      }
+      
+      // Validate account number (7 digits)
+      if (!/^\d{7}$/.test(bankAccount.account_number)) {
+        throw new Error('口座番号は7桁の数字で入力してください');
+      }
+      
+      // Save bank account information
+      const { data, error } = await supabase.rpc('update_owner_bank_account', {
+        bank_name_param: bankAccount.bank_name,
+        bank_code_param: bankAccount.bank_code,
+        branch_name_param: bankAccount.branch_name,
+        branch_code_param: bankAccount.branch_code,
+        account_type_param: bankAccount.account_type,
+        account_number_param: bankAccount.account_number,
+        account_holder_name_param: bankAccount.account_holder_name
+      });
+      
+      if (error) throw error;
+      
+      setBankSuccess('振込先情報を保存しました');
+      
+      // 3秒後に成功メッセージを消す
+      setTimeout(() => {
+        setBankSuccess('');
+      }, 3000);
+    } catch (error: any) {
+      console.error('Error saving bank account:', error);
+      setBankError(error.message || '振込先情報の保存に失敗しました');
+    } finally {
+      setIsSavingBank(false);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    try {
+      setIsSubmitting(true);
+      setError('');
+      
+      // Check if all required images are uploaded
+      const requiredTypes = Object.entries(IMAGE_TYPES)
+        .filter(([key, config]) => {
+          if (config.required) return true;
+          
+          if (config.conditionalOn && park) {
+            const path = config.conditionalOn.split('.');
+            if (path.length === 1) {
+              return park[path[0]];
+            } else if (path.length === 2) {
+              return park[path[0]][path[1]];
+            }
+          }
+          
+          return false;
+        })
+        .map(([key]) => key);
+      
+      const missingTypes = requiredTypes.filter(type => 
+        !images.some(img => img.image_type === type && img.image_url)
+      );
+      
+      if (missingTypes.length > 0) {
+        const missingLabels = missingTypes.map(type => 
+          IMAGE_TYPES[type as keyof typeof IMAGE_TYPES].label
+        ).join('、');
+        
+        setError(`以下の必要な画像がアップロードされていません: ${missingLabels}`);
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Check if bank account information is set
+      if (!bankAccount.bank_name || !bankAccount.bank_code || !bankAccount.branch_name || 
+          !bankAccount.branch_code || !bankAccount.account_number || !bankAccount.account_holder_name) {
+        setError('振込先情報を入力してください');
+        setActiveTab('bank');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Submit for review using RPC function
+      const { data, error } = await supabase.rpc('submit_second_stage_review', {
+        park_id_param: parkId
+      });
+      
+      if (error) throw error;
+      
+      // Update the park status in the database
+      const { error: updateError } = await supabase
+        .from('dog_parks')
+        .update({ status: 'second_stage_review' })
+        .eq('id', parkId);
+        
+      if (updateError) throw updateError;
+      
+      // Create notification for admin
+      const { error: notifyError } = await supabase
+        .from('admin_notifications')
+        .insert([{
+          type: 'park_approval',
+          title: '新しいドッグラン第二審査申請',
+          message: `${park?.name}の第二審査が申請されました。確認してください。`,
+          data: { park_id: parkId }
+        }]);
+        
+      if (notifyError) {
+        console.error('Error creating admin notification:', notifyError);
+        // Continue even if notification fails
+      }
+      
+      setSuccess('第二審査の申請が完了しました。審査結果をお待ちください。');
+      
+      // Refresh data
+      await fetchParkData();
+      
+      // Redirect to dashboard after 3 seconds
+      setTimeout(() => {
+        navigate('/owner-dashboard');
+      }, 3000);
+    } catch (error: any) {
+      console.error('Error submitting review:', error);
+      setError('審査申請に失敗しました: ' + error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getApprovalStatus = (isApproved: boolean | null) => {
+    if (isApproved === true) {
+      return { icon: CheckCircle, color: 'text-green-600', label: '承認済み' };
+    } else if (isApproved === false) {
+      return { icon: X, color: 'text-red-600', label: '却下' };
+    } else {
+      return { icon: Clock, color: 'text-yellow-600', label: '審査中' };
+    }
+  };
+
+  const getImageTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      overview: '施設全景',
+      entrance: '入口',
+      large_dog_area: '大型犬エリア',
+      small_dog_area: '小型犬エリア',
+      private_booth: 'プライベートブース',
+      parking: '駐車場',
+      shower: 'シャワー設備',
+      restroom: 'トイレ',
+      agility: 'アジリティ設備',
+      rest_area: '休憩スペース',
+      water_station: '給水設備'
+    };
+    
+    return labels[type] || type;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  // 画像レビューモード
+  if (showImagePreview) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div className="relative max-w-4xl w-full">
+          <button
+            onClick={() => setShowImagePreview(null)}
+            className="absolute top-2 right-2 p-2 bg-black bg-opacity-50 rounded-full text-white hover:bg-opacity-70 transition-opacity"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img 
+            src={showImagePreview} 
+            alt="画像プレビュー" 
+            className="max-h-[80vh] max-w-full mx-auto rounded-lg"
+            onError={(e) => {
+              e.currentTarget.src = 'https://via.placeholder.com/800x600?text=Image+Not+Available';
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (!park) {
+    return (
+      <div className="max-w-4xl mx-auto text-center py-12">
+        <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold mb-2">ドッグランが見つかりません</h2>
+        <p className="text-gray-600 mb-6">指定されたドッグランが見つからないか、アクセス権限がありません。</p>
+        <Link to="/owner-dashboard">
+          <Button>ダッシュボードに戻る</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // Check if park is in the correct stage
+  if (park.status !== 'first_stage_passed' && park.status !== 'second_stage_review') {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-6">
+          <Link to="/owner-dashboard" className="flex items-center text-blue-600 hover:text-blue-800">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            ダッシュボードに戻る
+          </Link>
+        </div>
+        
+        <Card className="text-center py-8">
+          <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">このドッグランは現在第二審査の対象ではありません</h2>
+          <p className="text-gray-600 mb-4">
+            {park.status === 'pending' && '第一審査が完了するまでお待ちください。'}
+            {park.status === 'qr_testing' && 'QRコード実証検査中です。管理者からの連絡をお待ちください。'}
+            {park.status === 'approved' && 'このドッグランは既に承認されています。'}
+            {park.status === 'rejected' && '審査が却下されました。詳細はダッシュボードでご確認ください。'}
+          </p>
+          <Link to="/owner-dashboard">
+            <Button>ダッシュボードに戻る</Button>
+          </Link>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* ヘッダー */}
+      <div className="flex items-center space-x-4 mb-6">
+        <Link to="/owner-dashboard" className="flex items-center text-blue-600 hover:text-blue-800">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          ダッシュボードに戻る
+        </Link>
+      </div>
+
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4 flex items-center justify-center">
+          <Building className="w-8 h-8 text-blue-600 mr-3" />
+          {park.name}の第二審査
+        </h1>
+        <p className="text-lg text-gray-600">
+          施設の詳細画像と振込先情報を登録して審査を完了させましょう
+        </p>
+      </div>
+
+      {/* 審査ステータス */}
+      <Card className="bg-blue-50 border-blue-200">
+        <div className="flex items-start space-x-3">
+          <FileText className="w-6 h-6 text-blue-600 mt-1" />
+          <div>
+            <h3 className="font-semibold text-blue-900 mb-2">審査ステータス</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-blue-800">
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">1</div>
+                <div>
+                  <span className="font-medium">第一審査</span>
+                  <p className="text-xs text-green-600">完了</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className={`w-6 h-6 ${park.status === 'second_stage_review' ? 'bg-green-600' : 'bg-blue-600'} text-white rounded-full flex items-center justify-center text-xs font-bold`}>2</div>
+                <div>
+                  <span className="font-medium">第二審査</span>
+                  <p className="text-xs text-blue-600">
+                    {park.status === 'first_stage_passed' ? '画像アップロード中' : '審査中'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-bold">3</div>
+                <div>
+                  <span className="font-medium">QR実証検査</span>
+                  <p className="text-xs text-gray-600">未実施</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-bold">4</div>
+                <div>
+                  <span className="font-medium">運営開始</span>
+                  <p className="text-xs text-gray-600">未完了</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* エラー・成功メッセージ */}
+      {error && (
+        <div className="bg-red-100 border border-red-300 text-red-800 rounded-lg p-4 flex items-start">
+          <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+          <p>{error}</p>
+        </div>
+      )}
+      
+      {success && (
+        <div className="bg-green-100 border border-green-300 text-green-800 rounded-lg p-4 flex items-start">
+          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
+          <p>{success}</p>
+        </div>
+      )}
+
+      {/* タブナビゲーション */}
+      <div className="flex space-x-4 border-b">
+        <button
+          className={`px-4 py-2 font-medium ${
+            activeTab === 'images'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+          onClick={() => setActiveTab('images')}
+        >
+          <Camera className="w-4 h-4 inline mr-2" />
+          施設画像
+        </button>
+        <button
+          className={`px-4 py-2 font-medium ${
+            activeTab === 'bank'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+          onClick={() => setActiveTab('bank')}
+        >
+          <BankAccountIcon className="w-4 h-4 inline mr-2" />
+          振込先情報
+        </button>
+      </div>
+
+      {/* 施設画像アップロード */}
+      {activeTab === 'images' && (
+        <Card>
+          <h2 className="text-xl font-semibold mb-6 flex items-center">
+            <Camera className="w-6 h-6 text-blue-600 mr-2" />
+            施設画像のアップロード
+          </h2>
+          
+          <div className="space-y-6">
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <div className="flex items-start space-x-2">
+                <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                <div className="text-sm text-yellow-800">
+                  <p className="font-medium mb-1">画像アップロードのガイドライン</p>
+                  <ul className="space-y-1">
+                    <li>• 鮮明で明るい画像を選んでください</li>
+                    <li>• 施設の特徴がよくわかる角度から撮影してください</li>
+                    <li>• 画像サイズは10MB以下にしてください</li>
+                    <li>• JPG、PNG、GIF形式のみ対応しています</li>
+                    <li>• 必須項目（*）は必ずアップロードしてください</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {images.map((image) => {
+                const imageTypeConfig = IMAGE_TYPES[image.image_type as keyof typeof IMAGE_TYPES];
+                const Icon = imageTypeConfig.icon;
+                const isRequired = imageTypeConfig.required;
+                
+                let approvalStatus = null;
+                if (image.is_approved !== null && image.image_url) {
+                  const status = getApprovalStatus(image.is_approved);
+                  const StatusIcon = status.icon;
+                  approvalStatus = (
+                    <div className={`flex items-center space-x-1 ${status.color}`}>
+                      <StatusIcon className="w-4 h-4" />
+                      <span className="text-xs">{status.label}</span>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div key={image.image_type} className="border rounded-lg p-4 relative">
+                    {/* Image type header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <Icon className="w-5 h-5 text-blue-600" />
+                        <h3 className="font-medium">
+                          {imageTypeConfig.label}
+                          {isRequired && <span className="text-red-600 ml-1">*</span>}
+                        </h3>
+                      </div>
+                      {approvalStatus}
+                    </div>
+                    
+                    {/* Description */}
+                    <p className="text-sm text-gray-600 mb-3">{imageTypeConfig.description}</p>
+                    
+                    {/* Image preview or upload button */}
+                    {image.image_url ? (
+                      <div className="relative">
+                        <div 
+                          className="h-40 bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
+                          onClick={() => setShowImagePreview(image.image_url)}
+                        >
+                          <img 
+                            src={image.image_url} 
+                            alt={imageTypeConfig.label} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
+                            }}
+                          />
+                        </div>
+                        <div className="absolute top-2 right-2 flex space-x-2">
+                          <button
+                            onClick={() => setShowImagePreview(image.image_url)}
+                            className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
+                          >
+                            <ImageIcon className="w-4 h-4 text-blue-600" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteImage(image.id)}
+                            className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
+                            disabled={image.is_approved === true}
+                          >
+                            <Trash2 className={`w-4 h-4 ${image.is_approved === true ? 'text-gray-400' : 'text-red-600'}`} />
+                          </button>
+                        </div>
+                        
+                        {/* Admin notes if rejected */}
+                        {image.is_approved === false && image.admin_notes && (
+                          <div className="mt-2 p-2 bg-red-50 rounded text-sm text-red-800">
+                            <p className="font-medium">却下理由:</p>
+                            <p>{image.admin_notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-500 transition-colors">
+                          <input
+                            type="file"
+                            id={`image-${image.image_type}`}
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleImageSelect(image.image_type, file);
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor={`image-${image.image_type}`}
+                            className="cursor-pointer flex flex-col items-center"
+                          >
+                            <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                            <span className="text-sm text-gray-600">
+                              クリックして画像を選択
+                            </span>
+                          </label>
+                        </div>
+                        
+                        {image.file && (
+                          <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                            <span className="text-sm truncate">{image.file.name}</span>
+                            <Button
+                              size="sm"
+                              onClick={() => handleImageUpload(image.image_type)}
+                              isLoading={image.uploading}
+                            >
+                              アップロード
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {image.error && (
+                          <p className="text-sm text-red-600">{image.error}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* 振込先情報 */}
+      {activeTab === 'bank' && (
+        <Card>
+          <h2 className="text-xl font-semibold mb-6 flex items-center">
+            <BankAccountIcon className="w-6 h-6 text-blue-600 mr-2" />
+            振込先情報
+          </h2>
+          
+          {bankError && (
+            <div className="mb-6 p-4 bg-red-50 rounded-lg flex items-start">
+              <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+              <p className="text-red-800">{bankError}</p>
+            </div>
+          )}
+          
+          {bankSuccess && (
+            <div className="mb-6 p-4 bg-green-50 rounded-lg flex items-start">
+              <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
+              <p className="text-green-800">{bankSuccess}</p>
+            </div>
+          )}
+          
+          <form onSubmit={handleSaveBankAccount}>
+            <div className="space-y-6">
+              <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+                <div className="flex items-start space-x-3">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-yellow-800">
+                    <p className="font-medium mb-1">振込先情報について</p>
+                    <ul className="space-y-1">
+                      <li>• 売上金の振込先となる銀行口座情報を入力してください</li>
+                      <li>• 振込は毎月15日に前月分を一括で行います</li>
+                      <li>• 振込手数料は当社負担です</li>
+                      <li>• 振込金額が5,000円未満の場合は翌月に繰り越されます</li>
+                      <li>• 口座名義は正確に入力してください（例：ヤマダ タロウ）</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Input
+                  label="銀行名 *"
+                  value={bankAccount.bank_name}
+                  onChange={(e) => setBankAccount({ ...bankAccount, bank_name: e.target.value })}
+                  placeholder="例：三菱UFJ銀行"
+                  required
+                  icon={<BankAccountIcon className="w-4 h-4 text-gray-500" />}
+                />
+                
+                <Input
+                  label="銀行コード（4桁） *"
+                  value={bankAccount.bank_code}
+                  onChange={(e) => {
+                    // 数字のみ許可
+                    const value = e.target.value.replace(/\D/g, '');
+                    setBankAccount({ ...bankAccount, bank_code: value });
+                  }}
+                  placeholder="例：0005"
+                  maxLength={4}
+                  required
+                  helperText="4桁の数字で入力してください"
+                />
+                
+                <Input
+                  label="支店名 *"
+                  value={bankAccount.branch_name}
+                  onChange={(e) => setBankAccount({ ...bankAccount, branch_name: e.target.value })}
+                  placeholder="例：渋谷支店"
+                  required
+                />
+                
+                <Input
+                  label="支店コード（3桁） *"
+                  value={bankAccount.branch_code}
+                  onChange={(e) => {
+                    // 数字のみ許可
+                    const value = e.target.value.replace(/\D/g, '');
+                    setBankAccount({ ...bankAccount, branch_code: value });
+                  }}
+                  placeholder="例：135"
+                  maxLength={3}
+                  required
+                  helperText="3桁の数字で入力してください"
+                />
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    口座種別 *
+                  </label>
+                  <div className="flex space-x-4">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        checked={bankAccount.account_type === 'ordinary'}
+                        onChange={() => setBankAccount({ ...bankAccount, account_type: 'ordinary' })}
+                        className="form-radio text-blue-600"
+                      />
+                      <span>普通</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        checked={bankAccount.account_type === 'checking'}
+                        onChange={() => setBankAccount({ ...bankAccount, account_type: 'checking' })}
+                        className="form-radio text-blue-600"
+                      />
+                      <span>当座</span>
+                    </label>
+                  </div>
+                </div>
+                
+                <Input
+                  label="口座番号（7桁） *"
+                  value={bankAccount.account_number}
+                  onChange={(e) => {
+                    // 数字のみ許可
+                    const value = e.target.value.replace(/\D/g, '');
+                    setBankAccount({ ...bankAccount, account_number: value });
+                  }}
+                  placeholder="例：1234567"
+                  maxLength={7}
+                  required
+                  helperText="7桁の数字で入力してください"
+                  icon={<CreditCard className="w-4 h-4 text-gray-500" />}
+                />
+                
+                <div className="md:col-span-2">
+                  <Input
+                    label="口座名義（カタカナ） *"
+                    value={bankAccount.account_holder_name}
+                    onChange={(e) => setBankAccount({ ...bankAccount, account_holder_name: e.target.value })}
+                    placeholder="例：ヤマダ タロウ"
+                    required
+                    helperText="カタカナで入力してください（姓と名の間にスペース）"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  isLoading={isSavingBank}
+                >
+                  振込先情報を保存
+                </Button>
+              </div>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {/* Submit button */}
+      <div className="mt-8 flex justify-end">
+        <Button
+          onClick={handleSubmitReview}
+          isLoading={isSubmitting}
+          disabled={park.status === 'second_stage_review'}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          {park.status === 'second_stage_review' 
+            ? '審査中です' 
+            : '第二審査を申請する'}
+        </Button>
+      </div>
+
+      {/* 審査プロセスの説明 */}
+      <Card className="bg-gray-50">
+        <div className="flex items-start space-x-3">
+          <FileText className="w-6 h-6 text-gray-600 mt-1" />
+          <div>
+            <h3 className="font-semibold text-gray-900 mb-2">審査プロセスについて</h3>
+            <div className="text-sm text-gray-700 space-y-1">
+              <p>• 第二審査では、施設の詳細画像と振込先情報を確認します</p>
+              <p>• 審査期間は通常3-5営業日です</p>
+              <p>• 画像に問題がある場合は再提出を求められることがあります</p>
+              <p>• 審査通過後、QRコード実証検査の日程調整を行います</p>
+              <p>• 実証検査完了後、一般公開となります</p>
+            </div>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// BankAccountIcon component for bank account information
+function BankAccountIcon({ className }: { className?: string }) {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <path d="M3 21h18"></path>
+      <path d="M3 10h18"></path>
+      <path d="M5 6l7-3 7 3"></path>
+      <path d="M4 10v11"></path>
+      <path d="M20 10v11"></path>
+      <path d="M8 14v3"></path>
+      <path d="M12 14v3"></path>
+      <path d="M16 14v3"></path>
+    </svg>
+  );
+}
+
+function Clock({ className }: { className?: string }) {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <circle cx="12" cy="12" r="10"></circle>
+      <polyline points="12 6 12 12 16 14"></polyline>
+    </svg>
+  );
+}
