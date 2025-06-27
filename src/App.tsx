@@ -3,6 +3,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { Layout } from './components/Layout';
 import { useAuth } from './context/AuthContext';
 import DogInfo from './pages/DogInfo';
+import DogInfoFoods from './pages/DogInfoFoods';
+import DogInfoVaccine from './pages/DogInfoVaccine';
+import DogInfoBreeds from './pages/DogInfoBreeds';
+import DogInfoParasite from './pages/DogInfoParasite';
+import DogInfoSnack from './pages/DogInfoSnack';
+import DogInfoShow from './pages/DogInfoShow';
 
 // Lazy load pages for better performance
 const Home = lazy(() => import('./pages/Home').then(module => ({ default: module.Home })));
@@ -120,6 +126,12 @@ function App() {
             <Route path="/news/:newsId" element={<NewsDetail />} />
             <Route path="/news/park/:parkId" element={<NewParkDetail />} />
             <Route path="/dog-info" element={<DogInfo />} />
+            <Route path="/dog-info/foods" element={<DogInfoFoods />} />
+            <Route path="/dog-info/vaccine" element={<DogInfoVaccine />} />
+            <Route path="/dog-info/breeds" element={<DogInfoBreeds />} />
+            <Route path="/dog-info/parasite" element={<DogInfoParasite />} />
+            <Route path="/dog-info/snack" element={<DogInfoSnack />} />
+            <Route path="/dog-info/show" element={<DogInfoShow />} />
             
             {/* Auth callback route */}
             <Route path="/auth/callback" element={<AuthCallback />} />
