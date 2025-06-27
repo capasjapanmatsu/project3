@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { useAuth } from './context/AuthContext';
+import DogInfo from './pages/DogInfo';
 
 // Lazy load pages for better performance
 const Home = lazy(() => import('./pages/Home').then(module => ({ default: module.Home })));
@@ -118,6 +119,7 @@ function App() {
             <Route path="/news" element={<News />} />
             <Route path="/news/:newsId" element={<NewsDetail />} />
             <Route path="/news/park/:parkId" element={<NewParkDetail />} />
+            <Route path="/dog-info" element={<DogInfo />} />
             
             {/* Auth callback route */}
             <Route path="/auth/callback" element={<AuthCallback />} />

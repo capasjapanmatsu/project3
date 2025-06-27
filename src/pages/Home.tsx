@@ -660,6 +660,22 @@ export function Home() {
             </div>
           </div>
         </section>
+
+        {/* 情報発信コーナーへのリンク */}
+        <section className="bg-yellow-50 p-6 rounded-lg mt-8">
+          <div className="flex flex-col items-center">
+            <h2 className="text-xl font-bold text-yellow-900 mb-2 flex items-center">
+              <PawPrint className="w-6 h-6 text-yellow-600 mr-2" />
+              犬についての情報発信
+            </h2>
+            <p className="text-yellow-800 mb-4 text-center">健康・しつけ・イベントなど、犬と暮らすための役立つ情報をまとめています。</p>
+            <Link to="/dog-info">
+              <Button className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-6 py-3 text-lg shadow-md">
+                記事一覧を見る
+              </Button>
+            </Link>
+          </div>
+        </section>
       </div>
     );
   }
@@ -964,6 +980,22 @@ export function Home() {
             ペット用品をワンタッチで簡単注文
           </p>
         </Link>
+      </section>
+
+      {/* 情報発信コーナーへのリンク */}
+      <section className="bg-yellow-50 p-6 rounded-lg mt-8">
+        <div className="flex flex-col items-center">
+          <h2 className="text-xl font-bold text-yellow-900 mb-2 flex items-center">
+            <PawPrint className="w-6 h-6 text-yellow-600 mr-2" />
+            犬についての情報発信
+          </h2>
+          <p className="text-yellow-800 mb-4 text-center">健康・しつけ・イベントなど、犬と暮らすための役立つ情報をまとめています。</p>
+          <Link to="/dog-info">
+            <Button className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-6 py-3 text-lg shadow-md">
+              記事一覧を見る
+            </Button>
+          </Link>
+        </div>
       </section>
     </div>
   );
