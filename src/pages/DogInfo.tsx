@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 const articles = [
   {
-    title: '犬が食べてはいけない食べ物',
+    title: 'ワンちゃんが食べてはいけない食べ物',
     image: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&w=300',
     path: '/dog-info/foods',
   },
@@ -13,7 +13,7 @@ const articles = [
     path: '/dog-info/vaccine',
   },
   {
-    title: '犬種ごとにかかりやすい主な病気',
+    title: 'ワンちゃん種ごとにかかりやすい主な病気',
     image: 'https://images.pexels.com/photos/1108098/pexels-photo-1108098.jpeg?auto=compress&w=300',
     path: '/dog-info/breeds',
   },
@@ -23,7 +23,7 @@ const articles = [
     path: '/dog-info/parasite',
   },
   {
-    title: '犬用おやつやおもちゃの重要性',
+    title: 'ワンちゃん用おやつやおもちゃの重要性',
     image: 'https://images.pexels.com/photos/1108097/pexels-photo-1108097.jpeg?auto=compress&w=300',
     path: '/dog-info/snack',
   },
@@ -37,7 +37,7 @@ const articles = [
 export default function DogInfo() {
   return (
     <div className="max-w-5xl mx-auto py-8 px-4">
-      <h1 className="text-2xl font-bold mb-6 text-center">犬についての情報発信</h1>
+      <h1 className="text-2xl font-bold mb-6 text-center">ワンちゃんについての情報発信</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {articles.map((article) => (
           <Link to={article.path} key={article.title} className="block group">
