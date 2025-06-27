@@ -32,6 +32,7 @@ import Button from '../components/Button';
 import { useSubscription } from '../hooks/useSubscription';
 import { SubscriptionButton } from '../components/SubscriptionButton';
 import type { DogPark, NewsAnnouncement, NewParkOpening, Dog } from '../types';
+import { getDogHonorific } from '../components/dashboard/DogCard';
 
 export function Home() {
   const { user, profile } = useAuth();
@@ -367,13 +368,13 @@ export function Home() {
                     <img 
                       src={dog.image_url || `https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300`} 
                       alt={dog.name} 
-                      className="w-full h-40 object-cover"
+                      className="w-full h-28 object-cover"
                       onError={(e) => {
                         e.currentTarget.src = 'https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300';
                       }}
                     />
                   </div>
-                  <p className="font-medium text-gray-900">{dog.breed}</p>
+                  <p className="font-medium text-gray-900">{dog.name}{getDogHonorific(dog.gender)}</p>
                 </div>
               ))
             ) : (
@@ -384,7 +385,7 @@ export function Home() {
                     <img 
                       src={`https://images.pexels.com/photos/${[58997, 5731866, 45170, 1805164, 2023384][index]}/pexels-photo-${[58997, 5731866, 45170, 1805164, 2023384][index]}.jpeg?auto=compress&cs=tinysrgb&w=300`}
                       alt={['ポメラニアン', 'トイ・プードル', 'スコティッシュストレート', 'ミニチュア・シュナウザー', 'MIX（ハーフ）'][index]}
-                      className="w-full h-40 object-cover"
+                      className="w-full h-28 object-cover"
                     />
                   </div>
                   <p className="font-medium text-gray-900">{['ポメラニアン', 'トイ・プードル', 'スコティッシュストレート', 'ミニチュア・シュナウザー', 'MIX（ハーフ）'][index]}</p>
@@ -745,7 +746,7 @@ export function Home() {
               <img 
                 src="/image.png" 
                 alt="ポメラニアン" 
-                className="w-full h-40 object-cover"
+                className="w-full h-28 object-cover"
               />
             </div>
             <p className="font-medium text-gray-900">ポメラニアン</p>
@@ -755,7 +756,7 @@ export function Home() {
               <img 
                 src="https://images.pexels.com/photos/5731866/pexels-photo-5731866.jpeg?auto=compress&cs=tinysrgb&w=300" 
                 alt="トイ・プードル" 
-                className="w-full h-40 object-cover"
+                className="w-full h-28 object-cover"
               />
             </div>
             <p className="font-medium text-gray-900">トイ・プードル</p>
@@ -765,7 +766,7 @@ export function Home() {
               <img 
                 src="https://images.pexels.com/photos/45170/kittens-cat-cat-puppy-rush-45170.jpeg?auto=compress&cs=tinysrgb&w=300" 
                 alt="スコティッシュストレート" 
-                className="w-full h-40 object-cover"
+                className="w-full h-28 object-cover"
               />
             </div>
             <p className="font-medium text-gray-900">スコティッシュストレート</p>
@@ -775,7 +776,7 @@ export function Home() {
               <img 
                 src="https://images.pexels.com/photos/1805164/pexels-photo-1805164.jpeg?auto=compress&cs=tinysrgb&w=300" 
                 alt="ミニチュア・シュナウザー" 
-                className="w-full h-40 object-cover"
+                className="w-full h-28 object-cover"
               />
             </div>
             <p className="font-medium text-gray-900">ミニチュア・シュナウザー</p>
@@ -785,7 +786,7 @@ export function Home() {
               <img 
                 src="https://images.pexels.com/photos/2023384/pexels-photo-2023384.jpeg?auto=compress&cs=tinysrgb&w=300" 
                 alt="MIX（ハーフ）" 
-                className="w-full h-40 object-cover"
+                className="w-full h-28 object-cover"
               />
             </div>
             <p className="font-medium text-gray-900">MIX（ハーフ）</p>
