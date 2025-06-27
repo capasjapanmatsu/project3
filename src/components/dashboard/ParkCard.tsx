@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Star, Edit, Building, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
-import { Button } from '../Button';
+import Button from '../Button';
 import type { DogPark } from '../../types';
 
 interface ParkCardProps {

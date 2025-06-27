@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Input } from '../components/Input';
-import { Select } from '../components/Select';
-import { Button } from '../components/Button';
-import { Card } from '../components/Card';
+import Input from '../components/Input';
+import Select from '../components/Select';
+import Button from '../components/Button';
+import Card from '../components/Card';
 import { Upload, X, Image as ImageIcon, PawPrint, Edit, CheckCircle, AlertTriangle, Camera } from 'lucide-react';
 import { dogBreeds } from '../data/dogBreeds';
 import { supabase } from '../utils/supabase';

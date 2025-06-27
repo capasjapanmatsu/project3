@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
-import { X, Star, Building, BarChart4, Eye, Edit, AlertTriangle, CheckCircle, Clock, Calendar, MapPin } from 'lucide-react';
-import { Card } from '../Card';
-import { Button } from '../Button';
+import { X, Star, Building, BarChart4, Eye, Edit, AlertTriangle, CheckCircle, Clock, Calendar as CalendarIcon, MapPin } from 'lucide-react';
+import Card from '../Card';
+import Button from '../Button';
 import { getStatusBadge } from './ParkCard';
 import type { DogPark } from '../../types';
 
@@ -105,7 +105,7 @@ export function ParkModal({ park, onClose }: ParkModalProps) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="flex items-center space-x-2 mb-2">
-                    <Calendar className="w-5 h-5 text-blue-600" />
+                    <CalendarIcon className="w-5 h-5 text-blue-600" />
                     <h4 className="font-medium text-blue-900">今月の予約</h4>
                   </div>
                   <p className="text-2xl font-bold text-blue-600">32件</p>

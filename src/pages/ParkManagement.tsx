@@ -22,12 +22,11 @@ import {
   LogIn,
   LogOut
 } from 'lucide-react';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
-import { supabase } from '../utils/supabase';
+import Button from '../components/Button';
+import Card from '../components/Card';
+import Select from '../components/Select';
 import { useAuth } from '../context/AuthContext';
 import { PinCodeGenerator } from '../components/PinCodeGenerator';
-import { Select } from '../components/Select';
 import type { DogPark, SmartLock, Dog } from '../types';
 
 export function ParkManagement() {

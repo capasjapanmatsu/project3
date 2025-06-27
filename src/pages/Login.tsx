@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Input } from '../components/Input';
-import { Button } from '../components/Button';
-import { Card } from '../components/Card';
+import Card from '../components/Card';
+import Button from '../components/Button';
+import Input from '../components/Input';
 import { Mail, CheckCircle, AlertTriangle, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { safeGetItem, safeSetItem } from '../utils/safeStorage';

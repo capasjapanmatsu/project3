@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Card } from './Card';
-import { Button } from './Button';
+import Card from './Card';
+import Button from './Button';
 import { Key, CheckCircle, AlertTriangle, Loader } from 'lucide-react';
 
 interface PinCodeEntryProps {

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { Input } from '../components/Input';
-import { Select } from '../components/Select';
-import { Button } from '../components/Button';
-import { Card } from '../components/Card';
+import Input from '../components/Input';
+import Select from '../components/Select';
+import Button from '../components/Button';
+import Card from '../components/Card';
 import { Key, Clock, MapPin, Users, CheckCircle, X, AlertTriangle, Crown, Building, PawPrint, Calculator, Plus, CreditCard, Calendar, Info } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';

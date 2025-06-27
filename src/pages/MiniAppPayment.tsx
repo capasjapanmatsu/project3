@@ -1,8 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CreditCard, Smartphone } from 'lucide-react';
-import { Button } from '../components/Button';
-import { Card } from '../components/Card';
+import Button from '../components/Button';
+import Card from '../components/Card';
 
 export const MiniAppPayment: React.FC = () => {
   const navigate = useNavigate();

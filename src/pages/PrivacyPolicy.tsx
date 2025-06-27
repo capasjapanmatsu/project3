@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Shield, Lock, Eye, FileText, Server, Database } from 'lucide-react';
-import { Card } from '../components/Card';
+import Card from '../components/Card';
 
 export function PrivacyPolicy() {
   return (

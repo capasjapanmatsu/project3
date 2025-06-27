@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Clock, PawPrint, Building, Calendar } from 'lucide-react';
-import { Button } from '../Button';
+import Button from '../Button';
 import { getStatusBadge } from './ParkCard';
 import { getDogHonorific } from './DogCard';
 import type { Reservation } from '../../types';

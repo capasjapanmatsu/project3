@@ -3,8 +3,8 @@ import { PawPrint, LogOut, Bell, ShoppingCart, Shield, History, Mail } from 'luc
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect, useCallback, memo } from 'react';
 import { supabase } from '../utils/supabase';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
+import Card from '../components/Card';
+import Button from '../components/Button';
 import { useSubscription } from '../hooks/useSubscription';
 import { SubscriptionButton } from '../components/SubscriptionButton';
 import type { DogPark } from '../types';

@@ -1,5 +1,5 @@
 import { AlertTriangle, Calendar, Clock } from 'lucide-react';
-import { Card } from '../Card';
+import Card from '../Card';
 
 interface RentalInfo {
   date: string;

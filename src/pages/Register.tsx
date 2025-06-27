@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Input } from '../components/Input';
-import { Button } from '../components/Button';
-import { Card } from '../components/Card';
+import Input from '../components/Input';
+import Button from '../components/Button';
+import Card from '../components/Card';
 import { supabase } from '../utils/supabase';
 import { Shield, AlertTriangle, MapPin, Phone, Mail, User, Loader } from 'lucide-react';
 import { lookupPostalCode, formatAddress } from '../utils/postalCodeLookup';

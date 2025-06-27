@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Building, Mail, Phone, User, MapPin, CreditCard, Truck, Clock, FileText, ShieldCheck } from 'lucide-react';
-import { Card } from '../components/Card';
+import Card from '../components/Card';
 
 export function BusinessInformation() {
   return (

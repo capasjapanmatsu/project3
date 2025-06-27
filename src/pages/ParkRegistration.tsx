@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Input } from '../components/Input';
-import { Button } from '../components/Button';
-import { Card } from '../components/Card';
+import Button from '../components/Button';
+import Card from '../components/Card';
+import Input from '../components/Input';
 import { CheckCircle, AlertTriangle, FileText, MapPin, Users, Building, DollarSign, ShieldAlert, Shield, User, CreditCard, Fingerprint, Lock, Camera, Loader, Trash2, RefreshCw } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';

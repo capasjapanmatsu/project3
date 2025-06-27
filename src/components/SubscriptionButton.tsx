@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Crown } from 'lucide-react';
-import { Button } from './Button';
+import Button from './Button';
 import { useStripe } from '../hooks/useStripe';
 import { products } from '../stripe-config';
 
