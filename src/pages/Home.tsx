@@ -35,7 +35,7 @@ import type { DogPark, NewsAnnouncement, NewParkOpening, Dog } from '../types';
 import { getDogHonorific } from '../components/dashboard/DogCard';
 
 export function Home() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [parks, setParks] = useState<DogPark[]>([]);
   const [news, setNews] = useState<NewsAnnouncement[]>([]);
   const [newParks, setNewParks] = useState<NewParkOpening[]>([]);
@@ -98,12 +98,14 @@ export function Home() {
     setNetworkError(null);
     
     const { data, error, isOffline: queryOffline } = await safeSupabaseQuery(
-      () => supabase
+      () => (supabase
         .from('dog_parks')
         .select('*')
         .eq('status', 'approved')
         .order('created_at', { ascending: false })
-        .limit(6),
+        .limit(6)
+        .then(x => x)
+      ) as any,
       []
     );
 
@@ -116,8 +118,8 @@ export function Home() {
     } else if (data) {
       // 現在地からの距離でソート
       data.sort((a, b) => {
-        const distA = calculateDistance(userLocation!.lat, userLocation!.lng, a.latitude, a.longitude);
-        const distB = calculateDistance(userLocation!.lat, userLocation!.lng, b.latitude, b.longitude);
+        const distA = calculateDistance(userLocation!.lat, userLocation!.lng, (a as any).latitude, (a as any).longitude);
+        const distB = calculateDistance(userLocation!.lat, userLocation!.lng, (b as any).latitude, (b as any).longitude);
         return distA - distB;
       });
       setParks(data);
@@ -131,21 +133,25 @@ export function Home() {
     
     // 新着情報を取得
     const { data: newsData, error: newsError, isOffline: newsOffline } = await safeSupabaseQuery(
-      () => supabase
+      () => (supabase
         .from('news_announcements')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(3),
+        .limit(3)
+        .then(x => x)
+      ) as any,
       []
     );
     
     // 新規オープンのドッグランを取得
     const { data: parksData, error: parksError, isOffline: parksOffline } = await safeSupabaseQuery(
-      () => supabase
+      () => (supabase
         .from('new_park_openings')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(3),
+        .limit(3)
+        .then(x => x)
+      ) as any,
       []
     );
     
@@ -171,11 +177,13 @@ export function Home() {
     setNetworkError(null);
     
     const { data, error, isOffline: queryOffline } = await safeSupabaseQuery(
-      () => supabase
+      () => (supabase
         .from('dogs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(5),
+        .limit(5)
+        .then(x => x)
+      ) as any,
       []
     );
     
@@ -344,7 +352,7 @@ export function Home() {
           </div>
         </section>
 
-        {/* 最近登録されたワンちゃん */}
+        {/* 最近登録されたワンちゃん（横スクロールアニメーション） */}
         <section className="bg-gray-50 p-6 rounded-lg">
           <div className="flex justify-between items-center mb-6">
             <div className="relative">
@@ -359,40 +367,52 @@ export function Home() {
               </div>
             </div>
           </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {!isOffline && recentDogs.length > 0 ? (
-              recentDogs.map((dog, index) => (
-                <div key={dog.id} className="text-center">
-                  <div className="flex justify-center mb-2">
-                    <img 
-                      src={dog.image_url || `https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300`} 
-                      alt={dog.name} 
-                      style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: '50%' }}
-                      onError={(e) => {
-                        e.currentTarget.src = 'https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300';
-                      }}
-                    />
+          <div className="overflow-hidden w-full" style={{height: 140}}>
+            <div
+              className="flex items-center animate-marquee"
+              style={{
+                width: 'max-content',
+                animation: 'marquee 24s linear infinite',
+              }}
+            >
+              {(() => {
+                // 8匹分取得し、2回繰り返してリピート
+                const dogs = !isOffline && recentDogs.length > 0
+                  ? Array(2).fill(recentDogs.slice(0, 8)).flat()
+                  : Array(2).fill([
+                      { name: 'ポメラニアン', gender: 'オス', image_url: 'https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300' },
+                      { name: 'トイ・プードル', gender: 'メス', image_url: 'https://images.pexels.com/photos/5731866/pexels-photo-5731866.jpeg?auto=compress&cs=tinysrgb&w=300' },
+                      { name: 'スコティッシュストレート', gender: 'オス', image_url: 'https://images.pexels.com/photos/45170/kittens-cat-cat-puppy-rush-45170.jpeg?auto=compress&cs=tinysrgb&w=300' },
+                      { name: 'ミニチュア・シュナウザー', gender: 'メス', image_url: 'https://images.pexels.com/photos/1805164/pexels-photo-1805164.jpeg?auto=compress&cs=tinysrgb&w=300' },
+                      { name: 'MIX（ハーフ）', gender: 'オス', image_url: 'https://images.pexels.com/photos/2023384/pexels-photo-2023384.jpeg?auto=compress&cs=tinysrgb&w=300' },
+                    ]).flat();
+                return dogs.map((dog, index) => (
+                  <div key={index} className="text-center mx-6 flex-shrink-0" style={{width: 120}}>
+                    <div className="flex justify-center mb-2">
+                      <img
+                        src={dog.image_url}
+                        alt={dog.name}
+                        style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: '50%' }}
+                        onError={(e) => {
+                          e.currentTarget.src = 'https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300';
+                        }}
+                      />
+                    </div>
+                    <p className="font-medium text-gray-900 whitespace-nowrap">{dog.name}{getDogHonorific(dog.gender)}</p>
                   </div>
-                  <p className="font-medium text-gray-900">{dog.name}{getDogHonorific(dog.gender)}</p>
-                </div>
-              ))
-            ) : (
-              // Fallback content when data can't be loaded or offline
-              Array.from({ length: 5 }, (_, index) => (
-                <div key={index} className="text-center">
-                  <div className="flex justify-center mb-2">
-                    <img 
-                      src={`https://images.pexels.com/photos/${[58997, 5731866, 45170, 1805164, 2023384][index]}/pexels-photo-${[58997, 5731866, 45170, 1805164, 2023384][index]}.jpeg?auto=compress&cs=tinysrgb&w=300`}
-                      alt={['ポメラニアン', 'トイ・プードル', 'スコティッシュストレート', 'ミニチュア・シュナウザー', 'MIX（ハーフ）'][index]}
-                      style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: '50%' }}
-                    />
-                  </div>
-                  <p className="font-medium text-gray-900">{['ポメラニアン', 'トイ・プードル', 'スコティッシュストレート', 'ミニチュア・シュナウザー', 'MIX（ハーフ）'][index]}</p>
-                </div>
-              ))
-            )}
+                ));
+              })()}
+            </div>
           </div>
+          <style>{`
+            @keyframes marquee {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
+            }
+            @media (max-width: 640px) {
+              .animate-marquee { animation-duration: 36s !important; }
+            }
+          `}</style>
         </section>
 
         {/* 新着情報セクション */}
@@ -666,9 +686,9 @@ export function Home() {
           <div className="flex flex-col items-center">
             <h2 className="text-xl font-bold text-yellow-900 mb-2 flex items-center">
               <PawPrint className="w-6 h-6 text-yellow-600 mr-2" />
-              犬についての情報発信
+              ワンちゃんについての情報発信
             </h2>
-            <p className="text-yellow-800 mb-4 text-center">健康・しつけ・イベントなど、犬と暮らすための役立つ情報をまとめています。</p>
+            <p className="text-yellow-800 mb-4 text-center">健康・しつけ・イベントなど、ワンちゃんと暮らすための役立つ情報をまとめています。</p>
             <Link to="/dog-info">
               <Button className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-6 py-3 text-lg shadow-md">
                 記事一覧を見る
@@ -689,7 +709,7 @@ export function Home() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            こんにちは、{profile?.name || 'ユーザー'}さん
+            こんにちは、ユーザーさん
           </h1>
           <p className="text-gray-600">ドッグパークJPへようこそ</p>
         </div>
@@ -740,11 +760,11 @@ export function Home() {
         </Card>
       )}
 
-      {/* 最近登録されたワンちゃん */}
+      {/* 最近登録されたワンちゃん（横スクロールアニメーション） */}
       <section className="bg-gray-50 p-6 rounded-lg">
         <div className="flex justify-between items-center mb-6">
           <div className="relative">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center">
               <PawPrint className="w-6 h-6 text-blue-600 mr-2" />
               最近仲間入りしました！
             </h2>
@@ -755,59 +775,52 @@ export function Home() {
             </div>
           </div>
         </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="text-center">
-            <div className="bg-white rounded-lg overflow-hidden shadow-md mb-2">
-              <img 
-                src="/image.png" 
-                alt="ポメラニアン" 
-                className="w-full h-28 object-cover"
-              />
-            </div>
-            <p className="font-medium text-gray-900">ポメラニアン</p>
-          </div>
-          <div className="text-center">
-            <div className="bg-white rounded-lg overflow-hidden shadow-md mb-2">
-              <img 
-                src="https://images.pexels.com/photos/5731866/pexels-photo-5731866.jpeg?auto=compress&cs=tinysrgb&w=300" 
-                alt="トイ・プードル" 
-                className="w-full h-28 object-cover"
-              />
-            </div>
-            <p className="font-medium text-gray-900">トイ・プードル</p>
-          </div>
-          <div className="text-center">
-            <div className="bg-white rounded-lg overflow-hidden shadow-md mb-2">
-              <img 
-                src="https://images.pexels.com/photos/45170/kittens-cat-cat-puppy-rush-45170.jpeg?auto=compress&cs=tinysrgb&w=300" 
-                alt="スコティッシュストレート" 
-                className="w-full h-28 object-cover"
-              />
-            </div>
-            <p className="font-medium text-gray-900">スコティッシュストレート</p>
-          </div>
-          <div className="text-center">
-            <div className="bg-white rounded-lg overflow-hidden shadow-md mb-2">
-              <img 
-                src="https://images.pexels.com/photos/1805164/pexels-photo-1805164.jpeg?auto=compress&cs=tinysrgb&w=300" 
-                alt="ミニチュア・シュナウザー" 
-                className="w-full h-28 object-cover"
-              />
-            </div>
-            <p className="font-medium text-gray-900">ミニチュア・シュナウザー</p>
-          </div>
-          <div className="text-center">
-            <div className="bg-white rounded-lg overflow-hidden shadow-md mb-2">
-              <img 
-                src="https://images.pexels.com/photos/2023384/pexels-photo-2023384.jpeg?auto=compress&cs=tinysrgb&w=300" 
-                alt="MIX（ハーフ）" 
-                className="w-full h-28 object-cover"
-              />
-            </div>
-            <p className="font-medium text-gray-900">MIX（ハーフ）</p>
+        <div className="overflow-hidden w-full" style={{height: 140}}>
+          <div
+            className="flex items-center animate-marquee"
+            style={{
+              width: 'max-content',
+              animation: 'marquee 24s linear infinite',
+            }}
+          >
+            {(() => {
+              // 8匹分取得し、2回繰り返してリピート
+              const dogs = !isOffline && recentDogs.length > 0
+                ? Array(2).fill(recentDogs.slice(0, 8)).flat()
+                : Array(2).fill([
+                    { name: 'ポメラニアン', gender: 'オス', image_url: 'https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300' },
+                    { name: 'トイ・プードル', gender: 'メス', image_url: 'https://images.pexels.com/photos/5731866/pexels-photo-5731866.jpeg?auto=compress&cs=tinysrgb&w=300' },
+                    { name: 'スコティッシュストレート', gender: 'オス', image_url: 'https://images.pexels.com/photos/45170/kittens-cat-cat-puppy-rush-45170.jpeg?auto=compress&cs=tinysrgb&w=300' },
+                    { name: 'ミニチュア・シュナウザー', gender: 'メス', image_url: 'https://images.pexels.com/photos/1805164/pexels-photo-1805164.jpeg?auto=compress&cs=tinysrgb&w=300' },
+                    { name: 'MIX（ハーフ）', gender: 'オス', image_url: 'https://images.pexels.com/photos/2023384/pexels-photo-2023384.jpeg?auto=compress&cs=tinysrgb&w=300' },
+                  ]).flat();
+              return dogs.map((dog, index) => (
+                <div key={index} className="text-center mx-6 flex-shrink-0" style={{width: 120}}>
+                  <div className="flex justify-center mb-2">
+                    <img
+                      src={dog.image_url}
+                      alt={dog.name}
+                      style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: '50%' }}
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300';
+                      }}
+                    />
+                  </div>
+                  <p className="font-medium text-gray-900 whitespace-nowrap">{dog.name}{getDogHonorific(dog.gender)}</p>
+                </div>
+              ));
+            })()}
           </div>
         </div>
+        <style>{`
+          @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+          }
+          @media (max-width: 640px) {
+            .animate-marquee { animation-duration: 36s !important; }
+          }
+        `}</style>
       </section>
 
       {/* 新着情報セクション */}
@@ -987,9 +1000,9 @@ export function Home() {
         <div className="flex flex-col items-center">
           <h2 className="text-xl font-bold text-yellow-900 mb-2 flex items-center">
             <PawPrint className="w-6 h-6 text-yellow-600 mr-2" />
-            犬についての情報発信
+            ワンちゃんについての情報発信
           </h2>
-          <p className="text-yellow-800 mb-4 text-center">健康・しつけ・イベントなど、犬と暮らすための役立つ情報をまとめています。</p>
+          <p className="text-yellow-800 mb-4 text-center">健康・しつけ・イベントなど、ワンちゃんと暮らすための役立つ情報をまとめています。</p>
           <Link to="/dog-info">
             <Button className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-6 py-3 text-lg shadow-md">
               記事一覧を見る
