@@ -125,8 +125,8 @@ export const testSupabaseConnection = async (): Promise<boolean> => {
       const healthResponse = await fetch(healthCheckUrl, {
         method: 'HEAD',
         headers: {
-          'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
       });
       
@@ -256,9 +256,9 @@ export const checkSupabaseStatus = async (): Promise<{ isOnline: boolean; messag
   try {
     // Try to access Supabase status page or a simple endpoint
     const response = await fetch(`${supabaseUrl}/rest/v1/`, {
-      method: 'HEAD',
       headers: {
-        'apikey': supabaseAnonKey,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
       },
     });
     
