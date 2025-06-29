@@ -13,7 +13,7 @@ const articles = [
     path: '/dog-info/vaccine',
   },
   {
-    title: 'ワンちゃん種ごとにかかりやすい主な病気',
+    title: '犬種ごとにかかりやすい主な病気',
     image: 'https://images.pexels.com/photos/1108098/pexels-photo-1108098.jpeg?auto=compress&w=300',
     path: '/dog-info/breeds',
   },

@@ -386,13 +386,13 @@ export function Home() {
                       { name: 'ミニチュア・シュナウザー', gender: 'メス', image_url: 'https://images.pexels.com/photos/1805164/pexels-photo-1805164.jpeg?auto=compress&cs=tinysrgb&w=300' },
                       { name: 'MIX（ハーフ）', gender: 'オス', image_url: 'https://images.pexels.com/photos/2023384/pexels-photo-2023384.jpeg?auto=compress&cs=tinysrgb&w=300' },
                     ]).flat();
-                return dogs.map((dog, index) => (
-                  <div key={index} className="text-center mx-6 flex-shrink-0" style={{width: 120}}>
+                return <>{dogs.map((dog, index) => (
+                  <div key={index} className="text-center mx-6 flex-shrink-0" style={{width: 80}}>
                     <div className="flex justify-center mb-2">
                       <img
                         src={dog.image_url}
                         alt={dog.name}
-                        style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: '50%' }}
+                        style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: '50%' }}
                         onError={(e) => {
                           e.currentTarget.src = 'https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300';
                         }}
@@ -400,7 +400,7 @@ export function Home() {
                     </div>
                     <p className="font-medium text-gray-900 whitespace-nowrap">{dog.name}{getDogHonorific(dog.gender)}</p>
                   </div>
-                ));
+                ))}</>;
               })()}
             </div>
           </div>
@@ -794,13 +794,13 @@ export function Home() {
                     { name: 'ミニチュア・シュナウザー', gender: 'メス', image_url: 'https://images.pexels.com/photos/1805164/pexels-photo-1805164.jpeg?auto=compress&cs=tinysrgb&w=300' },
                     { name: 'MIX（ハーフ）', gender: 'オス', image_url: 'https://images.pexels.com/photos/2023384/pexels-photo-2023384.jpeg?auto=compress&cs=tinysrgb&w=300' },
                   ]).flat();
-              return dogs.map((dog, index) => (
-                <div key={index} className="text-center mx-6 flex-shrink-0" style={{width: 120}}>
+              return <>{dogs.map((dog, index) => (
+                <div key={index} className="text-center mx-6 flex-shrink-0" style={{width: 80}}>
                   <div className="flex justify-center mb-2">
                     <img
                       src={dog.image_url}
                       alt={dog.name}
-                      style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: '50%' }}
+                      style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: '50%' }}
                       onError={(e) => {
                         e.currentTarget.src = 'https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300';
                       }}
@@ -808,7 +808,7 @@ export function Home() {
                   </div>
                   <p className="font-medium text-gray-900 whitespace-nowrap">{dog.name}{getDogHonorific(dog.gender)}</p>
                 </div>
-              ));
+              ))}</>;
             })()}
           </div>
         </div>
