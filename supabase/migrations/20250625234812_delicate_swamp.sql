@@ -1,7 +1,7 @@
 -- First drop the existing function
 DROP FUNCTION IF EXISTS check_user_park_access(uuid, text);
 
--- Re-create the function with updated logic to support shared QR codes
+-- Re-create the function with updated logic to support shared QR codes and payment guidance
 CREATE OR REPLACE FUNCTION check_user_park_access(p_user_id uuid, p_lock_id text)
 RETURNS jsonb AS $$
 DECLARE
@@ -9,6 +9,8 @@ DECLARE
   v_park_id uuid;
   v_has_access boolean := false;
   v_reason text := 'No valid access found';
+  v_payment_required boolean := false;
+  v_payment_message text := '';
 BEGIN
   -- スマートロックからパークIDを取得
   SELECT park_id INTO v_park_id
@@ -17,7 +19,11 @@ BEGIN
   AND status = 'active';
   
   IF v_park_id IS NULL THEN
-    RETURN jsonb_build_object('has_access', false, 'reason', 'Invalid lock ID');
+    RETURN jsonb_build_object(
+      'has_access', false, 
+      'reason', 'Invalid lock ID',
+      'payment_required', false
+    );
   END IF;
   
   -- アクティブなQRコードがあるか確認
@@ -31,7 +37,11 @@ BEGIN
   ) INTO v_has_access;
   
   IF v_has_access THEN
-    RETURN jsonb_build_object('has_access', true, 'reason', 'Valid QR code');
+    RETURN jsonb_build_object(
+      'has_access', true, 
+      'reason', 'Valid QR code',
+      'payment_required', false
+    );
   END IF;
   
   -- サブスクリプションがあるか確認
@@ -42,7 +52,11 @@ BEGIN
   ) INTO v_has_access;
   
   IF v_has_access THEN
-    RETURN jsonb_build_object('has_access', true, 'reason', 'Active subscription');
+    RETURN jsonb_build_object(
+      'has_access', true, 
+      'reason', 'Active subscription',
+      'payment_required', false
+    );
   END IF;
   
   -- 施設貸し切り予約があるか確認
@@ -59,7 +73,11 @@ BEGIN
   ) INTO v_has_access;
   
   IF v_has_access THEN
-    RETURN jsonb_build_object('has_access', true, 'reason', 'Facility reservation');
+    RETURN jsonb_build_object(
+      'has_access', true, 
+      'reason', 'Facility reservation',
+      'payment_required', false
+    );
   END IF;
   
   -- 共有されたQRコードがあるか確認
@@ -79,11 +97,39 @@ BEGIN
   ) INTO v_has_access;
   
   IF v_has_access THEN
-    RETURN jsonb_build_object('has_access', true, 'reason', 'Shared QR code');
+    RETURN jsonb_build_object(
+      'has_access', true, 
+      'reason', 'Shared QR code',
+      'payment_required', false
+    );
   END IF;
   
-  -- アクセス権がない場合
-  RETURN jsonb_build_object('has_access', false, 'reason', v_reason);
+  -- パークオーナーかどうか確認
+  SELECT EXISTS (
+    SELECT 1
+    FROM dog_parks
+    WHERE id = v_park_id
+    AND owner_id = p_user_id
+  ) INTO v_has_access;
+  
+  IF v_has_access THEN
+    RETURN jsonb_build_object(
+      'has_access', true, 
+      'reason', 'Park owner',
+      'payment_required', false
+    );
+  END IF;
+  
+  -- アクセス権がない場合、決済が必要
+  v_payment_required := true;
+  v_payment_message := 'ドッグランを利用するには決済が必要です。1日券（¥800）またはサブスクリプション（¥3,800/月）をお選びください。';
+  
+  RETURN jsonb_build_object(
+    'has_access', false, 
+    'reason', v_reason,
+    'payment_required', v_payment_required,
+    'payment_message', v_payment_message
+  );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

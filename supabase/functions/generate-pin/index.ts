@@ -69,6 +69,10 @@ async function generatePinCode(
     if (accessError) throw accessError;
     
     if (!accessData || !accessData.has_access) {
+      // 決済が必要な場合の詳細なエラーメッセージ
+      if (accessData && accessData.payment_required) {
+        throw new Error(`PAYMENT_REQUIRED: ${accessData.payment_message || '決済が必要です'}`);
+      }
       throw new Error("You do not have access to this facility");
     }
     
