@@ -14,7 +14,9 @@ import {
   Building,
   Users,
   Heart,
-  Star
+  Star,
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -42,6 +44,10 @@ export function DogParkHistory() {
   const [uniqueParks, setUniqueParks] = useState(0);
   const [mostVisitedPark, setMostVisitedPark] = useState<string>('');
   const [favoriteParks, setFavoriteParks] = useState<{id: string, name: string, visits: number}[]>([]);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelSuccess, setCancelSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -204,6 +210,52 @@ export function DogParkHistory() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // 予約ごとにキャンセル可否を判定
+  const canCancelReservation = async (reservation: ReservationWithDetails) => {
+    const isFacilityRental = reservation.reservation_type === 'whole_facility';
+    const now = new Date();
+    const reservationDate = new Date(reservation.date);
+    const oneDayBefore = new Date(reservationDate);
+    oneDayBefore.setDate(reservationDate.getDate() - 1);
+    if (isFacilityRental) {
+      return now < oneDayBefore;
+    } else {
+      // 通常予約はPIN未使用時のみ
+      const { data: entryLogs } = await supabase
+        .from('user_entry_exit_logs')
+        .select('*')
+        .eq('user_id', reservation.user_id)
+        .eq('park_id', reservation.park_id)
+        .eq('action', 'entry')
+        .gte('timestamp', reservation.date);
+      return !entryLogs || entryLogs.length === 0;
+    }
+  };
+
+  // キャンセル処理
+  const handleCancel = async (reservation: ReservationWithDetails) => {
+    setCancellingId(reservation.id);
+    setCancelError(null);
+    setCancelSuccess(null);
+    try {
+      // ここでキャンセルAPIやSupabaseのupdateを呼ぶ
+      const { error } = await supabase
+        .from('reservations')
+        .update({ status: 'cancelled' })
+        .eq('id', reservation.id);
+      if (error) throw error;
+      setCancelSuccess('予約をキャンセルしました');
+      setShowCancelConfirm(null);
+      // 予約一覧を再取得
+      await fetchData();
+      setTimeout(() => setCancelSuccess(null), 3000);
+    } catch (e: any) {
+      setCancelError(e.message || 'キャンセルに失敗しました');
+    } finally {
+      setCancellingId(null);
+    }
   };
 
   if (isLoading) {
@@ -477,6 +529,27 @@ export function DogParkHistory() {
                         再予約
                       </Button>
                     </Link>
+                    {/* キャンセルボタン */}
+                    {reservation.status === 'confirmed' && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="text-red-600 hover:text-red-700"
+                        isLoading={cancellingId === reservation.id}
+                        onClick={async () => {
+                          // キャンセル可否を判定
+                          const canCancel = await canCancelReservation(reservation);
+                          if (canCancel) {
+                            setShowCancelConfirm(reservation.id);
+                          } else {
+                            setCancelError('この予約はキャンセルできません（貸し切りは1日前まで、通常予約はPIN未使用時のみ）');
+                          }
+                        }}
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        キャンセル
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -526,6 +599,58 @@ export function DogParkHistory() {
           </div>
         </div>
       </Card>
+
+      {/* キャンセル確認モーダル */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="text-center mb-6">
+              <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-gray-900 mb-2">予約をキャンセルしますか？</h2>
+              <p className="text-gray-600">
+                この操作は取り消せません。本当にキャンセルしますか？
+              </p>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="secondary"
+                onClick={() => setShowCancelConfirm(null)}
+              >
+                戻る
+              </Button>
+              <Button
+                className="bg-red-600 hover:bg-red-700"
+                isLoading={cancellingId === showCancelConfirm}
+                onClick={() => {
+                  const reservation = filteredReservations.find(r => r.id === showCancelConfirm);
+                  if (reservation) handleCancel(reservation);
+                }}
+              >
+                キャンセルする
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* キャンセル成功・エラー表示 */}
+      {cancelSuccess && (
+        <div className="mb-6 p-4 bg-green-100 border border-green-300 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="w-5 h-5 text-green-600" />
+            <span className="font-semibold text-green-800">{cancelSuccess}</span>
+          </div>
+        </div>
+      )}
+      {cancelError && (
+        <div className="mb-6 p-4 bg-red-100 border border-red-300 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="w-5 h-5 text-red-600" />
+            <span className="font-semibold text-red-800">エラー</span>
+          </div>
+          <p className="text-red-700 mt-1">{cancelError}</p>
+        </div>
+      )}
     </div>
   );
 }
