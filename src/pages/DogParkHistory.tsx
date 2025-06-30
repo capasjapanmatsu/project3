@@ -240,12 +240,15 @@ export function DogParkHistory() {
     setCancelError(null);
     setCancelSuccess(null);
     try {
-      // ここでキャンセルAPIやSupabaseのupdateを呼ぶ
-      const { error } = await supabase
-        .from('reservations')
-        .update({ status: 'cancelled' })
-        .eq('id', reservation.id);
-      if (error) throw error;
+      // SupabaseのRPC（cancel_reservation関数）を呼び出す
+      const { data, error } = await supabase.rpc('cancel_reservation', {
+        p_reservation_id: reservation.id,
+        p_user_id: reservation.user_id
+      });
+      if (error || !data?.success) {
+        setCancelError((data && data.message) || error?.message || 'キャンセルに失敗しました');
+        return;
+      }
       setCancelSuccess('予約をキャンセルしました');
       setShowCancelConfirm(null);
       // 予約一覧を再取得
