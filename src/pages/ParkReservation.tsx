@@ -126,27 +126,19 @@ export function ParkReservation() {
       const selectedDate = new Date(formData.date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
-      // 明日の日付を計算
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      // 明後日の日付を計算
-      const dayAfterTomorrow = new Date(today);
-      dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
-      
-      // 選択された日付が今日、明日、または明後日より前の場合は予約不可
-      const isTooSoon = selectedDate < dayAfterTomorrow;
+      // 2日後の日付
+      const twoDaysLater = new Date(today);
+      twoDaysLater.setDate(today.getDate() + 2);
+      // 施設貸し切りのみ2日前までの予約制限
+      const isTooSoon = formData.paymentType === 'facility_rental' && selectedDate < twoDaysLater;
       setIsDateTooSoon(isTooSoon);
-      
-      // エラーメッセージを設定
       if (isTooSoon) {
         setError('施設貸し切りは2日前までの予約が必要です。');
       } else {
         setError('');
       }
     }
-  }, [formData.date]);
+  }, [formData.date, formData.paymentType]);
 
   const fetchReservationsForDate = async () => {
     if (!formData.date || !park) return;
@@ -299,23 +291,19 @@ export function ParkReservation() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !park) return;
-    
     setIsLoading(true);
     setError('');
-
     try {
       if (formData.paymentType === 'facility_rental' && !formData.selectedTimeSlot) {
         setError('施設貸し切りの場合は時間を選択してください。');
         setIsLoading(false);
         return;
       }
-
       if (selectedDogs.length === 0) {
         setError('ワンちゃんを1頭以上選択してください。');
         setIsLoading(false);
         return;
       }
-
       // 施設貸し切りの場合の時間スロット確認
       if (formData.paymentType === 'facility_rental') {
         const selectedSlot = timeSlots.find(slot => slot.time === formData.selectedTimeSlot);
@@ -324,15 +312,18 @@ export function ParkReservation() {
           setIsLoading(false);
           return;
         }
-        
         // 2日前までの予約が必要
-        if (isDateTooSoon) {
+        const selectedDate = new Date(formData.date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const twoDaysLater = new Date(today);
+        twoDaysLater.setDate(today.getDate() + 2);
+        if (selectedDate < twoDaysLater) {
           setError('施設貸し切りは2日前までの予約が必要です。');
           setIsLoading(false);
           return;
         }
       }
-
       // 全ての選択された犬のワクチン接種証明書を確認
       for (const dogId of selectedDogs) {
         const { data: certData, error: certError } = await supabase
