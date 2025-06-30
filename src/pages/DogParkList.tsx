@@ -1,11 +1,17 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { MapPin, Users, Coins, CheckCircle, Heart, Shield, Star, Calendar, Clock, AlertTriangle } from 'lucide-react';
+import { MapPin, Users, Coins, CheckCircle, Heart, Shield, Star, Calendar, Clock, AlertTriangle, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { Loader } from '@googlemaps/js-api-loader';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { supabase } from '../utils/supabase';
 import type { DogPark, Reservation } from '../types';
+
+interface OccupancyHistory {
+  timestamp: string;
+  occupancy: number;
+  maxCapacity: number;
+}
 
 export function DogParkList() {
   const [parks, setParks] = useState<DogPark[]>([]);
@@ -13,9 +19,16 @@ export function DogParkList() {
   const [isLoading, setIsLoading] = useState(true);
   const [mapError, setMapError] = useState<string>('');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [occupancyHistory, setOccupancyHistory] = useState<Record<string, OccupancyHistory[]>>({});
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
+  const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // リアルタイム更新の間隔（30秒）
+  const UPDATE_INTERVAL = 30000;
 
   useEffect(() => {
     // ユーザーの現在位置を取得
@@ -33,6 +46,61 @@ export function DogParkList() {
       }
     );
   }, []);
+
+  // リアルタイム更新関数
+  const updateOccupancyData = async () => {
+    try {
+      setIsUpdating(true);
+      console.log('Updating occupancy data...');
+      
+      const { data, error } = await supabase
+        .from('dog_parks')
+        .select('id, current_occupancy, max_capacity')
+        .eq('status', 'approved');
+
+      if (error) {
+        console.error('Error updating occupancy data:', error);
+        return;
+      }
+
+      // 現在時刻
+      const now = new Date();
+      setLastUpdated(now);
+
+      // パークの混雑状況を更新
+      setParks(currentParks => 
+        currentParks.map(park => {
+          const updatedPark = data?.find(p => p.id === park.id);
+          if (updatedPark) {
+            // 履歴に追加
+            const history = occupancyHistory[park.id] || [];
+            const newHistory = [
+              ...history,
+              {
+                timestamp: now.toISOString(),
+                occupancy: updatedPark.current_occupancy,
+                maxCapacity: updatedPark.max_capacity
+              }
+            ].slice(-20); // 最新20件を保持
+
+            setOccupancyHistory(prev => ({
+              ...prev,
+              [park.id]: newHistory
+            }));
+
+            return { ...park, ...updatedPark };
+          }
+          return park;
+        })
+      );
+
+      console.log('Occupancy data updated successfully');
+    } catch (error) {
+      console.error('Error updating occupancy data:', error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   useEffect(() => {
     const fetchParks = async () => {
@@ -97,7 +165,7 @@ export function DogParkList() {
 
     fetchParks();
 
-    // リアルタイムで混雑状況を更新
+    // リアルタイムで混雑状況を更新（Supabase Realtime）
     const subscription = supabase
       .channel('dog_parks_changes')
       .on('postgres_changes', {
@@ -105,18 +173,98 @@ export function DogParkList() {
         schema: 'public',
         table: 'dog_parks',
       }, payload => {
+        console.log('Real-time update received:', payload);
         setParks(currentParks => 
           currentParks.map(park => 
             park.id === payload.new.id ? { ...park, ...payload.new } : park
           )
         );
+        
+        // 履歴に追加
+        const now = new Date();
+        setOccupancyHistory(prev => {
+          const history = prev[payload.new.id] || [];
+          const newHistory = [
+            ...history,
+            {
+              timestamp: now.toISOString(),
+              occupancy: payload.new.current_occupancy,
+              maxCapacity: payload.new.max_capacity
+            }
+          ].slice(-20);
+
+          return {
+            ...prev,
+            [payload.new.id]: newHistory
+          };
+        });
       })
       .subscribe();
 
+    // 定期的な更新を開始
+    updateIntervalRef.current = setInterval(updateOccupancyData, UPDATE_INTERVAL);
+
     return () => {
       subscription.unsubscribe();
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+      }
     };
   }, [userLocation]);
+
+  // 手動更新ボタン
+  const handleManualUpdate = () => {
+    updateOccupancyData();
+  };
+
+  // 混雑状況の傾向を計算
+  const getOccupancyTrend = (parkId: string) => {
+    const history = occupancyHistory[parkId] || [];
+    if (history.length < 2) return 'stable';
+
+    const recent = history.slice(-3);
+    const older = history.slice(-6, -3);
+    
+    if (recent.length === 0 || older.length === 0) return 'stable';
+
+    const recentAvg = recent.reduce((sum, h) => sum + h.occupancy, 0) / recent.length;
+    const olderAvg = older.reduce((sum, h) => sum + h.occupancy, 0) / older.length;
+
+    if (recentAvg > olderAvg + 1) return 'increasing';
+    if (recentAvg < olderAvg - 1) return 'decreasing';
+    return 'stable';
+  };
+
+  // 混雑状況の詳細表示
+  const getDetailedOccupancyStatus = (current: number, max: number) => {
+    const percentage = (current / max) * 100;
+    
+    // 4段階で表示
+    if (percentage < 25) return { 
+      text: '空いています', 
+      color: 'text-green-600 bg-green-100',
+      barColor: 'bg-green-500',
+      description: '快適に利用できます'
+    };
+    if (percentage < 50) return { 
+      text: 'やや空いています', 
+      color: 'text-blue-600 bg-blue-100',
+      barColor: 'bg-blue-500',
+      description: '適度な混雑です'
+    };
+    if (percentage < 75) return { 
+      text: 'やや混んでいます', 
+      color: 'text-yellow-600 bg-yellow-100',
+      barColor: 'bg-yellow-500',
+      description: '少し混雑しています'
+    };
+    return { 
+      text: '混んでいます', 
+      color: 'text-red-600 bg-red-100',
+      barColor: 'bg-red-500',
+      description: '大変混雑しています'
+    };
+  };
 
   useEffect(() => {
     if (!userLocation || !mapRef.current) return;
@@ -185,7 +333,7 @@ export function DogParkList() {
 
         // ドッグランのマーカーを表示
         parks.forEach(park => {
-          const status = getOccupancyStatus(park.current_occupancy, park.max_capacity);
+          const status = getDetailedOccupancyStatus(park.current_occupancy, park.max_capacity);
           
           // マーカーの色を決定
           let markerColor = 'red';
@@ -283,16 +431,6 @@ export function DogParkList() {
     return R * c;
   };
 
-  const getOccupancyStatus = (current: number, max: number) => {
-    const percentage = (current / max) * 100;
-    
-    // 4段階で表示
-    if (percentage < 25) return { text: '空いています', color: 'text-green-600 bg-green-100' };
-    if (percentage < 50) return { text: 'やや空いています', color: 'text-blue-600 bg-blue-100' };
-    if (percentage < 75) return { text: 'やや混んでいます', color: 'text-yellow-600 bg-yellow-100' };
-    return { text: '混んでいます', color: 'text-red-600 bg-red-100' };
-  };
-
   // 施設貸し切り予約の表示用に整形
   const getParkRentals = (parkId: string) => {
     const rentals = facilityRentals[parkId] || [];
@@ -322,7 +460,43 @@ export function DogParkList() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">ドッグラン一覧</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">ドッグラン一覧</h1>
+        
+        {/* リアルタイム更新コントロール */}
+        <div className="flex items-center space-x-3">
+          <div className="text-sm text-gray-600">
+            最終更新: {lastUpdated.toLocaleTimeString('ja-JP')}
+          </div>
+          <button
+            onClick={handleManualUpdate}
+            disabled={isUpdating}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isUpdating
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+            }`}
+          >
+            <RefreshCw className={`w-4 h-4 ${isUpdating ? 'animate-spin' : ''}`} />
+            <span>{isUpdating ? '更新中...' : '更新'}</span>
+          </button>
+        </div>
+      </div>
+      
+      {/* リアルタイム更新状況の表示 */}
+      <div className="bg-blue-50 p-4 rounded-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className={`w-2 h-2 rounded-full ${isUpdating ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`} />
+            <span className="text-sm font-medium text-blue-900">
+              {isUpdating ? 'リアルタイム更新中...' : 'リアルタイム更新中'}
+            </span>
+          </div>
+          <div className="text-xs text-blue-700">
+            30秒ごとに自動更新
+          </div>
+        </div>
+      </div>
       
       {/* 料金体系の説明 */}
       <div className="bg-blue-50 p-4 rounded-lg">
@@ -369,7 +543,8 @@ export function DogParkList() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {parks.map((park) => {
-          const status = getOccupancyStatus(park.current_occupancy, park.max_capacity);
+          const status = getDetailedOccupancyStatus(park.current_occupancy, park.max_capacity);
+          const trend = getOccupancyTrend(park.id);
           const distance = userLocation
             ? calculateDistance(userLocation.lat, userLocation.lng, Number(park.latitude), Number(park.longitude))
             : null;
@@ -435,6 +610,48 @@ export function DogParkList() {
                 
                 <p className="text-gray-600 mb-4 line-clamp-2">{park.description}</p>
                 
+                {/* リアルタイム混雑状況の詳細表示 */}
+                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Users className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm font-medium text-gray-900">現在の混雑状況</span>
+                      {trend !== 'stable' && (
+                        <div className="flex items-center space-x-1">
+                          {trend === 'increasing' ? (
+                            <TrendingUp className="w-3 h-3 text-red-500" />
+                          ) : (
+                            <TrendingDown className="w-3 h-3 text-green-500" />
+                          )}
+                          <span className="text-xs text-gray-500">
+                            {trend === 'increasing' ? '増加中' : '減少中'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
+                      {status.text}
+                    </span>
+                  </div>
+                  
+                  {/* プログレスバー */}
+                  <div className="mb-2">
+                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                      <span>{park.current_occupancy}人</span>
+                      <span>{Math.round((park.current_occupancy / park.max_capacity) * 100)}%</span>
+                      <span>{park.max_capacity}人</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-300 ${status.barColor}`}
+                        style={{ width: `${(park.current_occupancy / park.max_capacity) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <p className="text-xs text-gray-600">{status.description}</p>
+                </div>
+                
                 <div className="space-y-3">
                   <div className="flex items-center text-gray-600">
                     <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
@@ -482,12 +699,6 @@ export function DogParkList() {
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center text-gray-600">
-                      <Users className="w-4 h-4 mr-2" />
-                      <span className="text-sm">
-                        {park.current_occupancy}/{park.max_capacity}人
-                      </span>
-                    </div>
                     <div className="flex items-center text-gray-600">
                       <Coins className="w-4 h-4 mr-2" />
                       <span className="text-sm font-medium">¥800/日</span>
