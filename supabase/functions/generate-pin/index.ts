@@ -34,7 +34,9 @@ async function generatePinCode(
   userId: string,
   lockId: string,
   purpose: 'entry' | 'exit' = 'entry',
-  expiryMinutes: number = 5
+  expiryMinutes: number = 5,
+  ticketType: string = 'subscription',
+  reservationId: string | null = null
 ) {
   try {
     // Get the smart lock details
@@ -55,7 +57,7 @@ async function generatePinCode(
       throw new Error("PIN access is not enabled for this lock");
     }
     
-    // Check if user has access to this park
+    // Check if user has access to this park (subscription, oneday, or reservation)
     const { data: accessData, error: accessError } = await supabase.rpc("check_user_park_access", {
       p_user_id: userId,
       p_lock_id: lockId
@@ -67,7 +69,22 @@ async function generatePinCode(
       throw new Error("You do not have access to this facility");
     }
     
-    // Generate a PIN using the database function
+    // Check for active entry (PIN reuse prevention)
+    const { data: activeEntry, error: entryError } = await supabase
+      .from("user_entry_exit_logs")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("lock_id", lockId)
+      .eq("action", "entry")
+      .is("exit_time", null)
+      .order("pin_issued_at", { ascending: false })
+      .limit(1);
+    if (entryError) throw entryError;
+    if (activeEntry && activeEntry.length > 0) {
+      throw new Error("You already have an active PIN. Please exit before requesting a new one.");
+    }
+    
+    // Generate a PIN using the database function (valid for 5 minutes)
     const { data: pinData, error: pinError } = await supabase.rpc("create_pin_for_lock", {
       p_lock_id: lockId,
       p_user_id: userId,
@@ -90,8 +107,21 @@ async function generatePinCode(
     
     if (recordError) throw recordError;
     
-    // In a real implementation, we would send the PIN to the Sciener API
-    // For demo purposes, we'll just return the PIN
+    // Log PIN issuance in user_entry_exit_logs
+    const now = new Date();
+    const expires = new Date(now.getTime() + expiryMinutes * 60000);
+    await supabase.from("user_entry_exit_logs").insert({
+      user_id: userId,
+      park_id: lock.park_id,
+      dog_ids: [], // fill as needed
+      action: "entry",
+      pin_code: pinRecord.pin_code,
+      lock_id: lockId,
+      pin_issued_at: now.toISOString(),
+      pin_expires_at: expires.toISOString(),
+      ticket_type: ticketType,
+      reservation_id: reservationId
+    });
     
     return {
       pin: pinRecord.pin_code,
@@ -126,15 +156,15 @@ serve(async (req) => {
     }
     
     // Extract parameters from the request
-    const { lock_id, purpose = 'entry', expiry_minutes = 5 } = requestData;
+    const { lock_id, purpose = 'entry', expiry_minutes = 5, ticket_type = 'subscription', reservation_id = null } = requestData;
     
     // Validate required parameters
     if (!lock_id) {
       throw new Error("Missing required parameter: lock_id");
     }
     
-    // Generate the PIN code
-    const result = await generatePinCode(user.id, lock_id, purpose, expiry_minutes);
+    // Generate the PIN code (pass ticketType and reservationId)
+    const result = await generatePinCode(user.id, lock_id, purpose, expiry_minutes, ticket_type, reservation_id);
     
     // Return the result
     return new Response(
