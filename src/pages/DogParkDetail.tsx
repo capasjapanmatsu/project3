@@ -69,6 +69,7 @@ export function DogParkDetail() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [facilityRentals, setFacilityRentals] = useState<Reservation[]>([]);
   const [todayRentals, setTodayRentals] = useState<Reservation[]>([]);
+  const [userReservation, setUserReservation] = useState<Reservation | null>(null);
   const [reviewFormData, setReviewFormData] = useState({
     rating: 5,
     review_text: '',
@@ -249,6 +250,27 @@ export function DogParkDetail() {
             setUserHasAccess(true);
             setShowLockControls(true);
           }
+        }
+
+        // ユーザーの現在の予約を取得
+        const today = new Date().toISOString().split('T')[0];
+        const { data: userReservationData, error: userReservationError } = await supabase
+          .from('reservations')
+          .select(`
+            *,
+            dog_park:dog_parks(*),
+            dog:dogs(*)
+          `)
+          .eq('park_id', parkId)
+          .eq('user_id', user.id)
+          .eq('status', 'confirmed')
+          .eq('date', today)
+          .order('start_time', { ascending: true })
+          .limit(1)
+          .single();
+
+        if (!userReservationError && userReservationData) {
+          setUserReservation(userReservationData);
         }
       }
     } catch (error) {
@@ -605,6 +627,7 @@ export function DogParkDetail() {
                         className="w-full"
                         onSuccess={handleLockSuccess}
                         onError={handleLockError}
+                        reservationId={userReservation?.id}
                       />
                     ))}
                   </div>
@@ -695,6 +718,7 @@ export function DogParkDetail() {
                         className="w-full"
                         onSuccess={handleLockSuccess}
                         onError={handleLockError}
+                        reservationId={userReservation?.id}
                       />
                     ))}
                   </div>

@@ -10,8 +10,8 @@ import {
   Building,
   Users,
   X,
-  LogIn,
-  LogOut,
+  LogIn as LogInIcon,
+  LogOut as LogOutIcon,
   QrCode,
   Search,
   MapPin,
@@ -26,7 +26,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { PinCodeGenerator } from '../components/PinCodeGenerator';
 import { PinCodeEntry } from '../components/PinCodeEntry';
-import type { Dog, SmartLock, DogPark } from '../types';
+import type { Dog, SmartLock, DogPark, Reservation } from '../types';
 
 export function AccessControl() {
   const { user } = useAuth();
@@ -44,10 +44,11 @@ export function AccessControl() {
   const [pinPurpose, setPinPurpose] = useState<'entry' | 'exit'>('entry');
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [paymentType, setPaymentType] = useState<'single' | 'subscription'>('single');
-  const [nearbyParks, setNearbyParks] = useState<DogPark[]>([]);
+  const [nearbyParks, setNearbyParks] = useState<(DogPark & { distance: number })[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAllParks, setShowAllParks] = useState(false);
+  const [userReservation, setUserReservation] = useState<Reservation | null>(null);
 
   const MAX_DOGS = 3; // 最大3頭まで選択可能
 
@@ -100,11 +101,31 @@ export function AccessControl() {
       // スマートロック情報を取得
       const { data: locksData, error: locksError } = await supabase
         .from('smart_locks')
-        .select('id, lock_id, lock_name, park_id, pin_enabled')
+        .select('id, lock_id, lock_name, park_id, pin_enabled, status, created_at, updated_at')
         .eq('status', 'active');
       
       if (locksError) throw locksError;
       setSmartLocks(locksData || []);
+      
+      // ユーザーの現在の予約を取得
+      const today = new Date().toISOString().split('T')[0];
+      const { data: userReservationData, error: userReservationError } = await supabase
+        .from('reservations')
+        .select(`
+          *,
+          dog_park:dog_parks(*),
+          dog:dogs(*)
+        `)
+        .eq('user_id', user?.id)
+        .eq('status', 'confirmed')
+        .eq('date', today)
+        .order('start_time', { ascending: true })
+        .limit(1)
+        .single();
+
+      if (!userReservationError && userReservationData) {
+        setUserReservation(userReservationData);
+      }
       
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -134,7 +155,7 @@ export function AccessControl() {
           Number(park.longitude)
         );
         return { ...park, distance };
-      });
+      }) as (DogPark & { distance: number })[];
       
       // Sort by distance
       parksWithDistance.sort((a, b) => a.distance - b.distance);
@@ -574,7 +595,7 @@ export function AccessControl() {
                   }`}
                   onClick={() => setPinPurpose('entry')}
                 >
-                  <LogIn className="w-5 h-5" />
+                  <LogInIcon className="w-5 h-5" />
                   <span>入場</span>
                 </button>
                 <button
@@ -585,7 +606,7 @@ export function AccessControl() {
                   }`}
                   onClick={() => setPinPurpose('exit')}
                 >
-                  <LogOut className="w-5 h-5" />
+                  <LogOutIcon className="w-5 h-5" />
                   <span>退場</span>
                 </button>
               </div>
@@ -598,6 +619,7 @@ export function AccessControl() {
                   purpose={pinPurpose}
                   onSuccess={handlePinSuccess}
                   onError={handlePinError}
+                  reservationId={userReservation?.id}
                 />
               ) : (
                 <div className="p-4 bg-yellow-50 rounded-lg text-center">

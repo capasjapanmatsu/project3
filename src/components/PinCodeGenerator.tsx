@@ -4,6 +4,7 @@ import Button from './Button';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 import { Clock, Key, Copy, CheckCircle, AlertTriangle, RefreshCw, QrCode } from 'lucide-react';
+import type { Reservation } from '../types';
 
 interface PinCodeGeneratorProps {
   lockId: string;
@@ -12,6 +13,7 @@ interface PinCodeGeneratorProps {
   className?: string;
   onSuccess?: (pin: string) => void;
   onError?: (error: string) => void;
+  reservationId?: string;
 }
 
 export function PinCodeGenerator({
@@ -20,7 +22,8 @@ export function PinCodeGenerator({
   purpose = 'entry',
   className = '',
   onSuccess,
-  onError
+  onError,
+  reservationId
 }: PinCodeGeneratorProps) {
   const { user } = useAuth();
   const [pin, setPin] = useState<string | null>(null);
@@ -33,6 +36,50 @@ export function PinCodeGenerator({
 
   // PINコードの有効期限（5分）
   const PIN_EXPIRATION_MINUTES = 5;
+
+  // 予約情報を取得する関数
+  const getReservationInfo = async (reservationId: string): Promise<Reservation | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('reservations')
+        .select(`
+          *,
+          dog_park:dog_parks(*),
+          dog:dogs(*)
+        `)
+        .eq('id', reservationId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching reservation:', error);
+        return null;
+      }
+
+      return data;
+    } catch (err) {
+      console.error('Error fetching reservation:', err);
+      return null;
+    }
+  };
+
+  // 予約の終了時刻を計算する関数
+  const calculateReservationEndTime = (reservation: Reservation): Date | null => {
+    try {
+      const reservationDate = new Date(reservation.date);
+      const [startHour, startMinute] = reservation.start_time.split(':').map(Number);
+      
+      // 予約日の開始時刻を設定
+      reservationDate.setHours(startHour, startMinute, 0, 0);
+      
+      // 予約時間を加算して終了時刻を計算
+      const endTime = new Date(reservationDate.getTime() + (reservation.duration * 60 * 60 * 1000));
+      
+      return endTime;
+    } catch (err) {
+      console.error('Error calculating reservation end time:', err);
+      return null;
+    }
+  };
 
   useEffect(() => {
     // PINコードの残り時間を計算
@@ -72,6 +119,23 @@ export function PinCodeGenerator({
         throw new Error('認証が必要です');
       }
 
+      // 予約情報を取得してPINの有効期間を決定
+      let expiryMinutes = PIN_EXPIRATION_MINUTES;
+      let reservationEndTime: Date | null = null;
+
+      if (reservationId) {
+        const reservation = await getReservationInfo(reservationId);
+        if (reservation && reservation.reservation_type === 'whole_facility') {
+          // 貸し切り予約の場合は予約時間いっぱい有効にする
+          reservationEndTime = calculateReservationEndTime(reservation);
+          if (reservationEndTime) {
+            const now = new Date();
+            const diffMs = reservationEndTime.getTime() - now.getTime();
+            expiryMinutes = Math.max(1, Math.ceil(diffMs / (1000 * 60))); // 最低1分
+          }
+        }
+      }
+
       // Edge Functionを呼び出してPINを生成
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-pin`, {
         method: 'POST',
@@ -82,7 +146,8 @@ export function PinCodeGenerator({
         body: JSON.stringify({
           lock_id: lockId,
           purpose: purpose,
-          expiry_minutes: PIN_EXPIRATION_MINUTES
+          expiry_minutes: expiryMinutes,
+          reservation_id: reservationId || undefined
         }),
       });
 
