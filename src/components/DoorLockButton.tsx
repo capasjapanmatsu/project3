@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Button from './Button';
 import { useAuth } from '../context/AuthContext';
-import { Unlock, AlertTriangle, CheckCircle, Loader, Key } from 'lucide-react';
+import { Unlock, AlertTriangle, CheckCircle, Loader, Key, CreditCard, Calendar } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import type { Reservation } from '../types';
 
@@ -34,6 +34,8 @@ export function DoorLockButton({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showPaymentRequired, setShowPaymentRequired] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState<string>('');
 
   // 予約情報を取得する関数
   const getReservationInfo = async (reservationId: string): Promise<Reservation | null> => {
@@ -159,7 +161,18 @@ export function DoorLockButton({
       if (onSuccess) onSuccess();
     } catch (err: any) {
       console.error('Error generating PIN:', err);
-      setError(err.message || 'PINコードの生成に失敗しました');
+      
+      // 決済が必要な場合の特別なハンドリング
+      if (err.message && err.message.startsWith('PAYMENT_REQUIRED:')) {
+        const message = err.message.replace('PAYMENT_REQUIRED:', '').trim();
+        setPaymentMessage(message);
+        setShowPaymentRequired(true);
+        setError(null);
+      } else {
+        setError(err.message || 'PINコードの生成に失敗しました');
+        setShowPaymentRequired(false);
+      }
+      
       if (onError) onError(err.message || 'PINコードの生成に失敗しました');
     } finally {
       setLoading(false);
@@ -196,6 +209,39 @@ export function DoorLockButton({
             <div className="flex items-center text-red-600 text-sm mt-1">
               <AlertTriangle className="w-4 h-4 mr-1" />
               <span>{error}</span>
+            </div>
+          )}
+          
+          {showPaymentRequired && (
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mt-2">
+              <div className="flex items-start space-x-2 mb-3">
+                <CreditCard className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="font-medium text-blue-900 mb-1">決済が必要です</h4>
+                  <p className="text-sm text-blue-800">{paymentMessage}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Button
+                  onClick={() => window.location.href = '/subscription'}
+                  size="sm"
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                >
+                  <CreditCard className="w-3 h-3 mr-1" />
+                  サブスク加入
+                </Button>
+                
+                <Button
+                  onClick={() => window.location.href = '/parks'}
+                  size="sm"
+                  variant="secondary"
+                  className="w-full"
+                >
+                  <Calendar className="w-3 h-3 mr-1" />
+                  1日券購入
+                </Button>
+              </div>
             </div>
           )}
         </>

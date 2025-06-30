@@ -3,7 +3,7 @@ import Card from './Card';
 import Button from './Button';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
-import { Clock, Key, Copy, CheckCircle, AlertTriangle, RefreshCw, QrCode } from 'lucide-react';
+import { Clock, Key, Copy, CheckCircle, AlertTriangle, RefreshCw, QrCode, CreditCard, Calendar } from 'lucide-react';
 import type { Reservation } from '../types';
 
 interface PinCodeGeneratorProps {
@@ -33,6 +33,8 @@ export function PinCodeGenerator({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showPaymentRequired, setShowPaymentRequired] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState<string>('');
 
   // PINコードの有効期限（5分）
   const PIN_EXPIRATION_MINUTES = 5;
@@ -171,7 +173,17 @@ export function PinCodeGenerator({
       }, 3000);
     } catch (err: any) {
       console.error('Error generating PIN:', err);
-      setError(err.message || 'PINコードの生成に失敗しました');
+      
+      // 決済が必要な場合の特別なハンドリング
+      if (err.message && err.message.startsWith('PAYMENT_REQUIRED:')) {
+        const message = err.message.replace('PAYMENT_REQUIRED:', '').trim();
+        setPaymentMessage(message);
+        setShowPaymentRequired(true);
+        setError(null);
+      } else {
+        setError(err.message || 'PINコードの生成に失敗しました');
+        setShowPaymentRequired(false);
+      }
       
       // エラーコールバック
       if (onError) onError(err.message || 'PINコードの生成に失敗しました');
@@ -247,6 +259,42 @@ export function PinCodeGenerator({
               <div className="bg-red-50 p-3 rounded-lg flex items-center justify-center text-red-600">
                 <AlertTriangle className="w-4 h-4 mr-1" />
                 <span>{error}</span>
+              </div>
+            )}
+            
+            {showPaymentRequired && (
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div className="flex items-start space-x-3 mb-4">
+                  <CreditCard className="w-6 h-6 text-blue-600 mt-1 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-semibold text-blue-900 mb-2">決済が必要です</h3>
+                    <p className="text-sm text-blue-800 mb-4">{paymentMessage}</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <Button
+                    onClick={() => window.location.href = '/subscription'}
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    サブスクリプションに加入（¥3,800/月）
+                  </Button>
+                  
+                  <Button
+                    onClick={() => window.location.href = '/parks'}
+                    variant="secondary"
+                    className="w-full"
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    1日券を購入（¥800）
+                  </Button>
+                </div>
+                
+                <p className="text-xs text-blue-700 mt-3">
+                  • サブスクリプション：全国のドッグランが使い放題<br/>
+                  • 1日券：選択したドッグランで24時間利用可能
+                </p>
               </div>
             )}
             
