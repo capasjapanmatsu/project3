@@ -36,7 +36,10 @@ async function generatePinCode(
   purpose: 'entry' | 'exit' = 'entry',
   expiryMinutes: number = 5,
   ticketType: string = 'subscription',
-  reservationId: string | null = null
+  reservationId: string | null = null,
+  reservationType: string = 'regular',
+  startTime?: string,
+  endTime?: string
 ) {
   try {
     // Get the smart lock details
@@ -84,12 +87,22 @@ async function generatePinCode(
       throw new Error("You already have an active PIN. Please exit before requesting a new one.");
     }
     
-    // Generate a PIN using the database function (valid for 5 minutes)
+    // 有効期間の決定
+    let pinStart = new Date();
+    let pinEnd = new Date(pinStart.getTime() + expiryMinutes * 60000);
+    if (reservationType === 'whole_facility' && startTime && endTime) {
+      pinStart = new Date(startTime);
+      pinEnd = new Date(endTime);
+    }
+    
+    // DB関数でPIN発行（貸し切りは有効期間指定、通常は従来通り）
     const { data: pinData, error: pinError } = await supabase.rpc("create_pin_for_lock", {
       p_lock_id: lockId,
       p_user_id: userId,
       p_purpose: purpose,
-      p_expiry_minutes: expiryMinutes
+      p_expiry_minutes: reservationType === 'whole_facility' ? undefined : expiryMinutes,
+      p_start_time: reservationType === 'whole_facility' ? pinStart.toISOString() : undefined,
+      p_end_time: reservationType === 'whole_facility' ? pinEnd.toISOString() : undefined
     });
     
     if (pinError) throw pinError;
@@ -108,17 +121,15 @@ async function generatePinCode(
     if (recordError) throw recordError;
     
     // Log PIN issuance in user_entry_exit_logs
-    const now = new Date();
-    const expires = new Date(now.getTime() + expiryMinutes * 60000);
     await supabase.from("user_entry_exit_logs").insert({
       user_id: userId,
       park_id: lock.park_id,
-      dog_ids: [], // fill as needed
+      dog_ids: [],
       action: "entry",
       pin_code: pinRecord.pin_code,
       lock_id: lockId,
-      pin_issued_at: now.toISOString(),
-      pin_expires_at: expires.toISOString(),
+      pin_issued_at: pinStart.toISOString(),
+      pin_expires_at: pinEnd.toISOString(),
       ticket_type: ticketType,
       reservation_id: reservationId
     });
@@ -156,7 +167,7 @@ serve(async (req) => {
     }
     
     // Extract parameters from the request
-    const { lock_id, purpose = 'entry', expiry_minutes = 5, ticket_type = 'subscription', reservation_id = null } = requestData;
+    const { lock_id, purpose = 'entry', expiry_minutes = 5, ticket_type = 'subscription', reservation_id = null, reservation_type = 'regular', start_time, end_time } = requestData;
     
     // Validate required parameters
     if (!lock_id) {
@@ -164,7 +175,7 @@ serve(async (req) => {
     }
     
     // Generate the PIN code (pass ticketType and reservationId)
-    const result = await generatePinCode(user.id, lock_id, purpose, expiry_minutes, ticket_type, reservation_id);
+    const result = await generatePinCode(user.id, lock_id, purpose, expiry_minutes, ticket_type, reservation_id, reservation_type, start_time, end_time);
     
     // Return the result
     return new Response(
