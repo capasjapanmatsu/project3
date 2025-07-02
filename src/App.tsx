@@ -55,6 +55,8 @@ const MiniAppPayment = lazy(() => import('./pages/MiniAppPayment').then(module =
 const News = lazy(() => import('./pages/News').then(module => ({ default: module.News })));
 const NewsDetail = lazy(() => import('./pages/NewsDetail').then(module => ({ default: module.NewsDetail })));
 const NewParkDetail = lazy(() => import('./pages/NewParkDetail').then(module => ({ default: module.NewParkDetail })));
+const TwoFactorSetup = lazy(() => import('./pages/TwoFactorSetup'));
+const TwoFactorVerify = lazy(() => import('./pages/TwoFactorVerify'));
 
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
@@ -123,6 +125,8 @@ function App() {
             <Route path="/news" element={<News />} />
             <Route path="/news/:newsId" element={<NewsDetail />} />
             <Route path="/news/park/:parkId" element={<NewParkDetail />} />
+            <Route path="/two-factor-setup" element={<ProtectedRoute><TwoFactorSetup /></ProtectedRoute>} />
+            <Route path="/two-factor-verify" element={<ProtectedRoute><TwoFactorVerify /></ProtectedRoute>} />
             <Route path="/dog-info" element={<DogInfo />} />
             <Route path="/dog-info/foods" element={<DogInfoFoods />} />
             <Route path="/dog-info/vaccine" element={<DogInfoVaccine />} />

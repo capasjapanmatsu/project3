@@ -18,7 +18,9 @@ import {
   CreditCard,
   Package,
   ShoppingBag,
-  Loader
+  Loader,
+  Shield,
+  Smartphone
 } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -57,10 +59,13 @@ export function ProfileSettings() {
   const [deleteError, setDeleteError] = useState('');
   const [isLookingUpPostalCode, setIsLookingUpPostalCode] = useState(false);
   const [postalCodeError, setPostalCodeError] = useState('');
+  const [mfaFactors, setMfaFactors] = useState<any[]>([]);
+  const [mfaStatus, setMfaStatus] = useState<'enabled' | 'disabled' | 'loading'>('loading');
 
   useEffect(() => {
     if (user) {
       fetchProfile();
+      fetchMFAStatus();
     } else {
       navigate('/login');
     }
@@ -90,6 +95,42 @@ export function ProfileSettings() {
       setError((err as Error).message || 'プロフィールの取得に失敗しました。');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchMFAStatus = async () => {
+    try {
+      setMfaStatus('loading');
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (error) throw error;
+      
+      const totpFactors = data.totp.filter(factor => factor.status === 'verified');
+      setMfaFactors(totpFactors);
+      setMfaStatus(totpFactors.length > 0 ? 'enabled' : 'disabled');
+    } catch (err) {
+      console.error('Error fetching MFA status:', err);
+      setMfaStatus('disabled');
+    }
+  };
+
+  const handleEnable2FA = () => {
+    navigate('/two-factor-setup');
+  };
+
+  const handleDisable2FA = async (factorId: string) => {
+    if (!confirm('2ファクタ認証を無効にしますか？セキュリティが低下します。')) {
+      return;
+    }
+    
+    try {
+      const { error } = await supabase.auth.mfa.unenroll({ factorId });
+      if (error) throw error;
+      
+      // MFAステータスを再取得
+      await fetchMFAStatus();
+    } catch (err) {
+      console.error('Error disabling 2FA:', err);
+      setError('2FAの無効化に失敗しました');
     }
   };
 
@@ -523,6 +564,51 @@ export function ProfileSettings() {
               <Trash2 className="w-4 h-4 mr-2" />
               アカウントを削除
             </Button>
+          </div>
+
+          <div className="p-4 bg-white rounded-lg border border-gray-200">
+            <h3 className="font-semibold mb-2">2ファクタ認証（2FA）</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              アカウントのセキュリティを強化するため、2ファクタ認証の設定をおすすめします。
+            </p>
+            {mfaStatus === 'loading' ? (
+              <div className="flex items-center space-x-2">
+                <Loader className="w-4 h-4 animate-spin" />
+                <span className="text-sm text-gray-600">読み込み中...</span>
+              </div>
+            ) : mfaStatus === 'enabled' ? (
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2 text-green-600">
+                  <CheckCircle className="w-4 h-4" />
+                  <span className="text-sm font-medium">2FAが有効です</span>
+                </div>
+                {mfaFactors.map((factor) => (
+                  <div key={factor.id} className="flex items-center justify-between p-2 bg-green-50 rounded border border-green-200">
+                    <div className="flex items-center space-x-2">
+                      <Smartphone className="w-4 h-4 text-green-600" />
+                      <span className="text-sm">{factor.friendly_name || '認証アプリ'}</span>
+                    </div>
+                    <Button 
+                      variant="secondary" 
+                      size="sm"
+                      className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
+                      onClick={() => handleDisable2FA(factor.id)}
+                    >
+                      無効化
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={handleEnable2FA}
+              >
+                <Shield className="w-4 h-4 mr-2" />
+                2FAを有効化
+              </Button>
+            )}
           </div>
         </div>
       </Card>
