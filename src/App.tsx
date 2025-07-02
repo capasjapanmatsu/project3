@@ -50,7 +50,6 @@ const MagicLink = lazy(() => import('./pages/MagicLink').then(module => ({ defau
 const PaymentConfirmation = lazy(() => import('./pages/PaymentConfirmation').then(module => ({ default: module.PaymentConfirmation })));
 const Deploy = lazy(() => import('./pages/Deploy').then(module => ({ default: module.Deploy })));
 const DeploymentHistory = lazy(() => import('./pages/DeploymentHistory').then(module => ({ default: module.DeploymentHistory })));
-const PayPayAuth = lazy(() => import('./pages/PayPayAuth').then(module => ({ default: module.PayPayAuth })));
 const BusinessInformation = lazy(() => import('./pages/BusinessInformation').then(module => ({ default: module.BusinessInformation })));
 const MiniAppPayment = lazy(() => import('./pages/MiniAppPayment').then(module => ({ default: module.MiniAppPayment })));
 const News = lazy(() => import('./pages/News').then(module => ({ default: module.News })));
@@ -119,7 +118,6 @@ function App() {
             <Route path="/contact" element={<Contact />} />
             <Route path="/magic-link" element={<MagicLink />} />
             <Route path="/payment-confirmation" element={<PaymentConfirmation />} />
-            <Route path="/paypay-auth" element={<PayPayAuth />} />
             <Route path="/business-information" element={<BusinessInformation />} />
             <Route path="/mini-app-payment" element={<MiniAppPayment />} />
             <Route path="/news" element={<News />} />
