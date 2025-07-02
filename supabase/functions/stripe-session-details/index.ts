@@ -83,8 +83,8 @@ Deno.serve(async (req) => {
       custom_name: session.metadata?.custom_name,
       line_items: session.line_items?.data,
     });
-  } catch (error: any) {
-    console.error(`Session details error: ${error.message}`);
-    return corsResponse({ error: error.message }, 500);
+  } catch (error: unknown) {
+    console.error('Error fetching session details:', error);
+    return corsResponse({ error: (error as Error).message }, 500);
   }
 });

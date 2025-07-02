@@ -10,18 +10,12 @@ import {
   Eye, 
   AlertTriangle,
   Search,
-  Filter,
   Download,
   Edit,
   Save,
-  Clock,
   Calendar,
-  User,
-  CreditCard,
-  FileText,
-  RefreshCw,
   Bell,
-  Megaphone
+  Building
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -157,8 +151,7 @@ export function AdminShopManagement() {
         setNewParks(parksData || []);
       }
     } catch (error) {
-      console.error('Error fetching data:', error);
-      setError('データの取得に失敗しました。');
+      setError((error as Error).message || 'エラーが発生しました');
     } finally {
       setIsLoading(false);
     }
@@ -328,9 +321,9 @@ export function AdminShopManagement() {
       setTimeout(() => {
         setSuccess('');
       }, 3000);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating order:', error);
-      setError('注文の更新に失敗しました: ' + error.message);
+      setError('注文の更新に失敗しました');
     } finally {
       setIsUpdating(false);
     }
@@ -380,9 +373,9 @@ export function AdminShopManagement() {
       setTimeout(() => {
         setSuccess('');
       }, 3000);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating product:', error);
-      setError('商品の更新に失敗しました: ' + error.message);
+      setError('商品の更新に失敗しました');
     } finally {
       setIsUpdating(false);
     }
@@ -455,9 +448,9 @@ export function AdminShopManagement() {
       setTimeout(() => {
         setSuccess('');
       }, 3000);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating news:', error);
-      setError('新着情報の更新に失敗しました: ' + error.message);
+      setError('新着情報の更新に失敗しました');
     } finally {
       setIsUpdating(false);
     }
@@ -523,9 +516,9 @@ export function AdminShopManagement() {
       setTimeout(() => {
         setSuccess('');
       }, 3000);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating new park:', error);
-      setError('新規オープン情報の更新に失敗しました: ' + error.message);
+      setError('新規オープン情報の更新に失敗しました');
     } finally {
       setIsUpdating(false);
     }
@@ -554,9 +547,9 @@ export function AdminShopManagement() {
       setTimeout(() => {
         setSuccess('');
       }, 3000);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting news:', error);
-      setError('新着情報の削除に失敗しました: ' + error.message);
+      setError('新着情報の削除に失敗しました');
     } finally {
       setIsUpdating(false);
     }
@@ -585,9 +578,9 @@ export function AdminShopManagement() {
       setTimeout(() => {
         setSuccess('');
       }, 3000);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting new park:', error);
-      setError('新規オープン情報の削除に失敗しました: ' + error.message);
+      setError('新規オープン情報の削除に失敗しました');
     } finally {
       setIsUpdating(false);
     }
@@ -622,7 +615,7 @@ export function AdminShopManagement() {
       credit_card: 'クレジットカード',
       bank_transfer: '銀行振込',
       cod: '代金引換',
-      paypay: 'PayPay',
+  
     };
     return labels[method as keyof typeof labels] || method;
   };

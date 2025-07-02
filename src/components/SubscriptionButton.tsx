@@ -37,7 +37,7 @@ export function SubscriptionButton({
         successUrl: `${window.location.origin}/dashboard?success=true`,
         cancelUrl: `${window.location.origin}/dashboard?canceled=true`,
       });
-    } catch (err) {
+    } catch {
       setShowError(true);
     }
   };

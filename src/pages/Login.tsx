@@ -1,18 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
-import { Mail, CheckCircle, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Mail, AlertTriangle, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { safeGetItem, safeSetItem } from '../utils/safeStorage';
 
 export function Login() {
-  const navigate = useNavigate();
   const { signInWithMagicLink } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   const [email, setEmail] = useState('');
 
   // ローカルストレージからメールアドレスを取得して自動入力
@@ -32,44 +29,18 @@ export function Login() {
       // メールアドレスをローカルストレージに保存
       safeSetItem('lastUsedEmail', email);
       
-      const { success, error } = await signInWithMagicLink(email);
+      const { error } = await signInWithMagicLink(email);
       
       if (error) throw new Error(error);
       
-      setSuccess(true);
-    } catch (err: any) {
-      setError(err.message || 'ログインリンクの送信に失敗しました。メールアドレスを確認してください。');
+      // 成功時の処理
+      alert('ログインリンクを送信しました。メールをご確認ください。');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'ログインリンクの送信に失敗しました。メールアドレスを確認してください。');
     } finally {
       setIsLoading(false);
     }
   };
-
-  if (success) {
-    return (
-      <div className="max-w-md mx-auto">
-        <Card className="text-center p-8">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-green-600" />
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            メールを送信しました
-          </h2>
-          <p className="text-gray-600 mb-6">
-            {email} 宛にドッグパークJPのログイン用リンクを送信しました。メールをご確認いただき、リンクをクリックしてログインしてください。
-          </p>
-          <p className="text-sm text-gray-500 mb-4">
-            メールが届かない場合は、迷惑メールフォルダをご確認いただくか、別のメールアドレスでお試しください。
-          </p>
-          <Button onClick={() => {
-            setSuccess(false);
-            setEmail('');
-          }}>
-            別のメールアドレスを使用
-          </Button>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-md mx-auto">
@@ -125,9 +96,9 @@ export function Login() {
           <div className="mt-4 text-center">
             <p className="text-sm text-gray-600">
               アカウントをお持ちでない方は{' '}
-              <Link to="/register" className="text-blue-600 hover:text-blue-700 font-medium">
+              <a href="/register" className="text-blue-600 hover:text-blue-700 font-medium">
                 こちらから新規登録
-              </Link>
+              </a>
             </p>
           </div>
         </form>

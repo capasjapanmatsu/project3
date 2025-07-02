@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
-import Input from '../components/Input';
-import Select from '../components/Select';
+import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { Key, Clock, MapPin, Users, CheckCircle, X, AlertTriangle, Crown, Building, PawPrint, Calculator, Plus, CreditCard, Calendar, Info } from 'lucide-react';
+import { X, Building } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
@@ -19,8 +17,8 @@ interface TimeSlot {
   available: boolean;
   reservationCount: number;
   maxCapacity: number;
-  isPrivateBoothAvailable?: boolean;
-  isWholeFacilityAvailable?: boolean;
+  isPrivateBoothAvailable: boolean;
+  isWholeFacilityAvailable: boolean;
 }
 
 export function ParkReservation() {
@@ -34,7 +32,6 @@ export function ParkReservation() {
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [park, setPark] = useState<DogPark | null>(null);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
-  const [existingReservations, setExistingReservations] = useState<Reservation[]>([]);
   const [selectedDogs, setSelectedDogs] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     date: '',
@@ -65,11 +62,6 @@ export function ParkReservation() {
   };
 
   useEffect(() => {
-    // Check if we're in PayPay Mini App environment
-    const isPayPayMiniApp = typeof window !== 'undefined' && 
-                            window.pp && 
-                            typeof window.pp.getUAID === 'function';
-
     if (!user) {
       navigate('/login');
       return;

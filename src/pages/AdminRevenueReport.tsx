@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Download, Calendar, DollarSign, Building, User, Search, ChevronLeft, ChevronRight, Filter, AlertTriangle, CheckCircle, Ban as Bank } from 'lucide-react';
+import { ArrowLeft, Download, Calendar, DollarSign, Building, Search, ChevronLeft, ChevronRight, AlertTriangle, Ban as Bank } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -31,7 +31,7 @@ export function AdminRevenueReport() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+
   const [revenueData, setRevenueData] = useState<OwnerRevenue[]>([]);
   const [filteredData, setFilteredData] = useState<OwnerRevenue[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -101,7 +101,7 @@ export function AdminRevenueReport() {
       if (error) throw error;
       
       // データを整形
-      const formattedData: OwnerRevenue[] = (data || []).map((item: any) => ({
+      const formattedData: OwnerRevenue[] = (data || []).map((item: OwnerRevenue) => ({
         owner_id: item.owner_id,
         owner_name: item.owner_name,
         park_id: item.park_id,
@@ -269,12 +269,7 @@ export function AdminRevenueReport() {
         </div>
       )}
       
-      {success && (
-        <div className="bg-green-100 border border-green-300 text-green-800 rounded-lg p-4 flex items-start">
-          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
-          <p>{success}</p>
-        </div>
-      )}
+
 
       {/* 月選択 */}
       <Card className="p-6">

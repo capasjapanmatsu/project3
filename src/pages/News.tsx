@@ -8,11 +8,9 @@ import {
   AlertTriangle, 
   Bell, 
   Megaphone,
-  Building,
   Search,
-  Filter
+  MapPin
 } from 'lucide-react';
-import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
 import { supabase } from '../utils/supabase';
@@ -120,12 +118,12 @@ export function News() {
   const allItems = [
     ...filteredNews.map(item => ({
       ...item,
-      type: 'news',
+      type: 'news' as const,
       date: item.created_at
     })),
     ...filteredParks.map(item => ({
       ...item,
-      type: 'park',
+      type: 'park' as const,
       date: item.created_at
     }))
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -235,32 +233,33 @@ export function News() {
         </Card>
       ) : (
         <div className="space-y-6">
-          {allItems.map((item: any) => {
+          {allItems.map((item) => {
             if (item.type === 'news') {
               // ニュース・お知らせの表示
+              const newsItem = item as NewsAnnouncement;
               return (
-                <Link key={`news-${item.id}`} to={`/news/${item.id}`}>
+                <Link key={`news-${newsItem.id}`} to={`/news/${newsItem.id}`}>
                   <Card className="p-6 hover:shadow-lg transition-shadow">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getCategoryColor(item.category)}`}>
-                            {getCategoryIcon(item.category)}
-                            <span>{getCategoryLabel(item.category)}</span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getCategoryColor(newsItem.category)}`}>
+                            {getCategoryIcon(newsItem.category)}
+                            <span>{getCategoryLabel(newsItem.category)}</span>
                           </span>
-                          {item.is_important && (
+                          {newsItem.is_important && (
                             <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
                               重要
                             </span>
                           )}
                         </div>
-                        <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
-                        <p className="text-gray-600 line-clamp-2">{item.content}</p>
+                        <h3 className="text-lg font-semibold mb-2">{newsItem.title}</h3>
+                        <p className="text-gray-600 line-clamp-2">{newsItem.content}</p>
                       </div>
                       <div className="flex flex-col items-end">
                         <div className="flex items-center text-gray-500 text-sm mb-2">
                           <Calendar className="w-4 h-4 mr-1" />
-                          <span>{formatDate(item.created_at)}</span>
+                          <span>{formatDate(newsItem.created_at)}</span>
                         </div>
                         <ChevronRight className="w-5 h-5 text-gray-400" />
                       </div>
@@ -268,28 +267,31 @@ export function News() {
                   </Card>
                 </Link>
               );
-            } else {
-              // 新規オープンのドッグランの表示
-              const park = item as NewParkOpening;
+            } else if (item.type === 'park') {
+              // 新規オープンの表示
+              const parkItem = item as NewParkOpening;
               return (
-                <Link key={`park-${park.id}`} to={`/news/park/${park.id}`}>
+                <Link key={`park-${parkItem.id}`} to={`/news/park/${parkItem.id}`}>
                   <Card className="p-6 hover:shadow-lg transition-shadow">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
-                          <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1">
-                            <Building className="w-4 h-4" />
+                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1">
+                            <MapPin className="w-3 h-3" />
                             <span>新規オープン</span>
                           </span>
                         </div>
-                        <h3 className="text-lg font-semibold mb-2">{park.name}がオープンしました</h3>
-                        <p className="text-gray-600">{park.address}</p>
-                        <p className="text-sm text-blue-600 mt-1">オープン日: {park.opening_date}</p>
+                        <h3 className="text-lg font-semibold mb-2">{parkItem.name}</h3>
+                        <p className="text-gray-600 mb-2">{parkItem.address}</p>
+                        <div className="flex items-center text-gray-500 text-sm">
+                          <Calendar className="w-4 h-4 mr-1" />
+                          <span>オープン予定: {formatDate(parkItem.opening_date)}</span>
+                        </div>
                       </div>
                       <div className="flex flex-col items-end">
                         <div className="flex items-center text-gray-500 text-sm mb-2">
                           <Calendar className="w-4 h-4 mr-1" />
-                          <span>{formatDate(park.created_at)}</span>
+                          <span>{formatDate(parkItem.created_at)}</span>
                         </div>
                         <ChevronRight className="w-5 h-5 text-gray-400" />
                       </div>

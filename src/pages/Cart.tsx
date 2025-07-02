@@ -26,7 +26,7 @@ export function Cart() {
   const { isActive: hasSubscription } = useSubscription();
   const [error, setError] = useState<string | null>(null);
 
-  const MAX_DOGS = 3; // 最大3頭まで選択可能
+
 
   useEffect(() => {
     if (user) {
@@ -45,8 +45,7 @@ export function Cart() {
       if (error) throw error;
       setCartItems(data || []);
     } catch (error) {
-      console.error('Error fetching cart data:', error);
-      setError('カート情報の取得に失敗しました。再度お試しください。');
+      setError((error as Error).message || 'カート情報の取得に失敗しました');
     } finally {
       setIsLoading(false);
     }
@@ -132,11 +131,7 @@ export function Cart() {
     };
   };
 
-  const getSelectedDogNames = () => {
-    return cartItems.map(item => {
-      return item.product.name || '';
-    }).filter(name => name).join('、');
-  };
+
 
   const handleCheckout = () => {
     if (cartItems.length === 0) {

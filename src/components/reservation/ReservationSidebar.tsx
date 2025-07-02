@@ -1,14 +1,11 @@
-import { Link } from 'react-router-dom';
 import Card from '../Card';
-import Button from '../Button';
-import { Crown, Truck, Shield, PawPrint, Calculator, Key, Building } from 'lucide-react';
+import { Crown, CreditCard, PawPrint, Calculator, Key, Building } from 'lucide-react';
 
 interface ReservationSidebarProps {
   hasSubscription: boolean;
-  calculateDayPassPrice: () => number;
 }
 
-export function ReservationSidebar({ hasSubscription, calculateDayPassPrice }: ReservationSidebarProps) {
+export function ReservationSidebar({ hasSubscription }: ReservationSidebarProps) {
   return (
     <div className="space-y-6">
       {/* サブスク特典 */}

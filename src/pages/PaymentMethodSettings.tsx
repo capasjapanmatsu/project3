@@ -173,7 +173,7 @@ export function PaymentMethodSettings() {
       setTimeout(() => {
         setSuccess('');
       }, 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving payment card:', error);
       setError('クレジットカードの登録に失敗しました。もう一度お試しください。');
     } finally {
@@ -243,8 +243,7 @@ export function PaymentMethodSettings() {
         setSuccess('');
       }, 3000);
     } catch (error) {
-      console.error('Error deleting payment card:', error);
-      setError('クレジットカードの削除に失敗しました。');
+      setError((error as Error).message || '決済方法の削除に失敗しました');
     }
   };
 

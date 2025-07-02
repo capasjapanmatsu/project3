@@ -10,7 +10,6 @@ import {
   CheckCircle, 
   X, 
   AlertTriangle,
-  Clock,
   Calendar,
   MapPin,
   Heart,

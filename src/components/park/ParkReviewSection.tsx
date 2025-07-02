@@ -1,18 +1,16 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { MessageCircle, Star, PawPrint, Edit, Trash2, Plus } from 'lucide-react';
+import { Star, Edit, Trash2, MessageCircle, Plus, PawPrint } from 'lucide-react';
 import Card from '../Card';
 import Button from '../Button';
 import Input from '../Input';
 import Select from '../Select';
-import type { DogPark, DogParkReview, UserParkReview, Dog } from '../../types';
+import type { DogPark, DogParkReview, UserParkReview, Dog, Profile } from '../../types';
 
 interface ParkReviewSectionProps {
   park: DogPark;
   reviews: DogParkReview[];
   userReview: UserParkReview | null;
   canReview: boolean;
-  user: any;
+  user: Profile | null;
   userDogs: Dog[];
   showReviewForm: boolean;
   setShowReviewForm: (show: boolean) => void;
@@ -22,7 +20,12 @@ interface ParkReviewSectionProps {
     visit_date: string;
     dog_id: string;
   };
-  setReviewFormData: (data: any) => void;
+  setReviewFormData: (data: {
+    rating: number;
+    review_text: string;
+    visit_date: string;
+    dog_id: string;
+  }) => void;
   isSubmitting: boolean;
   handleReviewSubmit: (e: React.FormEvent) => Promise<void>;
   handleDeleteReview: () => Promise<void>;

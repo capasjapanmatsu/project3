@@ -22,6 +22,7 @@ export function useSubscription() {
   const [error, setError] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
 
+
   useEffect(() => {
     if (user) {
       fetchSubscription();
@@ -50,13 +51,14 @@ export function useSubscription() {
       if (data) {
         setSubscription(data);
         setIsPaused(data.status === 'paused');
+
       } else {
         setSubscription(null);
         setIsPaused(false);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching subscription:', err);
-      setError(err.message || 'サブスクリプション情報の取得に失敗しました');
+      setError((err as Error).message || 'サブスクリプションの取得に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -77,8 +79,8 @@ export function useSubscription() {
     loading,
     error,
     refresh: fetchSubscription,
-    currentPeriodEnd: formatDate(subscription?.current_period_end),
-    currentPeriodStart: formatDate(subscription?.current_period_start),
+    currentPeriodEnd: formatDate(subscription?.current_period_end ?? null),
+    currentPeriodStart: formatDate(subscription?.current_period_start ?? null),
     paymentMethod: subscription?.payment_method_last4 
       ? `${subscription.payment_method_brand} **** ${subscription.payment_method_last4}`
       : null,

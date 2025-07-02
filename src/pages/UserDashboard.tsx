@@ -8,14 +8,14 @@ import {
   ShoppingBag, 
   Users, 
   Bell,
-  Settings,
   CreditCard,
   Crown,
   Building,
   MapPin,
   History,
   Package,
-  LogOut
+  LogOut,
+  CheckCircle
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -58,6 +58,7 @@ export function UserDashboard() {
   });
   const [dogImageFile, setDogImageFile] = useState<File | null>(null);
   const [dogImagePreview, setDogImagePreview] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (user) {
@@ -223,7 +224,7 @@ export function UserDashboard() {
           const fileName = `${selectedDog.id}/profile_${timestamp}.${fileExt}`;
           
           // Supabaseストレージにアップロード
-          const { data: uploadData, error: uploadError } = await supabase.storage
+          const { error: uploadError } = await supabase.storage
             .from('dog-images')
             .upload(fileName, dogImageFile, {
               cacheControl: '3600',
@@ -282,9 +283,9 @@ export function UserDashboard() {
         setDogImagePreview(null);
       }, 2000);
       
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating dog:', error);
-      setDogUpdateError(error.message || 'ワンちゃん情報の更新に失敗しました');
+      setDogUpdateError((error as Error).message || 'ワンちゃん情報の更新に失敗しました');
     } finally {
       setIsUpdatingDog(false);
     }

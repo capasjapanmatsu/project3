@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, MapPin, Key, Users, ShoppingBag, User, Bell } from 'lucide-react';
+import { Home, MapPin, Key, User, Bell } from 'lucide-react';
 
 export function BottomNavigation() {
   const location = useLocation();

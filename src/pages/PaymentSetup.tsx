@@ -120,9 +120,8 @@ export function PaymentSetup() {
         navigate('/entrance-qr');
       }, 3000);
       
-    } catch (error: any) {
-      console.error('Error saving payment card:', error);
-      setError('クレジットカードの登録に失敗しました。もう一度お試しください。');
+    } catch (error) {
+      setError((error as Error).message || '決済方法の設定に失敗しました');
     } finally {
       setIsLoading(false);
     }

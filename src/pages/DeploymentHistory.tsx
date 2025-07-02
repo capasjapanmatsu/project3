@@ -3,17 +3,15 @@ import { Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Globe, 
-  CheckCircle, 
   AlertTriangle, 
   Clock, 
   ExternalLink,
-  RefreshCw,
   Calendar
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { DeploymentStatusChecker } from '../components/DeploymentStatusChecker';
-import { useAuth } from '../context/AuthContext';
+
 import { safeGetItem, safeSetItem } from '../utils/safeStorage';
 
 interface Deployment {
@@ -25,10 +23,10 @@ interface Deployment {
 }
 
 export function DeploymentHistory() {
-  const { user } = useAuth();
+
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
 
   useEffect(() => {
     // ローカルストレージから過去のデプロイ履歴を取得
@@ -48,11 +46,11 @@ export function DeploymentHistory() {
     loadDeployments();
   }, []);
 
-  const handleStatusChange = (deployId: string, newStatus: any) => {
+  const handleStatusChange = (deployId: string, newStatus: { status?: string; deploy_url?: string }) => {
     setDeployments(prev => 
       prev.map(deploy => 
         deploy.id === deployId 
-          ? { ...deploy, status: newStatus.status, deploy_url: newStatus.deploy_url } 
+          ? { ...deploy, status: newStatus.status || deploy.status, deploy_url: newStatus.deploy_url || deploy.deploy_url } 
           : deploy
       )
     );
@@ -61,7 +59,7 @@ export function DeploymentHistory() {
     safeSetItem('deploymentHistory', JSON.stringify(
       deployments.map(deploy => 
         deploy.id === deployId 
-          ? { ...deploy, status: newStatus.status, deploy_url: newStatus.deploy_url } 
+          ? { ...deploy, status: newStatus.status || deploy.status, deploy_url: newStatus.deploy_url || deploy.deploy_url } 
           : deploy
       )
     ));

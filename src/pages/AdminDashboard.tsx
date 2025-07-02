@@ -10,19 +10,11 @@ import {
   X, 
   Eye, 
   BarChart4, 
-  Settings, 
-  MapPin as MapPinIcon, 
-  Clock, 
-  AlertTriangle as AlertTriangleIcon,
   TrendingUp,
   Download,
-  FileText,
-  Image,
-  Camera,
-  Plus,
-  User,
   DollarSign,
-  Calendar
+  Calendar,
+  ShoppingBag
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -206,9 +198,9 @@ export function AdminDashboard() {
       setTimeout(() => {
         setProcessingSuccess('');
       }, 3000);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error approving park:', error);
-      setProcessingError('承認に失敗しました: ' + error.message);
+      setProcessingError('承認に失敗しました: ' + (error as Error).message);
     } finally {
       setIsProcessing(false);
     }
@@ -257,9 +249,9 @@ export function AdminDashboard() {
       setTimeout(() => {
         setProcessingSuccess('');
       }, 3000);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error rejecting park:', error);
-      setProcessingError('却下に失敗しました: ' + error.message);
+      setProcessingError('却下に失敗しました: ' + (error as Error).message);
     } finally {
       setIsProcessing(false);
     }
@@ -311,9 +303,9 @@ export function AdminDashboard() {
       setTimeout(() => {
         setProcessingSuccess('');
       }, 3000);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error approving vaccine:', error);
-      setProcessingError('承認に失敗しました: ' + error.message);
+      setProcessingError('承認に失敗しました: ' + (error as Error).message);
     } finally {
       setIsProcessing(false);
     }
@@ -362,9 +354,9 @@ export function AdminDashboard() {
       setTimeout(() => {
         setProcessingSuccess('');
       }, 3000);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error rejecting vaccine:', error);
-      setProcessingError('却下に失敗しました: ' + error.message);
+      setProcessingError('却下に失敗しました: ' + (error as Error).message);
     } finally {
       setIsProcessing(false);
     }
@@ -819,7 +811,7 @@ export function AdminDashboard() {
                         className="bg-red-600 hover:bg-red-700"
                         disabled={isProcessing}
                       >
-                        <X className="w-4 h-4 mr-1" />
+                        <Eye className="w-4 h-4 mr-1" />
                         却下
                       </Button>
                     </div>
@@ -892,7 +884,7 @@ export function AdminDashboard() {
                         className="bg-red-600 hover:bg-red-700"
                         disabled={isProcessing}
                       >
-                        <X className="w-4 h-4 mr-1" />
+                        <Eye className="w-4 h-4 mr-1" />
                         却下
                       </Button>
                     </div>
@@ -955,7 +947,7 @@ export function AdminDashboard() {
                   onClick={() => setSelectedPark(null)}
                   className="text-gray-500 hover:text-gray-700"
                 >
-                  <X className="w-6 h-6" />
+                  <Eye className="w-6 h-6" />
                 </button>
               </div>
 
@@ -1134,43 +1126,3 @@ export function AdminDashboard() {
   );
 }
 
-// ShoppingBag component for the missing icon
-function ShoppingBag({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-      <line x1="3" y1="6" x2="21" y2="6"></line>
-      <path d="M16 10a4 4 0 0 1-8 0"></path>
-    </svg>
-  );
-}
-
-// Package component for the missing icon
-function Package({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
-      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-      <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-      <line x1="12" y1="22.08" x2="12" y2="12"></line>
-    </svg>
-  );
-}

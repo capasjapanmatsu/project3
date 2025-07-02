@@ -1,16 +1,23 @@
 import { useState, useEffect } from 'react';
 import { getDeploymentStatus } from '../utils/deploymentStatus';
 import Button from './Button';
-import { CheckCircle, AlertTriangle, Loader, ExternalLink } from 'lucide-react';
+import { AlertTriangle, Loader, ExternalLink } from 'lucide-react';
+
+interface DeploymentStatus {
+  deploy_url?: string;
+  status?: string;
+  owner?: string;
+  [key: string]: unknown;
+}
 
 interface DeploymentStatusCheckerProps {
   id?: string;
-  onStatusChange?: (status: any) => void;
+  onStatusChange?: (status: DeploymentStatus) => void;
   className?: string;
 }
 
 export function DeploymentStatusChecker({ id, onStatusChange, className = '' }: DeploymentStatusCheckerProps) {
-  const [status, setStatus] = useState<any>(null);
+  const [status, setStatus] = useState<DeploymentStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,9 +38,9 @@ export function DeploymentStatusChecker({ id, onStatusChange, className = '' }: 
       if (onStatusChange) {
         onStatusChange(result);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error checking deployment status:', err);
-      setError(err.message || 'デプロイステータスの取得に失敗しました');
+      setError((err as Error).message || 'デプロイステータスの取得に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -108,8 +115,8 @@ export function DeploymentStatusChecker({ id, onStatusChange, className = '' }: 
     <div className={`space-y-2 ${className}`}>
       <div className="flex items-center space-x-2">
         <span className="text-sm text-gray-600">ステータス:</span>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status.status)}`}>
-          {getStatusLabel(status.status)}
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status.status || '')}`}>
+          {getStatusLabel(status.status || '')}
         </span>
       </div>
       

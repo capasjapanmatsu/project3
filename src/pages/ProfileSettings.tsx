@@ -26,7 +26,7 @@ import Input from '../components/Input';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 import { lookupPostalCode, formatAddress } from '../utils/postalCodeLookup';
-import type { Profile } from '../types';
+
 
 export function ProfileSettings() {
   const { user } = useAuth();
@@ -35,7 +35,6 @@ export function ProfileSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     postal_code: '',
@@ -79,7 +78,6 @@ export function ProfileSettings() {
       
       if (error) throw error;
       
-      setProfile(data);
       setFormData({
         name: data.name || '',
         postal_code: data.postal_code || '',
@@ -87,9 +85,9 @@ export function ProfileSettings() {
         phone_number: data.phone_number || '',
         email: user?.email || '',
       });
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      setError('プロフィールの取得に失敗しました。');
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+      setError((err as Error).message || 'プロフィールの取得に失敗しました。');
     } finally {
       setIsLoading(false);
     }
@@ -210,9 +208,9 @@ export function ProfileSettings() {
       setTimeout(() => {
         setSuccess('');
       }, 3000);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error updating profile:', err);
-      setError(err.message || 'プロフィールの更新に失敗しました');
+      setError((err as Error).message || 'プロフィールの更新に失敗しました');
     } finally {
       setIsSaving(false);
     }
@@ -273,9 +271,9 @@ export function ProfileSettings() {
         setShowPasswordModal(false);
         setPasswordSuccess('');
       }, 3000);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error changing password:', err);
-      setPasswordError(err.message || 'パスワードの変更に失敗しました');
+      setPasswordError((err as Error).message || 'パスワードの変更に失敗しました');
     } finally {
       setIsChangingPassword(false);
     }
@@ -302,9 +300,9 @@ export function ProfileSettings() {
       
       // ホームページにリダイレクト
       navigate('/', { replace: true });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error deleting account:', err);
-      setDeleteError(err.message || 'アカウントの削除に失敗しました');
+      setDeleteError((err as Error).message || 'アカウントの削除に失敗しました');
     } finally {
       setIsDeleting(false);
     }

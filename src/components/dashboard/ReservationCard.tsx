@@ -1,6 +1,3 @@
-import { Link } from 'react-router-dom';
-import { MapPin, Clock, PawPrint, Building, Calendar } from 'lucide-react';
-import Button from '../Button';
 import { getStatusBadge } from './ParkCard';
 import { getDogHonorific } from './DogCard';
 import type { Reservation } from '../../types';
@@ -10,22 +7,6 @@ interface ReservationCardProps {
 }
 
 export function ReservationCard({ reservation }: ReservationCardProps) {
-  const reservationDate = new Date(reservation.date);
-  const formattedDate = reservationDate.toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long'
-  });
-  
-  const startTime = reservation.start_time;
-  const endTime = `${parseInt(startTime) + reservation.duration}:00`;
-  
-  const reservationType = 
-    reservation.reservation_type === 'regular' ? '通常利用' : 
-    reservation.reservation_type === 'private_booth' ? 'プライベートブース' : 
-    '施設貸し切り';
-  
   const dogHonorific = reservation.dog ? getDogHonorific(reservation.dog.gender) : 'ちゃん';
   
   return (

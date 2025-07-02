@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
 import Input from '../components/Input';
 import Select from '../components/Select';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { Upload, X, Image as ImageIcon, PawPrint, Edit, CheckCircle, AlertTriangle, Camera } from 'lucide-react';
+import { X, PawPrint, Edit, AlertTriangle, Camera } from 'lucide-react';
 import { dogBreeds } from '../data/dogBreeds';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 import type { Dog } from '../types';
 
 export function DogRegistration() {
-  const navigate = useNavigate();
+
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -291,7 +290,7 @@ export function DogRegistration() {
           console.log('Uploading to path:', fileName);
           
           // Supabaseストレージにアップロード
-          const { data: uploadData, error: uploadError } = await supabase.storage
+          const { error: uploadError } = await supabase.storage
             .from('dog-images')
             .upload(fileName, imageFile, {
               cacheControl: '3600',
@@ -303,7 +302,7 @@ export function DogRegistration() {
             throw new Error(`画像のアップロードに失敗しました: ${uploadError.message}`);
           }
 
-          console.log('Upload successful:', uploadData);
+          console.log('Upload successful');
 
           // 公開URLを取得
           const { data: { publicUrl } } = supabase.storage
@@ -490,7 +489,7 @@ export function DogRegistration() {
           const fileName = `${selectedDog.id}/profile_${timestamp}.${fileExt}`;
           
           // Supabaseストレージにアップロード
-          const { data: uploadData, error: uploadError } = await supabase.storage
+          const { error: uploadError } = await supabase.storage
             .from('dog-images')
             .upload(fileName, imageFile, {
               cacheControl: '3600',
@@ -588,17 +587,17 @@ export function DogRegistration() {
           }
           
           // 証明書情報の更新または作成
+          const updateData: Record<string, unknown> = {
+            status: 'pending', // 新しい画像がアップロードされたら再審査
+          };
+          
+          if (rabiesPath) updateData.rabies_vaccine_image = rabiesPath;
+          if (comboPath) updateData.combo_vaccine_image = comboPath;
+          if (formData.rabiesExpiryDate) updateData.rabies_expiry_date = formData.rabiesExpiryDate;
+          if (formData.comboExpiryDate) updateData.combo_expiry_date = formData.comboExpiryDate;
+          
           if (existingCert) {
             // 既存の証明書を更新
-            const updateData: any = {
-              status: 'pending', // 新しい画像がアップロードされたら再審査
-            };
-            
-            if (rabiesPath) updateData.rabies_vaccine_image = rabiesPath;
-            if (comboPath) updateData.combo_vaccine_image = comboPath;
-            if (formData.rabiesExpiryDate) updateData.rabies_expiry_date = formData.rabiesExpiryDate;
-            if (formData.comboExpiryDate) updateData.combo_expiry_date = formData.comboExpiryDate;
-            
             const { error: updateError } = await supabase
               .from('vaccine_certifications')
               .update(updateData)
@@ -607,22 +606,6 @@ export function DogRegistration() {
             if (updateError) {
               console.error('Certificate update error:', updateError);
               throw updateError;
-            }
-          } else {
-            // 新しい証明書を作成
-            const { error: insertError } = await supabase
-              .from('vaccine_certifications')
-              .insert([{
-                dog_id: selectedDog.id,
-                rabies_vaccine_image: rabiesPath,
-                combo_vaccine_image: comboPath,
-                rabies_expiry_date: formData.rabiesExpiryDate,
-                combo_expiry_date: formData.comboExpiryDate,
-              }]);
-              
-            if (insertError) {
-              console.error('Certificate insert error:', insertError);
-              throw insertError;
             }
           }
         } catch (vaccineError) {

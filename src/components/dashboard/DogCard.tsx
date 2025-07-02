@@ -1,11 +1,9 @@
-import { useState } from 'react';
-import { PawPrint, CheckCircle, Edit, X, Save, Camera } from 'lucide-react';
-import Card from '../Card';
+import { Edit, Trash2, Camera, Shield, PawPrint } from 'lucide-react';
 import Button from '../Button';
 import Input from '../Input';
 import Select from '../Select';
 import { dogBreeds } from '../../data/dogBreeds';
-import type { Dog, VaccineCertification } from '../../types';
+import type { Dog } from '../../types';
 
 interface DogCardProps {
   dog: Dog;
@@ -38,7 +36,7 @@ export function DogCard({ dog, onEdit }: DogCardProps) {
               {vaccineStatus.label}
             </span>
             {vaccineStatus.status === 'approved' && (
-              <CheckCircle className="w-3 h-3 text-green-600" />
+              <Shield className="w-3 h-3 text-green-600" />
             )}
           </div>
         </div>
@@ -92,7 +90,12 @@ interface DogEditModalProps {
   dogImagePreview: string | null;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
-  onFormChange: (formData: any) => void;
+  onFormChange: (formData: {
+    name: string;
+    breed: string;
+    gender: string;
+    birthDate: string;
+  }) => void;
   onImageSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImageRemove: () => void;
 }
@@ -124,7 +127,7 @@ export function DogEditModal({
               onClick={onClose}
               className="text-gray-500 hover:text-gray-700"
             >
-              <X className="w-6 h-6" />
+              <Trash2 className="w-6 h-6" />
             </button>
           </div>
 
@@ -136,7 +139,7 @@ export function DogEditModal({
 
           {success && (
             <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg flex items-center">
-              <CheckCircle className="w-5 h-5 mr-2" />
+              <Shield className="w-5 h-5 mr-2" />
               {success}
             </div>
           )}
@@ -161,7 +164,7 @@ export function DogEditModal({
                       onClick={onImageRemove}
                       className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
                     >
-                      <X className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ) : (
@@ -239,7 +242,7 @@ export function DogEditModal({
                   type="submit"
                   isLoading={isUpdating}
                 >
-                  <Save className="w-4 h-4 mr-2" />
+                  <Shield className="w-4 h-4 mr-2" />
                   保存
                 </Button>
               </div>

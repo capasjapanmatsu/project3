@@ -381,8 +381,8 @@ Deno.serve(async (req) => {
       sessionId: session.id, 
       url: session.url 
     });
-  } catch (error: any) {
-    console.error(`Checkout error: ${error.message}`);
-    return corsResponse({ error: error.message }, 500);
+  } catch (error: unknown) {
+    console.error('Error creating checkout session:', error);
+    return corsResponse({ error: (error as Error).message }, 500);
   }
 });

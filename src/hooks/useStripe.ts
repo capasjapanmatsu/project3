@@ -9,9 +9,11 @@ interface CheckoutParams {
   cancelUrl?: string;
   customAmount?: number;
   customName?: string;
-  customParams?: Record<string, any>;
+  customParams?: Record<string, unknown>;
   cartItems?: string[];
 }
+
+
 
 export function useStripe() {
   const [loading, setLoading] = useState(false);
@@ -37,7 +39,7 @@ export function useStripe() {
         throw new Error('認証が必要です');
       }
 
-      const requestBody: Record<string, any> = {
+      const requestBody: Record<string, unknown> = {
         mode,
         success_url: successUrl,
         cancel_url: cancelUrl,
@@ -112,9 +114,9 @@ export function useStripe() {
       } else {
         throw new Error('チェックアウトURLが取得できませんでした');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Stripe checkout error:', err);
-      setError(err.message || 'チェックアウトに失敗しました');
+      setError((err as Error).message || 'チェックアウトに失敗しました');
       throw err;
     } finally {
       setLoading(false);

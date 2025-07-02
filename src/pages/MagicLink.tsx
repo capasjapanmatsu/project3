@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { Mail, CheckCircle, AlertTriangle, Loader } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Loader } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { safeSetItem } from '../utils/safeStorage';
 
@@ -95,9 +95,9 @@ export function MagicLink() {
         setTimeout(() => {
           navigate('/dashboard');
         }, 2000);
-      } catch (err: any) {
+      } catch (err) {
         console.error('Magic Link authentication error:', err);
-        setError(err.message || '認証に失敗しました。もう一度ログインしてください。');
+        setError((err as Error).message || 'マジックリンクの送信に失敗しました');
       } finally {
         setIsLoading(false);
       }

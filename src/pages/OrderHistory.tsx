@@ -14,19 +14,17 @@ import {
   CreditCard,
   History,
   ShoppingBag,
-  AlertTriangle,
-  Calendar
+  AlertTriangle
 } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
-import { downloadCSVWithBOM } from '../utils/csvExport';
 import type { Order, OrderItem } from '../types';
 
 interface OrderWithItems extends Order {
   order_items: OrderItem[];
-  can_cancel: boolean;
+  can_cancel: boolean | null;
   time_left?: string;
 }
 
@@ -185,7 +183,7 @@ export function OrderHistory() {
       credit_card: 'クレジットカード',
       bank_transfer: '銀行振込',
       cod: '代金引換',
-      paypay: 'PayPay',
+  
     };
     return labels[method as keyof typeof labels] || method;
   };
@@ -311,9 +309,9 @@ export function OrderHistory() {
       setTimeout(() => {
         setCancelSuccess(null);
       }, 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error cancelling order:', error);
-      setCancelError(error.message || 'キャンセルに失敗しました');
+      setCancelError('注文のキャンセルに失敗しました。');
     } finally {
       setIsCancelling(false);
     }
