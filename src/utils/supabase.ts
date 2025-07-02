@@ -30,6 +30,8 @@ const enhancedFetch = async (...args: Parameters<typeof fetch>): Promise<Respons
       signal,
       headers: {
         ...args[1]?.headers,
+        'apikey': supabaseAnonKey,
+        'Authorization': `Bearer ${supabaseAnonKey}`,
         'Cache-Control': 'no-cache',
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -44,12 +46,15 @@ const enhancedFetch = async (...args: Parameters<typeof fetch>): Promise<Respons
     console.warn('Initial fetch failed:', error);
     
     // Check if it's a network-related error that might benefit from retry
-    const isRetryableError = 
-      error instanceof TypeError ||
-      error.name === 'AbortError' ||
-      error.message.includes('NetworkError') ||
-      error.message.includes('Failed to fetch') ||
-      error.message.includes('fetch');
+    let isRetryableError = false;
+    if (error instanceof Error) {
+      isRetryableError =
+        error instanceof TypeError ||
+        error.name === 'AbortError' ||
+        error.message.includes('NetworkError') ||
+        error.message.includes('Failed to fetch') ||
+        error.message.includes('fetch');
+    }
     
     if (isRetryableError) {
       console.warn('Network error detected, attempting retry after delay...');
@@ -67,6 +72,8 @@ const enhancedFetch = async (...args: Parameters<typeof fetch>): Promise<Respons
           signal: retryController.signal,
           headers: {
             ...args[1]?.headers,
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${supabaseAnonKey}`,
             'Cache-Control': 'no-cache',
             'Accept': 'application/json',
             'Content-Type': 'application/json',
@@ -79,14 +86,14 @@ const enhancedFetch = async (...args: Parameters<typeof fetch>): Promise<Respons
       } catch (retryError) {
         clearTimeout(retryTimeoutId);
         console.error('Retry also failed:', retryError);
-        
-        // Provide more specific error information
-        if (retryError.name === 'AbortError') {
-          throw new Error('Connection timeout - please check your internet connection and try again');
-        } else if (retryError instanceof TypeError) {
-          throw new Error('Network connection failed - please check if Supabase is accessible from your network');
+        if (retryError instanceof Error) {
+          // Provide more specific error information
+          if (retryError.name === 'AbortError') {
+            throw new Error('Connection timeout - please check your internet connection and try again');
+          } else if (retryError instanceof TypeError) {
+            throw new Error('Network connection failed - please check if Supabase is accessible from your network');
+          }
         }
-        
         throw retryError;
       }
     }
@@ -126,42 +133,40 @@ export const testSupabaseConnection = async (): Promise<boolean> => {
 // Helper function to handle Supabase errors consistently
 export const handleSupabaseError = (error: unknown): string => {
   console.error('Supabase error:', error);
-  
-  // Handle refresh token errors by signing out the user
-  if (error instanceof Error && (error.message.includes('refresh_token_not_found') || 
-      error.message.includes('refresh_token_not_found'))) {
-    console.warn('Invalid refresh token detected, signing out user');
-    supabase.auth.signOut();
-    return 'セッションが期限切れです。再度ログインしてください。';
-  }
-  
-  // Handle network connectivity issues with more specific messages
-  if (error instanceof Error && (error.message.includes('NetworkError') || 
+  if (error instanceof Error) {
+    // Handle refresh token errors by signing out the user
+    if (error.message.includes('refresh_token_not_found')) {
+      console.warn('Invalid refresh token detected, signing out user');
+      supabase.auth.signOut();
+      return 'セッションが期限切れです。再度ログインしてください。';
+    }
+    // Handle network connectivity issues with more specific messages
+    if (
+      error.message.includes('NetworkError') ||
       error.message.includes('Failed to fetch') ||
-      error.name === 'TypeError' && error.message.includes('fetch'))) {
-    return 'ネットワーク接続に問題があります。以下をご確認ください：\n• インターネット接続\n• ファイアウォール設定\n• VPN設定\n• Supabaseサービスの状態';
-  }
-  
-  if (error instanceof Error && (error.message.includes('timed out') || 
+      (error.name === 'TypeError' && error.message.includes('fetch'))
+    ) {
+      return 'ネットワーク接続に問題があります。以下をご確認ください：\n• インターネット接続\n• ファイアウォール設定\n• VPN設定\n• Supabaseサービスの状態';
+    }
+    if (
+      error.message.includes('timed out') ||
       error.name === 'AbortError' ||
-      error.message.includes('timeout'))) {
-    return 'リクエストがタイムアウトしました。ネットワーク接続を確認してもう一度お試しください。';
+      error.message.includes('timeout')
+    ) {
+      return 'リクエストがタイムアウトしました。ネットワーク接続を確認してもう一度お試しください。';
+    }
+    // Handle CORS errors
+    if (error.message.includes('CORS') || error.message.includes('cross-origin')) {
+      return 'CORS設定に問題があります。Supabaseプロジェクトの設定を確認してください。';
+    }
+    // Handle authentication errors
+    if (error.message.includes('JWT')) {
+      return '認証に問題があります。再度ログインしてください。';
+    }
+    if (error.message) {
+      return error.message;
+    }
   }
-  
-  // Handle CORS errors
-  if (error instanceof Error && (error.message.includes('CORS') || error.message.includes('cross-origin'))) {
-    return 'CORS設定に問題があります。Supabaseプロジェクトの設定を確認してください。';
-  }
-  
-  // Handle authentication errors
-  if (error instanceof Error && (error.message.includes('JWT'))) {
-    return '認証に問題があります。再度ログインしてください。';
-  }
-  
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  
   return '予期しないエラーが発生しました。';
 };
 
