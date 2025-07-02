@@ -374,7 +374,7 @@ export function PaymentSetup() {
               <div className="mt-3 p-3 bg-gray-50 rounded">
                 <p className="font-medium">カスタマーサポート</p>
                 <p>📞 0120-XXX-XXX</p>
-                <p>📧 support@dogparkjp.com</p>
+                <p>📧 info@dogparkjp.com</p>
                 <p className="text-xs text-gray-500 mt-1">
                   平日 9:00-18:00
                 </p>
