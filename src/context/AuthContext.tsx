@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabase';
-import { safeGetItem, safeSetItem } from '../utils/safeStorage';
+import { safeSetItem } from '../utils/safeStorage';
 
 interface AuthContextType {
   user: User | null;
@@ -63,13 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('Magic Link error:', error);
-        return { success: false, error: `Magic Linkの送信に失敗しました: ${error.message}` };
+        return { success: false, error: `Magic Linkの送信に失敗しました: ${(error as Error).message}` };
       }
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Magic Link error:', error);
-      return { success: false, error: `Magic Linkの送信に失敗しました: ${error.message}` };
+      return { success: false, error: `Magic Linkの送信に失敗しました: ${(error as Error).message}` };
     }
   };
 
@@ -105,9 +105,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const result = await response.json();
       return { success: result.success, error: result.error };
-    } catch (error: any) {
+    } catch (error) {
       console.error('2FA verification error:', error);
-      return { success: false, error: `認証に失敗しました: ${error.message}` };
+      return { success: false, error: `認証に失敗しました: ${(error as Error).message}` };
     }
   };
 

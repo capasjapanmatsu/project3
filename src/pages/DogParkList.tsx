@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { MapPin, Users, Coins, CheckCircle, Heart, Shield, Star, Calendar, Clock, AlertTriangle, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { MapPin, Users, Coins, CheckCircle, Heart, Shield, Star, Clock, AlertTriangle, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { Loader } from '@googlemaps/js-api-loader';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -376,7 +376,7 @@ export function DogParkList() {
                 <p style="font-weight: 500; color: #9a3412; margin-bottom: 4px; font-size: 12px;">本日の貸し切り時間</p>
             `;
             
-            rentalTimes.forEach((time, index) => {
+            rentalTimes.forEach((time) => {
               rentalInfoHtml += `<p style="font-size: 11px; color: #9a3412; margin: 2px 0;">${time.start}〜${time.end}</p>`;
             });
             

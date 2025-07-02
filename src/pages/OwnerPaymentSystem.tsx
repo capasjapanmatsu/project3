@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, DollarSign, Calendar, Building, BarChart4, Download, CheckCircle, AlertTriangle, Ban as Bank, CreditCard, FileText, Clock } from 'lucide-react';
+import { ArrowLeft, DollarSign, Calendar, Building, BarChart4, Download, CheckCircle, AlertTriangle, Ban, FileText, Clock } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { useAuth } from '../context/AuthContext';
@@ -51,8 +51,6 @@ export function OwnerPaymentSystem() {
   });
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalPayout, setTotalPayout] = useState(0);
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
 
   useEffect(() => {
     if (!user) {
@@ -61,7 +59,7 @@ export function OwnerPaymentSystem() {
     }
     
     fetchData();
-  }, [user, navigate, selectedYear, selectedMonth]);
+  }, [user, navigate]);
 
   const fetchData = async () => {
     try {
@@ -110,7 +108,7 @@ export function OwnerPaymentSystem() {
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      setError('データの取得に失敗しました。');
+      setError((error as Error).message || 'データの取得に失敗しました');
     } finally {
       setIsLoading(false);
     }
@@ -190,9 +188,9 @@ export function OwnerPaymentSystem() {
       setTimeout(() => {
         setSuccess('');
       }, 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving bank account:', error);
-      setError(error.message || '振込先情報の保存に失敗しました');
+      setError((error as Error).message || '振込先情報の保存に失敗しました');
     } finally {
       setIsSavingBank(false);
     }
@@ -297,7 +295,7 @@ export function OwnerPaymentSystem() {
               <p className="text-2xl font-bold text-purple-600">¥{totalPayout.toLocaleString()}</p>
               <p className="text-xs text-purple-600">売上の80%</p>
             </div>
-            <Bank className="w-8 h-8 text-purple-600" />
+            <Ban className="w-8 h-8 text-purple-600" />
           </div>
         </Card>
       </div>
@@ -306,7 +304,7 @@ export function OwnerPaymentSystem() {
       <Card className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold flex items-center">
-            <Bank className="w-6 h-6 text-blue-600 mr-2" />
+            <Ban className="w-6 h-6 text-blue-600 mr-2" />
             振込先情報
           </h2>
           {bankAccount && !showBankForm ? (
@@ -506,7 +504,7 @@ export function OwnerPaymentSystem() {
           </div>
         ) : (
           <div className="text-center py-8">
-            <Bank className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <Ban className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600 mb-4">振込先情報が登録されていません</p>
             <Button onClick={() => setShowBankForm(true)}>
               振込先情報を登録する
@@ -629,30 +627,7 @@ export function OwnerPaymentSystem() {
   );
 }
 
-// Bank component for the dashboard
-function Bank({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M3 21h18"></path>
-      <path d="M3 10h18"></path>
-      <path d="M5 6l7-3 7 3"></path>
-      <path d="M4 10v11"></path>
-      <path d="M20 10v11"></path>
-      <path d="M8 14v3"></path>
-      <path d="M12 14v3"></path>
-      <path d="M16 14v3"></path>
-    </svg>
-  );
-}
+
 
 // Edit component for the dashboard
 function Edit({ className }: { className?: string }) {

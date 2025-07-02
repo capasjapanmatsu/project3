@@ -24,11 +24,6 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Sciener API configuration
-const SCIENER_API_URL = Deno.env.get("SCIENER_API_URL") || "https://api.sciener.com";
-const SCIENER_CLIENT_ID = Deno.env.get("SCIENER_CLIENT_ID") || "demo_client_id";
-const SCIENER_CLIENT_SECRET = Deno.env.get("SCIENER_CLIENT_SECRET") || "demo_client_secret";
-
 // Generate a PIN code for a smart lock
 async function generatePinCode(
   userId: string,
@@ -99,38 +94,42 @@ async function generatePinCode(
       pinEnd = new Date(endTime);
     }
     
-    // DB関数でPIN発行（貸し切りは有効期間指定、通常は従来通り）
-    const { data: pinData, error: pinError } = await supabase.rpc("create_pin_for_lock", {
-      p_lock_id: lockId,
-      p_user_id: userId,
-      p_purpose: purpose,
-      p_expiry_minutes: reservationType === 'whole_facility' ? undefined : expiryMinutes,
-      p_start_time: reservationType === 'whole_facility' ? pinStart.toISOString() : undefined,
-      p_end_time: reservationType === 'whole_facility' ? pinEnd.toISOString() : undefined
-    });
+    // Generate a random 6-digit PIN
+    const pinCode = Math.floor(100000 + Math.random() * 900000).toString();
     
-    if (pinError) throw pinError;
-    
-    // Get the PIN record
-    const { data: pinRecord, error: recordError } = await supabase
-      .from("smart_lock_pins")
-      .select("*")
-      .eq("lock_id", lockId)
-      .eq("user_id", userId)
-      .eq("purpose", purpose)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-    
-    if (recordError) throw recordError;
-    
+    // Hash the PIN for storage
+    const pinHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pinCode))
+      .then(hash => Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+      );
+
+    // Store the PIN in the database
+    const { error: insertError } = await supabase
+      .from('smart_lock_pins')
+      .insert({
+        lock_id: lockId,
+        user_id: userId,
+        pin_code: pinCode,
+        pin_hash: pinHash,
+        purpose: purpose,
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+        is_used: false
+      });
+
+    if (insertError) {
+      console.error('Failed to store PIN in database:', insertError);
+      throw new Error('Failed to generate PIN');
+    }
+
     // Log PIN issuance in user_entry_exit_logs
     await supabase.from("user_entry_exit_logs").insert({
       user_id: userId,
       park_id: lock.park_id,
       dog_ids: [],
       action: "entry",
-      pin_code: pinRecord.pin_code,
+      pin_code: pinCode,
       lock_id: lockId,
       pin_issued_at: pinStart.toISOString(),
       pin_expires_at: pinEnd.toISOString(),
@@ -139,8 +138,8 @@ async function generatePinCode(
     });
     
     return {
-      pin: pinRecord.pin_code,
-      expires_at: pinRecord.expires_at,
+      pin: pinCode,
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       lock_id: lockId,
       purpose: purpose
     };

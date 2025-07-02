@@ -11,7 +11,6 @@ import {
   CheckCircle, 
   AlertTriangle,
   Shield,
-  Lock,
   Info
 } from 'lucide-react';
 import Card from '../components/Card';
@@ -20,7 +19,18 @@ import Input from '../components/Input';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useStripe } from '../hooks/useStripe';
-import type { CartItem, Profile } from '../types';
+import type { CartItem } from '../types';
+
+interface CheckoutLocationState {
+  totals?: {
+    subtotal: number;
+    originalSubtotal: number;
+    discountAmount: number;
+    shippingFee: number;
+    total: number;
+  };
+  cartItems?: string[];
+}
 
 export function Checkout() {
   const { user } = useAuth();
@@ -30,7 +40,7 @@ export function Checkout() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
@@ -61,7 +71,7 @@ export function Checkout() {
     }
 
     // locationからカート情報を取得
-    const state = location.state as any;
+    const state = location.state as CheckoutLocationState;
     if (!state) {
       navigate('/cart');
       return;
@@ -75,7 +85,7 @@ export function Checkout() {
     fetchData(state);
   }, [user, navigate, location]);
 
-  const fetchData = async (state: any) => {
+  const fetchData = async (state: CheckoutLocationState) => {
     try {
       setIsLoading(true);
 
@@ -87,7 +97,6 @@ export function Checkout() {
         .single();
 
       if (profileError) throw profileError;
-      setProfile(profileData);
 
       // フォームデータを初期化
       setFormData({
@@ -132,7 +141,7 @@ export function Checkout() {
 
     } catch (error) {
       console.error('Error fetching checkout data:', error);
-      setError('データの取得に失敗しました。もう一度お試しください。');
+      setError((error as Error).message || 'データの取得に失敗しました。もう一度お試しください。');
     } finally {
       setIsLoading(false);
     }
@@ -188,9 +197,8 @@ export function Checkout() {
           order_number: orderNumber
         }
       });
-    } catch (err: any) {
-      console.error('Checkout error:', err);
-      setError(err.message || '決済処理に失敗しました。もう一度お試しください。');
+    } catch (err) {
+      setError((err as Error).message || 'エラーが発生しました');
       setIsProcessing(false);
     }
   };
@@ -341,7 +349,7 @@ export function Checkout() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                   disabled
-                  icon={<Mail className="w-4 h-4 text-gray-500" />}
+
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   注文確認メールがこのアドレスに送信されます
@@ -482,7 +490,7 @@ export function Checkout() {
           
           <Card className="p-4 bg-gray-50 border-gray-200">
             <div className="flex items-start space-x-3">
-              <Lock className="w-5 h-5 text-gray-600 mt-1 flex-shrink-0" />
+              <Shield className="w-5 h-5 text-gray-600 mt-1 flex-shrink-0" />
               <div>
                 <h4 className="font-semibold text-gray-900 mb-1">セキュリティ</h4>
                 <div className="text-sm text-gray-700 space-y-1">
@@ -499,38 +507,3 @@ export function Checkout() {
   );
 }
 
-function Mail({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <rect width="20" height="16" x="2" y="4" rx="2"></rect>
-      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
-    </svg>
-  );
-}
-
-function Lock({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
-      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-    </svg>
-  );
-}

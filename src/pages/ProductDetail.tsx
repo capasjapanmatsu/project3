@@ -5,7 +5,6 @@ import {
   ShoppingCart, 
   Plus, 
   Minus, 
-  Star, 
   Heart,
   Package,
   Truck,

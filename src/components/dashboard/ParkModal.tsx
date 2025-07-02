@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
-import { X, Star, Building, BarChart4, Eye, Edit, AlertTriangle, CheckCircle, Clock, Calendar as CalendarIcon, MapPin } from 'lucide-react';
-import Card from '../Card';
+import { X, BarChart4, Eye, Edit, CheckCircle, Clock } from 'lucide-react';
 import Button from '../Button';
 import { getStatusBadge } from './ParkCard';
 import type { DogPark } from '../../types';
@@ -105,7 +104,6 @@ export function ParkModal({ park, onClose }: ParkModalProps) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="flex items-center space-x-2 mb-2">
-                    <CalendarIcon className="w-5 h-5 text-blue-600" />
                     <h4 className="font-medium text-blue-900">今月の予約</h4>
                   </div>
                   <p className="text-2xl font-bold text-blue-600">32件</p>
@@ -192,27 +190,6 @@ function DollarSign({ className }: { className?: string }) {
     >
       <line x1="12" y1="1" x2="12" y2="23"></line>
       <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-    </svg>
-  );
-}
-
-// Calendar component for the dashboard
-function Calendar({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-      <line x1="16" y1="2" x2="16" y2="6"></line>
-      <line x1="8" y1="2" x2="8" y2="6"></line>
-      <line x1="3" y1="10" x2="21" y2="10"></line>
     </svg>
   );
 }

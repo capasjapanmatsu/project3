@@ -169,7 +169,7 @@ export interface Notification {
   type: 'friend_request' | 'friend_accepted' | 'friend_at_park' | 'reservation_reminder' | 'order_confirmed' | 'order_shipped' | 'order_delivered' | 'qr_shared' | 'qr_revoked' | 'vaccine_expiry_warning' | 'vaccine_expired' | 'vaccine_reapproval_required' | 'blacklisted_dog_nearby' | 'new_message' | 'order_cancelled';
   title: string;
   message: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   read: boolean;
   created_at: string;
 }
@@ -227,7 +227,7 @@ export interface Order {
   shipping_postal_code: string;
   shipping_phone: string;
   shipping_name: string;
-  payment_method: 'credit_card' | 'bank_transfer' | 'cod' | 'paypay';
+  payment_method: 'credit_card' | 'bank_transfer' | 'cod';
   payment_status: 'pending' | 'completed' | 'failed' | 'cancelled';
   notes?: string;
   estimated_delivery_date?: string;

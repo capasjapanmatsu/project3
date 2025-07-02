@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Crown, 
   CheckCircle, 
@@ -31,7 +31,6 @@ export function Subscription() {
   const { user } = useAuth();
   const { createCheckoutSession, loading: checkoutLoading, error: checkoutError } = useStripe();
   const { 
-    subscription, 
     isActive, 
     isPaused,
     loading: subscriptionLoading, 
@@ -106,9 +105,9 @@ export function Subscription() {
 
       setShowConfirmCancel(false);
       window.location.reload();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error canceling subscription:', error);
-      alert(error.message || 'サブスクリプションのキャンセルに失敗しました');
+      alert((error as Error).message || 'サブスクリプションのキャンセルに失敗しました');
     }
   };
 
@@ -148,9 +147,9 @@ export function Subscription() {
       setTimeout(() => {
         window.location.reload();
       }, 1000);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error pausing subscription:', error);
-      setPauseError(error.message || 'サブスクリプションの一時停止に失敗しました');
+      setPauseError((error as Error).message || 'サブスクリプションの一時停止に失敗しました');
     } finally {
       setIsPauseLoading(false);
     }
@@ -192,9 +191,9 @@ export function Subscription() {
       setTimeout(() => {
         window.location.reload();
       }, 1000);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error resuming subscription:', error);
-      setResumeError(error.message || 'サブスクリプションの再開に失敗しました');
+      setResumeError((error as Error).message || 'サブスクリプションの再開に失敗しました');
     } finally {
       setIsResumeLoading(false);
     }

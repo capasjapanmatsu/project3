@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
-  ArrowLeft, 
   MapPin, 
   Users, 
   Coins, 
@@ -9,29 +8,16 @@ import {
   Heart, 
   Shield,
   Star,
-  MessageCircle,
-  Calendar,
-  PawPrint,
-  Edit,
-  Trash2,
-  Plus,
-  Info,
   AlertTriangle,
   Clock,
-  Building,
   X,
   ChevronLeft,
   ChevronRight,
-  Image as ImageIcon,
-  Unlock,
-  DoorOpen,
   Key,
   RefreshCw
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import Input from '../components/Input';
-import Select from '../components/Select';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 import { DoorLockButton } from '../components/DoorLockButton';
@@ -40,7 +26,7 @@ import { ParkImageGallery } from '../components/park/ParkImageGallery';
 import { ParkFacilityInfo } from '../components/park/ParkFacilityInfo';
 import { ParkReviewSection } from '../components/park/ParkReviewSection';
 import { ParkRentalInfo } from '../components/park/ParkRentalInfo';
-import type { DogPark, DogParkReview, UserParkReview, Dog, Reservation } from '../types';
+import type { DogPark, DogParkReview, UserParkReview, Dog, Reservation, Profile } from '../types';
 
 interface ParkImage {
   id: string;
@@ -80,7 +66,7 @@ export function DogParkDetail() {
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [smartLocks, setSmartLocks] = useState<SmartLock[]>([]);
-  const [showLockControls, setShowLockControls] = useState(false);
+
   const [userHasAccess, setUserHasAccess] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -248,7 +234,7 @@ export function DogParkDetail() {
 
           if (!accessError && accessData && accessData.has_access) {
             setUserHasAccess(true);
-            setShowLockControls(true);
+    
           }
         }
 
@@ -274,7 +260,7 @@ export function DogParkDetail() {
         }
       }
     } catch (error) {
-      console.error('Error fetching park data:', error);
+      setError((error as Error).message || 'エラーが発生しました');
       navigate('/parks');
     } finally {
       setIsLoading(false);
@@ -322,7 +308,7 @@ export function DogParkDetail() {
       await fetchParkData();
       setShowReviewForm(false);
       alert(userReview ? 'レビューを更新しました！' : 'レビューを投稿しました！');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error submitting review:', error);
       alert('レビューの投稿に失敗しました。もう一度お試しください。');
     } finally {
@@ -679,7 +665,7 @@ export function DogParkDetail() {
                 reviews={reviews}
                 userReview={userReview}
                 canReview={canReview}
-                user={user}
+                user={user as Profile | null}
                 userDogs={userDogs}
                 showReviewForm={showReviewForm}
                 setShowReviewForm={setShowReviewForm}

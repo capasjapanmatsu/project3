@@ -1,30 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  MapPin, 
-  Users, 
-  Calendar, 
-  Heart, 
-  Shield, 
-  CheckCircle, 
-  Coins, 
-  Key, 
-  ShoppingBag, 
-  FileText, 
-  Star, 
-  Building, 
-  Crown, 
-  ArrowRight, 
-  Plus, 
-  Mail,
-  Bell,
-  Megaphone,
-  PawPrint,
-  AlertCircle,
-  Wifi,
-  RefreshCw,
-  WifiOff
-} from 'lucide-react';
+import { MapPin, Users, Calendar, Key, ShoppingBag, RefreshCw, FileText, Megaphone, Bell, WifiOff, AlertCircle, PawPrint, ArrowRight, Building, Crown, Plus, CheckCircle, Mail, Tag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase, handleSupabaseError, testSupabaseConnection, safeSupabaseQuery } from '../utils/supabase';
 import Card from '../components/Card';
@@ -36,11 +12,9 @@ import { getDogHonorific } from '../components/dashboard/DogCard';
 
 export function Home() {
   const { user } = useAuth();
-  const [parks, setParks] = useState<DogPark[]>([]);
   const [news, setNews] = useState<NewsAnnouncement[]>([]);
   const [newParks, setNewParks] = useState<NewParkOpening[]>([]);
   const [recentDogs, setRecentDogs] = useState<Dog[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
   const [connectionTested, setConnectionTested] = useState(false);
@@ -94,10 +68,9 @@ export function Home() {
   }, [connectionTested, isOffline]);
 
   const fetchNearbyParks = async () => {
-    setIsLoading(true);
     setNetworkError(null);
     
-    const { data, error, isOffline: queryOffline } = await safeSupabaseQuery(
+    const { error, isOffline: queryOffline } = await safeSupabaseQuery(
       () => (supabase
         .from('dog_parks')
         .select('*')
@@ -105,8 +78,7 @@ export function Home() {
         .order('created_at', { ascending: false })
         .limit(6)
         .then(x => x)
-      ) as any,
-      []
+      ) as Promise<{ data: DogPark[] | null; error: unknown }>
     );
 
     if (queryOffline) {
@@ -115,17 +87,7 @@ export function Home() {
     } else if (error) {
       const errorMessage = handleSupabaseError(error);
       setNetworkError(errorMessage);
-    } else if (data) {
-      // 現在地からの距離でソート
-      data.sort((a, b) => {
-        const distA = calculateDistance(userLocation!.lat, userLocation!.lng, (a as any).latitude, (a as any).longitude);
-        const distB = calculateDistance(userLocation!.lat, userLocation!.lng, (b as any).latitude, (b as any).longitude);
-        return distA - distB;
-      });
-      setParks(data);
     }
-    
-    setIsLoading(false);
   };
 
   const fetchNews = async () => {
@@ -139,8 +101,7 @@ export function Home() {
         .order('created_at', { ascending: false })
         .limit(3)
         .then(x => x)
-      ) as any,
-      []
+      ) as Promise<{ data: NewsAnnouncement[] | null; error: unknown }>
     );
     
     // 新規オープンのドッグランを取得
@@ -151,8 +112,7 @@ export function Home() {
         .order('created_at', { ascending: false })
         .limit(3)
         .then(x => x)
-      ) as any,
-      []
+      ) as Promise<{ data: NewParkOpening[] | null; error: unknown }>
     );
     
     if (newsOffline || parksOffline) {
@@ -183,8 +143,7 @@ export function Home() {
         .order('created_at', { ascending: false })
         .limit(5)
         .then(x => x)
-      ) as any,
-      []
+      ) as Promise<{ data: Dog[] | null; error: unknown }>
     );
     
     if (queryOffline) {
@@ -221,17 +180,7 @@ export function Home() {
     }
   };
 
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371; // 地球の半径（km）
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
+
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -1011,23 +960,5 @@ export function Home() {
         </div>
       </section>
     </div>
-  );
-}
-
-function Tag({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-      <line x1="7" y1="7" x2="7.01" y2="7"></line>
-    </svg>
   );
 }

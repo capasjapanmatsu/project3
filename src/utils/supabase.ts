@@ -11,7 +11,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Validate Supabase URL format
 try {
   new URL(supabaseUrl);
-} catch (error) {
+} catch {
   console.error('Invalid Supabase URL format:', supabaseUrl);
   throw new Error('Invalid Supabase URL format. Please check your VITE_SUPABASE_URL in .env file.');
 }
@@ -116,104 +116,53 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Enhanced connection test function with better error reporting
 export const testSupabaseConnection = async (): Promise<boolean> => {
   try {
-    console.log('Testing Supabase connection to:', supabaseUrl);
-    
-    // First, try a simple health check by accessing the REST API root
-    const healthCheckUrl = `${supabaseUrl}/rest/v1/`;
-    
-    try {
-      const healthResponse = await fetch(healthCheckUrl, {
-        method: 'HEAD',
-        headers: {
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-      });
-      
-      if (!healthResponse.ok) {
-        console.error('Supabase health check failed:', healthResponse.status, healthResponse.statusText);
-        return false;
-      }
-      
-      console.log('Supabase health check passed');
-    } catch (healthError) {
-      console.error('Supabase health check error:', healthError);
-      return false;
-    }
-    
-    // Then try a simple query
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id')
-      .limit(1);
-    
-    if (error) {
-      console.error('Supabase connection test failed:', error);
-      return false;
-    }
-    
-    console.log('Supabase connection test successful');
-    return true;
-  } catch (error) {
-    console.error('Supabase connection test error:', error);
-    
-    // Provide specific guidance based on error type
-    if (error instanceof TypeError || error.message.includes('NetworkError')) {
-      console.error('Network connectivity issue detected. Please check:');
-      console.error('1. Your internet connection');
-      console.error('2. Firewall or VPN settings');
-      console.error('3. Whether Supabase URL is accessible:', supabaseUrl);
-    }
-    
+    const { error } = await supabase.from('profiles').select('count').limit(1);
+    return !error;
+  } catch {
     return false;
   }
 };
 
 // Helper function to handle Supabase errors consistently
-export const handleSupabaseError = (error: any): string => {
+export const handleSupabaseError = (error: unknown): string => {
   console.error('Supabase error:', error);
   
   // Handle refresh token errors by signing out the user
-  if (error?.message?.includes('refresh_token_not_found') || 
-      error?.body?.includes('refresh_token_not_found') ||
-      error?.code === 'refresh_token_not_found') {
+  if (error instanceof Error && (error.message.includes('refresh_token_not_found') || 
+      error.message.includes('refresh_token_not_found'))) {
     console.warn('Invalid refresh token detected, signing out user');
     supabase.auth.signOut();
-    return 'セッションが無効になりました。再度ログインしてください。';
+    return 'セッションが期限切れです。再度ログインしてください。';
   }
   
   // Handle network connectivity issues with more specific messages
-  if (error?.message?.includes('NetworkError') || 
-      error?.message?.includes('Failed to fetch') ||
-      error?.name === 'TypeError' && error?.message?.includes('fetch')) {
+  if (error instanceof Error && (error.message.includes('NetworkError') || 
+      error.message.includes('Failed to fetch') ||
+      error.name === 'TypeError' && error.message.includes('fetch'))) {
     return 'ネットワーク接続に問題があります。以下をご確認ください：\n• インターネット接続\n• ファイアウォール設定\n• VPN設定\n• Supabaseサービスの状態';
   }
   
-  if (error?.message?.includes('timed out') || 
-      error?.name === 'AbortError' ||
-      error?.message?.includes('timeout')) {
+  if (error instanceof Error && (error.message.includes('timed out') || 
+      error.name === 'AbortError' ||
+      error.message.includes('timeout'))) {
     return 'リクエストがタイムアウトしました。ネットワーク接続を確認してもう一度お試しください。';
   }
   
   // Handle CORS errors
-  if (error?.message?.includes('CORS') || error?.message?.includes('cross-origin')) {
+  if (error instanceof Error && (error.message.includes('CORS') || error.message.includes('cross-origin'))) {
     return 'CORS設定に問題があります。Supabaseプロジェクトの設定を確認してください。';
   }
   
   // Handle authentication errors
-  if (error?.code === 'PGRST301' || error?.message?.includes('JWT')) {
+  if (error instanceof Error && (error.message.includes('JWT'))) {
     return '認証に問題があります。再度ログインしてください。';
   }
   
-  if (error?.code === '23505') {
-    return '既に存在するデータです。';
-  }
-  
-  if (error?.message) {
+  if (error instanceof Error && error.message) {
     return error.message;
   }
   
-  return '予期せぬエラーが発生しました。もう一度お試しください。';
+  return '予期しないエラーが発生しました。';
 };
 
 // Helper function to check if we're in development mode
@@ -223,31 +172,14 @@ export const isDevelopment = () => {
 
 // Helper function to safely execute Supabase queries with fallback
 export const safeSupabaseQuery = async <T>(
-  queryFn: () => Promise<{ data: T | null; error: any }>,
-  fallbackData: T | null = null
-): Promise<{ data: T | null; error: any; isOffline: boolean }> => {
+  queryFn: () => Promise<{ data: T | null; error: unknown }>
+): Promise<{ data: T | null; error: unknown; isOffline: boolean }> => {
   try {
     const result = await queryFn();
     return { ...result, isOffline: false };
-  } catch (error) {
-    console.error('Supabase query failed:', error);
-    
-    // Check if it's a network error
-    if (error?.message?.includes('NetworkError') || 
-        error?.message?.includes('Failed to fetch') ||
-        error?.name === 'TypeError') {
-      return { 
-        data: fallbackData, 
-        error: null, 
-        isOffline: true 
-      };
-    }
-    
-    return { 
-      data: fallbackData, 
-      error, 
-      isOffline: false 
-    };
+  } catch (retryError) {
+    console.error('Query error:', retryError);
+    return { data: null, error: retryError, isOffline: true };
   }
 };
 

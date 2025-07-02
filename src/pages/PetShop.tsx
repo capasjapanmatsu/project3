@@ -2,14 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ShoppingBag, 
-  Search, 
-  Filter, 
   Star, 
   Heart,
   Plus,
   Minus,
   ShoppingCart,
-  Tag,
   Package,
   Truck,
   Crown,
@@ -32,7 +29,7 @@ export function PetShop() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'price_asc' | 'price_desc' | 'popular'>('popular');
+  const [sortBy, setSortBy] = useState<'name' | 'price' | 'category'>('name');
   const { isActive: hasSubscription } = useSubscription();
 
   const categories = [
@@ -162,11 +159,10 @@ export function PetShop() {
       switch (sortBy) {
         case 'name':
           return a.name.localeCompare(b.name);
-        case 'price_asc':
+        case 'price':
           return getDiscountedPrice(a.price) - getDiscountedPrice(b.price);
-        case 'price_desc':
-          return getDiscountedPrice(b.price) - getDiscountedPrice(a.price);
-        case 'popular':
+        case 'category':
+          return a.category.localeCompare(b.category);
         default:
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
@@ -285,13 +281,13 @@ export function PetShop() {
         <div>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) => setSortBy(e.target.value as 'name' | 'price' | 'category')}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             <option value="popular">人気順</option>
             <option value="name">名前順</option>
-            <option value="price_asc">価格の安い順</option>
-            <option value="price_desc">価格の高い順</option>
+            <option value="price">価格の安い順</option>
+            <option value="category">カテゴリー順</option>
           </select>
         </div>
       </div>

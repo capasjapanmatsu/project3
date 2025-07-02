@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PlusCircle, MapPin, Clock, AlertTriangle, CheckCircle, FileText, QrCode, Eye, Star, DollarSign, TrendingUp, BarChart4, Building, Users, ChevronRight, Trash2, RefreshCw } from 'lucide-react';
+import { PlusCircle, MapPin, Clock, AlertTriangle, CheckCircle, FileText, QrCode, Eye, Star, DollarSign, TrendingUp, BarChart4, Users, ChevronRight, Trash2, RefreshCw } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { supabase } from '../utils/supabase';
@@ -31,7 +31,7 @@ export function OwnerDashboard() {
         const { data, error } = await supabase
           .from('dog_parks')
           .select('*')
-          .eq('owner_id', user.id)
+          .eq('owner_id', user?.id)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -156,9 +156,8 @@ export function OwnerDashboard() {
         setSuccess('');
       }, 3000);
       
-    } catch (err: any) {
-      console.error('Error deleting park:', err);
-      setError(err.message || '削除に失敗しました。もう一度お試しください。');
+    } catch (err) {
+      setError((err as Error).message || 'エラーが発生しました');
       
       // Clear error message after 3 seconds
       setTimeout(() => {
@@ -175,6 +174,11 @@ export function OwnerDashboard() {
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
       </div>
     );
+  }
+
+  if (!user) {
+    setError('ユーザー情報が取得できません');
+    return;
   }
 
   return (

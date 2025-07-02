@@ -3,12 +3,20 @@ import Card from './Card';
 import Button from './Button';
 import { Key, CheckCircle, AlertTriangle, Loader } from 'lucide-react';
 
+interface VerifyPinResult {
+  success: boolean;
+  message?: string;
+  park_id?: string;
+  occupancy?: unknown;
+  error?: string;
+}
+
 interface PinCodeEntryProps {
   lockId: string;
   parkName?: string;
   purpose?: 'entry' | 'exit';
   className?: string;
-  onSuccess?: (result: any) => void;
+  onSuccess?: (result: VerifyPinResult) => void;
   onError?: (error: string) => void;
 }
 
@@ -78,12 +86,12 @@ export function PinCodeEntry({
       setTimeout(() => {
         setSuccess(null);
       }, 3000);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error verifying PIN:', err);
-      setError(err.message || 'PINコードの検証に失敗しました');
-      
+      const message = (err as Error).message || 'PINコードの検証に失敗しました';
+      setError(message);
       // エラーコールバック
-      if (onError) onError(err.message || 'PINコードの検証に失敗しました');
+      if (onError) onError(message);
     } finally {
       setIsVerifying(false);
     }

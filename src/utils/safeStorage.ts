@@ -15,7 +15,7 @@ export function isStorageAvailable(type: 'localStorage' | 'sessionStorage'): boo
     storage.setItem(testKey, testKey);
     storage.removeItem(testKey);
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 }

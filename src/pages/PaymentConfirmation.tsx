@@ -8,7 +8,6 @@ import {
   Calendar, 
   MapPin,
   Building,
-  PawPrint,
   Clock,
   AlertTriangle,
   X
@@ -22,7 +21,7 @@ export function PaymentConfirmation() {
   const location = useLocation();
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [orderType, setOrderType] = useState<'shop' | 'reservation' | 'facility_rental'>('shop');
-  const [orderDetails, setOrderDetails] = useState<any>(null);
+  const [orderDetails, setOrderDetails] = useState<Record<string, unknown> | null>(null);
   const [countdown, setCountdown] = useState(5);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -120,9 +119,8 @@ export function PaymentConfirmation() {
         setOrderType('shop');
         setOrderNumber(data.client_reference_id || data.metadata?.order_number || 'DP' + Date.now());
       }
-    } catch (error: any) {
-      console.error('Error fetching session details:', error);
-      setError('決済情報の取得に失敗しました: ' + error.message);
+    } catch (error) {
+      setError((error as Error).message || 'エラーが発生しました');
     } finally {
       setIsLoading(false);
     }
@@ -146,9 +144,8 @@ export function PaymentConfirmation() {
         setOrderNumber(data.order_number);
         setOrderType('shop');
       }
-    } catch (error: any) {
-      console.error('Error fetching latest order:', error);
-      setError('注文情報の取得に失敗しました: ' + error.message);
+    } catch (error) {
+      setError((error as Error).message || 'エラーが発生しました');
     } finally {
       setIsLoading(false);
     }
@@ -270,15 +267,15 @@ export function PaymentConfirmation() {
               <div className="space-y-2 mb-4">
                 <div className="flex items-start">
                   <MapPin className="w-5 h-5 text-orange-600 mt-0.5 mr-2 flex-shrink-0" />
-                  <p className="text-orange-800">{orderDetails.parkName}</p>
+                  <p className="text-orange-800">{String(orderDetails.parkName)}</p>
                 </div>
                 <div className="flex items-start">
                   <Calendar className="w-5 h-5 text-orange-600 mt-0.5 mr-2 flex-shrink-0" />
-                  <p className="text-orange-800">{orderDetails.date}</p>
+                  <p className="text-orange-800">{String(orderDetails.date)}</p>
                 </div>
                 <div className="flex items-start">
                   <Clock className="w-5 h-5 text-orange-600 mt-0.5 mr-2 flex-shrink-0" />
-                  <p className="text-orange-800">{orderDetails.time}</p>
+                  <p className="text-orange-800">{String(orderDetails.time)}</p>
                 </div>
               </div>
               

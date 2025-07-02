@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Building, Mail, Phone, User, MapPin, CreditCard, Truck, Clock, FileText, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Building, CreditCard, Truck, Clock, FileText, ShieldCheck } from 'lucide-react';
 import Card from '../components/Card';
 
 export function BusinessInformation() {
@@ -110,7 +110,7 @@ export function BusinessInformation() {
                       <td className="py-3">
                         <ul className="list-disc pl-5 space-y-1">
                           <li>クレジットカード決済（VISA、Mastercard、JCB、AMEX）</li>
-                          <li>PayPay決済</li>
+          
                         </ul>
                       </td>
                     </tr>

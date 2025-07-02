@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Mail, MapPin, Send, CheckCircle, AlertTriangle, User, MessageSquare } from 'lucide-react';
 import Card from '../components/Card';
@@ -79,9 +79,8 @@ export function Contact() {
         subject: '',
         message: '',
       });
-    } catch (err: any) {
-      console.error('Error submitting contact form:', err);
-      setError(err.message || 'お問い合わせの送信に失敗しました。もう一度お試しください。');
+    } catch (err) {
+      setError((err as Error).message || '送信に失敗しました');
     } finally {
       setIsSubmitting(false);
     }

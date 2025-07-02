@@ -1,13 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { PawPrint, LogOut, Bell, ShoppingCart, Shield, History, Mail } from 'lucide-react';
+import { PawPrint, LogOut, Bell, ShoppingCart, Shield, History } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect, useCallback, memo } from 'react';
 import { supabase } from '../utils/supabase';
-import Card from '../components/Card';
-import Button from '../components/Button';
 import { useSubscription } from '../hooks/useSubscription';
-import { SubscriptionButton } from '../components/SubscriptionButton';
-import type { DogPark } from '../types';
 
 // Memoize the Navbar component to prevent unnecessary re-renders
 export const Navbar = memo(function Navbar() {

@@ -1,5 +1,4 @@
-import { Link } from 'react-router-dom';
-import { Star, Edit, Building, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { Star, Edit, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import Button from '../Button';
 import type { DogPark } from '../../types';
 

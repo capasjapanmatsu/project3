@@ -117,8 +117,8 @@ Deno.serve(async (req) => {
     }
 
     return corsResponse({ message: 'Subscription has been resumed' });
-  } catch (error: any) {
-    console.error(`Subscription resume error: ${error.message}`);
-    return corsResponse({ error: error.message }, 500);
+  } catch (error: unknown) {
+    console.error(`Subscription resume error: ${(error as Error).message}`);
+    return corsResponse({ error: (error as Error).message }, 500);
   }
 });

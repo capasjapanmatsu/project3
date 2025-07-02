@@ -5,22 +5,16 @@ import {
   PawPrint, 
   CheckCircle, 
   AlertTriangle, 
-  CreditCard,
-  Calendar,
-  Building,
-  Users,
-  X,
   LogIn as LogInIcon,
   LogOut as LogOutIcon,
   QrCode,
   Search,
-  MapPin,
-  Star
+  Star,
+  Building
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
-import Select from '../components/Select';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
@@ -34,9 +28,8 @@ export function AccessControl() {
   const { isActive: hasSubscription } = useSubscription();
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [selectedDogs, setSelectedDogs] = useState<string[]>([]);
-  const [activeQRCode, setActiveQRCode] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
+
   const [error, setError] = useState('');
   const [smartLocks, setSmartLocks] = useState<SmartLock[]>([]);
   const [selectedLock, setSelectedLock] = useState<SmartLock | null>(null);
@@ -704,7 +697,7 @@ export function AccessControl() {
               {/* QRコード生成ボタン */}
               <Button 
                 onClick={generateQRCode}
-                isLoading={isGenerating}
+                isLoading={false}
                 disabled={selectedDogs.length === 0 || !selectedLock}
                 className="w-full bg-green-600 hover:bg-green-700"
               >
@@ -846,40 +839,3 @@ export function AccessControl() {
   );
 }
 
-function LogIn({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-      <polyline points="10 17 15 12 10 7" />
-      <line x1="15" y1="12" x2="3" y2="12" />
-    </svg>
-  );
-}
-
-function LogOut({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-  );
-}

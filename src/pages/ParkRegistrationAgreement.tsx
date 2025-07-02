@@ -10,9 +10,6 @@ import {
   DollarSign, 
   Percent, 
   Clock, 
-  Calendar, 
-  MapPin, 
-  Users, 
   Lock, 
   Loader
 } from 'lucide-react';
@@ -30,7 +27,6 @@ export function ParkRegistrationAgreement() {
   const [isIdentityVerified, setIsIdentityVerified] = useState(false);
   const [isCreatingVerification, setIsCreatingVerification] = useState(false);
   const [verificationSessionUrl, setVerificationSessionUrl] = useState('');
-  const [verificationSessionId, setVerificationSessionId] = useState('');
 
   useEffect(() => {
     // Check if user is logged in
@@ -59,7 +55,6 @@ export function ParkRegistrationAgreement() {
         setIsIdentityVerified(true);
       } else if (data && data.verification_id) {
         // Verification is in progress, check status
-        setVerificationSessionId(data.verification_id);
         await checkVerificationStatus(data.verification_id);
       }
     } catch (err) {
@@ -105,9 +100,9 @@ export function ParkRegistrationAgreement() {
         // Failed or requires action
         setError('本人確認に問題があります。もう一度お試しください。');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error checking verification status:', err);
-      setError(err.message || '本人確認ステータスの取得に失敗しました');
+      setError((err as Error).message || 'エラーが発生しました');
     } finally {
       setIsLoading(false);
     }
@@ -140,17 +135,16 @@ export function ParkRegistrationAgreement() {
         throw new Error(errorData.error || '本人確認セッションの作成に失敗しました');
       }
 
-      const { url, id } = await response.json();
+      const { url } = await response.json();
       
-      if (!url || !id) {
+      if (!url) {
         throw new Error('本人確認セッションの作成に失敗しました');
       }
 
       setVerificationSessionUrl(url);
-      setVerificationSessionId(id);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error creating identity verification session:', err);
-      setError(err.message || '本人確認セッションの作成に失敗しました');
+      setError((err as Error).message || 'エラーが発生しました');
     } finally {
       setIsCreatingVerification(false);
     }
@@ -184,9 +178,9 @@ export function ParkRegistrationAgreement() {
 
       // 本人確認セッションを作成
       await createIdentityVerificationSession();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error submitting agreement:', err);
-      setError(err.message || '契約同意の処理に失敗しました。');
+      setError((err as Error).message || '契約同意の処理に失敗しました。');
     } finally {
       setIsLoading(false);
     }

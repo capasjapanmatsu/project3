@@ -7,7 +7,6 @@ import {
   Clock, 
   PawPrint, 
   Search,
-  Filter,
   Download,
   CheckCircle,
   QrCode,
@@ -254,8 +253,8 @@ export function DogParkHistory() {
       // 予約一覧を再取得
       await fetchData();
       setTimeout(() => setCancelSuccess(null), 3000);
-    } catch (e: any) {
-      setCancelError(e.message || 'キャンセルに失敗しました');
+    } catch (e) {
+      setCancelError((e as Error).message || 'キャンセルに失敗しました');
     } finally {
       setCancellingId(null);
     }

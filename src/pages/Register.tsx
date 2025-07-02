@@ -158,8 +158,8 @@ export function Register() {
 
       // 成功
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.message || '登録リンクの送信に失敗しました。');
+    } catch (err) {
+      setError((err as Error).message || '登録に失敗しました');
     } finally {
       setIsLoading(false);
     }

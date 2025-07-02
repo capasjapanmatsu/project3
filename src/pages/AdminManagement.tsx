@@ -1,8 +1,7 @@
-import { useEffect, useState, useCallback, memo } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Shield, 
-  Users, 
   MapPin, 
   FileCheck, 
   AlertTriangle, 
@@ -10,17 +9,12 @@ import {
   X, 
   Eye, 
   Camera,
-  Image as ImageIcon,
-  MessageSquare,
-  Clock,
-  Calendar,
   ArrowLeft,
   Building,
-  Send
+  Clock
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import Input from '../components/Input';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 
@@ -130,8 +124,7 @@ export function AdminManagement() {
         setPendingVaccines(vaccinesData || []);
       }
     } catch (error) {
-      console.error('Error fetching data:', error);
-      setError('データの取得に失敗しました');
+      setError((error as Error).message || 'エラーが発生しました');
     } finally {
       setIsLoading(false);
     }
@@ -155,8 +148,7 @@ export function AdminManagement() {
       const allApproved = data && data.length > 0 && data.every(img => img.is_approved === true);
       setAllImagesApproved(allApproved);
     } catch (error) {
-      console.error('Error fetching park images:', error);
-      setError('施設画像の取得に失敗しました');
+      setError((error as Error).message || '施設画像の取得に失敗しました');
     } finally {
       setIsLoading(false);
     }
@@ -179,7 +171,7 @@ export function AdminManagement() {
     try {
       setIsProcessing(true);
       
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         is_approved: approved,
       };
       
@@ -215,8 +207,7 @@ export function AdminManagement() {
       setSelectedImage(null);
       setRejectionNote('');
       
-    } catch (error: any) {
-      console.error('Error approving/rejecting image:', error);
+    } catch {
       setError('画像の承認/却下に失敗しました');
     } finally {
       setIsProcessing(false);
@@ -238,7 +229,7 @@ export function AdminManagement() {
       if (error) throw error;
       
       // レビューステージを更新
-      let updateData: any = {};
+      let updateData: Record<string, unknown> = {};
       
       // 既存のレビューステージを確認
       const { data: existingStage, error: stageCheckError } = await supabase
@@ -302,9 +293,8 @@ export function AdminManagement() {
       setTimeout(() => {
         setSuccess('');
       }, 3000);
-    } catch (error: any) {
-      console.error('Error approving park:', error);
-      setError('承認に失敗しました: ' + error.message);
+    } catch {
+      setError('承認に失敗しました');
     } finally {
       setIsProcessing(false);
     }
@@ -353,9 +343,8 @@ export function AdminManagement() {
       setTimeout(() => {
         setSuccess('');
       }, 3000);
-    } catch (error: any) {
-      console.error('Error rejecting park:', error);
-      setError('却下に失敗しました: ' + error.message);
+    } catch {
+      setError('却下に失敗しました');
     } finally {
       setIsProcessing(false);
     }
@@ -385,7 +374,7 @@ export function AdminManagement() {
       if (error) throw error;
       
       // レビューステージを更新
-      let updateData: any = {};
+      let updateData: Record<string, unknown> = {};
       
       // 既存のレビューステージを確認
       const { data: existingStage, error: stageCheckError } = await supabase
@@ -470,9 +459,8 @@ export function AdminManagement() {
       setParkImages([]);
       setRejectionNote('');
       
-    } catch (error: any) {
-      console.error('Error approving/rejecting park:', error);
-      setError('施設の承認/却下に失敗しました: ' + error.message);
+    } catch (error) {
+      setError('施設の承認/却下に失敗しました: ' + (error as Error).message);
     } finally {
       setIsProcessing(false);
     }
@@ -484,7 +472,7 @@ export function AdminManagement() {
       setError('');
       
       // ワクチン証明書のステータスを更新
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         status: approved ? 'approved' : 'rejected'
       };
       
@@ -533,8 +521,7 @@ export function AdminManagement() {
       setSelectedVaccine(null);
       setRejectionNote('');
       
-    } catch (error: any) {
-      console.error('Error approving/rejecting vaccine:', error);
+    } catch {
       setError('ワクチン証明書の承認/却下に失敗しました');
     } finally {
       setIsProcessing(false);

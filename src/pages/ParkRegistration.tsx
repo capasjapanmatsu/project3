@@ -3,10 +3,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
-import { CheckCircle, AlertTriangle, FileText, MapPin, Users, Building, DollarSign, ShieldAlert, Shield, User, CreditCard, Fingerprint, Lock, Camera, Loader, Trash2, RefreshCw } from 'lucide-react';
+import { CheckCircle, AlertTriangle, FileText, Building, DollarSign, ShieldAlert, Shield, Fingerprint, Trash2, RefreshCw } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
-import { loadStripe } from '@stripe/stripe-js';
+import type { DogPark } from '../types';
 
 export function ParkRegistration() {
   const navigate = useNavigate();
@@ -14,11 +14,9 @@ export function ParkRegistration() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [currentStep, setCurrentStep] = useState(1); // 1: 第一審査, 2: 本人確認, 3: 基本情報入力
-  const [identityVerified, setIdentityVerified] = useState(false);
   const [verificationSessionUrl, setVerificationSessionUrl] = useState('');
-  const [verificationSessionId, setVerificationSessionId] = useState('');
   const [isCreatingVerification, setIsCreatingVerification] = useState(false);
-  const [rejectedParks, setRejectedParks] = useState<any[]>([]);
+  const [rejectedParks, setRejectedParks] = useState<DogPark[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -94,12 +92,9 @@ export function ParkRegistration() {
 
       if (data && data.status === 'verified') {
         // User has already been verified
-        setIdentityVerified(true);
-        // Skip to step 3 if already verified
         setCurrentStep(3);
       } else if (data && data.verification_id) {
         // Verification is in progress, check status
-        setVerificationSessionId(data.verification_id);
         await checkVerificationStatus(data.verification_id);
       }
     } catch (err) {
@@ -137,13 +132,6 @@ export function ParkRegistration() {
       const result = await response.json();
       
       if (result.status === 'verified') {
-        setIdentityVerified(true);
-        // Update local database
-        await supabase
-          .from('owner_verifications')
-          .update({ status: 'verified' })
-          .eq('verification_id', verificationId);
-        
         // Move to next step
         setCurrentStep(3);
       } else if (result.status === 'processing') {
@@ -153,9 +141,9 @@ export function ParkRegistration() {
         // Failed or requires action
         setError('本人確認に問題があります。もう一度お試しください。');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error checking verification status:', err);
-      setError(err.message || '本人確認ステータスの取得に失敗しました');
+      setError((err as Error).message || '本人確認ステータスの取得に失敗しました');
     } finally {
       setIsLoading(false);
     }
@@ -209,10 +197,9 @@ export function ParkRegistration() {
       }
 
       setVerificationSessionUrl(url);
-      setVerificationSessionId(id);
-    } catch (err: any) {
-      console.error('Error creating identity verification session:', err);
-      setError(err.message || '本人確認セッションの作成に失敗しました');
+    } catch (err: unknown) {
+      console.error('Error creating verification session:', err);
+      setError((err as Error).message || '本人確認セッションの作成に失敗しました');
       // Go back to first step
       setCurrentStep(1);
     } finally {
@@ -384,15 +371,15 @@ export function ParkRegistration() {
       setRejectedParks(prev => prev.filter(park => park.id !== parkId));
       setShowConfirmDelete(null);
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting park:', err);
-      setError(err.message || '削除に失敗しました。もう一度お試しください。');
+      setError((err as Error).message || 'ドッグランの削除に失敗しました');
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const handleResubmitPark = (parkId: string) => {
+  const handleResubmitPark = () => {
     // Reset the form and start a new application
     setFormData({
       isCurrentlyOperating: '',
@@ -421,7 +408,6 @@ export function ParkRegistration() {
       },
       facilityDetails: '',
     });
-    
     // Go to first step
     setCurrentStep(1);
   };
@@ -583,7 +569,7 @@ export function ParkRegistration() {
                           <Button 
                             size="sm" 
                             variant="secondary"
-                            onClick={() => handleResubmitPark(park.id)}
+                            onClick={handleResubmitPark}
                           >
                             <RefreshCw className="w-4 h-4 mr-1" />
                             再申請

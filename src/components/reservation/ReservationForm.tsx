@@ -1,9 +1,19 @@
-import { Link } from 'react-router-dom';
-import Input from '../Input';
-import Button from '../Button';
+import { MapPin, Building, Calculator, Crown, PawPrint, Info, CheckCircle, AlertTriangle, CreditCard } from 'lucide-react';
 import Card from '../Card';
-import { Key, Clock, MapPin, Users, CheckCircle, X, AlertTriangle, Crown, Building, PawPrint, Calculator, Plus, CreditCard, Calendar, Info } from 'lucide-react';
-import type { Dog, DogPark } from '../../types';
+import Button from '../Button';
+import type { DogPark, Dog } from '../../types';
+import Input from '../Input';
+
+interface TimeSlot {
+  time: string;
+  isWholeFacilityAvailable: boolean;
+}
+
+interface SlotStatus {
+  label: string;
+  color: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
 
 interface ReservationFormProps {
   park: DogPark;
@@ -15,19 +25,21 @@ interface ReservationFormProps {
     reservationType: string;
     paymentType: string;
   };
-  setFormData: (data: any) => void;
-  timeSlots: any[];
+  setFormData: (data: {
+    date: string;
+    selectedTimeSlot: string;
+    duration: string;
+    reservationType: string;
+    paymentType: string;
+  }) => void;
+  timeSlots: TimeSlot[];
   isDateTooSoon: boolean;
   selectedDogs: string[];
   dogs: Dog[];
   handleDogSelection: (dogId: string) => void;
   handleTimeSlotSelect: (time: string) => void;
   getEndTime: (startTime: string, duration: string) => string;
-  getSlotStatus: (slot: any) => {
-    label: string;
-    color: string;
-    icon: any;
-  };
+  getSlotStatus: (slot: TimeSlot) => SlotStatus;
   getSelectedDogNames: () => string;
   calculateDayPassPrice: () => number;
   calculateTotalPrice: () => number;
@@ -202,7 +214,7 @@ export function ReservationForm({
                   type="radio"
                   value="single"
                   checked={formData.paymentType === 'single'}
-                  onChange={(e) => setFormData({ ...formData, paymentType: e.target.value as any })}
+                  onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}
                   className="form-radio text-blue-600"
                 />
                 <div className="flex-1">
@@ -232,7 +244,7 @@ export function ReservationForm({
                 type="radio"
                 value="subscription"
                 checked={formData.paymentType === 'subscription'}
-                onChange={(e) => setFormData({ ...formData, paymentType: e.target.value as any })}
+                onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}
                 className="form-radio text-purple-600"
               />
               <div className="flex-1">
@@ -270,7 +282,7 @@ export function ReservationForm({
                 type="radio"
                 value="facility_rental"
                 checked={formData.paymentType === 'facility_rental'}
-                onChange={(e) => setFormData({ ...formData, paymentType: e.target.value as any, duration: '1' })}
+                onChange={(e) => setFormData({ ...formData, paymentType: e.target.value, duration: '1' })}
                 className="form-radio text-orange-600"
               />
               <div className="flex-1">

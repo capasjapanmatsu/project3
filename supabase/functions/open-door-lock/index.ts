@@ -24,9 +24,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Smart lock API configuration
-const LOCK_API_ENDPOINT = Deno.env.get("LOCK_API_ENDPOINT") || "https://api.smartlock.example.com";
-const LOCK_API_KEY = Deno.env.get("LOCK_API_KEY") || "demo_api_key";
+// Environment variables
 const FACILITY_AUTH_TOKEN = Deno.env.get("FACILITY_AUTH_TOKEN") || "demo_auth_token";
 
 // Function to open a smart lock
@@ -115,7 +113,7 @@ serve(async (req) => {
     }
 
     // Extract parameters from the request
-    const { lock_id, user_id, timestamp, auth_token } = requestData;
+    const { lock_id, user_id, auth_token } = requestData;
 
     // Validate required parameters
     if (!lock_id || !user_id || !auth_token) {
@@ -129,6 +127,24 @@ serve(async (req) => {
 
     // Open the smart lock
     const result = await openSmartLock(lock_id, user_id, auth_token);
+
+    // Log the entry/exit action
+    const { error: logError } = await supabase
+      .from('user_entry_exit_logs')
+      .insert({
+        user_id: user.id,
+        park_id: parkId,
+        dog_ids: dogIds,
+        action: action,
+        timestamp: new Date().toISOString(),
+        pin_code: pinCode,
+        lock_id: lockId
+      });
+
+    if (logError) {
+      console.error('Failed to log entry/exit action:', logError);
+      // Don't fail the request if logging fails
+    }
 
     // Return the result
     return new Response(

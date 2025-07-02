@@ -1,10 +1,9 @@
-import { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Upload, CheckCircle, AlertTriangle, Camera, Trash2, Building, MapPin, ParkingCircle, ShowerHead, FileText, X, Image as ImageIcon, CreditCard } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
-import Select from '../components/Select';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 
@@ -35,16 +34,6 @@ interface DogPark {
   large_dog_area: boolean;
   small_dog_area: boolean;
   private_booths: boolean;
-}
-
-interface ReviewStage {
-  id: string;
-  first_stage_passed_at: string;
-  second_stage_submitted_at: string | null;
-  qr_testing_started_at: string | null;
-  approved_at: string | null;
-  rejected_at: string | null;
-  rejection_reason: string | null;
 }
 
 interface BankAccount {
@@ -134,14 +123,13 @@ const IMAGE_TYPES = {
     required: false,
     conditionalOn: 'facilities.water_station'
   }
-};
+} as const;
 
 export function ParkRegistrationSecondStage() {
   const { parkId } = useParams<{ parkId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [park, setPark] = useState<DogPark | null>(null);
-  const [reviewStage, setReviewStage] = useState<ReviewStage | null>(null);
   const [images, setImages] = useState<FacilityImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -191,69 +179,6 @@ export function ParkRegistrationSecondStage() {
       
       setPark(parkData);
       
-      // Fetch review stage - changed from .single() to .maybeSingle()
-      const { data: reviewData, error: reviewError } = await supabase
-        .from('dog_park_review_stages')
-        .select('*')
-        .eq('park_id', parkId)
-        .maybeSingle();
-      
-      if (!reviewError && reviewData) {
-        setReviewStage(reviewData);
-      }
-      
-      // Fetch existing images
-      const { data: imageData, error: imageError } = await supabase
-        .from('dog_park_facility_images')
-        .select('*')
-        .eq('park_id', parkId);
-      
-      if (imageError) throw imageError;
-      
-      // Initialize images array with existing images
-      const existingImages = imageData || [];
-      
-      // Create initial images array with all required types
-      const initialImages: FacilityImage[] = Object.entries(IMAGE_TYPES)
-        .filter(([key, config]) => {
-          // Include if it's required or if the conditional feature is enabled
-          if (config.required) return true;
-          
-          if (config.conditionalOn) {
-            const path = config.conditionalOn.split('.');
-            if (path.length === 1) {
-              return parkData[path[0]];
-            } else if (path.length === 2) {
-              return parkData[path[0]][path[1]];
-            }
-          }
-          
-          return false;
-        })
-        .map(([key, config]) => {
-          // Check if we have an existing image for this type
-          const existing = existingImages.find(img => img.image_type === key);
-          
-          if (existing) {
-            return {
-              id: existing.id,
-              image_type: key,
-              image_url: existing.image_url,
-              is_approved: existing.is_approved,
-              admin_notes: existing.admin_notes
-            };
-          }
-          
-          // Otherwise create a new empty entry
-          return {
-            image_type: key,
-            image_url: undefined,
-            is_approved: null
-          };
-        });
-      
-      setImages(initialImages);
-
       // Fetch bank account information
       const { data: bankData, error: bankError } = await supabase
         .rpc('get_owner_bank_account');
@@ -271,8 +196,7 @@ export function ParkRegistrationSecondStage() {
         });
       }
     } catch (error) {
-      console.error('Error fetching park data:', error);
-      setError('データの取得に失敗しました。');
+      setError((error as Error).message || 'エラーが発生しました');
     } finally {
       setIsLoading(false);
     }
@@ -411,7 +335,7 @@ export function ParkRegistrationSecondStage() {
       }
       
       // Save bank account information
-      const { data, error } = await supabase.rpc('update_owner_bank_account', {
+      const { error } = await supabase.rpc('update_owner_bank_account', {
         bank_name_param: bankAccount.bank_name,
         bank_code_param: bankAccount.bank_code,
         branch_name_param: bankAccount.branch_name,
@@ -429,9 +353,9 @@ export function ParkRegistrationSecondStage() {
       setTimeout(() => {
         setBankSuccess('');
       }, 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving bank account:', error);
-      setBankError(error.message || '振込先情報の保存に失敗しました');
+      setBankError((error as Error).message || '振込先情報の保存に失敗しました');
     } finally {
       setIsSavingBank(false);
     }
@@ -444,18 +368,19 @@ export function ParkRegistrationSecondStage() {
       
       // Check if all required images are uploaded
       const requiredTypes = Object.entries(IMAGE_TYPES)
-        .filter(([key, config]) => {
+        .filter(([, config]) => {
           if (config.required) return true;
-          
           if (config.conditionalOn && park) {
             const path = config.conditionalOn.split('.');
             if (path.length === 1) {
-              return park[path[0]];
+              return ((park as unknown) as Record<string, unknown>)[path[0]] ?? false;
             } else if (path.length === 2) {
-              return park[path[0]][path[1]];
+              const parent = ((park as unknown) as Record<string, unknown>)[path[0]];
+              if (parent && typeof parent === 'object') {
+                return (parent as Record<string, unknown>)[path[1]] ?? false;
+              }
             }
           }
-          
           return false;
         })
         .map(([key]) => key);
@@ -484,7 +409,7 @@ export function ParkRegistrationSecondStage() {
       }
       
       // Submit for review using RPC function
-      const { data, error } = await supabase.rpc('submit_second_stage_review', {
+      const { error } = await supabase.rpc('submit_second_stage_review', {
         park_id_param: parkId
       });
       
@@ -522,9 +447,9 @@ export function ParkRegistrationSecondStage() {
       setTimeout(() => {
         navigate('/owner-dashboard');
       }, 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error submitting review:', error);
-      setError('審査申請に失敗しました: ' + error.message);
+      setError('審査申請に失敗しました: ' + (error as Error).message);
     } finally {
       setIsSubmitting(false);
     }
@@ -538,24 +463,6 @@ export function ParkRegistrationSecondStage() {
     } else {
       return { icon: Clock, color: 'text-yellow-600', label: '審査中' };
     }
-  };
-
-  const getImageTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      overview: '施設全景',
-      entrance: '入口',
-      large_dog_area: '大型犬エリア',
-      small_dog_area: '小型犬エリア',
-      private_booth: 'プライベートブース',
-      parking: '駐車場',
-      shower: 'シャワー設備',
-      restroom: 'トイレ',
-      agility: 'アジリティ設備',
-      rest_area: '休憩スペース',
-      water_station: '給水設備'
-    };
-    
-    return labels[type] || type;
   };
 
   if (isLoading) {
@@ -766,8 +673,8 @@ export function ParkRegistrationSecondStage() {
                 const isRequired = imageTypeConfig.required;
                 
                 let approvalStatus = null;
-                if (image.is_approved !== null && image.image_url) {
-                  const status = getApprovalStatus(image.is_approved);
+                if ((image.is_approved ?? null) !== null && image.image_url) {
+                  const status = getApprovalStatus(image.is_approved ?? null);
                   const StatusIcon = status.icon;
                   approvalStatus = (
                     <div className={`flex items-center space-x-1 ${status.color}`}>
@@ -799,7 +706,7 @@ export function ParkRegistrationSecondStage() {
                       <div className="relative">
                         <div 
                           className="h-40 bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
-                          onClick={() => setShowImagePreview(image.image_url)}
+                          onClick={() => setShowImagePreview(image.image_url || null)}
                         >
                           <img 
                             src={image.image_url} 
@@ -812,7 +719,7 @@ export function ParkRegistrationSecondStage() {
                         </div>
                         <div className="absolute top-2 right-2 flex space-x-2">
                           <button
-                            onClick={() => setShowImagePreview(image.image_url)}
+                            onClick={() => setShowImagePreview(image.image_url || null)}
                             className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
                           >
                             <ImageIcon className="w-4 h-4 text-blue-600" />
@@ -820,9 +727,9 @@ export function ParkRegistrationSecondStage() {
                           <button
                             onClick={() => handleDeleteImage(image.id)}
                             className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
-                            disabled={image.is_approved === true}
+                            disabled={(image.is_approved ?? null) === true}
                           >
-                            <Trash2 className={`w-4 h-4 ${image.is_approved === true ? 'text-gray-400' : 'text-red-600'}`} />
+                            <Trash2 className={`w-4 h-4 ${(image.is_approved ?? null) === true ? 'text-gray-400' : 'text-red-600'}`} />
                           </button>
                         </div>
                         

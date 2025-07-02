@@ -3,7 +3,7 @@ import Card from './Card';
 import Button from './Button';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
-import { Clock, Key, Copy, CheckCircle, AlertTriangle, RefreshCw, QrCode, CreditCard, Calendar } from 'lucide-react';
+import { Clock, Key, Copy, CheckCircle, AlertTriangle, RefreshCw, CreditCard, Calendar } from 'lucide-react';
 import type { Reservation } from '../types';
 
 interface PinCodeGeneratorProps {
@@ -171,22 +171,20 @@ export function PinCodeGenerator({
       setTimeout(() => {
         setShowSuccessMessage(false);
       }, 3000);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error generating PIN:', err);
-      
       // 決済が必要な場合の特別なハンドリング
-      if (err.message && err.message.startsWith('PAYMENT_REQUIRED:')) {
-        const message = err.message.replace('PAYMENT_REQUIRED:', '').trim();
+      if ((err as Error).message && (err as Error).message.startsWith('PAYMENT_REQUIRED:')) {
+        const message = (err as Error).message.replace('PAYMENT_REQUIRED:', '').trim();
         setPaymentMessage(message);
         setShowPaymentRequired(true);
         setError(null);
       } else {
-        setError(err.message || 'PINコードの生成に失敗しました');
+        setError((err as Error).message || 'PINコードの生成に失敗しました');
         setShowPaymentRequired(false);
       }
-      
       // エラーコールバック
-      if (onError) onError(err.message || 'PINコードの生成に失敗しました');
+      if (onError) onError((err as Error).message || 'PINコードの生成に失敗しました');
     } finally {
       setIsGenerating(false);
     }

@@ -17,16 +17,13 @@ import {
   Key,
   QrCode,
   FileText,
-  Image as ImageIcon,
-  X,
-  LogIn,
-  LogOut
+  Image as ImageIcon
 } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import Select from '../components/Select';
 import { useAuth } from '../context/AuthContext';
 import { PinCodeGenerator } from '../components/PinCodeGenerator';
+import { supabase } from '../utils/supabase';
 import type { DogPark, SmartLock, Dog } from '../types';
 
 export function ParkManagement() {
@@ -569,7 +566,7 @@ export function ParkManagement() {
                 }`}
                 onClick={() => setPinPurpose('entry')}
               >
-                <LogIn className="w-5 h-5" />
+                <ArrowLeft className="w-5 h-5" />
                 <span>入場</span>
               </button>
               <button
@@ -580,7 +577,7 @@ export function ParkManagement() {
                 }`}
                 onClick={() => setPinPurpose('exit')}
               >
-                <LogOut className="w-5 h-5" />
+                <ArrowLeft className="w-5 h-5 rotate-180" />
                 <span>退場</span>
               </button>
             </div>
@@ -656,7 +653,7 @@ export function ParkManagement() {
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <PawPrint className="w-6 h-6 text-gray-500" />
+                              <div className="w-6 h-6 text-gray-500">🐾</div>
                             )}
                           </div>
                           <div>
@@ -810,69 +807,3 @@ export function ParkManagement() {
   );
 }
 
-// LogIn component for the dashboard
-function LogIn({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-      <polyline points="10 17 15 12 10 7" />
-      <line x1="15" y1="12" x2="3" y2="12" />
-    </svg>
-  );
-}
-
-// LogOut component for the dashboard
-function LogOut({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-  );
-}
-
-function PawPrint({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M13 8a3 3 0 0 0-3-3 1 1 0 0 0-2 0 3 3 0 0 0-3 3 6 6 0 0 0 8 0"></path>
-      <path d="M10 8v1"></path>
-      <path d="M7 8v1"></path>
-      <path d="M13 8v1"></path>
-      <path d="M16 8v1"></path>
-      <path d="M19.5 9.5 21 11l-1.5 1.5"></path>
-      <path d="M19.5 14.5 21 16l-1.5 1.5"></path>
-      <path d="M19.5 19.5 21 21l-1.5 1.5"></path>
-      <path d="M4.5 9.5 3 11l1.5 1.5"></path>
-      <path d="M4.5 14.5 3 16l1.5 1.5"></path>
-      <path d="M4.5 19.5 3 21l1.5 1.5"></path>
-    </svg>
-  );
-}

@@ -5,17 +5,15 @@ import {
   Globe, 
   CheckCircle, 
   AlertTriangle, 
-  Loader, 
   ExternalLink,
   Copy,
   RefreshCw,
   Clock,
-  Calendar,
   History
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { useAuth } from '../context/AuthContext';
+
 import { deployToNetlify, getDeploymentStatus } from '../utils/deployUtils';
 import { getDeploymentStatus as getDeployStatus } from '../utils/deploymentStatus';
 import { safeGetItem, safeSetItem } from '../utils/safeStorage';
@@ -30,7 +28,7 @@ interface DeploymentStatus {
 }
 
 export function Deploy() {
-  const { user } = useAuth();
+
   const navigate = useNavigate();
   const [isDeploying, setIsDeploying] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
@@ -104,9 +102,8 @@ export function Deploy() {
       
       // コンポーネントのアンマウント時にインターバルをクリア
       return () => clearInterval(intervalId);
-    } catch (err: any) {
-      console.error('Deploy error:', err);
-      setError(err.message || 'デプロイに失敗しました。');
+    } catch (err) {
+      setError((err as Error).message || 'デプロイに失敗しました');
     } finally {
       setIsDeploying(false);
     }
@@ -133,9 +130,9 @@ export function Deploy() {
       } else {
         setSuccess('デプロイは進行中です。ステータスを確認してください。');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error checking deployment status:', err);
-      setError(err.message || 'デプロイステータスの確認に失敗しました。');
+      setError((err as Error).message || 'デプロイステータスの確認に失敗しました');
     } finally {
       setIsCheckingStatus(false);
     }
@@ -174,7 +171,7 @@ export function Deploy() {
       let history = JSON.parse(savedHistory);
       
       // デプロイIDに一致する履歴を更新
-      history = history.map((item: any) => 
+      history = history.map((item: Record<string, unknown>) => 
         item.deploy_id === deployment.deploy_id 
           ? { ...item, status: deployment.status, deploy_url: deployment.deploy_url } 
           : item
@@ -245,9 +242,9 @@ export function Deploy() {
       if (status.status === 'ready') {
         setSuccess('デプロイが完了しています！以下のURLでサイトを確認できます。');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error checking deployment status:', err);
-      setError(err.message || 'デプロイステータスの確認に失敗しました。');
+      setError((err as Error).message || 'デプロイステータスの確認に失敗しました');
     } finally {
       setIsCheckingStatus(false);
     }

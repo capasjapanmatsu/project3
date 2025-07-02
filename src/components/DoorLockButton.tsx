@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import Button from './Button';
 import { useAuth } from '../context/AuthContext';
-import { Unlock, AlertTriangle, CheckCircle, Loader, Key, CreditCard, Calendar } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Loader, Key, CreditCard, Calendar } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import type { Reservation } from '../types';
 
 interface DoorLockButtonProps {
   lockId: string;
-  authToken?: string;
   className?: string;
   variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'warning';
   size?: 'xs' | 'sm' | 'md' | 'lg';
@@ -20,7 +19,6 @@ interface DoorLockButtonProps {
 
 export function DoorLockButton({
   lockId,
-  authToken,
   className = '',
   variant = 'primary',
   size = 'md',
@@ -31,9 +29,9 @@ export function DoorLockButton({
   reservationId
 }: DoorLockButtonProps) {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
   const [showPaymentRequired, setShowPaymentRequired] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState<string>('');
 
@@ -84,7 +82,7 @@ export function DoorLockButton({
   useEffect(() => {
     if (success) {
       const timer = setTimeout(() => {
-        setSuccess(false);
+        setSuccess(null);
       }, 3000);
       
       return () => clearTimeout(timer);
@@ -104,9 +102,9 @@ export function DoorLockButton({
   const handleOpenLock = async () => {
     if (!user) return;
     
-    setLoading(true);
+    setIsGenerating(true);
     setError(null);
-    setSuccess(false);
+    setSuccess(null);
     
     try {
       // PINコードを生成するエンドポイントを呼び出す
@@ -157,25 +155,23 @@ export function DoorLockButton({
       // PINコードを表示
       alert(`PINコード: ${pin}\n\nこのPINコードをスマートロックのキーパッドに入力してください。`);
       
-      setSuccess(true);
+      setSuccess(pin);
       if (onSuccess) onSuccess();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error generating PIN:', err);
-      
       // 決済が必要な場合の特別なハンドリング
-      if (err.message && err.message.startsWith('PAYMENT_REQUIRED:')) {
-        const message = err.message.replace('PAYMENT_REQUIRED:', '').trim();
+      if ((err as Error).message && (err as Error).message.startsWith('PAYMENT_REQUIRED:')) {
+        const message = (err as Error).message.replace('PAYMENT_REQUIRED:', '').trim();
         setPaymentMessage(message);
         setShowPaymentRequired(true);
         setError(null);
       } else {
-        setError(err.message || 'PINコードの生成に失敗しました');
+        setError((err as Error).message || 'PINコードの生成に失敗しました');
         setShowPaymentRequired(false);
       }
-      
-      if (onError) onError(err.message || 'PINコードの生成に失敗しました');
+      if (onError) onError((err as Error).message || 'PINコードの生成に失敗しました');
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
   };
 
@@ -183,12 +179,12 @@ export function DoorLockButton({
     <div className="space-y-2">
       <Button
         onClick={handleOpenLock}
-        isLoading={loading}
+        isLoading={isGenerating}
         variant={variant}
         size={size}
         className={`flex items-center ${className}`}
       >
-        {loading ? (
+        {isGenerating ? (
           <Loader className="w-4 h-4 mr-2 animate-spin" />
         ) : (
           <Key className="w-4 h-4 mr-2" />
