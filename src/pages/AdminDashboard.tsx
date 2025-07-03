@@ -21,7 +21,7 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
-import type { DogPark, VaccineCertification, Profile, Dog } from '../types';
+import type { DogPark, VaccineCertification, Profile, Dog, NewsAnnouncement } from '../types';
 
 interface AdminStats {
   totalUsers: number;
@@ -72,6 +72,9 @@ export function AdminDashboard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingError, setProcessingError] = useState('');
   const [processingSuccess, setProcessingSuccess] = useState('');
+  const [newsList, setNewsList] = useState<NewsAnnouncement[]>([]);
+  const [newsTitle, setNewsTitle] = useState('');
+  const [newsContent, setNewsContent] = useState('');
 
   useEffect(() => {
     // 管理者権限チェック（実際の実装では適切な権限チェックが必要）
@@ -366,6 +369,38 @@ export function AdminDashboard() {
     user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // 新着情報の取得
+  useEffect(() => {
+    fetchNews();
+  }, []);
+  const fetchNews = async () => {
+    const { data, error } = await supabase
+      .from('news_announcements')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (!error) setNewsList(data || []);
+  };
+  // 新着情報の追加
+  const handleAddNews = async () => {
+    if (!newsTitle || !newsContent) return;
+    const { data, error } = await supabase
+      .from('news_announcements')
+      .insert([{ title: newsTitle, content: newsContent }]);
+    if (!error) {
+      setNewsTitle('');
+      setNewsContent('');
+      fetchNews();
+    }
+  };
+  // 新着情報の削除
+  const handleDeleteNews = async (id: string) => {
+    const { error } = await supabase
+      .from('news_announcements')
+      .delete()
+      .eq('id', id);
+    if (!error) fetchNews();
+  };
 
   if (isLoading) {
     return (
@@ -741,6 +776,39 @@ export function AdminDashboard() {
               </Card>
             </Link>
           </div>
+
+          <Card className="p-6 mt-6">
+            <h2 className="text-lg font-semibold mb-4">新着情報管理</h2>
+            {/* 新規追加フォーム */}
+            <div className="flex flex-col md:flex-row md:items-end gap-4 mb-6">
+              <Input
+                label="タイトル"
+                value={newsTitle}
+                onChange={e => setNewsTitle(e.target.value)}
+                className="flex-1"
+              />
+              <Input
+                label="内容"
+                value={newsContent}
+                onChange={e => setNewsContent(e.target.value)}
+                className="flex-1"
+              />
+              <Button onClick={handleAddNews}>追加</Button>
+            </div>
+            {/* 一覧表示 */}
+            <div className="space-y-4">
+              {newsList.map(news => (
+                <div key={news.id} className="flex items-center justify-between border-b pb-2">
+                  <div>
+                    <div className="font-bold">{news.title}</div>
+                    <div className="text-sm text-gray-700">{news.content}</div>
+                    <div className="text-xs text-gray-500">{new Date(news.created_at).toLocaleString('ja-JP')}</div>
+                  </div>
+                  <Button variant="danger" size="sm" onClick={() => handleDeleteNews(news.id)}>削除</Button>
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
       )}
 
