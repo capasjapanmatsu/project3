@@ -1,2 +1,2 @@
 # .envファイルをGit管理対象外に追加
-.env 
+.env .env
