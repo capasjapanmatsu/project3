@@ -49,6 +49,9 @@ export function ParkRegistration() {
     },
     facilityDetails: '',
   });
+  const [identityFile, setIdentityFile] = useState<File | null>(null);
+  const [identityUploadUrl, setIdentityUploadUrl] = useState<string>('');
+  const [isUploadingIdentity, setIsUploadingIdentity] = useState(false);
 
   useEffect(() => {
     // Check if user is logged in
@@ -412,12 +415,50 @@ export function ParkRegistration() {
     setCurrentStep(1);
   };
 
-  // 本人確認ステップ
+  // 本人確認資料アップロード処理
+  const handleIdentityFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setIdentityFile(e.target.files[0]);
+    }
+  };
+
+  const handleIdentityUpload = async () => {
+    if (!identityFile) {
+      setError('本人確認書類のファイルを選択してください。');
+      return;
+    }
+    if (!user) {
+      setError('ユーザー情報が取得できません。再度ログインしてください。');
+      return;
+    }
+    setIsUploadingIdentity(true);
+    setError('');
+    try {
+      // ファイル名例: userId_タイムスタンプ_元ファイル名
+      const fileName = `${user.id}_${Date.now()}_${identityFile.name}`;
+      const { data, error: uploadError } = await supabase.storage
+        .from('identity-documents')
+        .upload(fileName, identityFile, { upsert: true });
+      if (uploadError) throw uploadError;
+      // パスをDBに保存
+      const { error: dbError } = await supabase
+        .from('owner_verifications')
+        .upsert({ user_id: user.id, document_url: data.path, status: 'uploaded', created_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      if (dbError) throw dbError;
+      setIdentityUploadUrl(data.path);
+      setCurrentStep(3); // 次のステップへ
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'アップロードに失敗しました。');
+    } finally {
+      setIsUploadingIdentity(false);
+    }
+  };
+
+  // 本人確認資料アップロードUI
   if (currentStep === 2) {
     return (
       <div className="max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold text-center mb-8">ドッグラン登録 - 本人確認</h1>
-        
         <Card className="mb-6 bg-blue-50 border-blue-200">
           <div className="flex items-start space-x-3">
             <Shield className="w-6 h-6 text-blue-600 mt-1" />
@@ -425,19 +466,12 @@ export function ParkRegistration() {
               <h3 className="font-semibold text-blue-900 mb-2">本人確認について</h3>
               <div className="text-sm text-blue-800 space-y-1">
                 <p>安全なプラットフォーム運営のため、ドッグランオーナーには本人確認が必要です。</p>
-                <p>以下の手順で本人確認を完了してください：</p>
-                <ol className="list-decimal ml-5 space-y-1 mt-2">
-                  <li>「本人確認を開始」ボタンをクリックする</li>
-                  <li>Stripeの本人確認ページが開きます</li>
-                  <li>身分証明書（運転免許証、パスポートなど）をアップロード</li>
-                  <li>顔写真を撮影して本人確認を完了</li>
-                  <li>確認完了後、自動的にこのページに戻ります</li>
-                </ol>
+                <p>運転免許証、マイナンバーカード、パスポートなどの本人確認書類の画像をアップロードしてください。</p>
+                <p>アップロードされた書類は管理者が手動で確認します。</p>
               </div>
             </div>
           </div>
         </Card>
-
         {error && (
           <div className="mb-6 p-4 bg-red-50 rounded-lg">
             <div className="flex items-start space-x-2">
@@ -446,69 +480,40 @@ export function ParkRegistration() {
             </div>
           </div>
         )}
-
         <Card className="p-6">
-          <div className="text-center mb-6">
-            <Fingerprint className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold">本人確認</h2>
-            <p className="text-gray-600 mt-2">
-              安全なプラットフォーム運営のため、ドッグランオーナーには本人確認が必要です。
-              Stripeの安全な本人確認サービスを使用して、身分証明書と顔写真による本人確認を行います。
-            </p>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">本人確認書類のアップロード *</label>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={handleIdentityFileChange}
+              className="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">運転免許証・マイナンバーカード・パスポート等の画像またはPDF</p>
           </div>
-
-          <div className="bg-yellow-50 p-4 rounded-lg mb-6">
-            <div className="flex items-start space-x-2">
-              <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-              <div className="text-sm text-yellow-800">
-                <p className="font-medium mb-1">必要な書類</p>
-                <ul className="space-y-1">
-                  <li>• 運転免許証、パスポート、マイナンバーカードのいずれか</li>
-                  <li>• ウェブカメラまたはスマートフォンのカメラ（顔写真撮影用）</li>
-                  <li>• 本人確認は通常5分程度で完了します</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <Button
-              variant="secondary"
-              onClick={() => setCurrentStep(1)}
-            >
+          <div className="flex justify-between items-center mt-6">
+            <Button variant="secondary" onClick={() => setCurrentStep(1)}>
               前のステップに戻る
             </Button>
-            
-            {verificationSessionUrl ? (
-              <Button
-                onClick={() => window.location.href = verificationSessionUrl}
-                isLoading={isLoading}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Shield className="w-4 h-4 mr-2" />
-                本人確認を開始
-              </Button>
-            ) : (
-              <Button
-                onClick={createIdentityVerificationSession}
-                isLoading={isCreatingVerification}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Shield className="w-4 h-4 mr-2" />
-                本人確認セッションを作成
-              </Button>
-            )}
+            <Button
+              onClick={handleIdentityUpload}
+              isLoading={isUploadingIdentity}
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={!identityFile || isUploadingIdentity}
+            >
+              <Shield className="w-4 h-4 mr-2" />
+              書類をアップロードして次へ
+            </Button>
           </div>
         </Card>
-
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <div className="flex items-start space-x-3">
             <Lock className="w-5 h-5 text-gray-600 mt-1" />
             <div className="text-sm text-gray-700">
               <p className="font-medium mb-1">プライバシーと安全性</p>
               <p>
-                本人確認情報は暗号化され、Stripeのセキュアなサーバーで安全に保管されます。
-                当サービスでは、本人確認が完了したかどうかの情報のみを保持し、身分証明書や顔写真などの個人情報は保存しません。
+                アップロードされた本人確認書類は厳重に管理され、管理者以外が閲覧することはありません。
+                審査完了後、速やかに削除されます。
               </p>
             </div>
           </div>
@@ -1251,22 +1256,13 @@ export function ParkRegistration() {
               <DollarSign className="w-4 h-4 mr-1" />
               <span className="text-sm">収益システムについて</span>
             </Link>
-            <div className="flex space-x-3">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setCurrentStep(1)}
-              >
-                第一審査に戻る
-              </Button>
-              <Button 
-                type="submit" 
-                isLoading={isLoading}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                第二審査に申し込む
-              </Button>
-            </div>
+            <Button 
+              type="submit" 
+              isLoading={isLoading}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              第二審査に申し込む
+            </Button>
           </div>
         </form>
       </Card>
