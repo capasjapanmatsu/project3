@@ -4,7 +4,7 @@ import Input from '../components/Input';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { supabase } from '../utils/supabase';
-import { Shield, AlertTriangle, MapPin, Phone, Mail, User, Loader, Lock } from 'lucide-react';
+import { Shield, AlertTriangle, MapPin, Phone, Mail, User, Loader, Lock, Eye, EyeOff } from 'lucide-react';
 import { lookupPostalCode, formatAddress } from '../utils/postalCodeLookup';
 import { safeSetItem } from '../utils/safeStorage';
 

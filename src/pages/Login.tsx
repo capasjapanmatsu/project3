@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
-import { Mail, Lock, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Mail, Lock, AlertTriangle, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { safeGetItem, safeSetItem } from '../utils/safeStorage';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +15,7 @@ export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordLogin, setIsPasswordLogin] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   // ローカルストレージからメールアドレスを取得して自動入力
@@ -153,15 +154,31 @@ export function Login() {
               icon={<Mail className="w-4 h-4 text-gray-500" />}
               placeholder="example@email.com"
             />
-            <Input
-              label="パスワード"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              icon={<Lock className="w-4 h-4 text-gray-500" />}
-              placeholder="パスワード"
-            />
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                パスワード *
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="パスワード"
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-4 w-4 text-gray-500" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
             <Button type="submit" isLoading={isLoading} className="w-full mt-4 bg-blue-600 hover:bg-blue-700">
               <Lock className="w-4 h-4 mr-2" />
               ログイン
