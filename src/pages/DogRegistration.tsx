@@ -554,14 +554,14 @@ export function DogRegistration() {
             const rabiesExt = formData.rabiesVaccineImage.name.split('.').pop() || 'jpg';
             const timestamp = Date.now();
             rabiesPath = `${selectedDog.id}/rabies_${timestamp}.${rabiesExt}`;
-            
+            console.log('rabiesPath:', rabiesPath);
+            console.log('rabiesVaccineImage:', formData.rabiesVaccineImage);
             const { error: rabiesError } = await supabase.storage
               .from('vaccine-certs')
               .upload(rabiesPath, formData.rabiesVaccineImage, {
                 cacheControl: '3600',
                 upsert: true
               });
-              
             if (rabiesError) {
               console.error('Rabies upload error:', rabiesError);
               throw rabiesError;
@@ -572,14 +572,14 @@ export function DogRegistration() {
             const comboExt = formData.comboVaccineImage.name.split('.').pop() || 'jpg';
             const timestamp = Date.now();
             comboPath = `${selectedDog.id}/combo_${timestamp}.${comboExt}`;
-            
+            console.log('comboPath:', comboPath);
+            console.log('comboVaccineImage:', formData.comboVaccineImage);
             const { error: comboError } = await supabase.storage
               .from('vaccine-certs')
               .upload(comboPath, formData.comboVaccineImage, {
                 cacheControl: '3600',
                 upsert: true
               });
-              
             if (comboError) {
               console.error('Combo upload error:', comboError);
               throw comboError;
