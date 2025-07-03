@@ -14,8 +14,6 @@ export function ParkRegistration() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [currentStep, setCurrentStep] = useState(1); // 1: 第一審査, 2: 本人確認, 3: 基本情報入力
-  const [verificationSessionUrl, setVerificationSessionUrl] = useState('');
-  const [isCreatingVerification, setIsCreatingVerification] = useState(false);
   const [rejectedParks, setRejectedParks] = useState<DogPark[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null);
@@ -29,7 +27,6 @@ export function ParkRegistration() {
     isAntiSocialForces: '', // 'yes' or 'no' (反社チェック)
     canVisitWeekly: '', // 'yes' or 'no' (週1回の訪問が可能か)
     canReachQuickly: '', // 'yes' or 'no' (緊急時に1時間以内に到着可能か)
-    
     // 基本情報
     name: '',
     description: '',
@@ -59,10 +56,6 @@ export function ParkRegistration() {
       navigate('/login');
       return;
     }
-    
-    // Check if identity verification is already completed
-    checkIdentityVerification();
-    
     // Fetch rejected parks
     fetchRejectedParks();
   }, [user, navigate]);
@@ -74,139 +67,10 @@ export function ParkRegistration() {
         .select('*')
         .eq('owner_id', user?.id)
         .eq('status', 'rejected');
-      
       if (error) throw error;
       setRejectedParks(data || []);
     } catch (err) {
       console.error('Error fetching rejected parks:', err);
-    }
-  };
-
-  const checkIdentityVerification = async () => {
-    try {
-      // Check if the user has already completed identity verification
-      const { data, error } = await supabase
-        .from('owner_verifications')
-        .select('status, verification_id')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (data && data.status === 'verified') {
-        // User has already been verified
-        setCurrentStep(3);
-      } else if (data && data.verification_id) {
-        // Verification is in progress, check status
-        await checkVerificationStatus(data.verification_id);
-      }
-    } catch (err) {
-      console.error('Error checking identity verification:', err);
-    }
-  };
-
-  const checkVerificationStatus = async (verificationId: string) => {
-    try {
-      setIsLoading(true);
-      setError('');
-
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.access_token) {
-        throw new Error('認証が必要です');
-      }
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-identity-verification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          verificationId
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '本人確認ステータスの取得に失敗しました');
-      }
-
-      const result = await response.json();
-      
-      if (result.status === 'verified') {
-        // Move to next step
-        setCurrentStep(3);
-      } else if (result.status === 'processing') {
-        // Still processing
-        setError('本人確認は処理中です。しばらく経ってから再度お試しください。');
-      } else {
-        // Failed or requires action
-        setError('本人確認に問題があります。もう一度お試しください。');
-      }
-    } catch (err: unknown) {
-      console.error('Error checking verification status:', err);
-      setError((err as Error).message || '本人確認ステータスの取得に失敗しました');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const createIdentityVerificationSession = async () => {
-    try {
-      setIsCreatingVerification(true);
-      setError('');
-
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.access_token) {
-        throw new Error('認証が必要です');
-      }
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-identity-verification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          returnUrl: `${window.location.origin}/register-park`
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '本人確認セッションの作成に失敗しました');
-      }
-
-      const { url, id } = await response.json();
-      
-      if (!url || !id) {
-        throw new Error('本人確認セッションの作成に失敗しました');
-      }
-
-      // Save verification session ID to database
-      const { error: saveError } = await supabase
-        .from('owner_verifications')
-        .upsert({
-          user_id: user?.id,
-          verification_id: id,
-          status: 'pending',
-          created_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
-
-      if (saveError) {
-        throw saveError;
-      }
-
-      setVerificationSessionUrl(url);
-    } catch (err: unknown) {
-      console.error('Error creating verification session:', err);
-      setError((err as Error).message || '本人確認セッションの作成に失敗しました');
-      // Go back to first step
-      setCurrentStep(1);
-    } finally {
-      setIsCreatingVerification(false);
     }
   };
 
@@ -301,8 +165,6 @@ export function ParkRegistration() {
 
     // 第一審査通過 - 本人確認へ
     setCurrentStep(2);
-    // 本人確認セッションを作成
-    createIdentityVerificationSession();
   };
 
   const handleFinalSubmit = async (e: React.FormEvent) => {
