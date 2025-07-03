@@ -332,6 +332,9 @@ export function Home() {
                         <img
                           src={dog.image_url}
                           alt={dog.name}
+                          width={56}
+                          height={56}
+                          loading="lazy"
                           style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: '50%' }}
                           onError={(e) => {
                             e.currentTarget.src = 'https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300';
@@ -734,6 +737,9 @@ export function Home() {
                       <img
                         src={dog.image_url}
                         alt={dog.name}
+                        width={56}
+                        height={56}
+                        loading="lazy"
                         style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: '50%' }}
                         onError={(e) => {
                           e.currentTarget.src = 'https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300';
