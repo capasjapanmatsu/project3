@@ -8,6 +8,7 @@ import { dogBreeds } from '../data/dogBreeds';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../context/AuthContext';
 import type { Dog } from '../types';
+import imageCompression from 'browser-image-compression';
 
 export function DogRegistration() {
 
@@ -122,33 +123,41 @@ export function DogRegistration() {
   };
 
   // 画像ファイルの選択処理
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       console.log('Selected file:', file.name, file.size, file.type);
-      
       // ファイルサイズチェック（10MB以下）
       if (file.size > 10 * 1024 * 1024) {
         setError('画像ファイルは10MB以下にしてください。');
         return;
       }
-
       // ファイル形式チェック
       if (!file.type.startsWith('image/')) {
         setError('画像ファイルを選択してください。');
         return;
       }
-
-      setImageFile(file);
-      
-      // プレビュー画像を作成
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
-        console.log('Image preview created');
-      };
-      reader.readAsDataURL(file);
-      setError('');
+      // 画像圧縮・リサイズ処理
+      try {
+        const options = {
+          maxSizeMB: 0.3, // 最大0.3MB
+          maxWidthOrHeight: 800, // 最大幅・高さ800px
+          useWebWorker: true,
+        };
+        const compressedFile = await imageCompression(file, options);
+        setImageFile(compressedFile);
+        // プレビュー画像を作成
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setImagePreview(e.target?.result as string);
+          console.log('Image preview created (compressed)');
+        };
+        reader.readAsDataURL(compressedFile);
+        setError('');
+      } catch (err) {
+        setError('画像の圧縮・リサイズに失敗しました');
+        return;
+      }
     }
   };
 
