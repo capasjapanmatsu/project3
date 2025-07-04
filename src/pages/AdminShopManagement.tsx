@@ -31,7 +31,7 @@ interface OrderWithItems extends Order {
 }
 
 export function AdminShopManagement() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'news'>('orders');
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
@@ -93,14 +93,14 @@ export function AdminShopManagement() {
 
   useEffect(() => {
     // 管理者権限チェック
-    if (user?.email !== 'capasjapan@gmail.com') {
+    if (!isAdmin) {
       navigate('/');
       return;
     }
     
     fetchData();
     fetchDogParks();
-  }, [user, navigate, activeTab]);
+  }, [isAdmin, navigate, activeTab]);
 
   const fetchData = async () => {
     try {

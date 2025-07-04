@@ -46,7 +46,7 @@ interface PendingVaccine extends VaccineCertification {
 }
 
 export function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'parks' | 'vaccines' | 'users'>('overview');
   const [stats, setStats] = useState<AdminStats>({
@@ -77,15 +77,15 @@ export function AdminDashboard() {
   const [newsContent, setNewsContent] = useState('');
 
   useEffect(() => {
-    // 管理者権限チェック（実際の実装では適切な権限チェックが必要）
-    if (user?.email !== 'capasjapan@gmail.com') {
+    // 管理者権限チェック
+    if (!isAdmin) {
       // 管理者でない場合はリダイレクト
       navigate('/');
       return;
     }
     
     fetchAdminData();
-  }, [user, navigate]);
+  }, [isAdmin, navigate]);
 
   const fetchAdminData = async () => {
     try {

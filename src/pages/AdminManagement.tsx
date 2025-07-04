@@ -67,7 +67,7 @@ interface FacilityImage {
 }
 
 export function AdminManagement() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'parks' | 'vaccines'>('parks');
   const [pendingParks, setPendingParks] = useState<PendingPark[]>([]);
@@ -86,13 +86,13 @@ export function AdminManagement() {
 
   useEffect(() => {
     // 管理者権限チェック
-    if (user?.email !== 'capasjapan@gmail.com') {
+    if (!isAdmin) {
       navigate('/');
       return;
     }
     
     fetchData();
-  }, [user, navigate, activeTab]);
+  }, [isAdmin, navigate, activeTab]);
 
   const fetchData = async () => {
     try {

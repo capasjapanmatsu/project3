@@ -9,12 +9,13 @@ import DogInfoBreeds from './pages/DogInfoBreeds';
 import DogInfoParasite from './pages/DogInfoParasite';
 import DogInfoSnack from './pages/DogInfoSnack';
 import DogInfoShow from './pages/DogInfoShow';
+import { ResetPassword } from './pages/ResetPassword';
+import { ForgotPassword } from './pages/ForgotPassword';
 
 // Lazy load pages for better performance
 const Home = lazy(() => import('./pages/Home').then(module => ({ default: module.Home })));
 const Login = lazy(() => import('./pages/Login').then(module => ({ default: module.Login })));
 const Register = lazy(() => import('./pages/Register').then(module => ({ default: module.Register })));
-const ResetPassword = lazy(() => import('./pages/ResetPassword').then(module => ({ default: module.ResetPassword })));
 const UserDashboard = lazy(() => import('./pages/UserDashboard').then(module => ({ default: module.UserDashboard })));
 const DogRegistration = lazy(() => import('./pages/DogRegistration').then(module => ({ default: module.DogRegistration })));
 const DogParkList = lazy(() => import('./pages/DogParkList').then(module => ({ default: module.DogParkList })));
@@ -110,6 +111,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/parks" element={<DogParkList />} />
             <Route path="/parks/:parkId" element={<DogParkDetail />} />
             <Route path="/parks/rules" element={<DogParkRules />} />

@@ -27,7 +27,7 @@ interface OwnerRevenue {
 }
 
 export function AdminRevenueReport() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -65,13 +65,13 @@ export function AdminRevenueReport() {
 
   useEffect(() => {
     // 管理者権限チェック
-    if (user?.email !== 'capasjapan@gmail.com') {
+    if (!isAdmin) {
       navigate('/');
       return;
     }
     
     fetchRevenueData();
-  }, [user, navigate, selectedYear, selectedMonth]);
+  }, [isAdmin, navigate, selectedYear, selectedMonth]);
 
   useEffect(() => {
     if (revenueData.length > 0) {

@@ -7,12 +7,11 @@ import { useSubscription } from '../hooks/useSubscription';
 
 // Memoize the Navbar component to prevent unnecessary re-renders
 export const Navbar = memo(function Navbar() {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [userName, setUserName] = useState<string>('');
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [cartItemCount, setCartItemCount] = useState(0);
-  const [isAdmin, setIsAdmin] = useState(false);
   const { isActive: hasSubscription } = useSubscription();
 
   // Memoize fetch functions to prevent unnecessary re-renders
@@ -114,10 +113,7 @@ export const Navbar = memo(function Navbar() {
   }, [user]);
 
   useEffect(() => {
-    if (user && isAuthenticated) {
-      // Check if user is admin
-      setIsAdmin(user.email === 'capasjapan@gmail.com');
-      
+    if (user && isAdmin) {
       // Fetch data with error handling
       fetchUserName().catch(console.error);
       fetchUnreadNotifications().catch(console.error);
@@ -184,9 +180,8 @@ export const Navbar = memo(function Navbar() {
       setUserName('');
       setUnreadNotifications(0);
       setCartItemCount(0);
-      setIsAdmin(false);
     }
-  }, [user, isAuthenticated, fetchUserName, fetchUnreadNotifications, fetchCartItemCount]);
+  }, [user, isAdmin, fetchUserName, fetchUnreadNotifications, fetchCartItemCount]);
 
   const handleLogout = async () => {
     try {
@@ -232,7 +227,7 @@ export const Navbar = memo(function Navbar() {
           </Link>
           
           <div className="flex items-center space-x-4">
-            {user && isAuthenticated ? (
+            {user && isAdmin ? (
               <>
                 <span className="text-gray-700 hidden md:inline-block">
                   こんにちは、{userName || 'ユーザー'}さん
@@ -299,16 +294,14 @@ export const Navbar = memo(function Navbar() {
                     </span>
                   )}
                 </Link>
-                {isAdmin && (
-                  <Link 
-                    to="/admin" 
-                    className="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors"
-                    aria-label="管理者ページ"
-                  >
-                    <Shield className="h-4 w-4" aria-hidden="true" />
-                    <span className="hidden md:inline">管理者</span>
-                  </Link>
-                )}
+                <Link 
+                  to="/admin" 
+                  className="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors"
+                  aria-label="管理者ページ"
+                >
+                  <Shield className="h-4 w-4" aria-hidden="true" />
+                  <span className="hidden md:inline">管理者</span>
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="flex items-center space-x-1 text-gray-600 hover:text-red-600 transition-colors"

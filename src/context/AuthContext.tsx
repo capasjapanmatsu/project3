@@ -12,6 +12,8 @@ interface AuthContextType {
   signInWithMagicLink: (email: string) => Promise<{ success: boolean; error?: string }>;
   verify2FA: (code: string) => Promise<{ success: boolean; error?: string }>;
   setIsTrustedDevice: (trusted: boolean) => void;
+  isAdmin: boolean;
+  userProfile: any;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -23,6 +25,8 @@ const AuthContext = createContext<AuthContextType>({
   signInWithMagicLink: async () => ({ success: false }),
   verify2FA: async () => ({ success: false }),
   setIsTrustedDevice: () => {},
+  isAdmin: false,
+  userProfile: null,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -30,21 +34,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  // ユーザープロフィールと管理者権限を取得する関数
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return null;
+      }
+
+      return profile;
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      return null;
+    }
+  };
+
+  // 管理者権限をチェックする関数
+  const checkAdminStatus = (user: User | null, profile: any) => {
+    if (!user) return false;
+    
+    // capasjapan@gmail.com または user_type = 'admin' の場合
+    return user.email === 'capasjapan@gmail.com' || profile?.user_type === 'admin';
+  };
 
   useEffect(() => {
     // セッションの確認
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setIsAuthenticated(!!session?.user);
+      
+      if (session?.user) {
+        const profile = await fetchUserProfile(session.user.id);
+        setUserProfile(profile);
+        setIsAdmin(checkAdminStatus(session.user, profile));
+      }
+      
       setLoading(false);
     });
 
     // 認証状態の変更を監視
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setIsAuthenticated(!!session?.user);
+      
+      if (session?.user) {
+        const profile = await fetchUserProfile(session.user.id);
+        setUserProfile(profile);
+        setIsAdmin(checkAdminStatus(session.user, profile));
+      } else {
+        setUserProfile(null);
+        setIsAdmin(false);
+      }
+      
       setLoading(false);
     });
 
@@ -140,7 +192,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated,
       signInWithMagicLink,
       verify2FA,
-      setIsTrustedDevice
+      setIsTrustedDevice,
+      isAdmin,
+      userProfile
     }}>
       {children}
     </AuthContext.Provider>
