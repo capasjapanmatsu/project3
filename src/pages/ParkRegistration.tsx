@@ -5,7 +5,7 @@ import Card from '../components/Card';
 import Input from '../components/Input';
 import { CheckCircle, AlertTriangle, FileText, Building, DollarSign, ShieldAlert, Shield, Fingerprint, Trash2, RefreshCw } from 'lucide-react';
 import { supabase } from '../utils/supabase';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import type { DogPark } from '../types';
 
 export function ParkRegistration() {

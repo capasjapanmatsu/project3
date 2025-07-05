@@ -3,7 +3,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import { Mail, Lock, AlertTriangle, ArrowRight, Eye, EyeOff } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import { safeGetItem, safeSetItem } from '../utils/safeStorage';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabase';

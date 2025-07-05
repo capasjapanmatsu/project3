@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Crown, 
-  CheckCircle, 
-  Calendar, 
-  CreditCard, 
+import useAuth from '../context/AuthContext'; // ← ここだけでOK
+import {
+  Crown,
+  CheckCircle,
+  Calendar,
+  CreditCard,
   ArrowLeft,
   PawPrint,
   ShoppingBag,
@@ -19,12 +20,10 @@ import {
 } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { useAuth } from '../context/AuthContext';
 import { useStripe } from '../hooks/useStripe';
 import { useSubscription } from '../hooks/useSubscription';
 import { products } from '../stripe-config';
 import { supabase } from '../utils/supabase';
-
 export function Subscription() {
   const navigate = useNavigate();
   const location = useLocation();

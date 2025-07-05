@@ -19,7 +19,7 @@ import {
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { supabase } from '../utils/supabase';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import { DoorLockButton } from '../components/DoorLockButton';
 import { ParkDetailHeader } from '../components/park/ParkDetailHeader';
 import { ParkImageGallery } from '../components/park/ParkImageGallery';

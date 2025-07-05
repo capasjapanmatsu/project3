@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import { PinCodeGenerator } from '../components/PinCodeGenerator';
 import { supabase } from '../utils/supabase';
 import type { DogPark, SmartLock, Dog } from '../types';

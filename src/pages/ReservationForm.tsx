@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import type { Dog, DogPark } from '../types';
 import Card from '../components/Card';

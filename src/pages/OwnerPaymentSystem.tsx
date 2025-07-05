@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, DollarSign, Calendar, Building, BarChart4, Download, CheckCircle, AlertTriangle, Ban, FileText, Clock } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 
 interface MonthlyPayout {

@@ -19,7 +19,7 @@ import {
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { supabase } from '../utils/supabase';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import type { Order, OrderItem } from '../types';
 
 interface OrderWithItems extends Order {

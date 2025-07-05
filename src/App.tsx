@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { Layout } from './components/Layout';
-import { useAuth } from './context/AuthContext';
+import Layout from './components/Layout';
+import useAuth from './context/AuthContext';
 import DogInfo from './pages/DogInfo';
 import DogInfoFoods from './pages/DogInfoFoods';
 import DogInfoVaccine from './pages/DogInfoVaccine';
@@ -9,8 +9,9 @@ import DogInfoBreeds from './pages/DogInfoBreeds';
 import DogInfoParasite from './pages/DogInfoParasite';
 import DogInfoSnack from './pages/DogInfoSnack';
 import DogInfoShow from './pages/DogInfoShow';
-import { ResetPassword } from './pages/ResetPassword';
-import { ForgotPassword } from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import ForgotPassword from './pages/ForgotPassword';
+
 
 // Lazy load pages for better performance
 const Home = lazy(() => import('./pages/Home').then(module => ({ default: module.Home })));

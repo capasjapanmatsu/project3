@@ -11,7 +11,7 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-export function Layout({ children }: LayoutProps) {
+const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const [isMiniApp, setIsMiniApp] = useState(false);
   const [isMiniAppPage, setIsMiniAppPage] = useState(false);
@@ -24,10 +24,10 @@ export function Layout({ children }: LayoutProps) {
   // Check if we're in PayPay Mini App environment
   useEffect(() => {
     const isPayPayMiniApp = typeof window !== 'undefined' && 
-                            window.pp && 
-                            typeof window.pp.getUAID === 'function';
+                            (window as any).pp && 
+                            typeof (window as any).pp.getUAID === 'function';
     setIsMiniApp(isPayPayMiniApp);
-    
+
     // Check if current page is a mini app specific page
     const miniAppPages = ['/mini-app-payment'];
     setIsMiniAppPage(miniAppPages.includes(location.pathname));
@@ -58,4 +58,6 @@ export function Layout({ children }: LayoutProps) {
       </div>
     </HelmetProvider>
   );
-}
+};
+
+export default Layout;

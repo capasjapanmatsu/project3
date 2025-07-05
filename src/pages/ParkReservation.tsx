@@ -4,7 +4,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import { X, Building } from 'lucide-react';
 import { supabase } from '../utils/supabase';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { useStripe } from '../hooks/useStripe';
 import { products } from '../stripe-config';

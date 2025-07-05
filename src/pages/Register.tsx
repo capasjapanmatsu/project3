@@ -163,7 +163,12 @@ export function Register() {
       // 成功
       setSuccess(true);
     } catch (err) {
-      setError((err as Error).message || '登録に失敗しました');
+      const msg = (err as Error).message || '';
+      if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('User already') || msg.includes('duplicate key')) {
+        setError('このメールアドレスは既に登録されています');
+      } else {
+        setError(msg || '登録に失敗しました');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -258,7 +263,12 @@ export function Register() {
       // 成功時、2FAセットアップ画面へ遷移
       navigate('/two-factor-setup');
     } catch (err) {
-      setError((err as Error).message || '登録に失敗しました');
+      const msg = (err as Error).message || '';
+      if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('User already') || msg.includes('duplicate key')) {
+        setError('このメールアドレスは既に登録されています');
+      } else {
+        setError(msg || '登録に失敗しました');
+      }
     } finally {
       setIsLoading(false);
     }

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Card from './Card';
 import Button from './Button';
 import { supabase } from '../utils/supabase';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import { Clock, Key, Copy, CheckCircle, AlertTriangle, RefreshCw, CreditCard, Calendar } from 'lucide-react';
 import type { Reservation } from '../types';
 

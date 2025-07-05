@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Users, Calendar, Key, ShoppingBag, RefreshCw, FileText, Megaphone, Bell, WifiOff, AlertCircle, PawPrint, ArrowRight, Building, Crown, Plus, CheckCircle, Mail, Tag } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import { supabase, handleSupabaseError, testSupabaseConnection, safeSupabaseQuery } from '../utils/supabase';
 import Card from '../components/Card';
 import Button from '../components/Button';

@@ -29,7 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   userProfile: null,
 });
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,7 +37,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
 
-  // ユーザープロフィールと管理者権限を取得する関数
   const fetchUserProfile = async (userId: string) => {
     try {
       const { data: profile, error } = await supabase
@@ -50,7 +49,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Error fetching user profile:', error);
         return null;
       }
-
       return profile;
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -58,36 +56,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // 管理者権限をチェックする関数
   const checkAdminStatus = (user: User | null, profile: any) => {
     if (!user) return false;
-    
-    // capasjapan@gmail.com または user_type = 'admin' の場合
     return user.email === 'capasjapan@gmail.com' || profile?.user_type === 'admin';
   };
 
   useEffect(() => {
-    // セッションの確認
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setIsAuthenticated(!!session?.user);
-      
+
       if (session?.user) {
         const profile = await fetchUserProfile(session.user.id);
         setUserProfile(profile);
         setIsAdmin(checkAdminStatus(session.user, profile));
       }
-      
       setLoading(false);
     });
 
-    // 認証状態の変更を監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setIsAuthenticated(!!session?.user);
-      
+
       if (session?.user) {
         const profile = await fetchUserProfile(session.user.id);
         setUserProfile(profile);
@@ -96,14 +88,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserProfile(null);
         setIsAdmin(false);
       }
-      
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Magic Link認証
   const signInWithMagicLink = async (email: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const { error } = await supabase.auth.signInWithOtp({
@@ -112,12 +102,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           emailRedirectTo: `${window.location.origin}/dashboard`,
         },
       });
-
       if (error) {
         console.error('Magic Link error:', error);
         return { success: false, error: `Magic Linkの送信に失敗しました: ${(error as Error).message}` };
       }
-
       return { success: true };
     } catch (error) {
       console.error('Magic Link error:', error);
@@ -125,19 +113,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // 2FA検証
   const verify2FA = async (code: string): Promise<{ success: boolean; error?: string }> => {
     try {
       if (!user) {
         return { success: false, error: 'ユーザーが認証されていません' };
       }
-
       const { data: { session } } = await supabase.auth.getSession();
-      
       if (!session?.access_token) {
         return { success: false, error: '認証が必要です' };
       }
-
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-2fa`, {
         method: 'POST',
         headers: {
@@ -149,12 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           code
         }),
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         return { success: false, error: errorData.error || '認証に失敗しました' };
       }
-
       const result = await response.json();
       return { success: result.success, error: result.error };
     } catch (error) {
@@ -163,7 +145,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // 信頼できるデバイスとして設定
   const setIsTrustedDevice = (trusted: boolean) => {
     if (trusted && user) {
       safeSetItem(`trusted_device_${user.id}`, 'true');
@@ -172,7 +153,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Logout function
   const logout = useCallback(async () => {
     try {
       await supabase.auth.signOut();
@@ -184,10 +164,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
+    <AuthContext.Provider value={{
+      user,
       session,
-      loading, 
+      loading,
       logout,
       isAuthenticated,
       signInWithMagicLink,
@@ -199,8 +179,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export const useAuth = () => useContext(AuthContext);
+const useAuth = () => useContext(AuthContext);
 
-export { AuthContext }
+export default useAuth;
+export { AuthContext, AuthProvider };

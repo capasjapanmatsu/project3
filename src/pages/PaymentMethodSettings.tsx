@@ -19,7 +19,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
 import { supabase } from '../utils/supabase';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import type { PaymentCard } from '../types';
 
 export function PaymentMethodSettings() {

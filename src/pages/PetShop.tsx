@@ -17,7 +17,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
 import { supabase } from '../utils/supabase';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { SubscriptionButton } from '../components/SubscriptionButton';
 import type { Product, CartItem } from '../types';

@@ -6,7 +6,7 @@ import Card from '../components/Card';
 import { X, PawPrint, Edit, AlertTriangle, Camera } from 'lucide-react';
 import { dogBreeds } from '../data/dogBreeds';
 import { supabase } from '../utils/supabase';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import type { Dog } from '../types';
 import imageCompression from 'browser-image-compression';
 

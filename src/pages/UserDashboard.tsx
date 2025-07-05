@@ -20,7 +20,7 @@ import {
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { supabase } from '../utils/supabase';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext'; // ← ここを修正！
 import { useSubscription } from '../hooks/useSubscription';
 import { SubscriptionButton } from '../components/SubscriptionButton';
 import { DogCard, DogEditModal } from '../components/dashboard/DogCard';

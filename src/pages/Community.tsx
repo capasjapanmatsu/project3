@@ -20,7 +20,7 @@ import {
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { supabase } from '../utils/supabase';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import type { FriendRequest, Friendship, Notification, Message, Dog, DogEncounter } from '../types';
 
 export function Community() {

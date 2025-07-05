@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { PawPrint, LogOut, Bell, ShoppingCart, Shield, History } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import { useState, useEffect, useCallback, memo } from 'react';
 import { supabase } from '../utils/supabase';
 import { useSubscription } from '../hooks/useSubscription';

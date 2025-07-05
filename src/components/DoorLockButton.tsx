@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Button from './Button';
-import { useAuth } from '../context/AuthContext';
+import useAuth from '../context/AuthContext';
 import { AlertTriangle, CheckCircle, Loader, Key, CreditCard, Calendar } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import type { Reservation } from '../types';
