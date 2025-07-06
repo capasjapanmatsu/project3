@@ -354,13 +354,13 @@ export function DogRegistration() {
 
           const [rabiesUpload, comboUpload] = await Promise.all([
             supabase.storage
-              .from('vaccine-certs')
+              .from('vaccine-certificates')
               .upload(rabiesPath, formData.rabiesVaccineImage, {
                 cacheControl: '3600',
                 upsert: true
               }),
             supabase.storage
-              .from('vaccine-certs')
+              .from('vaccine-certificates')
               .upload(comboPath, formData.comboVaccineImage, {
                 cacheControl: '3600',
                 upsert: true
@@ -376,16 +376,26 @@ export function DogRegistration() {
             throw comboUpload.error;
           }
 
-          // 証明書情報をデータベースに登録（有効期限付き）
+          // 公開URLを取得
+          const { data: { publicUrl: rabiesPublicUrl } } = supabase.storage
+            .from('vaccine-certificates')
+            .getPublicUrl(rabiesPath);
+          
+          const { data: { publicUrl: comboPublicUrl } } = supabase.storage
+            .from('vaccine-certificates')
+            .getPublicUrl(comboPath);
+
+          // 証明書情報をデータベースに登録（有効期限付き、承認待ち状態）
           const { error: certError } = await supabase
             .from('vaccine_certifications')
             .insert([
               {
                 dog_id: dog.id,
-                rabies_vaccine_image: rabiesPath,
-                combo_vaccine_image: comboPath,
+                rabies_vaccine_image: rabiesPublicUrl,
+                combo_vaccine_image: comboPublicUrl,
                 rabies_expiry_date: formData.rabiesExpiryDate,
                 combo_expiry_date: formData.comboExpiryDate,
+                status: 'pending' // 承認待ち状態
               },
             ]);
 
@@ -566,7 +576,7 @@ export function DogRegistration() {
             console.log('rabiesPath:', rabiesPath);
             console.log('rabiesVaccineImage:', formData.rabiesVaccineImage);
             const { error: rabiesError } = await supabase.storage
-              .from('vaccine-certs')
+              .from('vaccine-certificates')
               .upload(rabiesPath, formData.rabiesVaccineImage, {
                 cacheControl: '3600',
                 upsert: true
@@ -575,6 +585,13 @@ export function DogRegistration() {
               console.error('Rabies upload error:', rabiesError);
               throw rabiesError;
             }
+            
+            // 公開URLを取得
+            const { data: { publicUrl: rabiesPublicUrl } } = supabase.storage
+              .from('vaccine-certificates')
+              .getPublicUrl(rabiesPath);
+            
+            rabiesPath = rabiesPublicUrl;
           }
           
           if (formData.comboVaccineImage) {
@@ -584,7 +601,7 @@ export function DogRegistration() {
             console.log('comboPath:', comboPath);
             console.log('comboVaccineImage:', formData.comboVaccineImage);
             const { error: comboError } = await supabase.storage
-              .from('vaccine-certs')
+              .from('vaccine-certificates')
               .upload(comboPath, formData.comboVaccineImage, {
                 cacheControl: '3600',
                 upsert: true
@@ -593,6 +610,13 @@ export function DogRegistration() {
               console.error('Combo upload error:', comboError);
               throw comboError;
             }
+            
+            // 公開URLを取得
+            const { data: { publicUrl: comboPublicUrl } } = supabase.storage
+              .from('vaccine-certificates')
+              .getPublicUrl(comboPath);
+            
+            comboPath = comboPublicUrl;
           }
           
           // 証明書情報の更新または作成
