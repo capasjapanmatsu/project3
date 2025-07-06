@@ -1,0 +1,6 @@
+---
+description: すべてのファイル名はケバブケース（例：my-component.tsx）にしてください。
+globs:
+  - "**/*"
+alwaysApply: true
+---

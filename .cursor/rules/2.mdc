@@ -1,0 +1,6 @@
+---
+description: デザインは必ずTailwind CSSを使用してください。
+globs:
+  - "**/*.tsx"
+alwaysApply: true
+---

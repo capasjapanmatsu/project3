@@ -15,12 +15,13 @@ import {
   History,
   Package,
   LogOut,
-  CheckCircle
+  CheckCircle,
+  Plus
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { supabase } from '../utils/supabase';
-import useAuth from '../context/AuthContext'; // ← ここを修正！
+import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { SubscriptionButton } from '../components/SubscriptionButton';
 import { DogCard, DogEditModal } from '../components/dashboard/DogCard';
@@ -58,12 +59,34 @@ export function UserDashboard() {
   });
   const [dogImageFile, setDogImageFile] = useState<File | null>(null);
   const [dogImagePreview, setDogImagePreview] = useState<string | null>(null);
-
+  const [recentDogs, setRecentDogs] = useState<Dog[]>([]);
+  const [recentDogsError, setRecentDogsError] = useState<string | null>(null);
+  // ワクチン証明書関連の状態
+  const [rabiesVaccineFile, setRabiesVaccineFile] = useState<File | null>(null);
+  const [comboVaccineFile, setComboVaccineFile] = useState<File | null>(null);
+  const [rabiesExpiryDate, setRabiesExpiryDate] = useState('');
+  const [comboExpiryDate, setComboExpiryDate] = useState('');
 
   useEffect(() => {
     if (user) {
       fetchDashboardData();
     }
+    
+    // 最近仲間入りしたワンちゃんを取得（誰でも閲覧可能）
+    const fetchRecentDogs = async () => {
+      const { data, error } = await supabase
+        .from('dogs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(8);
+      if (error) {
+        setRecentDogsError(error.message || 'データ取得エラー');
+      } else {
+        setRecentDogs(data || []);
+        setRecentDogsError(null);
+      }
+    };
+    fetchRecentDogs();
     
     // Check for success parameter in URL
     if (location.search.includes('success=true')) {
@@ -164,6 +187,17 @@ export function UserDashboard() {
       birthDate: birthDate,
     });
     setDogImagePreview(dog.image_url || null);
+    
+    // ワクチン証明書の情報を設定
+    const cert = dog.vaccine_certifications?.[0];
+    if (cert) {
+      setRabiesExpiryDate(cert.rabies_expiry_date || '');
+      setComboExpiryDate(cert.combo_expiry_date || '');
+    } else {
+      setRabiesExpiryDate('');
+      setComboExpiryDate('');
+    }
+    
     setShowDogEditModal(true);
   };
 
@@ -191,6 +225,49 @@ export function UserDashboard() {
       };
       reader.readAsDataURL(file);
       setDogUpdateError('');
+    }
+  };
+
+  const handleDogImageRemove = () => {
+    setDogImageFile(null);
+    setDogImagePreview(selectedDog?.image_url || null);
+  };
+
+  const handleRabiesVaccineSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setDogUpdateError('ワクチン証明書は10MB以下にしてください。');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        setDogUpdateError('画像ファイルを選択してください。');
+        return;
+      }
+      setRabiesVaccineFile(file);
+      setDogUpdateError('');
+    } else {
+      // ファイルが選択されていない場合（削除の場合）
+      setRabiesVaccineFile(null);
+    }
+  };
+
+  const handleComboVaccineSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setDogUpdateError('ワクチン証明書は10MB以下にしてください。');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        setDogUpdateError('画像ファイルを選択してください。');
+        return;
+      }
+      setComboVaccineFile(file);
+      setDogUpdateError('');
+    } else {
+      // ファイルが選択されていない場合（削除の場合）
+      setComboVaccineFile(null);
     }
   };
 
@@ -262,6 +339,116 @@ export function UserDashboard() {
         .eq('id', selectedDog.id);
       
       if (error) throw error;
+
+      // ワクチン証明書のアップロード処理
+      if (rabiesVaccineFile || comboVaccineFile) {
+        try {
+          let rabiesPath = null;
+          let comboPath = null;
+
+          // 狂犬病ワクチン証明書のアップロード
+          if (rabiesVaccineFile) {
+            const rabiesFileExt = rabiesVaccineFile.name.split('.').pop() || 'jpg';
+            const rabiesFileName = `${selectedDog.id}/rabies_${Date.now()}.${rabiesFileExt}`;
+            
+            const { error: rabiesUploadError } = await supabase.storage
+              .from('vaccine-certificates')
+              .upload(rabiesFileName, rabiesVaccineFile, {
+                cacheControl: '3600',
+                upsert: true
+              });
+
+            if (rabiesUploadError) {
+              console.error('Rabies vaccine upload error:', rabiesUploadError);
+              throw new Error(`狂犬病ワクチン証明書のアップロードに失敗しました: ${rabiesUploadError.message}`);
+            }
+
+            const { data: { publicUrl: rabiesPublicUrl } } = supabase.storage
+              .from('vaccine-certificates')
+              .getPublicUrl(rabiesFileName);
+            
+            rabiesPath = rabiesPublicUrl;
+          }
+
+          // 混合ワクチン証明書のアップロード
+          if (comboVaccineFile) {
+            const comboFileExt = comboVaccineFile.name.split('.').pop() || 'jpg';
+            const comboFileName = `${selectedDog.id}/combo_${Date.now()}.${comboFileExt}`;
+            
+            const { error: comboUploadError } = await supabase.storage
+              .from('vaccine-certificates')
+              .upload(comboFileName, comboVaccineFile, {
+                cacheControl: '3600',
+                upsert: true
+              });
+
+            if (comboUploadError) {
+              console.error('Combo vaccine upload error:', comboUploadError);
+              throw new Error(`混合ワクチン証明書のアップロードに失敗しました: ${comboUploadError.message}`);
+            }
+
+            const { data: { publicUrl: comboPublicUrl } } = supabase.storage
+              .from('vaccine-certificates')
+              .getPublicUrl(comboFileName);
+            
+            comboPath = comboPublicUrl;
+          }
+
+          // 既存のワクチン証明書レコードを確認
+          const { data: existingCert } = await supabase
+            .from('vaccine_certifications')
+            .select('*')
+            .eq('dog_id', selectedDog.id)
+            .single();
+
+          if (existingCert) {
+            // 既存のレコードを更新
+            const updateData: any = {
+              status: 'pending' // 新しい証明書は承認待ち状態に
+            };
+            
+            if (rabiesPath) {
+              updateData.rabies_vaccine_image = rabiesPath;
+              updateData.rabies_expiry_date = rabiesExpiryDate;
+            }
+            
+            if (comboPath) {
+              updateData.combo_vaccine_image = comboPath;
+              updateData.combo_expiry_date = comboExpiryDate;
+            }
+
+            const { error: updateCertError } = await supabase
+              .from('vaccine_certifications')
+              .update(updateData)
+              .eq('dog_id', selectedDog.id);
+
+            if (updateCertError) {
+              console.error('Certificate update error:', updateCertError);
+              throw updateCertError;
+            }
+          } else {
+            // 新しいレコードを作成
+            const { error: insertCertError } = await supabase
+              .from('vaccine_certifications')
+              .insert([{
+                dog_id: selectedDog.id,
+                rabies_vaccine_image: rabiesPath,
+                combo_vaccine_image: comboPath,
+                rabies_expiry_date: rabiesExpiryDate,
+                combo_expiry_date: comboExpiryDate,
+                status: 'pending'
+              }]);
+
+            if (insertCertError) {
+              console.error('Certificate insert error:', insertCertError);
+              throw insertCertError;
+            }
+          }
+        } catch (vaccineError) {
+          console.error('Vaccine certificate error:', vaccineError);
+          setDogUpdateError('ワクチン証明書のアップロードに失敗しました。');
+        }
+      }
       
       setDogUpdateSuccess('ワンちゃん情報を更新しました');
       
@@ -281,6 +468,10 @@ export function UserDashboard() {
         setDogUpdateSuccess('');
         setDogImageFile(null);
         setDogImagePreview(null);
+        setRabiesVaccineFile(null);
+        setComboVaccineFile(null);
+        setRabiesExpiryDate('');
+        setComboExpiryDate('');
       }, 2000);
       
     } catch (error) {
@@ -323,6 +514,25 @@ export function UserDashboard() {
 
   return (
     <div className="space-y-8">
+      {/* 通知一覧（新しい順） */}
+      <Card>
+        <h2 className="text-xl font-semibold mb-4">お知らせ・通知</h2>
+        {notifications.length === 0 ? (
+          <p>通知はありません</p>
+        ) : (
+          <ul>
+            {notifications
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+              .map(notification => (
+                <li key={notification.id} className="mb-2">
+                  {notification.message}
+                  <span className="text-xs text-gray-500 ml-2">{new Date(notification.created_at).toLocaleString('ja-JP')}</span>
+                </li>
+              ))}
+          </ul>
+        )}
+      </Card>
+
       {/* サブスクリプション成功メッセージ */}
       {showSuccessMessage && (
         <div className="bg-green-100 border border-green-300 text-green-800 rounded-lg p-4 flex items-start">
@@ -499,11 +709,6 @@ export function UserDashboard() {
                     onSelect={handleParkSelect} 
                   />
                 ))}
-                <Link to="/owner-dashboard">
-                  <Button variant="secondary" className="w-full">
-                    すべてのドッグランを管理
-                  </Button>
-                </Link>
               </div>
             )}
           </Card>
@@ -515,17 +720,12 @@ export function UserDashboard() {
                 <Calendar className="w-6 h-6 text-green-600 mr-2" />
                 最近の予約
               </h2>
-              <div className="flex space-x-2">
-                <Link to="/dogpark-history">
-                  <Button size="sm" variant="secondary">
-                    <History className="w-4 h-4 mr-1" />
-                    利用履歴
-                  </Button>
-                </Link>
-                <Link to="/parks">
-                  <Button size="sm">新しい予約</Button>
-                </Link>
-              </div>
+              <Link to="/parks">
+                <Button size="sm">
+                  <Plus className="w-4 h-4 mr-1" />
+                  新規予約
+                </Button>
+              </Link>
             </div>
             
             {recentReservations.length === 0 ? (
@@ -539,129 +739,93 @@ export function UserDashboard() {
             ) : (
               <div className="space-y-4">
                 {recentReservations.map((reservation) => (
-                  <ReservationCard key={reservation.id} reservation={reservation} />
+                  <ReservationCard 
+                    key={reservation.id} 
+                    reservation={reservation} 
+                  />
                 ))}
-                <Link to="/dogpark-history">
-                  <Button variant="secondary" className="w-full">
-                    <History className="w-4 h-4 mr-2" />
-                    すべての利用履歴を見る
-                  </Button>
-                </Link>
               </div>
             )}
           </Card>
         </div>
 
         {/* サイドバー */}
-        <div className="space-y-6">
-          {/* クイックアクション */}
+        <div className="space-y-8">
+          {/* 最近仲間入りしたワンちゃん */}
           <Card>
-            <h3 className="text-lg font-semibold mb-4">クイックアクション</h3>
-            <div className="space-y-3">
-              <Link to="/access-control">
-                <Button className="w-full bg-green-600 hover:bg-green-700">
-                  <Key className="w-4 h-4 mr-2" />
-                  入退場
-                </Button>
-              </Link>
-              <Link to="/parks">
-                <Button variant="secondary" className="w-full">
-                  <MapPin className="w-4 h-4 mr-2" />
-                  ドッグラン検索
-                </Button>
-              </Link>
-              <Link to="/shop">
-                <Button variant="secondary" className="w-full">
-                  <ShoppingBag className="w-4 h-4 mr-2" />
-                  ペットショップ
-                </Button>
-              </Link>
-              <Link to="/community">
-                <Button variant="secondary" className="w-full">
-                  <Users className="w-4 h-4 mr-2" />
-                  コミュニティ
-                </Button>
-              </Link>
-              <Link to="/dogpark-history">
-                <Button variant="secondary" className="w-full">
-                  <History className="w-4 h-4 mr-2" />
-                  利用履歴
-                </Button>
-              </Link>
-              <SubscriptionButton 
-                hasSubscription={hasSubscription} 
-                variant="secondary" 
-                className="w-full"
-              />
-            </div>
-          </Card>
-
-          {/* 通知 */}
-          <Card>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">最新の通知</h3>
-              <Link to="/community" className="text-sm text-blue-600 hover:text-blue-700">
-                すべて見る
-              </Link>
-            </div>
+            <h2 className="text-lg font-semibold mb-4 flex items-center">
+              <PawPrint className="w-5 h-5 text-blue-600 mr-2" />
+              最近仲間入りしたワンちゃん
+            </h2>
             
-            {notifications.length === 0 ? (
-              <p className="text-gray-600 text-sm">新しい通知はありません</p>
+            {recentDogsError ? (
+              <div className="text-center py-4">
+                <p className="text-red-600 text-sm">{recentDogsError}</p>
+              </div>
+            ) : recentDogs.length === 0 ? (
+              <div className="text-center py-4">
+                <p className="text-gray-600 text-sm">まだワンちゃんが登録されていません</p>
+              </div>
             ) : (
               <div className="space-y-3">
-                {notifications.map((notification) => (
-                  <NotificationCard 
-                    key={notification.id} 
-                    notification={notification} 
-                    onRead={markNotificationAsRead}
-                  />
+                {recentDogs.map((dog) => (
+                  <div key={dog.id} className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+                      {dog.image_url ? (
+                        <img 
+                          src={dog.image_url} 
+                          alt={dog.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <PawPrint className="w-5 h-5 text-gray-500" />
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-sm">{dog.name}</h3>
+                      <p className="text-xs text-gray-500">{dog.breed}</p>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
           </Card>
 
-          {/* アカウント設定 */}
+          {/* クイックアクション */}
           <Card>
-            <h3 className="text-lg font-semibold mb-4">アカウント設定</h3>
+            <h2 className="text-lg font-semibold mb-4">クイックアクション</h2>
             <div className="space-y-3">
-              <Link to="/profile-settings" className="w-full text-left p-2 hover:bg-gray-50 rounded flex items-center">
-                <User className="w-4 h-4 mr-3 text-gray-500" />
-                <span className="text-sm">プロフィール編集</span>
+              <Link to="/parks" className="block">
+                <Button variant="secondary" className="w-full justify-start">
+                  <MapPin className="w-4 h-4 mr-2" />
+                  ドッグランを探す
+                </Button>
               </Link>
-              <Link to="/payment-method-settings" className="w-full text-left p-2 hover:bg-gray-50 rounded flex items-center">
-                <CreditCard className="w-4 h-4 mr-3 text-gray-500" />
-                <span className="text-sm">支払い方法</span>
+              <Link to="/pet-shop" className="block">
+                <Button variant="secondary" className="w-full justify-start">
+                  <ShoppingBag className="w-4 h-4 mr-2" />
+                  ペットショップ
+                </Button>
               </Link>
-              <Link to="/orders" className="w-full text-left p-2 hover:bg-gray-50 rounded flex items-center">
-                <Package className="w-4 h-4 mr-3 text-gray-500" />
-                <span className="text-sm">注文履歴</span>
+              <Link to="/community" className="block">
+                <Button variant="secondary" className="w-full justify-start">
+                  <Users className="w-4 h-4 mr-2" />
+                  コミュニティ
+                </Button>
               </Link>
-              <Link to="/profile-settings" className="w-full text-left p-2 hover:bg-gray-50 rounded flex items-center">
-                <Key className="w-4 h-4 mr-3 text-gray-500" />
-                <span className="text-sm">パスワード変更</span>
+              <Link to="/order-history" className="block">
+                <Button variant="secondary" className="w-full justify-start">
+                  <History className="w-4 h-4 mr-2" />
+                  注文履歴
+                </Button>
               </Link>
-              <button 
-                onClick={handleLogout}
-                className="w-full text-left p-2 hover:bg-gray-50 rounded flex items-center text-red-600"
-              >
-                <LogOut className="w-4 h-4 mr-3" />
-                <span className="text-sm">ログアウト</span>
-              </button>
             </div>
           </Card>
         </div>
       </div>
 
-      {/* ドッグラン管理モーダル */}
-      {showParkModal && selectedPark && (
-        <ParkModal 
-          park={selectedPark} 
-          onClose={() => setShowParkModal(false)} 
-        />
-      )}
-
-      {/* ワンちゃん編集モーダル */}
-      {showDogEditModal && selectedDog && (
+      {/* 犬の編集モーダル */}
+      {showDogEditModal && (
         <DogEditModal
           dog={selectedDog}
           isUpdating={isUpdatingDog}
@@ -669,39 +833,30 @@ export function UserDashboard() {
           success={dogUpdateSuccess}
           dogFormData={dogFormData}
           dogImagePreview={dogImagePreview}
-          onClose={() => {
-            setShowDogEditModal(false);
-            setDogImageFile(null);
-            setDogImagePreview(null);
-          }}
+          onClose={() => setShowDogEditModal(false)}
           onSubmit={handleUpdateDog}
           onFormChange={setDogFormData}
           onImageSelect={handleDogImageSelect}
-          onImageRemove={() => {
-            setDogImageFile(null);
-            setDogImagePreview(null);
-          }}
+          onImageRemove={handleDogImageRemove}
+          // ワクチン証明書関連の props
+          rabiesVaccineFile={rabiesVaccineFile}
+          comboVaccineFile={comboVaccineFile}
+          rabiesExpiryDate={rabiesExpiryDate}
+          comboExpiryDate={comboExpiryDate}
+          onRabiesVaccineSelect={handleRabiesVaccineSelect}
+          onComboVaccineSelect={handleComboVaccineSelect}
+          onRabiesExpiryDateChange={setRabiesExpiryDate}
+          onComboExpiryDateChange={setComboExpiryDate}
+        />
+      )}
+
+      {/* ドッグラン詳細モーダル */}
+      {showParkModal && selectedPark && (
+        <ParkModal
+          park={selectedPark}
+          onClose={() => setShowParkModal(false)}
         />
       )}
     </div>
-  );
-}
-
-// Plus component for the dashboard
-function Plus({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <line x1="12" y1="5" x2="12" y2="19"></line>
-      <line x1="5" y1="12" x2="19" y2="12"></line>
-    </svg>
   );
 }

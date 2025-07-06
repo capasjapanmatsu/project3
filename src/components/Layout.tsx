@@ -11,6 +11,15 @@ interface LayoutProps {
   children: ReactNode;
 }
 
+declare global {
+  interface Window {
+    pp?: {
+      getUAID?: () => string;
+      // 他のプロパティがあればここに追加
+    };
+  }
+}
+
 const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const [isMiniApp, setIsMiniApp] = useState(false);
@@ -23,9 +32,9 @@ const Layout = ({ children }: LayoutProps) => {
 
   // Check if we're in PayPay Mini App environment
   useEffect(() => {
-    const isPayPayMiniApp = typeof window !== 'undefined' && 
-                            (window as any).pp && 
-                            typeof (window as any).pp.getUAID === 'function';
+    const isPayPayMiniApp = !!(typeof window !== 'undefined' && 
+                            window.pp && 
+                            typeof window.pp.getUAID === 'function');
     setIsMiniApp(isPayPayMiniApp);
 
     // Check if current page is a mini app specific page

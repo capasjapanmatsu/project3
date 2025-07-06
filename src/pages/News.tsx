@@ -135,6 +135,20 @@ export function News() {
       </div>
     );
   }
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-red-500">エラー: {error}</div>
+      </div>
+    );
+  }
+  if (news.length === 0 && newParks.length === 0) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div>データがありません（APIレスポンス: news={JSON.stringify(news)}, newParks={JSON.stringify(newParks)})</div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto">

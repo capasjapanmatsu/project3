@@ -1,0 +1,6 @@
+---
+description: すべてのコードはTypeScriptで記述してください。
+globs:
+  - "**/*"
+alwaysApply: true
+---

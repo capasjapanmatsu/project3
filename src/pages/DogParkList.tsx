@@ -17,6 +17,7 @@ export function DogParkList() {
   const [parks, setParks] = useState<DogPark[]>([]);
   const [facilityRentals, setFacilityRentals] = useState<Record<string, Reservation[]>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [mapError, setMapError] = useState<string>('');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -26,6 +27,7 @@ export function DogParkList() {
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
 
   // リアルタイム更新の間隔（30秒）
   const UPDATE_INTERVAL = 30000;
@@ -106,6 +108,7 @@ export function DogParkList() {
     const fetchParks = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         console.log('Fetching dog parks...');
         
         const { data, error } = await supabase
@@ -116,6 +119,7 @@ export function DogParkList() {
 
         if (error) {
           console.error('Error fetching dog parks:', error);
+          setError(error.message || 'データ取得エラー');
           throw error;
         }
         
@@ -131,6 +135,9 @@ export function DogParkList() {
         }
         
         setParks(data || []);
+        if (!data || data.length === 0) {
+          setError('データがありません（APIレスポンス: ' + JSON.stringify(data) + '）');
+        }
 
         // 本日の施設貸し切り予約を取得（今後の予約）
         const today = new Date().toISOString().split('T')[0];
@@ -158,6 +165,7 @@ export function DogParkList() {
         setFacilityRentals(rentalsByParkId);
       } catch (error) {
         console.error('Error fetching dog parks:', error);
+        setError((error as Error).message || 'データ取得エラー');
       } finally {
         setIsLoading(false);
       }
@@ -450,7 +458,19 @@ export function DogParkList() {
     return rentalTimes;
   };
 
-  if (isLoading) {
+  useEffect(() => {
+    // タイムアウト（10秒）
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        setTimedOut(true);
+        setError('タイムアウト: サーバーから応答がありません。ネットワークやRLS設定を再確認してください。');
+        setIsLoading(false);
+      }
+    }, 10000);
+    return () => clearTimeout(timeout);
+  }, [isLoading]);
+
+  if (isLoading && !timedOut) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
