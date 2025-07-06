@@ -505,7 +505,7 @@ export function AdminDashboard() {
               <div className="bg-white p-4 rounded-lg border border-red-200">
                 <p className="font-medium text-red-900">ドッグラン承認待ち</p>
                 <p className="text-2xl font-bold text-red-600">{stats.pendingParks}件</p>
-                <Link to="/admin/management">
+                <Link to="/admin/tasks?tab=parks">
                   <Button 
                     size="sm" 
                     className="mt-2"
@@ -519,7 +519,7 @@ export function AdminDashboard() {
               <div className="bg-white p-4 rounded-lg border border-red-200">
                 <p className="font-medium text-red-900">ワクチン証明書承認待ち</p>
                 <p className="text-2xl font-bold text-red-600">{stats.pendingVaccines}件</p>
-                <Link to="/admin/management">
+                <Link to="/admin/tasks?tab=vaccines">
                   <Button 
                     size="sm" 
                     className="mt-2"
@@ -533,13 +533,14 @@ export function AdminDashboard() {
               <div className="bg-white p-4 rounded-lg border border-red-200">
                 <p className="font-medium text-red-900">未読お問い合わせ</p>
                 <p className="text-2xl font-bold text-red-600">{stats.unreadMessages}件</p>
-                <Button 
-                  size="sm" 
-                  className="mt-2"
-                  onClick={() => navigate('/admin/contact')}
-                >
-                  確認する
-                </Button>
+                <Link to="/admin/tasks?tab=messages">
+                  <Button 
+                    size="sm" 
+                    className="mt-2"
+                  >
+                    確認する
+                  </Button>
+                </Link>
               </div>
             )}
           </div>
