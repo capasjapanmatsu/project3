@@ -44,6 +44,51 @@ async function verifyPinCode(
       throw new Error("Invalid PIN code");
     }
     
+    // Get PIN details to check user
+    const { data: pinData, error: pinError } = await supabase
+      .from("smart_lock_pins")
+      .select("user_id")
+      .eq("lock_id", lockId)
+      .eq("pin_code", pin)
+      .eq("is_used", false)
+      .single();
+    
+    if (pinError) throw pinError;
+    
+    // For entry, verify user has approved vaccine certifications
+    if (purpose === 'entry') {
+      const { data: dogsData, error: dogsError } = await supabase
+        .from("dogs")
+        .select(`
+          id,
+          vaccine_certifications!inner (
+            status,
+            rabies_expiry_date,
+            combo_expiry_date
+          )
+        `)
+        .eq("owner_id", pinData.user_id);
+      
+      if (dogsError) throw dogsError;
+      
+      // Check if user has at least one dog with approved and valid vaccines
+      const hasApprovedDogs = dogsData.some(dog => {
+        const cert = dog.vaccine_certifications[0];
+        if (!cert || cert.status !== 'approved') return false;
+        
+        // Check vaccine expiry dates
+        const now = new Date();
+        const rabiesExpiry = cert.rabies_expiry_date ? new Date(cert.rabies_expiry_date) : null;
+        const comboExpiry = cert.combo_expiry_date ? new Date(cert.combo_expiry_date) : null;
+        
+        return (!rabiesExpiry || rabiesExpiry >= now) && (!comboExpiry || comboExpiry >= now);
+      });
+      
+      if (!hasApprovedDogs) {
+        throw new Error("ワクチン接種証明書が承認されたワンちゃんがいません。マイページから証明書をアップロードして承認を受けてください。");
+      }
+    }
+    
     // Get the park ID for this lock
     const { data: lock, error: lockError } = await supabase
       .from("smart_locks")

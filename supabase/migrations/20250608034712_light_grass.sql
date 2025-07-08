@@ -17,103 +17,123 @@
     - Occupancy tracking
 */
 
--- First, check if reservations table exists and what columns it has
-DO $$
-BEGIN
-  -- Add missing columns to reservations table if they don't exist
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'reservations' AND column_name = 'park_id'
-  ) THEN
-    ALTER TABLE reservations ADD COLUMN park_id uuid;
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'reservations' AND column_name = 'user_id'
-  ) THEN
-    ALTER TABLE reservations ADD COLUMN user_id uuid;
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'reservations' AND column_name = 'dog_id'
-  ) THEN
-    ALTER TABLE reservations ADD COLUMN dog_id uuid;
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'reservations' AND column_name = 'date'
-  ) THEN
-    ALTER TABLE reservations ADD COLUMN date date;
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'reservations' AND column_name = 'start_time'
-  ) THEN
-    ALTER TABLE reservations ADD COLUMN start_time time;
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'reservations' AND column_name = 'duration'
-  ) THEN
-    ALTER TABLE reservations ADD COLUMN duration integer;
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'reservations' AND column_name = 'status'
-  ) THEN
-    ALTER TABLE reservations ADD COLUMN status text DEFAULT 'confirmed';
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'reservations' AND column_name = 'total_amount'
-  ) THEN
-    ALTER TABLE reservations ADD COLUMN total_amount integer DEFAULT 0;
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'reservations' AND column_name = 'access_code'
-  ) THEN
-    ALTER TABLE reservations ADD COLUMN access_code text DEFAULT '';
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'reservations' AND column_name = 'qr_code'
-  ) THEN
-    ALTER TABLE reservations ADD COLUMN qr_code text;
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'reservations' AND column_name = 'created_at'
-  ) THEN
-    ALTER TABLE reservations ADD COLUMN created_at timestamptz DEFAULT now();
-  END IF;
-END $$;
-
--- Create reservations table if it doesn't exist at all
+-- Create reservations table first if it doesn't exist
 CREATE TABLE IF NOT EXISTS reservations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  park_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  dog_id uuid NOT NULL,
-  date date NOT NULL,
-  start_time time NOT NULL,
-  duration integer NOT NULL,
-  status text NOT NULL DEFAULT 'confirmed',
-  total_amount integer NOT NULL DEFAULT 0,
-  access_code text NOT NULL DEFAULT '',
+  park_id uuid,
+  user_id uuid,
+  dog_id uuid,
+  date date,
+  start_time time,
+  duration integer,
+  status text DEFAULT 'confirmed',
+  total_amount integer DEFAULT 0,
+  access_code text DEFAULT '',
   qr_code text,
-  created_at timestamptz DEFAULT now()
+  reservation_type text DEFAULT 'regular',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
 );
+
+-- Now check and add missing columns to reservations table if they don't exist
+DO $$
+BEGIN
+  -- Only try to add columns if the table exists
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'reservations') THEN
+    
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'reservations' AND column_name = 'park_id'
+    ) THEN
+      ALTER TABLE reservations ADD COLUMN park_id uuid;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'reservations' AND column_name = 'user_id'
+    ) THEN
+      ALTER TABLE reservations ADD COLUMN user_id uuid;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'reservations' AND column_name = 'dog_id'
+    ) THEN
+      ALTER TABLE reservations ADD COLUMN dog_id uuid;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'reservations' AND column_name = 'date'
+    ) THEN
+      ALTER TABLE reservations ADD COLUMN date date;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'reservations' AND column_name = 'start_time'
+    ) THEN
+      ALTER TABLE reservations ADD COLUMN start_time time;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'reservations' AND column_name = 'duration'
+    ) THEN
+      ALTER TABLE reservations ADD COLUMN duration integer;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'reservations' AND column_name = 'status'
+    ) THEN
+      ALTER TABLE reservations ADD COLUMN status text DEFAULT 'confirmed';
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'reservations' AND column_name = 'total_amount'
+    ) THEN
+      ALTER TABLE reservations ADD COLUMN total_amount integer DEFAULT 0;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'reservations' AND column_name = 'access_code'
+    ) THEN
+      ALTER TABLE reservations ADD COLUMN access_code text DEFAULT '';
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'reservations' AND column_name = 'qr_code'
+    ) THEN
+      ALTER TABLE reservations ADD COLUMN qr_code text;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'reservations' AND column_name = 'created_at'
+    ) THEN
+      ALTER TABLE reservations ADD COLUMN created_at timestamptz DEFAULT now();
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'reservations' AND column_name = 'reservation_type'
+    ) THEN
+      ALTER TABLE reservations ADD COLUMN reservation_type text DEFAULT 'regular';
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'reservations' AND column_name = 'updated_at'
+    ) THEN
+      ALTER TABLE reservations ADD COLUMN updated_at timestamptz DEFAULT now();
+    END IF;
+
+  END IF;
+END $$;
 
 -- Add foreign key constraints if they don't exist
 DO $$

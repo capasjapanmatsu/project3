@@ -15,7 +15,9 @@ import {
   Heart,
   Send,
   ChevronRight,
-  Filter
+  Filter,
+  Key,
+  Share
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -25,19 +27,20 @@ import type { FriendRequest, Friendship, Notification, Message, Dog, DogEncounte
 
 export function Community() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'notifications' | 'messages'>('friends');
+  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'notifications' | 'messages' | 'blacklist'>('friends');
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [friends, setFriends] = useState<Friendship[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedFriend, setSelectedFriend] = useState<Friendship | null>(null);
+  const [selectedFriend, setSelectedFriend] = useState<any>(null);
   const [messageText, setMessageText] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [dogEncounters, setDogEncounters] = useState<DogEncounter[]>([]);
   const [userDogs, setUserDogs] = useState<Dog[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [blacklistedDogs, setBlacklistedDogs] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -97,7 +100,8 @@ export function Community() {
         fetchNotifications(),
         fetchMessages(),
         fetchDogEncounters(),
-        fetchUserDogs()
+        fetchUserDogs(),
+        fetchBlacklistedDogs()
       ]);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -190,6 +194,23 @@ export function Community() {
     
     if (error) throw error;
     setUserDogs(data || []);
+  };
+
+  const fetchBlacklistedDogs = async () => {
+    const { data, error } = await supabase
+      .from('dog_blacklist')
+      .select(`
+        *,
+        blacklisted_dog:dogs!dog_blacklist_dog_id_fkey(
+          *,
+          owner:profiles!dogs_owner_id_fkey(*)
+        )
+      `)
+      .eq('user_id', user?.id)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    setBlacklistedDogs(data || []);
   };
 
   const handleFriendRequest = async (requestId: string, accept: boolean) => {
@@ -309,9 +330,81 @@ export function Community() {
     }
   };
 
+  const sendFriendRequest = async (targetUserId: string, dogName: string) => {
+    try {
+      const { error } = await supabase
+        .from('friend_requests')
+        .insert({
+          requester_id: user?.id,
+          requested_id: targetUserId,
+          message: `${dogName}の飼い主さんと友達になりたいです！`
+        });
+      
+      if (error) throw error;
+      
+      setSuccess('友達申請を送信しました');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      setError('友達申請の送信に失敗しました');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const addToBlacklist = async (dogId: string, reason: string) => {
+    try {
+      const { error } = await supabase
+        .from('dog_blacklist')
+        .insert({
+          user_id: user?.id,
+          dog_id: dogId,
+          reason: reason,
+          notify_when_nearby: true
+        });
+      
+      if (error) throw error;
+      
+      await fetchBlacklistedDogs();
+      setSuccess('ブラックリストに追加しました');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error adding to blacklist:', error);
+      setError('ブラックリストへの追加に失敗しました');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const removeFromBlacklist = async (blacklistId: string) => {
+    try {
+      const { error } = await supabase
+        .from('dog_blacklist')
+        .delete()
+        .eq('id', blacklistId);
+      
+      if (error) throw error;
+      
+      await fetchBlacklistedDogs();
+      setSuccess('ブラックリストから削除しました');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error removing from blacklist:', error);
+      setError('ブラックリストからの削除に失敗しました');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
   // 犬の性別に応じた敬称を取得する関数
   const getDogHonorific = (gender: string) => {
     return gender === 'オス' ? 'くん' : 'ちゃん';
+  };
+
+  // ユーザー名を「ワンちゃん名+くん/ちゃん+の飼い主さん」形式で表示
+  const formatUserDisplayName = (user: any, dogs?: any[]) => {
+    if (dogs && dogs.length > 0) {
+      const firstDog = dogs[0];
+      return `${firstDog.name}${getDogHonorific(firstDog.gender)}の飼い主さん`;
+    }
+    return `${user?.name || 'ユーザー'}さん`;
   };
 
   if (isLoading) {
@@ -347,9 +440,9 @@ export function Community() {
         {/* メインコンテンツ */}
         <div className="lg:col-span-2">
           {/* タブナビゲーション */}
-          <div className="flex space-x-1 border-b mb-6">
+          <div className="flex space-x-1 border-b mb-6 overflow-x-auto">
             <button
-              className={`px-4 py-2 font-medium relative ${
+              className={`px-4 py-2 font-medium relative whitespace-nowrap ${
                 activeTab === 'friends'
                   ? 'text-blue-600 border-b-2 border-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
@@ -360,7 +453,7 @@ export function Community() {
               友達
             </button>
             <button
-              className={`px-4 py-2 font-medium relative ${
+              className={`px-4 py-2 font-medium relative whitespace-nowrap ${
                 activeTab === 'requests'
                   ? 'text-blue-600 border-b-2 border-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
@@ -376,7 +469,7 @@ export function Community() {
               )}
             </button>
             <button
-              className={`px-4 py-2 font-medium relative ${
+              className={`px-4 py-2 font-medium relative whitespace-nowrap ${
                 activeTab === 'notifications'
                   ? 'text-blue-600 border-b-2 border-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
@@ -392,7 +485,7 @@ export function Community() {
               )}
             </button>
             <button
-              className={`px-4 py-2 font-medium relative ${
+              className={`px-4 py-2 font-medium relative whitespace-nowrap ${
                 activeTab === 'messages'
                   ? 'text-blue-600 border-b-2 border-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
@@ -404,6 +497,22 @@ export function Community() {
               {messages.filter(m => !m.read && m.receiver_id === user?.id).length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   {messages.filter(m => !m.read && m.receiver_id === user?.id).length}
+                </span>
+              )}
+            </button>
+            <button
+              className={`px-4 py-2 font-medium relative whitespace-nowrap ${
+                activeTab === 'blacklist'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              onClick={() => setActiveTab('blacklist')}
+            >
+              <AlertTriangle className="w-5 h-5 inline mr-1" />
+              ブラックリスト
+              {blacklistedDogs.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {blacklistedDogs.length}
                 </span>
               )}
             </button>
@@ -444,7 +553,7 @@ export function Community() {
                             <Users className="w-6 h-6 text-gray-500" />
                           </div>
                           <div>
-                            <h3 className="font-semibold">{friend.friend.name}</h3>
+                            <h3 className="font-semibold">{formatUserDisplayName(friend.friend, friend.friend_dogs)}</h3>
                             <p className="text-sm text-gray-600">
                               {friend.dog_count}頭のワンちゃんと一緒
                             </p>
@@ -534,6 +643,69 @@ export function Community() {
               )}
             </div>
           )}
+
+          {/* ブラックリストタブ */}
+          {activeTab === 'blacklist' && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold mb-4">ブラックリスト</h2>
+              
+              {blacklistedDogs.length === 0 ? (
+                <Card className="text-center py-8">
+                  <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">ブラックリストは空です</h3>
+                  <p className="text-gray-500">
+                    相性が悪いワンちゃんをブラックリストに登録すると、そのワンちゃんがドッグランに入った時に通知されます
+                  </p>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {blacklistedDogs.map((blacklisted) => (
+                    <Card key={blacklisted.id} className="p-4 bg-red-50 border-red-200">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-start space-x-4">
+                          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+                            {blacklisted.blacklisted_dog?.image_url ? (
+                              <img 
+                                src={blacklisted.blacklisted_dog.image_url} 
+                                alt={blacklisted.blacklisted_dog.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <PawPrint className="w-6 h-6 text-gray-500" />
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-red-900">
+                              {blacklisted.blacklisted_dog?.name}
+                              {blacklisted.blacklisted_dog?.gender && getDogHonorific(blacklisted.blacklisted_dog.gender)}
+                            </h3>
+                            <p className="text-sm text-red-700">
+                              飼い主: {formatUserDisplayName(blacklisted.blacklisted_dog?.owner, [blacklisted.blacklisted_dog])}
+                            </p>
+                            <p className="text-sm text-red-600 mt-1">
+                              理由: {blacklisted.reason}
+                            </p>
+                            <p className="text-xs text-red-500 mt-1">
+                              登録日: {new Date(blacklisted.created_at).toLocaleDateString('ja-JP')}
+                            </p>
+                          </div>
+                        </div>
+                        <Button 
+                          size="sm"
+                          variant="secondary"
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => removeFromBlacklist(blacklisted.id)}
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          削除
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           
           {/* 通知タブ */}
           {activeTab === 'notifications' && (
@@ -604,8 +776,9 @@ export function Community() {
                         onClick={() => setSelectedFriend({
                           id: message.id,
                           friend_id: isReceived ? message.sender_id : message.receiver_id,
-                          friend: otherUser || { id: '', name: '', user_type: 'user' },
-                          dog_count: 0
+                          friend: otherUser || { id: '', name: '', user_type: 'user', created_at: new Date().toISOString() },
+                          dog_count: 0,
+                          created_at: new Date().toISOString()
                         })}
                       >
                         <div className="flex items-start space-x-3">
@@ -658,6 +831,29 @@ export function Community() {
                       メッセージ履歴はまだありません
                     </div>
                   </div>
+
+                  {/* PIN共有機能 */}
+                  <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-blue-900 mb-2 flex items-center">
+                      <Key className="w-4 h-4 mr-1" />
+                      施設貸し切り予約の共有
+                    </h4>
+                    <p className="text-sm text-blue-800 mb-2">
+                      施設貸し切り予約がある場合、友達にPINコードを共有できます
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() => {
+                        // TODO: 予約一覧から選択してPIN共有する機能
+                        alert('この機能は準備中です。施設貸し切り予約がある場合に利用できます。');
+                      }}
+                    >
+                      <Share className="w-3 h-3 mr-1" />
+                      予約を共有
+                    </Button>
+                  </div>
                   
                   <form onSubmit={handleSendMessage}>
                     <div className="flex space-x-2">
@@ -704,6 +900,7 @@ export function Community() {
                   // 自分の犬とそうでない犬を判別
                   const myDog = encounter.dog1.owner_id === user?.id ? encounter.dog1 : encounter.dog2;
                   const otherDog = encounter.dog1.owner_id === user?.id ? encounter.dog2 : encounter.dog1;
+                  const otherOwnerId = otherDog.owner_id;
                   
                   return (
                     <div key={encounter.id} className="flex items-start space-x-3 pb-3 border-b border-gray-100 last:border-b-0 last:pb-0">
@@ -719,10 +916,35 @@ export function Community() {
                         )}
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center">
+                        <div className="flex items-center justify-between">
                           <h3 className="font-medium text-sm">
                             {myDog.name}{getDogHonorific(myDog.gender)}と{otherDog.name}{getDogHonorific(otherDog.gender)}
                           </h3>
+                          <div className="flex space-x-1">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="text-xs px-2 py-1"
+                              onClick={() => sendFriendRequest(otherOwnerId, otherDog.name)}
+                            >
+                              <UserPlus className="w-3 h-3 mr-1" />
+                              友達申請
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="text-xs px-2 py-1 text-red-600 hover:text-red-700"
+                              onClick={() => {
+                                const reason = prompt('ブラックリストに登録する理由を入力してください:');
+                                if (reason) {
+                                  addToBlacklist(otherDog.id, reason);
+                                }
+                              }}
+                            >
+                              <AlertTriangle className="w-3 h-3 mr-1" />
+                              ブラックリスト
+                            </Button>
+                          </div>
                         </div>
                         <div className="text-xs text-gray-500 space-y-1 mt-1">
                           <div className="flex items-center">
@@ -812,6 +1034,14 @@ export function Community() {
               <p>
                 <span className="font-medium">通知機能:</span><br />
                 友達リクエストや予約の通知が届きます。友達のワンちゃんが近くのドッグランにいる場合も通知されます。
+              </p>
+              <p>
+                <span className="font-medium">ブラックリスト機能:</span><br />
+                相性が悪いワンちゃんをブラックリストに登録すると、そのワンちゃんがドッグランに入った時に通知されます。
+              </p>
+              <p>
+                <span className="font-medium">施設共有機能:</span><br />
+                施設貸し切り予約をした場合、友達を誘ってPINコードを共有することができます。
               </p>
             </div>
           </Card>

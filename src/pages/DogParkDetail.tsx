@@ -761,10 +761,11 @@ export function DogParkDetail() {
                   </div>
                   
                   <div className="text-center">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center justify-center space-x-1 ${
                       getOccupancyStatus(park.current_occupancy, park.max_capacity).color
                     }`}>
-                      {getOccupancyStatus(park.current_occupancy, park.max_capacity).text}
+                      <span>{getOccupancyStatus(park.current_occupancy, park.max_capacity).emoji}</span>
+                      <span>{getOccupancyStatus(park.current_occupancy, park.max_capacity).text}</span>
                     </span>
                     <p className="text-xs text-gray-600 mt-1">
                       {getOccupancyStatus(park.current_occupancy, park.max_capacity).description}
@@ -906,7 +907,7 @@ export function DogParkDetail() {
 }
 
 // Helper function to get occupancy status
-function getOccupancyStatus(current: number, max: number) {
+const getOccupancyStatus = (current: number, max: number) => {
   const percentage = (current / max) * 100;
   
   // 4段階で表示
@@ -914,24 +915,28 @@ function getOccupancyStatus(current: number, max: number) {
     text: '空いています', 
     color: 'text-green-600 bg-green-100',
     barColor: 'bg-green-500',
-    description: '快適に利用できます'
+    description: '快適に利用できます',
+    emoji: '😊'
   };
   if (percentage < 50) return { 
     text: 'やや空いています', 
     color: 'text-blue-600 bg-blue-100',
     barColor: 'bg-blue-500',
-    description: '適度な混雑です'
+    description: '適度な混雑です',
+    emoji: '🙂'
   };
   if (percentage < 75) return { 
     text: 'やや混んでいます', 
     color: 'text-yellow-600 bg-yellow-100',
     barColor: 'bg-yellow-500',
-    description: '少し混雑しています'
+    description: '少し混雑しています',
+    emoji: '😐'
   };
   return { 
     text: '混んでいます', 
     color: 'text-red-600 bg-red-100',
     barColor: 'bg-red-500',
-    description: '大変混雑しています'
+    description: '大変混雑しています',
+    emoji: '😰'
   };
-}
+};

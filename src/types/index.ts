@@ -106,6 +106,7 @@ export interface VaccineCertification {
   combo_expiry_date?: string | null;
   last_checked_at?: string | null;
   expiry_notification_sent?: boolean;
+  temp_storage?: boolean;
 }
 
 export interface DogEncounter {

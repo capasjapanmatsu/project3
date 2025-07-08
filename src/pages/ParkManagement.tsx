@@ -25,6 +25,7 @@ import useAuth from '../context/AuthContext';
 import { PinCodeGenerator } from '../components/PinCodeGenerator';
 import { supabase } from '../utils/supabase';
 import type { DogPark, SmartLock, Dog } from '../types';
+import VaccineBadge, { getVaccineStatusFromDog } from '../components/VaccineBadge';
 
 export function ParkManagement() {
   const { parkId } = useParams();
@@ -51,6 +52,42 @@ export function ParkManagement() {
     
     fetchParkData();
   }, [user, parkId, navigate]);
+
+  useEffect(() => {
+    const fetchDogs = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('dogs')
+          .select(`
+            *,
+            vaccine_certifications (
+              id,
+              status,
+              rabies_expiry_date,
+              combo_expiry_date,
+              approved_at
+            )
+          `)
+          .eq('owner_id', user.id);
+
+        if (error) throw error;
+        
+        // ワクチン承認済みのワンちゃんのみをフィルタリング
+        const approvedDogs = (data || []).filter(dog => {
+          const vaccineStatus = getVaccineStatusFromDog(dog);
+          return vaccineStatus === 'approved';
+        });
+        
+        setDogs(approvedDogs);
+      } catch (error) {
+        console.error('Error fetching dogs:', error);
+      }
+    };
+
+    fetchDogs();
+  }, [user]);
 
   const fetchParkData = async () => {
     try {
@@ -657,12 +694,14 @@ export function ParkManagement() {
                             )}
                           </div>
                           <div>
-                            <h3 className="font-semibold">{dog.name}{getDogHonorific(dog.gender)}</h3>
-                            <p className="text-sm text-gray-600">{dog.breed} • {dog.gender}</p>
-                            <div className="flex items-center text-xs text-green-600 mt-1">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              <span>ワクチン承認済み</span>
+                            <div className="flex items-center space-x-2 mb-1">
+                              <h3 className="font-semibold">{dog.name}{getDogHonorific(dog.gender)}</h3>
+                              <VaccineBadge 
+                                status={getVaccineStatusFromDog(dog)} 
+                                size="sm" 
+                              />
                             </div>
+                            <p className="text-sm text-gray-600">{dog.breed} • {dog.gender}</p>
                           </div>
                         </div>
                       </div>
@@ -714,13 +753,12 @@ export function ParkManagement() {
           
           <Card className="p-6 bg-blue-50 border-blue-200">
             <div className="flex items-start space-x-3">
-              <QrCode className="w-6 h-6 text-blue-600 mt-1" />
+              <Key className="w-6 h-6 text-blue-600 mt-1" />
               <div>
-                <h3 className="font-semibold text-blue-900 mb-2">QRコードとPINコードについて</h3>
+                <h3 className="font-semibold text-blue-900 mb-2">PINコードについて</h3>
                 <div className="text-sm text-blue-800 space-y-2">
-                  <p>• 利用者はQRコードまたはPINコードを使用して入退場します</p>
-                  <p>• QRコードは24時間有効で、利用者が支払い後に発行されます</p>
-                  <p>• PINコードは5分間有効で、スマートロックのキーパッドで入力します</p>
+                  <p>• 利用者はPINコードを使用して入退場します</p>
+                  <p>• PINコードは5分間有効で、利用者が支払い後に発行されます</p>
                   <p>• オーナーは決済不要でPINコードを発行できます</p>
                   <p>• 施設貸し切りの場合、利用者は友達にPINコードを共有できます</p>
                 </div>

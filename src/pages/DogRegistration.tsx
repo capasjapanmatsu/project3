@@ -3,12 +3,13 @@ import Input from '../components/Input';
 import Select from '../components/Select';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { X, PawPrint, Edit, AlertTriangle, Camera } from 'lucide-react';
+import { X, PawPrint, Edit, AlertTriangle, Camera, Upload, Loader } from 'lucide-react';
 import { dogBreeds } from '../data/dogBreeds';
 import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 import type { Dog } from '../types';
-import imageCompression from 'browser-image-compression';
+import { processDogImage, processVaccineImage, createImagePreview, formatFileSize } from '../utils/imageUtils';
+import VaccineBadge, { getVaccineStatusFromDog } from '../components/VaccineBadge';
 
 export function DogRegistration() {
 
@@ -17,6 +18,7 @@ export function DogRegistration() {
   const [error, setError] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [registeredDogs, setRegisteredDogs] = useState<Dog[]>([]);
   const [isLoadingDogs, setIsLoadingDogs] = useState(true);
   const [selectedDog, setSelectedDog] = useState<Dog | null>(null);
@@ -127,36 +129,39 @@ export function DogRegistration() {
     const file = e.target.files?.[0];
     if (file) {
       console.log('Selected file:', file.name, file.size, file.type);
-      // ファイルサイズチェック（10MB以下）
-      if (file.size > 10 * 1024 * 1024) {
-        setError('画像ファイルは10MB以下にしてください。');
-        return;
-      }
-      // ファイル形式チェック
-      if (!file.type.startsWith('image/')) {
-        setError('画像ファイルを選択してください。');
-        return;
-      }
-      // 画像圧縮・リサイズ処理
+      setIsProcessingImage(true);
+      setError('');
+      
       try {
-        const options = {
-          maxSizeMB: 0.3, // 最大0.3MB
-          maxWidthOrHeight: 800, // 最大幅・高さ800px
-          useWebWorker: true,
-        };
-        const compressedFile = await imageCompression(file, options);
-        setImageFile(compressedFile);
+        // ファイルサイズチェック（20MB以下）
+        if (file.size > 20 * 1024 * 1024) {
+          setError('画像ファイルは20MB以下にしてください。');
+          return;
+        }
+        
+        // ファイル形式チェック
+        if (!file.type.startsWith('image/')) {
+          setError('画像ファイルを選択してください。');
+          return;
+        }
+        
+        console.log('Processing image...');
+        // 新しい画像処理機能を使用
+        const processedFile = await processDogImage(file);
+        console.log('Image processed:', processedFile.name, formatFileSize(processedFile.size));
+        
+        setImageFile(processedFile);
+        
         // プレビュー画像を作成
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setImagePreview(e.target?.result as string);
-          console.log('Image preview created (compressed)');
-        };
-        reader.readAsDataURL(compressedFile);
-        setError('');
+        const previewUrl = await createImagePreview(processedFile);
+        setImagePreview(previewUrl);
+        
+        console.log('Image preview created (processed)');
       } catch (err) {
-        setError('画像の圧縮・リサイズに失敗しました');
-        return;
+        console.error('Image processing error:', err);
+        setError('画像の処理に失敗しました。別の画像をお試しください。');
+      } finally {
+        setIsProcessingImage(false);
       }
     }
   };
@@ -345,23 +350,28 @@ export function DogRegistration() {
         console.log('Uploading vaccine certificates');
         
         try {
-          const rabiesExt = formData.rabiesVaccineImage.name.split('.').pop() || 'jpg';
-          const comboExt = formData.comboVaccineImage.name.split('.').pop() || 'jpg';
+          // ワクチン証明書画像を処理
+          console.log('Processing vaccine certificate images...');
+          const processedRabiesImage = await processVaccineImage(formData.rabiesVaccineImage);
+          const processedComboImage = await processVaccineImage(formData.comboVaccineImage);
+          
+          const rabiesExt = processedRabiesImage.name.split('.').pop() || 'jpg';
+          const comboExt = processedComboImage.name.split('.').pop() || 'jpg';
           const timestamp = Date.now();
           
-          const rabiesPath = `${dog.id}/rabies_${timestamp}.${rabiesExt}`;
-          const comboPath = `${dog.id}/combo_${timestamp}.${comboExt}`;
+          const rabiesPath = `temp/${dog.id}/rabies_${timestamp}.${rabiesExt}`;
+          const comboPath = `temp/${dog.id}/combo_${timestamp}.${comboExt}`;
 
           const [rabiesUpload, comboUpload] = await Promise.all([
             supabase.storage
               .from('vaccine-certificates')
-              .upload(rabiesPath, formData.rabiesVaccineImage, {
+              .upload(rabiesPath, processedRabiesImage, {
                 cacheControl: '3600',
                 upsert: true
               }),
             supabase.storage
               .from('vaccine-certificates')
-              .upload(comboPath, formData.comboVaccineImage, {
+              .upload(comboPath, processedComboImage, {
                 cacheControl: '3600',
                 upsert: true
               }),
@@ -395,7 +405,8 @@ export function DogRegistration() {
                 combo_vaccine_image: comboPublicUrl,
                 rabies_expiry_date: formData.rabiesExpiryDate,
                 combo_expiry_date: formData.comboExpiryDate,
-                status: 'pending' // 承認待ち状態
+                status: 'pending', // 承認待ち状態
+                temp_storage: true // 一時保管フラグ
               },
             ]);
 
@@ -570,14 +581,16 @@ export function DogRegistration() {
           let comboPath = selectedDog.vaccine_certifications?.[0]?.combo_vaccine_image || null;
           
           if (formData.rabiesVaccineImage) {
-            const rabiesExt = formData.rabiesVaccineImage.name.split('.').pop() || 'jpg';
+            // ワクチン証明書画像を処理
+            const processedRabiesImage = await processVaccineImage(formData.rabiesVaccineImage);
+            const rabiesExt = processedRabiesImage.name.split('.').pop() || 'jpg';
             const timestamp = Date.now();
-            rabiesPath = `${selectedDog.id}/rabies_${timestamp}.${rabiesExt}`;
+            rabiesPath = `temp/${selectedDog.id}/rabies_${timestamp}.${rabiesExt}`;
             console.log('rabiesPath:', rabiesPath);
-            console.log('rabiesVaccineImage:', formData.rabiesVaccineImage);
+            console.log('processedRabiesImage:', processedRabiesImage);
             const { error: rabiesError } = await supabase.storage
               .from('vaccine-certificates')
-              .upload(rabiesPath, formData.rabiesVaccineImage, {
+              .upload(rabiesPath, processedRabiesImage, {
                 cacheControl: '3600',
                 upsert: true
               });
@@ -595,14 +608,16 @@ export function DogRegistration() {
           }
           
           if (formData.comboVaccineImage) {
-            const comboExt = formData.comboVaccineImage.name.split('.').pop() || 'jpg';
+            // ワクチン証明書画像を処理
+            const processedComboImage = await processVaccineImage(formData.comboVaccineImage);
+            const comboExt = processedComboImage.name.split('.').pop() || 'jpg';
             const timestamp = Date.now();
-            comboPath = `${selectedDog.id}/combo_${timestamp}.${comboExt}`;
+            comboPath = `temp/${selectedDog.id}/combo_${timestamp}.${comboExt}`;
             console.log('comboPath:', comboPath);
-            console.log('comboVaccineImage:', formData.comboVaccineImage);
+            console.log('processedComboImage:', processedComboImage);
             const { error: comboError } = await supabase.storage
               .from('vaccine-certificates')
-              .upload(comboPath, formData.comboVaccineImage, {
+              .upload(comboPath, processedComboImage, {
                 cacheControl: '3600',
                 upsert: true
               });
@@ -622,6 +637,7 @@ export function DogRegistration() {
           // 証明書情報の更新または作成
           const updateData: Record<string, unknown> = {
             status: 'pending', // 新しい画像がアップロードされたら再審査
+            temp_storage: true // 一時保管フラグ
           };
           
           if (rabiesPath) updateData.rabies_vaccine_image = rabiesPath;
@@ -744,13 +760,14 @@ export function DogRegistration() {
                       )}
                     </div>
                     <div>
-                      <h3 className="font-semibold">{dog.name}{honorific}</h3>
-                      <p className="text-sm text-gray-600">{dog.breed} • {dog.gender}</p>
-                      <div className="flex items-center mt-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${vaccineStatus.color}`}>
-                          ワクチン: {vaccineStatus.label}
-                        </span>
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h3 className="font-semibold">{dog.name}{honorific}</h3>
+                        <VaccineBadge 
+                          status={getVaccineStatusFromDog(dog)} 
+                          size="sm" 
+                        />
                       </div>
+                      <p className="text-sm text-gray-600">{dog.breed} • {dog.gender}</p>
                     </div>
                   </div>
                   <Button 
@@ -781,6 +798,15 @@ export function DogRegistration() {
               ワンちゃんの写真{isEditing ? '' : '（任意）'}
             </label>
             
+            {isProcessingImage && (
+              <div className="mb-3 p-3 bg-blue-50 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <Loader className="w-4 h-4 text-blue-600 animate-spin" />
+                  <span className="text-sm text-blue-800">画像を処理中です...</span>
+                </div>
+              </div>
+            )}
+            
             {imagePreview ? (
               <div className="relative">
                 <img
@@ -795,6 +821,11 @@ export function DogRegistration() {
                 >
                   <X className="w-4 h-4" />
                 </button>
+                {imageFile && (
+                  <div className="absolute bottom-2 left-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
+                    {formatFileSize(imageFile.size)}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
@@ -804,17 +835,21 @@ export function DogRegistration() {
                   onChange={handleImageSelect}
                   className="hidden"
                   id="dog-image"
+                  disabled={isProcessingImage}
                 />
                 <label
                   htmlFor="dog-image"
-                  className="cursor-pointer flex flex-col items-center"
+                  className={`cursor-pointer flex flex-col items-center ${isProcessingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Camera className="w-12 h-12 text-gray-400 mb-2" />
                   <span className="text-sm text-gray-600">
                     クリックして画像を選択
                   </span>
                   <span className="text-xs text-gray-500 mt-1">
-                    JPG, PNG, GIF (最大10MB)
+                    JPG, PNG, GIF (最大20MB)
+                  </span>
+                  <span className="text-xs text-gray-400 mt-1">
+                    自動でリサイズ・圧縮されます
                   </span>
                 </label>
               </div>
@@ -1036,17 +1071,18 @@ export function DogRegistration() {
                 <p className="text-sm text-green-800">
                   <span className="font-medium">写真について:</span><br />
                   • ワンちゃんの写真は任意ですが、コミュニティで他の飼い主さんに見てもらえます<br />
-                  • JPG、PNG、GIF形式で最大10MBまでアップロード可能<br />
+                  • JPG、PNG、GIF形式で最大20MBまでアップロード可能<br />
+                  • アップロード時に自動でリサイズ・圧縮されるため、大きなファイルでも安心です<br />
                   • 後からマイページで変更することもできます
                 </p>
               </div>
-              <div className="mt-4 p-3 bg-orange-50 rounded-lg">
-                <p className="text-sm text-orange-800">
-                  <span className="font-medium">ワクチン有効期限について:</span><br />
-                  • 狂犬病ワクチンと混合ワクチンの有効期限を正確に入力してください<br />
-                  • 有効期限が切れると自動的に再承認待ちになります<br />
-                  • 期限切れ30日前に通知をお送りします<br />
-                  • 新しいワクチン証明書は期限切れ前にアップロードしてください
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <span className="font-medium">ワクチン証明書について:</span><br />
+                  • 画像は自動でリサイズ・圧縮され、管理者が確認しやすい形で保存されます<br />
+                  • 証明書は一時的に保管され、管理者の承認・却下後に自動削除されます<br />
+                  • これにより、サーバーの容量を効率的に管理しています<br />
+                  • 承認されると正式にワクチン情報として登録されます
                 </p>
               </div>
             </>

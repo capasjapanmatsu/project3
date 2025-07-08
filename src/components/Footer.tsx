@@ -95,8 +95,8 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/entrance-qr" className="text-gray-400 hover:text-white transition-colors">
-                  入場QR発行
+                <Link to="/access-control" className="text-gray-400 hover:text-white transition-colors">
+                  入場管理
                 </Link>
               </li>
               <li>

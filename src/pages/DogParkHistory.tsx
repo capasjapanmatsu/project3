@@ -582,26 +582,6 @@ export function DogParkHistory() {
         </Card>
       )}
 
-      {/* 入場QRコード案内 */}
-      <Card className="p-6 bg-green-50 border-green-200">
-        <div className="flex items-start space-x-3">
-          <QrCode className="w-6 h-6 text-green-600 mt-1" />
-          <div>
-            <h3 className="font-semibold text-green-900 mb-2">入場QRコード</h3>
-            <p className="text-sm text-green-800 mb-3">
-              ドッグランに入場するには、入場QRコードが必要です。
-              QRコードは最大3頭まで同時入場可能で、24時間有効です。
-            </p>
-            <Link to="/entrance-qr">
-              <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                <QrCode className="w-4 h-4 mr-2" />
-                入場QRを発行する
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </Card>
-
       {/* キャンセル確認モーダル */}
       {showCancelConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">

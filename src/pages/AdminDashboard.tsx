@@ -1142,26 +1142,86 @@ export function AdminDashboard() {
 
                 <div>
                   <h3 className="font-semibold mb-2">ワクチン証明書画像</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {selectedVaccine.rabies_vaccine_image && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">狂犬病ワクチン</label>
-                        <div className="border rounded-lg p-4 bg-gray-50">
-                          <p className="text-sm text-gray-600">画像ファイル: {selectedVaccine.rabies_vaccine_image}</p>
-                          <p className="text-xs text-gray-500 mt-1">※ 実際の画像確認は別途システムで行ってください</p>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          狂犬病ワクチン証明書
+                        </label>
+                        <div className="border rounded-lg overflow-hidden bg-gray-50">
+                          <img
+                            src={selectedVaccine.rabies_vaccine_image}
+                            alt="狂犬病ワクチン証明書"
+                            className="w-full h-64 object-contain bg-white"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.nextElementSibling!.classList.remove('hidden');
+                            }}
+                          />
+                          <div className="hidden p-4 text-center">
+                            <p className="text-sm text-gray-600">画像の読み込みに失敗しました</p>
+                            <a 
+                              href={selectedVaccine.rabies_vaccine_image}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 text-sm"
+                            >
+                              直接リンクで確認
+                            </a>
+                          </div>
                         </div>
+                        {selectedVaccine.rabies_expiry_date && (
+                          <p className="text-sm text-gray-600 mt-2">
+                            有効期限: {new Date(selectedVaccine.rabies_expiry_date).toLocaleDateString('ja-JP')}
+                          </p>
+                        )}
                       </div>
                     )}
                     {selectedVaccine.combo_vaccine_image && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">混合ワクチン</label>
-                        <div className="border rounded-lg p-4 bg-gray-50">
-                          <p className="text-sm text-gray-600">画像ファイル: {selectedVaccine.combo_vaccine_image}</p>
-                          <p className="text-xs text-gray-500 mt-1">※ 実際の画像確認は別途システムで行ってください</p>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          混合ワクチン証明書
+                        </label>
+                        <div className="border rounded-lg overflow-hidden bg-gray-50">
+                          <img
+                            src={selectedVaccine.combo_vaccine_image}
+                            alt="混合ワクチン証明書"
+                            className="w-full h-64 object-contain bg-white"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.nextElementSibling!.classList.remove('hidden');
+                            }}
+                          />
+                          <div className="hidden p-4 text-center">
+                            <p className="text-sm text-gray-600">画像の読み込みに失敗しました</p>
+                            <a 
+                              href={selectedVaccine.combo_vaccine_image}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 text-sm"
+                            >
+                              直接リンクで確認
+                            </a>
+                          </div>
                         </div>
+                        {selectedVaccine.combo_expiry_date && (
+                          <p className="text-sm text-gray-600 mt-2">
+                            有効期限: {new Date(selectedVaccine.combo_expiry_date).toLocaleDateString('ja-JP')}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
+                  {selectedVaccine.temp_storage && (
+                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-yellow-800">
+                        <span className="font-medium">⚠️ 一時保管中:</span> 
+                        この証明書は一時保管されています。承認または却下後に自動的に削除されます。
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end space-x-3">

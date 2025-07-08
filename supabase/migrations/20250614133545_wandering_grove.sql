@@ -19,7 +19,8 @@
 */
 
 -- Add function to clean up expired QR codes
-CREATE OR REPLACE FUNCTION cleanup_expired_qr_codes()
+DROP FUNCTION IF EXISTS cleanup_expired_qr_codes();
+CREATE FUNCTION cleanup_expired_qr_codes()
 RETURNS INTEGER AS $$
 DECLARE
   deleted_count INTEGER := 0;
@@ -60,22 +61,24 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add function to clean up expired trusted devices
-CREATE OR REPLACE FUNCTION cleanup_expired_trusted_devices()
+DROP FUNCTION IF EXISTS cleanup_expired_trusted_devices();
+CREATE FUNCTION cleanup_expired_trusted_devices()
 RETURNS INTEGER AS $$
 DECLARE
   deleted_count INTEGER;
 BEGIN
   DELETE FROM trusted_devices
   WHERE expires_at < NOW();
-  
+
   GET DIAGNOSTICS deleted_count = ROW_COUNT;
-  
+
   RETURN deleted_count;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Add function to clean up expired 2FA codes
-CREATE OR REPLACE FUNCTION cleanup_expired_2fa_codes()
+DROP FUNCTION IF EXISTS cleanup_expired_2fa_codes();
+CREATE FUNCTION cleanup_expired_2fa_codes()
 RETURNS INTEGER AS $$
 DECLARE
   deleted_count INTEGER;
@@ -90,7 +93,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add function to clean up old error logs
-CREATE OR REPLACE FUNCTION cleanup_old_error_logs(days_to_keep INTEGER DEFAULT 30)
+DROP FUNCTION IF EXISTS cleanup_old_error_logs(INTEGER);
+CREATE FUNCTION cleanup_old_error_logs(days_to_keep INTEGER DEFAULT 30)
 RETURNS INTEGER AS $$
 DECLARE
   deleted_count INTEGER;
@@ -105,7 +109,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add function to clean up old auth logs
-CREATE OR REPLACE FUNCTION cleanup_old_auth_logs(days_to_keep INTEGER DEFAULT 90)
+DROP FUNCTION IF EXISTS cleanup_old_auth_logs(INTEGER);
+CREATE FUNCTION cleanup_old_auth_logs(days_to_keep INTEGER DEFAULT 90)
 RETURNS INTEGER AS $$
 DECLARE
   deleted_count INTEGER;
@@ -120,7 +125,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add function to clean up old notifications
-CREATE OR REPLACE FUNCTION cleanup_old_notifications(days_to_keep INTEGER DEFAULT 90)
+DROP FUNCTION IF EXISTS cleanup_old_notifications(INTEGER);
+CREATE FUNCTION cleanup_old_notifications(days_to_keep INTEGER DEFAULT 90)
 RETURNS INTEGER AS $$
 DECLARE
   deleted_count INTEGER;
@@ -137,7 +143,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add function to get database size information
-CREATE OR REPLACE FUNCTION get_database_size_info()
+DROP FUNCTION IF EXISTS get_database_size_info();
+CREATE FUNCTION get_database_size_info()
 RETURNS TABLE (
   table_name TEXT,
   row_count BIGINT,
@@ -166,7 +173,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add function to get index usage statistics
-CREATE OR REPLACE FUNCTION get_index_usage_stats()
+DROP FUNCTION IF EXISTS get_index_usage_stats();
+CREATE FUNCTION get_index_usage_stats()
 RETURNS TABLE (
   table_name TEXT,
   index_name TEXT,
@@ -201,7 +209,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add function to get table bloat information
-CREATE OR REPLACE FUNCTION get_table_bloat_info()
+DROP FUNCTION IF EXISTS get_table_bloat_info();
+CREATE FUNCTION get_table_bloat_info()
 RETURNS TABLE (
   table_name TEXT,
   table_size_pretty TEXT,
@@ -265,7 +274,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add function to get slow queries
-CREATE OR REPLACE FUNCTION get_slow_queries(min_execution_time_ms INTEGER DEFAULT 1000)
+DROP FUNCTION IF EXISTS get_slow_queries(INTEGER);
+CREATE FUNCTION get_slow_queries(min_execution_time_ms INTEGER DEFAULT 1000)
 RETURNS TABLE (
   query_id TEXT,
   database_name TEXT,
@@ -304,7 +314,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add function to analyze all tables
-CREATE OR REPLACE FUNCTION analyze_all_tables()
+DROP FUNCTION IF EXISTS analyze_all_tables();
+CREATE FUNCTION analyze_all_tables()
 RETURNS VOID AS $$
 DECLARE
   tbl TEXT;
@@ -319,7 +330,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add function to vacuum all tables
-CREATE OR REPLACE FUNCTION vacuum_all_tables(analyze_only BOOLEAN DEFAULT FALSE)
+DROP FUNCTION IF EXISTS vacuum_all_tables(BOOLEAN);
+CREATE FUNCTION vacuum_all_tables(analyze_only BOOLEAN DEFAULT FALSE)
 RETURNS VOID AS $$
 DECLARE
   tbl TEXT;
@@ -339,7 +351,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add function to reindex all tables
-CREATE OR REPLACE FUNCTION reindex_all_tables()
+DROP FUNCTION IF EXISTS reindex_all_tables();
+CREATE FUNCTION reindex_all_tables()
 RETURNS VOID AS $$
 DECLARE
   tbl TEXT;
@@ -354,7 +367,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add function to refresh all materialized views
-CREATE OR REPLACE FUNCTION refresh_all_materialized_views()
+DROP FUNCTION IF EXISTS refresh_all_materialized_views();
+CREATE FUNCTION refresh_all_materialized_views()
 RETURNS VOID AS $$
 DECLARE
   mv TEXT;

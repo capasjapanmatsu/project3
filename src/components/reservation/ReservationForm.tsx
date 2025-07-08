@@ -3,6 +3,7 @@ import Card from '../Card';
 import Button from '../Button';
 import type { DogPark, Dog } from '../../types';
 import Input from '../Input';
+import VaccineBadge, { getVaccineStatusFromDog } from '../VaccineBadge';
 
 interface TimeSlot {
   time: string;
@@ -164,12 +165,14 @@ export function ReservationForm({
                       )}
                     </div>
                     <div>
-                      <h3 className="font-semibold">{dog.name}ちゃん</h3>
-                      <p className="text-sm text-gray-600">{dog.breed} • {dog.gender}</p>
-                      <div className="flex items-center text-xs text-green-600 mt-1">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        <span>ワクチン承認済み</span>
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h3 className="font-semibold">{dog.name}ちゃん</h3>
+                        <VaccineBadge 
+                          status={getVaccineStatusFromDog(dog)} 
+                          size="sm" 
+                        />
                       </div>
+                      <p className="text-sm text-gray-600">{dog.breed} • {dog.gender}</p>
                     </div>
                   </div>
                 </div>

@@ -365,10 +365,20 @@ export function AdminManagement() {
       }
       
       // 施設のステータスを更新
-      const newStatus = approved ? 'qr_testing' : 'rejected';
+      const newStatus = approved ? 'approved' : 'rejected';
+      
+      const updateData: Record<string, unknown> = {
+        status: newStatus
+      };
+      
+      // 承認の場合は承認日時を設定
+      if (approved) {
+        updateData.approved_at = new Date().toISOString();
+      }
+      
       const { error } = await supabase
         .from('dog_parks')
-        .update({ status: newStatus })
+        .update(updateData)
         .eq('id', parkId);
       
       if (error) throw error;
@@ -388,7 +398,7 @@ export function AdminManagement() {
       if (existingStage) {
         // 既存のレビューステージを更新
         if (approved) {
-          updateData.qr_testing_started_at = new Date().toISOString();
+          updateData.first_stage_passed_at = new Date().toISOString();
         } else {
           updateData.rejected_at = new Date().toISOString();
           if (rejectionNote.trim()) {
@@ -410,7 +420,7 @@ export function AdminManagement() {
         };
         
         if (approved) {
-          updateData.qr_testing_started_at = new Date().toISOString();
+          updateData.first_stage_passed_at = new Date().toISOString();
         } else {
           updateData.rejected_at = new Date().toISOString();
           if (rejectionNote.trim()) {
@@ -439,17 +449,17 @@ export function AdminManagement() {
         .insert([{
           user_id: parkData.owner_id,
           type: 'park_approval_required',
-          title: approved ? 'QRコード実証検査のお知らせ' : '審査結果のお知らせ',
-          message: approved 
-            ? `${parkData.name}の第二審査が通過しました。QRコード実証検査の日程調整のため、運営事務局からご連絡いたします。`
-            : `${parkData.name}の審査が却下されました。${rejectionNote ? `理由: ${rejectionNote}` : '詳細はダッシュボードをご確認ください。'}`,
-          data: { park_id: parkId }
+          title: approved ? '施設承認のお知らせ' : '審査結果のお知らせ',
+          message: approved
+            ? `${parkData.name}の審査が完了し、承認されました。おめでとうございます！`
+            : `${parkData.name}の審査結果をお知らせします。${rejectionNote ? `理由: ${rejectionNote}` : '詳細はオーナーダッシュボードをご確認ください。'}`,
+          data: { park_id: parkData.id }
         }]);
       
       if (notifyError) throw notifyError;
       
       // 成功メッセージを表示
-      setSuccess(`施設を${approved ? 'QRコードテスト段階に進めました' : '却下しました'}`);
+      setSuccess(`施設を${approved ? '承認しました' : '却下しました'}`);
       
       // データを再取得
       await fetchData();
@@ -1030,7 +1040,7 @@ export function AdminManagement() {
                     disabled={!allImagesApproved}
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
-                    QRコードテストへ進める
+                    承認
                   </Button>
                 </div>
                 

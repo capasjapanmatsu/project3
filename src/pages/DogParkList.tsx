@@ -252,25 +252,29 @@ export function DogParkList() {
       text: '空いています', 
       color: 'text-green-600 bg-green-100',
       barColor: 'bg-green-500',
-      description: '快適に利用できます'
+      description: '快適に利用できます',
+      emoji: '😊'
     };
     if (percentage < 50) return { 
       text: 'やや空いています', 
       color: 'text-blue-600 bg-blue-100',
       barColor: 'bg-blue-500',
-      description: '適度な混雑です'
+      description: '適度な混雑です',
+      emoji: '🙂'
     };
     if (percentage < 75) return { 
       text: 'やや混んでいます', 
       color: 'text-yellow-600 bg-yellow-100',
       barColor: 'bg-yellow-500',
-      description: '少し混雑しています'
+      description: '少し混雑しています',
+      emoji: '😐'
     };
     return { 
       text: '混んでいます', 
       color: 'text-red-600 bg-red-100',
       barColor: 'bg-red-500',
-      description: '大変混雑しています'
+      description: '大変混雑しています',
+      emoji: '😰'
     };
   };
 
@@ -649,9 +653,17 @@ export function DogParkList() {
                         </div>
                       )}
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
-                      {status.text}
-                    </span>
+                    <div className="text-center">
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center justify-center space-x-1 ${
+                        status.color
+                      }`}>
+                        <span>{status.emoji}</span>
+                        <span>{status.text}</span>
+                      </span>
+                      <p className="text-xs text-gray-600 mt-1">
+                        {status.description}
+                      </p>
+                    </div>
                   </div>
                   
                   {/* プログレスバー */}
