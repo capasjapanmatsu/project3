@@ -30,7 +30,7 @@ import { ParkModal } from '../components/dashboard/ParkModal';
 import { ReservationCard } from '../components/dashboard/ReservationCard';
 import { NotificationCard } from '../components/dashboard/NotificationCard';
 import { StatCard } from '../components/dashboard/StatCard';
-import type { Dog, DogPark, Profile, Reservation, Notification } from '../types';
+import type { Dog, DogPark, Profile, Reservation, Notification, NewsAnnouncement } from '../types';
 
 export function UserDashboard() {
   const { user, logout } = useAuth();
@@ -41,6 +41,7 @@ export function UserDashboard() {
   const [ownedParks, setOwnedParks] = useState<DogPark[]>([]);
   const [recentReservations, setRecentReservations] = useState<Reservation[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [news, setNews] = useState<NewsAnnouncement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { isActive: hasSubscription } = useSubscription();
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -108,7 +109,8 @@ export function UserDashboard() {
         dogsResponse,
         parksResponse,
         reservationsResponse,
-        notificationsResponse
+        notificationsResponse,
+        newsResponse
       ] = await Promise.all([
         supabase
           .from('profiles')
@@ -141,7 +143,13 @@ export function UserDashboard() {
           .eq('user_id', user?.id)
           .eq('read', false)
           .order('created_at', { ascending: false })
-          .limit(5)
+          .limit(5),
+        
+        supabase
+          .from('news_announcements')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(3)
       ]);
 
       if (profileResponse.error) throw profileResponse.error;
@@ -149,12 +157,14 @@ export function UserDashboard() {
       if (parksResponse.error) throw parksResponse.error;
       if (reservationsResponse.error) throw reservationsResponse.error;
       if (notificationsResponse.error) throw notificationsResponse.error;
+      if (newsResponse.error) throw newsResponse.error;
 
       setProfile(profileResponse.data);
       setDogs(dogsResponse.data || []);
       setOwnedParks(parksResponse.data || []);
       setRecentReservations(reservationsResponse.data || []);
       setNotifications(notificationsResponse.data || []);
+      setNews(newsResponse.data || []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -637,6 +647,72 @@ export function UserDashboard() {
           iconColor="text-purple-600"
         />
       </div>
+
+      {/* 新着情報 */}
+      {news.length > 0 && (
+        <Card>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold flex items-center">
+              <Bell className="w-6 h-6 text-blue-600 mr-2" />
+              新着情報
+            </h2>
+            <Link to="/news">
+              <Button size="sm" variant="secondary">
+                すべて見る
+              </Button>
+            </Link>
+          </div>
+          
+          <div className="space-y-4">
+            {news.map((item) => (
+              <div key={item.id} className="border-l-4 border-blue-500 pl-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        item.category === 'announcement' 
+                          ? 'bg-red-100 text-red-800' 
+                          : item.category === 'sale'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {item.category === 'announcement' 
+                          ? '重要なお知らせ' 
+                          : item.category === 'sale'
+                          ? 'セール情報'
+                          : 'お知らせ'
+                        }
+                      </span>
+                      {item.is_important && (
+                        <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
+                          重要
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-1">{item.title}</h3>
+                    <p className="text-sm text-gray-600 line-clamp-2">{item.content}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(item.created_at).toLocaleDateString('ja-JP')}
+                    </p>
+                  </div>
+                  {item.link_url && (
+                    <a 
+                      href={item.link_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="ml-4"
+                    >
+                      <Button size="sm" variant="secondary">
+                        詳細
+                      </Button>
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* メインコンテンツ */}
