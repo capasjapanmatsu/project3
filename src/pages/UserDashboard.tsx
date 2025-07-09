@@ -31,6 +31,16 @@ import { ReservationCard } from '../components/dashboard/ReservationCard';
 import { NotificationCard } from '../components/dashboard/NotificationCard';
 import { StatCard } from '../components/dashboard/StatCard';
 import type { Dog, DogPark, Profile, Reservation, Notification, NewsAnnouncement } from '../types';
+import { processDogImage, processVaccineImage } from '../utils/imageUtils';
+import { 
+  uploadDogProfileImage, 
+  uploadVaccineImage, 
+  uploadWithRetry, 
+  deleteExistingImage,
+  validateDogImageFile,
+  UploadResult,
+  UploadError
+} from '../utils/imageUploadUtils';
 
 export function UserDashboard() {
   const { user, logout } = useAuth();
@@ -62,7 +72,7 @@ export function UserDashboard() {
   const [dogImagePreview, setDogImagePreview] = useState<string | null>(null);
   const [recentDogs, setRecentDogs] = useState<Dog[]>([]);
   const [recentDogsError, setRecentDogsError] = useState<string | null>(null);
-  // ワクチン証明書関連の状態
+  // ワクチン証明書関連の状態（初期値を空文字で統一）
   const [rabiesVaccineFile, setRabiesVaccineFile] = useState<File | null>(null);
   const [comboVaccineFile, setComboVaccineFile] = useState<File | null>(null);
   const [rabiesExpiryDate, setRabiesExpiryDate] = useState('');
@@ -198,43 +208,42 @@ export function UserDashboard() {
     });
     setDogImagePreview(dog.image_url || null);
     
-    // ワクチン証明書の情報を設定
+    // ワクチン証明書の情報を設定（必ず空文字で初期化）
     const cert = dog.vaccine_certifications?.[0];
-    if (cert) {
-      setRabiesExpiryDate(cert.rabies_expiry_date || '');
-      setComboExpiryDate(cert.combo_expiry_date || '');
-    } else {
-      setRabiesExpiryDate('');
-      setComboExpiryDate('');
-    }
+    setRabiesExpiryDate(cert?.rabies_expiry_date || '');
+    setComboExpiryDate(cert?.combo_expiry_date || '');
     
     setShowDogEditModal(true);
   };
 
-  const handleDogImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDogImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // ファイルサイズチェック（10MB以下）
-      if (file.size > 10 * 1024 * 1024) {
-        setDogUpdateError('画像ファイルは10MB以下にしてください。');
-        return;
-      }
+      try {
+        // 新しいユーティリティを使用してファイルを検証
+        const validationError = validateDogImageFile(file);
+        if (validationError) {
+          setDogUpdateError(validationError.message);
+          return;
+        }
 
-      // ファイル形式チェック
-      if (!file.type.startsWith('image/')) {
-        setDogUpdateError('画像ファイルを選択してください。');
-        return;
+        setDogUpdateError('画像を処理中...');
+        
+        // 画像をリサイズ・圧縮
+        const processedFile = await processDogImage(file);
+        setDogImageFile(processedFile);
+        
+        // プレビュー画像を作成
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setDogImagePreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(processedFile);
+        setDogUpdateError('');
+      } catch (error) {
+        console.error('Image processing error:', error);
+        setDogUpdateError('画像の処理に失敗しました。別の画像をお試しください。');
       }
-
-      setDogImageFile(file);
-      
-      // プレビュー画像を作成
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setDogImagePreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-      setDogUpdateError('');
     }
   };
 
@@ -243,41 +252,59 @@ export function UserDashboard() {
     setDogImagePreview(selectedDog?.image_url || null);
   };
 
-  const handleRabiesVaccineSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRabiesVaccineSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        setDogUpdateError('ワクチン証明書は10MB以下にしてください。');
-        return;
+      try {
+        // 新しいユーティリティを使用してファイルを検証
+        const validationError = validateDogImageFile(file);
+        if (validationError) {
+          setDogUpdateError(validationError.message);
+          return;
+        }
+        
+        setDogUpdateError('ワクチン証明書を処理中...');
+        
+        // ワクチン証明書画像をリサイズ・圧縮
+        const processedFile = await processVaccineImage(file);
+        setRabiesVaccineFile(processedFile);
+        setDogUpdateError('');
+      } catch (error) {
+        console.error('Vaccine image processing error:', error);
+        setDogUpdateError('ワクチン証明書の処理に失敗しました。別の画像をお試しください。');
       }
-      if (!file.type.startsWith('image/')) {
-        setDogUpdateError('画像ファイルを選択してください。');
-        return;
-      }
-      setRabiesVaccineFile(file);
-      setDogUpdateError('');
     } else {
       // ファイルが選択されていない場合（削除の場合）
       setRabiesVaccineFile(null);
+      setDogUpdateError('');
     }
   };
 
-  const handleComboVaccineSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleComboVaccineSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        setDogUpdateError('ワクチン証明書は10MB以下にしてください。');
-        return;
+      try {
+        // 新しいユーティリティを使用してファイルを検証
+        const validationError = validateDogImageFile(file);
+        if (validationError) {
+          setDogUpdateError(validationError.message);
+          return;
+        }
+        
+        setDogUpdateError('ワクチン証明書を処理中...');
+        
+        // ワクチン証明書画像をリサイズ・圧縮
+        const processedFile = await processVaccineImage(file);
+        setComboVaccineFile(processedFile);
+        setDogUpdateError('');
+      } catch (error) {
+        console.error('Vaccine image processing error:', error);
+        setDogUpdateError('ワクチン証明書の処理に失敗しました。別の画像をお試しください。');
       }
-      if (!file.type.startsWith('image/')) {
-        setDogUpdateError('画像ファイルを選択してください。');
-        return;
-      }
-      setComboVaccineFile(file);
-      setDogUpdateError('');
     } else {
       // ファイルが選択されていない場合（削除の場合）
       setComboVaccineFile(null);
+      setDogUpdateError('');
     }
   };
 
@@ -305,30 +332,29 @@ export function UserDashboard() {
       
       if (dogImageFile) {
         try {
-          // ファイル名を生成
-          const fileExt = dogImageFile.name.split('.').pop() || 'jpg';
-          const timestamp = Date.now();
-          const fileName = `${selectedDog.id}/profile_${timestamp}.${fileExt}`;
-          
-          // Supabaseストレージにアップロード
-          const { error: uploadError } = await supabase.storage
-            .from('dog-images')
-            .upload(fileName, dogImageFile, {
-              cacheControl: '3600',
-              upsert: true
-            });
-
-          if (uploadError) {
-            console.error('Image upload error:', uploadError);
-            throw new Error(`画像のアップロードに失敗しました: ${uploadError.message}`);
+          // 既存の画像を削除
+          if (selectedDog.image_url) {
+            await deleteExistingImage('dog-images', selectedDog.image_url);
           }
-
-          // 公開URLを取得
-          const { data: { publicUrl } } = supabase.storage
-            .from('dog-images')
-            .getPublicUrl(fileName);
           
-          imageUrl = publicUrl;
+          // 新しいユーティリティを使用してアップロード
+          const uploadResult = await uploadWithRetry(dogImageFile, {
+            dogId: selectedDog.id,
+            imageType: 'profile',
+            replaceExisting: true,
+            maxRetries: 3
+          });
+
+          if (uploadResult.success) {
+            imageUrl = uploadResult.url!;
+            console.log('Dog profile image uploaded successfully:', {
+              url: imageUrl,
+              fileName: uploadResult.fileName
+            });
+          } else {
+            console.error('Dog profile image upload failed:', uploadResult.error);
+            throw new Error(uploadResult.error?.message || '画像のアップロードに失敗しました');
+          }
         } catch (imageError) {
           console.error('Image processing error:', imageError);
           // 画像エラーは警告として扱い、更新は続行
@@ -358,50 +384,42 @@ export function UserDashboard() {
 
           // 狂犬病ワクチン証明書のアップロード
           if (rabiesVaccineFile) {
-            const rabiesFileExt = rabiesVaccineFile.name.split('.').pop() || 'jpg';
-            const rabiesFileName = `${selectedDog.id}/rabies_${Date.now()}.${rabiesFileExt}`;
-            
-            const { error: rabiesUploadError } = await supabase.storage
-              .from('vaccine-certificates')
-              .upload(rabiesFileName, rabiesVaccineFile, {
-                cacheControl: '3600',
-                upsert: true
+            const rabiesUploadResult = await uploadWithRetry(rabiesVaccineFile, {
+              dogId: selectedDog.id,
+              imageType: 'rabies',
+              maxRetries: 3
+            });
+
+            if (rabiesUploadResult.success) {
+              rabiesPath = rabiesUploadResult.url!;
+              console.log('Rabies vaccine certificate uploaded successfully:', {
+                url: rabiesPath,
+                fileName: rabiesUploadResult.fileName
               });
-
-            if (rabiesUploadError) {
-              console.error('Rabies vaccine upload error:', rabiesUploadError);
-              throw new Error(`狂犬病ワクチン証明書のアップロードに失敗しました: ${rabiesUploadError.message}`);
+            } else {
+              console.error('Rabies vaccine upload failed:', rabiesUploadResult.error);
+              throw new Error(rabiesUploadResult.error?.message || '狂犬病ワクチン証明書のアップロードに失敗しました');
             }
-
-            const { data: { publicUrl: rabiesPublicUrl } } = supabase.storage
-              .from('vaccine-certificates')
-              .getPublicUrl(rabiesFileName);
-            
-            rabiesPath = rabiesPublicUrl;
           }
 
           // 混合ワクチン証明書のアップロード
           if (comboVaccineFile) {
-            const comboFileExt = comboVaccineFile.name.split('.').pop() || 'jpg';
-            const comboFileName = `${selectedDog.id}/combo_${Date.now()}.${comboFileExt}`;
-            
-            const { error: comboUploadError } = await supabase.storage
-              .from('vaccine-certificates')
-              .upload(comboFileName, comboVaccineFile, {
-                cacheControl: '3600',
-                upsert: true
+            const comboUploadResult = await uploadWithRetry(comboVaccineFile, {
+              dogId: selectedDog.id,
+              imageType: 'combo',
+              maxRetries: 3
+            });
+
+            if (comboUploadResult.success) {
+              comboPath = comboUploadResult.url!;
+              console.log('Combo vaccine certificate uploaded successfully:', {
+                url: comboPath,
+                fileName: comboUploadResult.fileName
               });
-
-            if (comboUploadError) {
-              console.error('Combo vaccine upload error:', comboUploadError);
-              throw new Error(`混合ワクチン証明書のアップロードに失敗しました: ${comboUploadError.message}`);
+            } else {
+              console.error('Combo vaccine upload failed:', comboUploadResult.error);
+              throw new Error(comboUploadResult.error?.message || '混合ワクチン証明書のアップロードに失敗しました');
             }
-
-            const { data: { publicUrl: comboPublicUrl } } = supabase.storage
-              .from('vaccine-certificates')
-              .getPublicUrl(comboFileName);
-            
-            comboPath = comboPublicUrl;
           }
 
           // 既存のワクチン証明書レコードを確認
@@ -414,7 +432,8 @@ export function UserDashboard() {
           if (existingCert) {
             // 既存のレコードを更新
             const updateData: any = {
-              status: 'pending' // 新しい証明書は承認待ち状態に
+              status: 'pending', // 新しい証明書は承認待ち状態に
+              temp_storage: true // 一時保存として設定
             };
             
             if (rabiesPath) {
@@ -446,7 +465,8 @@ export function UserDashboard() {
                 combo_vaccine_image: comboPath,
                 rabies_expiry_date: rabiesExpiryDate,
                 combo_expiry_date: comboExpiryDate,
-                status: 'pending'
+                status: 'pending',
+                temp_storage: true // 一時保存として設定
               }]);
 
             if (insertCertError) {
@@ -456,7 +476,18 @@ export function UserDashboard() {
           }
         } catch (vaccineError) {
           console.error('Vaccine certificate error:', vaccineError);
-          setDogUpdateError('ワクチン証明書のアップロードに失敗しました。');
+          const errorMessage = (vaccineError as Error).message || 'ワクチン証明書のアップロードに失敗しました。';
+          
+          // 具体的なエラーメッセージを提供
+          if (errorMessage.includes('row-level security')) {
+            setDogUpdateError('ワクチン証明書のアップロード権限がありません。ログインし直してください。');
+          } else if (errorMessage.includes('violates check constraint')) {
+            setDogUpdateError('ワクチン証明書の形式が正しくありません。');
+          } else if (errorMessage.includes('storage')) {
+            setDogUpdateError('ワクチン証明書のストレージエラーが発生しました。しばらく後にお試しください。');
+          } else {
+            setDogUpdateError(`ワクチン証明書のアップロードに失敗しました: ${errorMessage}`);
+          }
         }
       }
       
@@ -486,7 +517,18 @@ export function UserDashboard() {
       
     } catch (error) {
       console.error('Error updating dog:', error);
-      setDogUpdateError((error as Error).message || 'ワンちゃん情報の更新に失敗しました');
+      const errorMessage = (error as Error).message || 'ワンちゃん情報の更新に失敗しました';
+      
+      // 具体的なエラーメッセージを提供
+      if (errorMessage.includes('row-level security')) {
+        setDogUpdateError('ワンちゃん情報の更新権限がありません。ログインし直してください。');
+      } else if (errorMessage.includes('violates check constraint')) {
+        setDogUpdateError('入力された情報に不正な値が含まれています。');
+      } else if (errorMessage.includes('network')) {
+        setDogUpdateError('ネットワークエラーが発生しました。インターネット接続を確認してください。');
+      } else {
+        setDogUpdateError(`ワンちゃん情報の更新に失敗しました: ${errorMessage}`);
+      }
     } finally {
       setIsUpdatingDog(false);
     }

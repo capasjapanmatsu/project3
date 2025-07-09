@@ -171,20 +171,20 @@ export function AdminManagement() {
     try {
       setIsProcessing(true);
       
-      const updateData: Record<string, unknown> = {
+      const imageUpdateData: Record<string, unknown> = {
         is_approved: approved,
       };
       
       // 却下の場合はコメントを追加
       if (!approved && rejectionNote.trim()) {
-        updateData.admin_notes = rejectionNote.trim();
+        imageUpdateData.admin_notes = rejectionNote.trim();
       } else {
-        updateData.admin_notes = null; // 承認の場合はコメントをクリア
+        imageUpdateData.admin_notes = null; // 承認の場合はコメントをクリア
       }
       
       const { error } = await supabase
         .from('dog_park_facility_images')
-        .update(updateData)
+        .update(imageUpdateData)
         .eq('id', selectedImage.id);
       
       if (error) throw error;
@@ -229,7 +229,7 @@ export function AdminManagement() {
       if (error) throw error;
       
       // レビューステージを更新
-      let updateData: Record<string, unknown> = {};
+      let approveUpdateData: Record<string, unknown> = {};
       
       // 既存のレビューステージを確認
       const { data: existingStage, error: stageCheckError } = await supabase
@@ -242,24 +242,24 @@ export function AdminManagement() {
       
       if (existingStage) {
         // 既存のレビューステージを更新
-        updateData.first_stage_passed_at = new Date().toISOString();
+        approveUpdateData.first_stage_passed_at = new Date().toISOString();
         
         const { error: updateError } = await supabase
           .from('dog_park_review_stages')
-          .update(updateData)
+          .update(approveUpdateData)
           .eq('park_id', parkId);
           
         if (updateError) throw updateError;
       } else {
         // レビューステージが存在しない場合は作成
-        updateData = {
+        approveUpdateData = {
           park_id: parkId,
           first_stage_passed_at: new Date().toISOString()
         };
         
         const { error: insertError } = await supabase
           .from('dog_park_review_stages')
-          .insert([updateData]);
+          .insert([approveUpdateData]);
           
         if (insertError) throw insertError;
       }
@@ -267,7 +267,7 @@ export function AdminManagement() {
       // 通知を作成
       const { data: parkData, error: parkError } = await supabase
         .from('dog_parks')
-        .select('name, owner_id')
+        .select('id, name, owner_id')
         .eq('id', parkId)
         .single();
       
@@ -280,7 +280,7 @@ export function AdminManagement() {
           type: 'park_approval_required',
           title: '第一審査通過のお知らせ',
           message: `${parkData.name}の第一審査が通過しました。第二審査の詳細情報を入力してください。`,
-          data: { park_id: parkId }
+          data: { park_id: parkData.id }
         }]);
         
       if (notifyError) throw notifyError;
@@ -316,7 +316,7 @@ export function AdminManagement() {
       // Get park details for notification
       const { data: parkData, error: parkError } = await supabase
         .from('dog_parks')
-        .select('name, owner_id')
+        .select('id, name, owner_id')
         .eq('id', parkId)
         .single();
         
@@ -330,7 +330,7 @@ export function AdminManagement() {
           type: 'park_approval_required',
           title: 'ドッグラン審査結果のお知らせ',
           message: `${parkData.name}の審査が却下されました。詳細はダッシュボードをご確認ください。`,
-          data: { park_id: parkId }
+          data: { park_id: parkData.id }
         }]);
         
       if (notifyError) throw notifyError;
@@ -367,24 +367,24 @@ export function AdminManagement() {
       // 施設のステータスを更新
       const newStatus = approved ? 'approved' : 'rejected';
       
-      const updateData: Record<string, unknown> = {
+      const parkUpdateData: Record<string, unknown> = {
         status: newStatus
       };
       
       // 承認の場合は承認日時を設定
       if (approved) {
-        updateData.approved_at = new Date().toISOString();
+        parkUpdateData.approved_at = new Date().toISOString();
       }
       
       const { error } = await supabase
         .from('dog_parks')
-        .update(updateData)
+        .update(parkUpdateData)
         .eq('id', parkId);
       
       if (error) throw error;
       
       // レビューステージを更新
-      let updateData: Record<string, unknown> = {};
+      let stageUpdateData: Record<string, unknown> = {};
       
       // 既存のレビューステージを確認
       const { data: existingStage, error: stageCheckError } = await supabase
@@ -398,39 +398,39 @@ export function AdminManagement() {
       if (existingStage) {
         // 既存のレビューステージを更新
         if (approved) {
-          updateData.first_stage_passed_at = new Date().toISOString();
+          stageUpdateData.first_stage_passed_at = new Date().toISOString();
         } else {
-          updateData.rejected_at = new Date().toISOString();
+          stageUpdateData.rejected_at = new Date().toISOString();
           if (rejectionNote.trim()) {
-            updateData.rejection_reason = rejectionNote.trim();
+            stageUpdateData.rejection_reason = rejectionNote.trim();
           }
         }
         
         const { error: updateError } = await supabase
           .from('dog_park_review_stages')
-          .update(updateData)
+          .update(stageUpdateData)
           .eq('park_id', parkId);
           
         if (updateError) throw updateError;
       } else {
         // レビューステージが存在しない場合は作成
-        updateData = {
+        stageUpdateData = {
           park_id: parkId,
           first_stage_passed_at: new Date().toISOString()
         };
         
         if (approved) {
-          updateData.first_stage_passed_at = new Date().toISOString();
+          stageUpdateData.first_stage_passed_at = new Date().toISOString();
         } else {
-          updateData.rejected_at = new Date().toISOString();
+          stageUpdateData.rejected_at = new Date().toISOString();
           if (rejectionNote.trim()) {
-            updateData.rejection_reason = rejectionNote.trim();
+            stageUpdateData.rejection_reason = rejectionNote.trim();
           }
         }
         
         const { error: insertError } = await supabase
           .from('dog_park_review_stages')
-          .insert([updateData]);
+          .insert([stageUpdateData]);
           
         if (insertError) throw insertError;
       }
@@ -438,7 +438,7 @@ export function AdminManagement() {
       // 通知を作成
       const { data: parkData, error: parkError } = await supabase
         .from('dog_parks')
-        .select('name, owner_id')
+        .select('id, name, owner_id')
         .eq('id', parkId)
         .single();
       
@@ -482,18 +482,18 @@ export function AdminManagement() {
       setError('');
       
       // ワクチン証明書のステータスを更新
-      const updateData: Record<string, unknown> = {
+      const vaccineUpdateData: Record<string, unknown> = {
         status: approved ? 'approved' : 'rejected'
       };
       
       // 承認の場合は承認日時を設定
       if (approved) {
-        updateData.approved_at = new Date().toISOString();
+        vaccineUpdateData.approved_at = new Date().toISOString();
       }
       
       const { error } = await supabase
         .from('vaccine_certifications')
-        .update(updateData)
+        .update(vaccineUpdateData)
         .eq('id', vaccineId);
 
       if (error) throw error;

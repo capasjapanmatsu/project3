@@ -295,7 +295,11 @@ export function DogEditModal({
                               // ファイル入力をリセット
                               const input = document.getElementById('rabies-vaccine-edit') as HTMLInputElement;
                               if (input) input.value = '';
-                              onRabiesVaccineSelect({ target: { files: null } } as any);
+                              // 空のFileListを模擬したイベントを作成
+                              const mockEvent = {
+                                target: { files: [] as any }
+                              } as React.ChangeEvent<HTMLInputElement>;
+                              onRabiesVaccineSelect(mockEvent);
                             }}
                             className="text-red-600 hover:text-red-800"
                           >
@@ -353,7 +357,11 @@ export function DogEditModal({
                               // ファイル入力をリセット
                               const input = document.getElementById('combo-vaccine-edit') as HTMLInputElement;
                               if (input) input.value = '';
-                              onComboVaccineSelect({ target: { files: null } } as any);
+                              // 空のFileListを模擬したイベントを作成
+                              const mockEvent = {
+                                target: { files: [] as any }
+                              } as React.ChangeEvent<HTMLInputElement>;
+                              onComboVaccineSelect(mockEvent);
                             }}
                             className="text-red-600 hover:text-red-800"
                           >

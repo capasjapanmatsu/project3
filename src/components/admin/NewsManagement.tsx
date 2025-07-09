@@ -40,7 +40,70 @@ export function NewsManagement() {
   // 新着情報の取得
   useEffect(() => {
     fetchNews();
+    checkUserProfile();
   }, []);
+
+  // ユーザープロファイルをチェック
+  const checkUserProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      console.log('Current user profile:', profile);
+      console.log('User type:', profile?.user_type);
+      
+      if (error && error.code === 'PGRST116') {
+        // プロファイルが存在しない場合、管理者として作成
+        console.log('Profile not found, creating admin profile...');
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert([{
+            id: user.id,
+            user_type: 'admin',
+            name: user.email || 'Admin User',
+            email: user.email
+          }])
+          .select()
+          .single();
+        
+        if (createError) {
+          console.error('Error creating admin profile:', createError);
+          setNewsError('管理者プロファイルの作成に失敗しました。');
+        } else {
+          console.log('Admin profile created successfully:', newProfile);
+          setNewsSuccess('管理者プロファイルを作成しました。');
+          setTimeout(() => setNewsSuccess(''), 3000);
+        }
+      } else if (error) {
+        console.error('Error fetching user profile:', error);
+        setNewsError('ユーザープロファイルの取得に失敗しました。');
+      } else if (!profile || profile.user_type !== 'admin') {
+        // 既存プロファイルを管理者に更新
+        console.log('Updating user to admin...');
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ user_type: 'admin' })
+          .eq('id', user.id);
+        
+        if (updateError) {
+          console.error('Error updating user to admin:', updateError);
+          setNewsError('管理者権限の設定に失敗しました。');
+        } else {
+          console.log('User updated to admin successfully');
+          setNewsSuccess('管理者権限を設定しました。ページを手動でリロードしてください。');
+          setTimeout(() => setNewsSuccess(''), 5000);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking user profile:', error);
+      setNewsError('ユーザープロファイルの確認に失敗しました。');
+    }
+  };
 
   const fetchNews = async () => {
     try {
@@ -72,10 +135,39 @@ export function NewsManagement() {
       return;
     }
 
+    // ユーザー認証チェック
+    if (!user) {
+      setNewsError('ユーザーが認証されていません。ログインしてください。');
+      return;
+    }
+
     try {
       setIsUpdatingNews(true);
       setNewsError('');
       setNewsSuccess('');
+
+      // デバッグ: 現在のユーザー情報とプロファイルを再確認
+      console.log('=== 保存開始 ===');
+      console.log('Current user:', user);
+      
+      const { data: currentProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      console.log('Current profile:', currentProfile);
+      console.log('Profile error:', profileError);
+
+      const insertData = {
+        title: newsFormData.title,
+        content: newsFormData.content,
+        category: newsFormData.category,
+        is_important: newsFormData.is_important,
+        created_by: user?.id
+      };
+
+      console.log('Insert data:', insertData);
 
       if (selectedNews) {
         // 更新
@@ -86,8 +178,6 @@ export function NewsManagement() {
             content: newsFormData.content,
             category: newsFormData.category,
             is_important: newsFormData.is_important,
-            image_url: newsFormData.image_url || null,
-            link_url: newsFormData.link_url || null,
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedNews.id);
@@ -96,19 +186,22 @@ export function NewsManagement() {
         setNewsSuccess('新着情報を更新しました。');
       } else {
         // 新規追加
-        const { error } = await supabase
+        console.log('Attempting to insert new announcement...');
+        const { data: insertResult, error } = await supabase
           .from('news_announcements')
-          .insert([{
-            title: newsFormData.title,
-            content: newsFormData.content,
-            category: newsFormData.category,
-            is_important: newsFormData.is_important,
-            image_url: newsFormData.image_url || null,
-            link_url: newsFormData.link_url || null,
-            created_by: user?.id
-          }]);
+          .insert([insertData])
+          .select();
 
-        if (error) throw error;
+        console.log('Insert result:', insertResult);
+        if (error) {
+          console.error('Insert error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          throw error;
+        }
         setNewsSuccess('新着情報を追加しました。');
       }
 
@@ -133,8 +226,27 @@ export function NewsManagement() {
       }, 3000);
 
     } catch (error) {
+      console.error('=== エラー詳細 ===');
       console.error('Error saving news:', error);
-      setNewsError('新着情報の保存に失敗しました。');
+      
+      let errorMessage = '新着情報の保存に失敗しました。';
+      
+      if (error && typeof error === 'object') {
+        if ('message' in error && typeof error.message === 'string') {
+          errorMessage += ` エラー詳細: ${error.message}`;
+        }
+        if ('details' in error && typeof error.details === 'string') {
+          errorMessage += ` 詳細: ${error.details}`;
+        }
+        if ('hint' in error && typeof error.hint === 'string') {
+          errorMessage += ` ヒント: ${error.hint}`;
+        }
+        if ('code' in error) {
+          errorMessage += ` コード: ${error.code}`;
+        }
+      }
+      
+      setNewsError(errorMessage);
     } finally {
       setIsUpdatingNews(false);
     }
@@ -179,8 +291,8 @@ export function NewsManagement() {
       content: news.content,
       category: news.category,
       is_important: news.is_important || false,
-      image_url: news.image_url || '',
-      link_url: news.link_url || ''
+      image_url: '',
+      link_url: ''
     });
     setShowNewsModal(true);
   };
@@ -283,12 +395,6 @@ export function NewsManagement() {
                     </div>
                     <h3 className="font-bold text-lg mb-2">{news.title}</h3>
                     <p className="text-sm text-gray-700 mb-2 line-clamp-2">{news.content}</p>
-                    {news.image_url && (
-                      <p className="text-xs text-gray-500 mb-1">画像URL: {news.image_url}</p>
-                    )}
-                    {news.link_url && (
-                      <p className="text-xs text-gray-500 mb-1">リンクURL: {news.link_url}</p>
-                    )}
                     <div className="text-xs text-gray-500">
                       作成日: {new Date(news.created_at).toLocaleString('ja-JP')}
                       {news.updated_at !== news.created_at && (
@@ -391,22 +497,6 @@ export function NewsManagement() {
                       重要なお知らせとして表示する
                     </label>
                   </div>
-                  
-                  <Input
-                    label="画像URL（任意）"
-                    value={newsFormData.image_url}
-                    onChange={(e) => setNewsFormData({ ...newsFormData, image_url: e.target.value })}
-                    placeholder="https://example.com/image.jpg"
-                    disabled={isUpdatingNews}
-                  />
-                  
-                  <Input
-                    label="リンクURL（任意）"
-                    value={newsFormData.link_url}
-                    onChange={(e) => setNewsFormData({ ...newsFormData, link_url: e.target.value })}
-                    placeholder="https://example.com/page"
-                    disabled={isUpdatingNews}
-                  />
                 </div>
 
                 <div className="flex justify-end space-x-3 mt-6">

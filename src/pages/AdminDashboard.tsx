@@ -437,7 +437,7 @@ export function AdminDashboard() {
             </Link>
             で行えます。
           </p>
-        </Card>
+            </Card>
       )}
 
       {activeTab === 'vaccines' && (
@@ -450,7 +450,7 @@ export function AdminDashboard() {
             </Link>
             で行えます。
           </p>
-        </Card>
+            </Card>
       )}
 
       {activeTab === 'users' && (
@@ -463,8 +463,8 @@ export function AdminDashboard() {
             </Link>
             で行えます。
           </p>
-        </Card>
+              </Card>
       )}
     </div>
   );
-} 
+}
