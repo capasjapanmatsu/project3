@@ -15,148 +15,108 @@ import {
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
-
-interface PendingPark {
-  id: string;
-  name: string;
-  address: string;
-  status: string;
-  created_at: string;
-  owner_name: string;
-  owner_id: string;
-  second_stage_submitted_at: string | null;
-  total_images: number;
-  pending_images: number;
-  approved_images: number;
-  rejected_images: number;
-}
-
-interface PendingVaccine {
-  id: string;
-  dog_id: string;
-  rabies_vaccine_image: string | null;
-  combo_vaccine_image: string | null;
-  status: string;
-  rabies_expiry_date: string | null;
-  combo_expiry_date: string | null;
-  created_at: string;
-  dog: {
-    id: string;
-    name: string;
-    breed: string;
-    gender: string;
-    birth_date: string;
-    owner: {
-      id: string;
-      name: string;
-    }
-  }
-}
-
-interface FacilityImage {
-  id: string;
-  park_id: string;
-  image_type: string;
-  image_url: string;
-  is_approved: boolean | null;
-  admin_notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
+import { checkAndSetAdminUser, debugAuthState, testSupabaseConnection, directUpdateUserType } from '../utils/adminUtils';
+import { PendingPark, PendingVaccine, FacilityImage } from '../types/admin';
+import { useAdminData, useParkImages } from '../hooks/useAdminData';
+import { useAdminApproval } from '../hooks/useAdminApproval';
+import { 
+  getVaccineImageUrl, 
+  getImageTypeLabel, 
+  getApprovalStatus, 
+  testImageUrl 
+} from '../utils/storageUtils';
+import { 
+  debugStorageBuckets, 
+  testSpecificImageUrls, 
+  forcePublicBucket, 
+  debugVaccineData 
+} from '../utils/debugStorage';
+import { 
+  validateAndGetImageUrl, 
+  getPlaceholderImageUrl, 
+  reuploadVaccineImage, 
+  repairVaccineImages 
+} from '../utils/imageHelpers';
+import { immediateStorageCheck } from '../utils/immediateDebug';
+import { SmartVaccineImage } from '../components/SmartVaccineImage';
+import { fixStorageCompletely, emergencyStorageRepair } from '../utils/storageFixing';
+import { disableRLS, grantAdminAccess, forceFixBucket } from '../utils/supabaseAdmin';
+import { repairMissingVaccineFiles, normalizeVaccineImagePaths } from '../utils/fileRepair';
 
 export function AdminManagement() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, userProfile, session } = useAuth();
   const navigate = useNavigate();
+  
+  // 状態管理
   const [activeTab, setActiveTab] = useState<'parks' | 'vaccines'>('parks');
-  const [pendingParks, setPendingParks] = useState<PendingPark[]>([]);
-  const [pendingVaccines, setPendingVaccines] = useState<PendingVaccine[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [selectedPark, setSelectedPark] = useState<PendingPark | null>(null);
   const [selectedVaccine, setSelectedVaccine] = useState<PendingVaccine | null>(null);
-  const [parkImages, setParkImages] = useState<FacilityImage[]>([]);
   const [selectedImage, setSelectedImage] = useState<FacilityImage | null>(null);
   const [imageReviewMode, setImageReviewMode] = useState(false);
   const [rejectionNote, setRejectionNote] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [allImagesApproved, setAllImagesApproved] = useState(false);
 
+  // カスタムフック
+  const adminData = useAdminData(activeTab);
+  const parkImages = useParkImages(selectedPark?.id || null);
+  const approval = useAdminApproval();
+
+  // デバッグ情報をログ出力
   useEffect(() => {
-    // 管理者権限チェック
+    console.log('👔 AdminManagement - User Authentication Status:', {
+      user_id: user?.id,
+      user_email: user?.email,
+      user_type: userProfile?.user_type,
+      isAdmin: isAdmin,
+      hasSession: !!session,
+      sessionExpiry: session?.expires_at,
+      accessToken: session?.access_token ? 'Present' : 'Missing',
+      refreshToken: session?.refresh_token ? 'Present' : 'Missing'
+    });
+  }, [user, userProfile, isAdmin, session]);
+
+  // 管理者権限の自動設定
+  useEffect(() => {
+    const setupAdminUser = async () => {
+      if (user?.email === 'capasjapan@gmail.com' && !isAdmin) {
+        console.log('🔧 Attempting to set up admin user...');
+        
+        await debugAuthState();
+        const connectionResult = await testSupabaseConnection();
+        console.log('Connection test result:', connectionResult);
+        
+        const result = await checkAndSetAdminUser(user.email);
+        console.log('Admin setup result:', result);
+        
+        if (result.success) {
+          console.log('✅ Admin setup successful, reloading page...');
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }
+      }
+    };
+
+    if (user && !isAdmin) {
+      setupAdminUser();
+    }
+  }, [user, isAdmin]);
+
+  // 管理者権限チェックとデータ取得
+  useEffect(() => {
     if (!isAdmin) {
+      console.log('❌ Admin access denied - redirecting to home');
       navigate('/');
       return;
     }
     
-    fetchData();
+    console.log('✅ Admin access granted');
+    adminData.fetchData();
   }, [isAdmin, navigate, activeTab]);
 
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      setError('');
-      setSuccess('');
-      
-      if (activeTab === 'parks') {
-        // 審査待ちのドッグラン一覧を取得
-        const { data: parksData, error: parksError } = await supabase
-          .from('admin_pending_parks_view')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (parksError) throw parksError;
-        setPendingParks(parksData || []);
-      } else {
-        // 審査待ちのワクチン証明書一覧を取得
-        const { data: vaccinesData, error: vaccinesError } = await supabase
-          .from('vaccine_certifications')
-          .select(`
-            *,
-            dog:dogs(*, owner:profiles(*))
-          `)
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false });
-        
-        if (vaccinesError) throw vaccinesError;
-        setPendingVaccines(vaccinesData || []);
-      }
-    } catch (error) {
-      setError((error as Error).message || 'エラーが発生しました');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchParkImages = async (parkId: string) => {
-    try {
-      setIsLoading(true);
-      
-      const { data, error } = await supabase
-        .from('dog_park_facility_images')
-        .select('*')
-        .eq('park_id', parkId)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      setParkImages(data || []);
-      
-      // Check if all images are approved
-      const allApproved = data && data.length > 0 && data.every(img => img.is_approved === true);
-      setAllImagesApproved(allApproved);
-    } catch (error) {
-      setError((error as Error).message || '施設画像の取得に失敗しました');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleParkSelect = async (park: PendingPark) => {
+  // ハンドラー関数
+  const handleParkSelect = (park: PendingPark) => {
     setSelectedPark(park);
-    await fetchParkImages(park.id);
   };
 
   const handleImageSelect = (image: FacilityImage) => {
@@ -165,408 +125,58 @@ export function AdminManagement() {
     setRejectionNote(image.admin_notes || '');
   };
 
-  const handleImageApproval = async (approved: boolean) => {
-    if (!selectedImage) return;
-    
-    try {
-      setIsProcessing(true);
-      
-      const imageUpdateData: Record<string, unknown> = {
-        is_approved: approved,
-      };
-      
-      // 却下の場合はコメントを追加
-      if (!approved && rejectionNote.trim()) {
-        imageUpdateData.admin_notes = rejectionNote.trim();
-      } else {
-        imageUpdateData.admin_notes = null; // 承認の場合はコメントをクリア
-      }
-      
-      const { error } = await supabase
-        .from('dog_park_facility_images')
-        .update(imageUpdateData)
-        .eq('id', selectedImage.id);
-      
-      if (error) throw error;
-      
-      // 画像一覧を再取得
-      if (selectedPark) {
-        await fetchParkImages(selectedPark.id);
-      }
-      
-      // 成功メッセージを表示
-      setSuccess(`画像を${approved ? '承認' : '却下'}しました`);
-      
-      // 3秒後に成功メッセージをクリア
-      setTimeout(() => {
-        setSuccess('');
-      }, 3000);
-      
-      // 画像レビューモードを終了
-      setImageReviewMode(false);
-      setSelectedImage(null);
+  const handleVaccineApproval = async (vaccineId: string, approved: boolean) => {
+    const result = await approval.handleVaccineApproval(vaccineId, approved, rejectionNote);
+    if (result.success) {
+      adminData.showSuccess(result.message);
+      await adminData.fetchData();
+      setSelectedVaccine(null);
       setRejectionNote('');
-      
-    } catch {
-      setError('画像の承認/却下に失敗しました');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const approvePark = async (parkId: string) => {
-    try {
-      setIsProcessing(true);
-      setError('');
-      setSuccess('');
-      
-      // 施設のステータスを更新
-      const { error } = await supabase
-        .from('dog_parks')
-        .update({ status: 'first_stage_passed' })
-        .eq('id', parkId);
-      
-      if (error) throw error;
-      
-      // レビューステージを更新
-      let approveUpdateData: Record<string, unknown> = {};
-      
-      // 既存のレビューステージを確認
-      const { data: existingStage, error: stageCheckError } = await supabase
-        .from('dog_park_review_stages')
-        .select('id')
-        .eq('park_id', parkId)
-        .maybeSingle();
-        
-      if (stageCheckError) throw stageCheckError;
-      
-      if (existingStage) {
-        // 既存のレビューステージを更新
-        approveUpdateData.first_stage_passed_at = new Date().toISOString();
-        
-        const { error: updateError } = await supabase
-          .from('dog_park_review_stages')
-          .update(approveUpdateData)
-          .eq('park_id', parkId);
-          
-        if (updateError) throw updateError;
-      } else {
-        // レビューステージが存在しない場合は作成
-        approveUpdateData = {
-          park_id: parkId,
-          first_stage_passed_at: new Date().toISOString()
-        };
-        
-        const { error: insertError } = await supabase
-          .from('dog_park_review_stages')
-          .insert([approveUpdateData]);
-          
-        if (insertError) throw insertError;
-      }
-      
-      // 通知を作成
-      const { data: parkData, error: parkError } = await supabase
-        .from('dog_parks')
-        .select('id, name, owner_id')
-        .eq('id', parkId)
-        .single();
-      
-      if (parkError) throw parkError;
-      
-      const { error: notifyError } = await supabase
-        .from('notifications')
-        .insert([{
-          user_id: parkData.owner_id,
-          type: 'park_approval_required',
-          title: '第一審査通過のお知らせ',
-          message: `${parkData.name}の第一審査が通過しました。第二審査の詳細情報を入力してください。`,
-          data: { park_id: parkData.id }
-        }]);
-        
-      if (notifyError) throw notifyError;
-      
-      await fetchData();
-      setSelectedPark(null);
-      setSuccess('ドッグランを承認しました。');
-      
-      // 3秒後に成功メッセージをクリア
-      setTimeout(() => {
-        setSuccess('');
-      }, 3000);
-    } catch {
-      setError('承認に失敗しました');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const rejectPark = async (parkId: string) => {
-    try {
-      setIsProcessing(true);
-      setError('');
-      setSuccess('');
-      
-      const { error } = await supabase
-        .from('dog_parks')
-        .update({ status: 'rejected' })
-        .eq('id', parkId);
-
-      if (error) throw error;
-      
-      // Get park details for notification
-      const { data: parkData, error: parkError } = await supabase
-        .from('dog_parks')
-        .select('id, name, owner_id')
-        .eq('id', parkId)
-        .single();
-        
-      if (parkError) throw parkError;
-      
-      // Create notification for owner
-      const { error: notifyError } = await supabase
-        .from('notifications')
-        .insert([{
-          user_id: parkData.owner_id,
-          type: 'park_approval_required',
-          title: 'ドッグラン審査結果のお知らせ',
-          message: `${parkData.name}の審査が却下されました。詳細はダッシュボードをご確認ください。`,
-          data: { park_id: parkData.id }
-        }]);
-        
-      if (notifyError) throw notifyError;
-      
-      await fetchData();
-      setSelectedPark(null);
-      setSuccess('ドッグランを却下しました。');
-      
-      // 3秒後に成功メッセージをクリア
-      setTimeout(() => {
-        setSuccess('');
-      }, 3000);
-    } catch {
-      setError('却下に失敗しました');
-    } finally {
-      setIsProcessing(false);
+    } else {
+      adminData.showError(result.message);
     }
   };
 
   const handleParkApproval = async (parkId: string, approved: boolean) => {
-    try {
-      setIsProcessing(true);
-      
-      // すべての画像が承認されているか確認
-      if (approved) {
-        const pendingImages = parkImages.filter(img => img.is_approved === null || img.is_approved === false);
-        if (pendingImages.length > 0) {
-          setError('すべての画像を承認してから施設を承認してください');
-          setIsProcessing(false);
-          return;
-        }
+    // 承認の場合は全画像が承認されているかチェック
+    if (approved) {
+      const pendingImages = parkImages.parkImages.filter(img => 
+        img.is_approved === null || img.is_approved === false
+      );
+      if (pendingImages.length > 0) {
+        adminData.showError('すべての画像を承認してから施設を承認してください');
+        return;
       }
-      
-      // 施設のステータスを更新
-      const newStatus = approved ? 'approved' : 'rejected';
-      
-      const parkUpdateData: Record<string, unknown> = {
-        status: newStatus
-      };
-      
-      // 承認の場合は承認日時を設定
-      if (approved) {
-        parkUpdateData.approved_at = new Date().toISOString();
-      }
-      
-      const { error } = await supabase
-        .from('dog_parks')
-        .update(parkUpdateData)
-        .eq('id', parkId);
-      
-      if (error) throw error;
-      
-      // レビューステージを更新
-      let stageUpdateData: Record<string, unknown> = {};
-      
-      // 既存のレビューステージを確認
-      const { data: existingStage, error: stageCheckError } = await supabase
-        .from('dog_park_review_stages')
-        .select('id')
-        .eq('park_id', parkId)
-        .maybeSingle();
-        
-      if (stageCheckError) throw stageCheckError;
-      
-      if (existingStage) {
-        // 既存のレビューステージを更新
-        if (approved) {
-          stageUpdateData.first_stage_passed_at = new Date().toISOString();
-        } else {
-          stageUpdateData.rejected_at = new Date().toISOString();
-          if (rejectionNote.trim()) {
-            stageUpdateData.rejection_reason = rejectionNote.trim();
-          }
-        }
-        
-        const { error: updateError } = await supabase
-          .from('dog_park_review_stages')
-          .update(stageUpdateData)
-          .eq('park_id', parkId);
-          
-        if (updateError) throw updateError;
-      } else {
-        // レビューステージが存在しない場合は作成
-        stageUpdateData = {
-          park_id: parkId,
-          first_stage_passed_at: new Date().toISOString()
-        };
-        
-        if (approved) {
-          stageUpdateData.first_stage_passed_at = new Date().toISOString();
-        } else {
-          stageUpdateData.rejected_at = new Date().toISOString();
-          if (rejectionNote.trim()) {
-            stageUpdateData.rejection_reason = rejectionNote.trim();
-          }
-        }
-        
-        const { error: insertError } = await supabase
-          .from('dog_park_review_stages')
-          .insert([stageUpdateData]);
-          
-        if (insertError) throw insertError;
-      }
-      
-      // 通知を作成
-      const { data: parkData, error: parkError } = await supabase
-        .from('dog_parks')
-        .select('id, name, owner_id')
-        .eq('id', parkId)
-        .single();
-      
-      if (parkError) throw parkError;
-      
-      const { error: notifyError } = await supabase
-        .from('notifications')
-        .insert([{
-          user_id: parkData.owner_id,
-          type: 'park_approval_required',
-          title: approved ? '施設承認のお知らせ' : '審査結果のお知らせ',
-          message: approved
-            ? `${parkData.name}の審査が完了し、承認されました。おめでとうございます！`
-            : `${parkData.name}の審査結果をお知らせします。${rejectionNote ? `理由: ${rejectionNote}` : '詳細はオーナーダッシュボードをご確認ください。'}`,
-          data: { park_id: parkData.id }
-        }]);
-      
-      if (notifyError) throw notifyError;
-      
-      // 成功メッセージを表示
-      setSuccess(`施設を${approved ? '承認しました' : '却下しました'}`);
-      
-      // データを再取得
-      await fetchData();
-      
-      // 選択解除
+    }
+
+    const result = await approval.handleParkApproval(parkId, approved, rejectionNote);
+    if (result.success) {
+      adminData.showSuccess(result.message);
+      await adminData.fetchData();
       setSelectedPark(null);
-      setParkImages([]);
       setRejectionNote('');
-      
-    } catch (error) {
-      setError('施設の承認/却下に失敗しました: ' + (error as Error).message);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleVaccineApproval = async (vaccineId: string, approved: boolean) => {
-    try {
-      setIsProcessing(true);
-      setError('');
-      
-      // ワクチン証明書のステータスを更新
-      const vaccineUpdateData: Record<string, unknown> = {
-        status: approved ? 'approved' : 'rejected'
-      };
-      
-      // 承認の場合は承認日時を設定
-      if (approved) {
-        vaccineUpdateData.approved_at = new Date().toISOString();
-      }
-      
-      const { error } = await supabase
-        .from('vaccine_certifications')
-        .update(vaccineUpdateData)
-        .eq('id', vaccineId);
-
-      if (error) throw error;
-      
-      // 通知を作成
-      const { data: vaccineData, error: vaccineError } = await supabase
-        .from('vaccine_certifications')
-        .select('*, dog:dogs(name, owner_id)')
-        .eq('id', vaccineId)
-        .single();
-        
-      if (vaccineError) throw vaccineError;
-      
-      const { error: notifyError } = await supabase
-        .from('notifications')
-        .insert([{
-          user_id: vaccineData.dog.owner_id,
-          type: 'vaccine_approval_required',
-          title: approved ? 'ワクチン証明書承認のお知らせ' : 'ワクチン証明書却下のお知らせ',
-          message: approved
-            ? `${vaccineData.dog.name}ちゃんのワクチン証明書が承認されました。ドッグランを利用できるようになりました。`
-            : `${vaccineData.dog.name}ちゃんのワクチン証明書が却下されました。${rejectionNote ? `理由: ${rejectionNote}` : '詳細はマイページをご確認ください。'}`,
-          data: { dog_id: vaccineData.dog_id }
-        }]);
-        
-      if (notifyError) throw notifyError;
-      
-      // 成功メッセージを表示
-      setSuccess(`ワクチン証明書を${approved ? '承認' : '却下'}しました`);
-      
-      // データを再取得
-      await fetchData();
-      
-      // 選択解除
-      setSelectedVaccine(null);
-      setRejectionNote('');
-      
-    } catch {
-      setError('ワクチン証明書の承認/却下に失敗しました');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const getImageTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      overview: '施設全景',
-      entrance: '入口',
-      large_dog_area: '大型犬エリア',
-      small_dog_area: '小型犬エリア',
-      private_booth: 'プライベートブース',
-      parking: '駐車場',
-      shower: 'シャワー設備',
-      restroom: 'トイレ',
-      agility: 'アジリティ設備',
-      rest_area: '休憩スペース',
-      water_station: '給水設備'
-    };
-    
-    return labels[type] || type;
-  };
-
-  const getApprovalStatus = (isApproved: boolean | null) => {
-    if (isApproved === true) {
-      return { icon: CheckCircle, color: 'text-green-600', label: '承認済み' };
-    } else if (isApproved === false) {
-      return { icon: X, color: 'text-red-600', label: '却下' };
     } else {
-      return { icon: Clock, color: 'text-yellow-600', label: '審査中' };
+      adminData.showError(result.message);
     }
   };
 
-  if (isLoading && !selectedPark && !selectedVaccine) {
+  const handleImageApproval = async (approved: boolean) => {
+    if (!selectedImage) return;
+
+    const result = await approval.handleImageApproval(selectedImage, approved, rejectionNote);
+    if (result.success) {
+      adminData.showSuccess(result.message);
+      await parkImages.fetchParkImages(selectedPark!.id);
+      setImageReviewMode(false);
+      setSelectedImage(null);
+      setRejectionNote('');
+    } else {
+      adminData.showError(result.message);
+    }
+  };
+
+  // ローディング状態
+  if (adminData.isLoading && !selectedPark && !selectedVaccine) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
@@ -626,27 +236,6 @@ export function AdminManagement() {
             </div>
           </div>
           
-          {/* 画像情報 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div>
-              <h3 className="font-semibold mb-2">画像情報</h3>
-              <div className="space-y-1 text-sm">
-                <p><span className="font-medium">タイプ:</span> {getImageTypeLabel(selectedImage.image_type)}</p>
-                <p><span className="font-medium">アップロード日時:</span> {new Date(selectedImage.created_at).toLocaleString('ja-JP')}</p>
-                <p><span className="font-medium">最終更新日時:</span> {new Date(selectedImage.updated_at).toLocaleString('ja-JP')}</p>
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="font-semibold mb-2">施設情報</h3>
-              <div className="space-y-1 text-sm">
-                <p><span className="font-medium">施設名:</span> {selectedPark?.name}</p>
-                <p><span className="font-medium">住所:</span> {selectedPark?.address}</p>
-                <p><span className="font-medium">オーナー:</span> {selectedPark?.owner_name}</p>
-              </div>
-            </div>
-          </div>
-          
           {/* 却下理由入力フォーム */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -675,7 +264,7 @@ export function AdminManagement() {
             </Button>
             <Button
               onClick={() => handleImageApproval(false)}
-              isLoading={isProcessing}
+              isLoading={approval.isProcessing}
               className="bg-red-600 hover:bg-red-700"
             >
               <X className="w-4 h-4 mr-2" />
@@ -683,7 +272,7 @@ export function AdminManagement() {
             </Button>
             <Button
               onClick={() => handleImageApproval(true)}
-              isLoading={isProcessing}
+              isLoading={approval.isProcessing}
               className="bg-green-600 hover:bg-green-700"
             >
               <CheckCircle className="w-4 h-4 mr-2" />
@@ -713,19 +302,327 @@ export function AdminManagement() {
       </div>
 
       {/* エラー・成功メッセージ */}
-      {error && (
+      {adminData.error && (
         <div className="mb-6 p-4 bg-red-50 rounded-lg flex items-start">
           <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
-          <p className="text-red-800">{error}</p>
+          <p className="text-red-800">{adminData.error}</p>
         </div>
       )}
       
-      {success && (
+      {adminData.success && (
         <div className="mb-6 p-4 bg-green-50 rounded-lg flex items-start">
           <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
-          <p className="text-green-800">{success}</p>
+          <p className="text-green-800">{adminData.success}</p>
         </div>
       )}
+
+      {/* 認証デバッグ情報 */}
+      <Card className="p-4 bg-gray-50 border-l-4 border-blue-500">
+        <h3 className="font-semibold mb-3 text-blue-900">🔍 システムデバッグ情報</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <p className="font-medium text-gray-700">ユーザー情報</p>
+            <div className="mt-1 space-y-1 text-gray-600">
+              <p>ID: {user?.id || 'なし'}</p>
+              <p>Email: {user?.email || 'なし'}</p>
+              <p>User Type: <span className={`font-medium ${userProfile?.user_type === 'admin' ? 'text-green-600' : 'text-red-600'}`}>
+                {userProfile?.user_type || 'undefined'}
+              </span></p>
+              <p>Is Admin: <span className={`font-medium ${isAdmin ? 'text-green-600' : 'text-red-600'}`}>
+                {isAdmin ? 'true' : 'false'}
+              </span></p>
+            </div>
+          </div>
+          <div>
+            <p className="font-medium text-gray-700">セッション情報</p>
+            <div className="mt-1 space-y-1 text-gray-600">
+              <p>Has Session: <span className={`font-medium ${session ? 'text-green-600' : 'text-red-600'}`}>
+                {session ? 'true' : 'false'}
+              </span></p>
+              <p>Session Expiry: {session?.expires_at ? new Date(session.expires_at * 1000).toLocaleString('ja-JP') : 'なし'}</p>
+              <p>Access Token: <span className={`font-medium ${session?.access_token ? 'text-green-600' : 'text-red-600'}`}>
+                {session?.access_token ? 'Present' : 'Missing'}
+              </span></p>
+              <p>Profile Fetched: <span className={`font-medium ${userProfile ? 'text-green-600' : 'text-red-600'}`}>
+                {userProfile ? 'true' : 'false'}
+              </span></p>
+            </div>
+          </div>
+        </div>
+        {!isAdmin && (
+          <div className="mt-4 p-3 bg-red-50 rounded-lg">
+            <p className="text-red-800 font-medium">❌ 管理者権限がありません</p>
+            <p className="text-sm text-red-600 mt-1">
+              管理者権限を取得するには、user_type を 'admin' に設定するか、
+              capasjapan@gmail.com でログインしてください。
+            </p>
+            {user?.email === 'capasjapan@gmail.com' && (
+              <div className="mt-3 space-x-2">
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    console.log('🔧 Manual admin setup triggered');
+                    adminData.clearMessages();
+                    
+                    try {
+                      const result = await checkAndSetAdminUser(user.email || '');
+                      if (result.success) {
+                        adminData.showSuccess('管理者権限を設定しました。ページを再読み込みします...');
+                        setTimeout(() => {
+                          window.location.reload();
+                        }, 1500);
+                      } else {
+                        adminData.showError(`管理者権限の設定に失敗しました: ${result.error}`);
+                      }
+                    } catch (error) {
+                      adminData.showError(`エラーが発生しました: ${(error as Error).message}`);
+                    }
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  管理者権限を設定
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={async () => {
+                    console.log('🔍 Debug info triggered');
+                    await debugAuthState();
+                    const connectionResult = await testSupabaseConnection();
+                    console.log('Connection test result:', connectionResult);
+                  }}
+                >
+                  デバッグ実行
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    console.log('🔧 Direct profile update triggered');
+                    adminData.clearMessages();
+                    
+                    if (!user?.id) {
+                      adminData.showError('ユーザーIDが見つかりません');
+                      return;
+                    }
+                    
+                    try {
+                      const result = await directUpdateUserType(user.id);
+                      if (result.success) {
+                        adminData.showSuccess('管理者権限を設定しました。ページを再読み込みします...');
+                        setTimeout(() => {
+                          window.location.reload();
+                        }, 1500);
+                      } else {
+                        adminData.showError(`プロファイル更新に失敗: ${result.error}`);
+                      }
+                    } catch (error) {
+                      adminData.showError(`エラーが発生しました: ${(error as Error).message}`);
+                    }
+                  }}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  直接更新
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* ストレージデバッグセクション */}
+        <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
+          <h4 className="font-medium text-yellow-800 mb-3">🔧 ストレージデバッグツール</h4>
+          <div className="space-y-3">
+            {/* 第1行: 基本デバッグツール */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={async () => {
+                console.log('🔍 Starting storage bucket debug...');
+                await debugStorageBuckets();
+              }}
+            >
+              バケット確認
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={async () => {
+                console.log('🔍 Starting vaccine data debug...');
+                await debugVaccineData();
+              }}
+            >
+              証明書データ確認
+            </Button>
+            <Button
+              size="sm"
+              onClick={async () => {
+                console.log('🔧 Force setting bucket to public...');
+                const result = await forcePublicBucket();
+                if (result.success) {
+                  adminData.showSuccess('バケットをパブリックに設定しました');
+                } else {
+                  adminData.showError('バケット設定に失敗しました');
+                }
+              }}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              強制パブリック化
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={async () => {
+                if (adminData.pendingVaccines.length > 0) {
+                  const vaccine = adminData.pendingVaccines[0];
+                  const urls = [
+                    getVaccineImageUrl(vaccine.rabies_vaccine_image),
+                    getVaccineImageUrl(vaccine.combo_vaccine_image)
+                  ].filter(url => url !== null) as string[];
+                  
+                  await testSpecificImageUrls(urls);
+                } else {
+                  console.log('No pending vaccines to test');
+                }
+              }}
+            >
+              画像URL確認
+            </Button>
+            <Button
+              size="sm"
+              onClick={async () => {
+                console.log('🔍 Immediate storage check starting...');
+                await immediateStorageCheck();
+              }}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              即座診断
+            </Button>
+            <Button
+              size="sm"
+              onClick={async () => {
+                console.log('🔧 Complete storage fixing starting...');
+                const result = await fixStorageCompletely();
+                if (result.success) {
+                  adminData.showSuccess(`ストレージを修復しました！バケット修復: ${result.bucketFixed}`);
+                } else {
+                  adminData.showError(`ストレージ修復に失敗: ${result.error}`);
+                }
+              }}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              完全修復
+            </Button>
+                        <Button
+              size="sm"
+              onClick={async () => {
+                console.log('🚨 Emergency storage repair starting...');
+                const result = await emergencyStorageRepair();
+                if (result.success) {
+                  adminData.showSuccess('緊急修復が完了しました！ページを再読み込みしてください。');
+                } else {
+                  adminData.showError(`緊急修復に失敗: ${result.error}`);
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              🚨 緊急修復
+            </Button>
+            </div>
+            
+            {/* 第2行: 超強力修復ツール */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <Button
+                size="sm"
+                onClick={async () => {
+                  console.log('🔒 Disabling RLS policies...');
+                  const result = await disableRLS();
+                  if (result.success) {
+                    adminData.showSuccess('RLSポリシーを無効化しました！');
+                  } else {
+                    adminData.showError(`RLS無効化に失敗: ${result.error}`);
+                  }
+                }}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                🔒 RLS無効化
+              </Button>
+              <Button
+                size="sm"
+                onClick={async () => {
+                  console.log('👑 Granting admin access...');
+                  const result = await grantAdminAccess();
+                  if (result.success) {
+                    adminData.showSuccess('管理者権限を付与しました！');
+                  } else {
+                    adminData.showError(`権限付与に失敗: ${result.error}`);
+                  }
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                👑 権限付与
+              </Button>
+              <Button
+                size="sm"
+                onClick={async () => {
+                  console.log('📦 Force fixing bucket...');
+                  const result = await forceFixBucket();
+                  if (result.success) {
+                    adminData.showSuccess('バケットを強制修復しました！');
+                  } else {
+                    adminData.showError(`バケット修復に失敗: ${result.error}`);
+                  }
+                }}
+                className="bg-cyan-600 hover:bg-cyan-700"
+              >
+                📦 バケット強制修復
+              </Button>
+            </div>
+            
+            {/* 第3行: ファイル修復ツール */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <Button
+                size="sm"
+                onClick={async () => {
+                  console.log('🔧 Repairing missing vaccine files...');
+                  const result = await repairMissingVaccineFiles();
+                  if (result.success) {
+                    adminData.showSuccess(`ファイル修復完了！${result.repairedCount}個のファイルを修復しました。`);
+                    await adminData.fetchData();
+                  } else {
+                    adminData.showError(`ファイル修復に失敗: ${result.error}`);
+                  }
+                }}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                🔧 不足ファイル修復
+              </Button>
+              <Button
+                size="sm"
+                onClick={async () => {
+                  console.log('🔧 Normalizing vaccine image paths...');
+                  const result = await normalizeVaccineImagePaths();
+                  if (result.success) {
+                    adminData.showSuccess(`パス正規化完了！${result.updatedCount}個のレコードを更新しました。`);
+                    await adminData.fetchData();
+                  } else {
+                    adminData.showError(`パス正規化に失敗: ${result.error}`);
+                  }
+                }}
+                className="bg-teal-600 hover:bg-teal-700"
+              >
+                🔧 パス正規化
+              </Button>
+            </div>
+          </div>
+                      <p className="text-xs text-yellow-700 mt-2">
+              ※ ブラウザのデベロッパーツール（F12）→ Consoleタブで結果を確認してください<br/>
+              <strong>🎯 画像表示修復の推奨順序:</strong><br/>
+              1️⃣ 即座診断 → 2️⃣ RLS無効化 → 3️⃣ バケット強制修復 → 4️⃣ 不足ファイル修復 → 5️⃣ パス正規化<br/>
+              <strong>🚨 最後の手段:</strong> 緊急修復 → 完全修復 → 権限付与
+            </p>
+        </div>
+      </Card>
 
       {/* タブナビゲーション */}
       <div className="flex space-x-4 border-b">
@@ -758,14 +655,14 @@ export function AdminManagement() {
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">審査待ちドッグラン</h2>
           
-          {pendingParks.length === 0 ? (
+          {adminData.pendingParks.length === 0 ? (
             <Card className="text-center py-12">
               <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
               <p className="text-gray-600">審査待ちのドッグランはありません</p>
             </Card>
           ) : (
             <div className="space-y-4">
-              {pendingParks.map((park) => (
+              {adminData.pendingParks.map((park) => (
                 <Card key={park.id} className="p-6 hover:shadow-lg transition-shadow">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
@@ -821,17 +718,17 @@ export function AdminManagement() {
                         詳細を見る
                       </Button>
                       <Button
-                        onClick={() => approvePark(park.id)}
+                        onClick={() => handleParkApproval(park.id, true)}
                         className="bg-green-600 hover:bg-green-700"
-                        disabled={isProcessing}
+                        disabled={approval.isProcessing}
                       >
                         <CheckCircle className="w-4 h-4 mr-1" />
                         承認
                       </Button>
                       <Button
-                        onClick={() => rejectPark(park.id)}
+                        onClick={() => handleParkApproval(park.id, false)}
                         className="bg-red-600 hover:bg-red-700"
-                        disabled={isProcessing}
+                        disabled={approval.isProcessing}
                       >
                         <X className="w-4 h-4 mr-1" />
                         却下
@@ -845,243 +742,19 @@ export function AdminManagement() {
         </div>
       )}
 
-      {/* ドッグラン詳細表示 */}
-      {activeTab === 'parks' && selectedPark && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold flex items-center">
-              <Building className="w-6 h-6 text-blue-600 mr-2" />
-              {selectedPark.name}の審査
-            </h2>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setSelectedPark(null);
-                setParkImages([]);
-              }}
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              一覧に戻る
-            </Button>
-          </div>
-          
-          {/* 施設基本情報 */}
-          <Card className="p-6">
-            <h3 className="font-semibold mb-4">基本情報</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">施設名</p>
-                <p className="font-medium">{selectedPark.name}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">住所</p>
-                <p className="font-medium">{selectedPark.address}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">オーナー</p>
-                <p className="font-medium">{selectedPark.owner_name}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">申請日</p>
-                <p className="font-medium">{new Date(selectedPark.created_at).toLocaleDateString('ja-JP')}</p>
-              </div>
-              {selectedPark.second_stage_submitted_at && (
-                <div>
-                  <p className="text-sm text-gray-600">第二審査申請日</p>
-                  <p className="font-medium">{new Date(selectedPark.second_stage_submitted_at).toLocaleDateString('ja-JP')}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-sm text-gray-600">ステータス</p>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  selectedPark.status === 'first_stage_passed' ? 'bg-blue-100 text-blue-800' :
-                  selectedPark.status === 'second_stage_review' ? 'bg-purple-100 text-purple-800' :
-                  'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {selectedPark.status === 'first_stage_passed' ? '第一審査通過' :
-                   selectedPark.status === 'second_stage_review' ? '第二審査中' :
-                   '審査待ち'}
-                </span>
-              </div>
-            </div>
-          </Card>
-          
-          {/* 施設画像一覧 */}
-          <Card className="p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-semibold">施設画像</h3>
-              <div className="text-sm text-gray-600">
-                全{parkImages.length}枚中、
-                <span className="text-yellow-600">{parkImages.filter(img => img.is_approved === null).length}枚審査待ち</span>、
-                <span className="text-green-600">{parkImages.filter(img => img.is_approved === true).length}枚承認済み</span>、
-                <span className="text-red-600">{parkImages.filter(img => img.is_approved === false).length}枚却下</span>
-              </div>
-            </div>
-            
-            {parkImages.length === 0 ? (
-              <div className="text-center py-8">
-                <Camera className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">施設画像がまだアップロードされていません</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {parkImages.map((image) => {
-                  const status = getApprovalStatus(image.is_approved);
-                  const StatusIcon = status.icon;
-                  
-                  return (
-                    <div 
-                      key={image.id} 
-                      className="border rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={() => handleImageSelect(image)}
-                    >
-                      <div className="h-48 bg-gray-100">
-                        <img 
-                          src={image.image_url} 
-                          alt={getImageTypeLabel(image.image_type)} 
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
-                          }}
-                        />
-                      </div>
-                      <div className="p-3">
-                        <div className="flex justify-between items-center">
-                          <h4 className="font-medium">{getImageTypeLabel(image.image_type)}</h4>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            image.is_approved === true
-                              ? 'bg-green-100 text-green-800'
-                              : image.is_approved === false
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            <StatusIcon className="w-3 h-3 inline mr-1" />
-                            {status.label}
-                          </span>
-                        </div>
-                        {image.is_approved === false && image.admin_notes && (
-                          <p className="text-xs text-red-600 mt-2 line-clamp-2">
-                            却下理由: {image.admin_notes}
-                          </p>
-                        )}
-                        <p className="text-xs text-gray-500 mt-2">
-                          アップロード: {new Date(image.created_at).toLocaleDateString('ja-JP')}
-                        </p>
-                        
-                        {/* 承認・却下ボタン */}
-                        {image.is_approved === null && (
-                          <div className="flex space-x-2 mt-2">
-                            <Button
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700 w-1/2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedImage(image);
-                                handleImageApproval(true);
-                              }}
-                            >
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              承認
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="bg-red-600 hover:bg-red-700 w-1/2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleImageSelect(image);
-                              }}
-                            >
-                              <X className="w-3 h-3 mr-1" />
-                              却下
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
-          
-          {/* 施設承認/却下 */}
-          <Card className="p-6">
-            <h3 className="font-semibold mb-4">審査結果</h3>
-            
-            {selectedPark.status === 'second_stage_review' ? (
-              <>
-                {/* 第二審査中の場合 */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    却下理由（却下する場合のみ入力）
-                  </label>
-                  <textarea
-                    value={rejectionNote}
-                    onChange={(e) => setRejectionNote(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={4}
-                    placeholder="例: 施設の安全基準を満たしていません。フェンスの高さが不足しています。"
-                  />
-                </div>
-                
-                <div className="flex justify-end space-x-3">
-                  <Button
-                    onClick={() => handleParkApproval(selectedPark.id, false)}
-                    isLoading={isProcessing}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    却下
-                  </Button>
-                  <Button
-                    onClick={() => handleParkApproval(selectedPark.id, true)}
-                    isLoading={isProcessing}
-                    className="bg-green-600 hover:bg-green-700"
-                    disabled={!allImagesApproved}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    承認
-                  </Button>
-                </div>
-                
-                {!allImagesApproved && (
-                  <p className="text-sm text-yellow-600 mt-3">
-                    <AlertTriangle className="w-4 h-4 inline mr-1" />
-                    すべての画像を承認してから施設を承認してください
-                  </p>
-                )}
-              </>
-            ) : (
-              // 第一審査通過の場合
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="flex items-start space-x-3">
-                  <Clock className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium text-blue-800">オーナーによる第二審査の申請待ち</p>
-                    <p className="text-sm text-blue-700 mt-1">
-                      オーナーが施設画像をアップロードし、第二審査を申請するのを待っています。
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </Card>
-        </div>
-      )}
-
       {/* ワクチン証明書審査タブ */}
       {activeTab === 'vaccines' && !selectedVaccine && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">審査待ちワクチン証明書</h2>
           
-          {pendingVaccines.length === 0 ? (
+          {adminData.pendingVaccines.length === 0 ? (
             <Card className="text-center py-12">
               <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
               <p className="text-gray-600">審査待ちのワクチン証明書はありません</p>
             </Card>
           ) : (
             <div className="space-y-4">
-              {pendingVaccines.map((vaccine) => (
+              {adminData.pendingVaccines.map((vaccine) => (
                 <Card key={vaccine.id} className="p-6 hover:shadow-lg transition-shadow">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
@@ -1118,7 +791,7 @@ export function AdminManagement() {
                         size="sm"
                         onClick={() => handleVaccineApproval(vaccine.id, true)}
                         className="bg-green-600 hover:bg-green-700"
-                        disabled={isProcessing}
+                        disabled={approval.isProcessing}
                       >
                         <CheckCircle className="w-4 h-4 mr-1" />
                         承認
@@ -1127,7 +800,7 @@ export function AdminManagement() {
                         size="sm"
                         onClick={() => handleVaccineApproval(vaccine.id, false)}
                         className="bg-red-600 hover:bg-red-700"
-                        disabled={isProcessing}
+                        disabled={approval.isProcessing}
                       >
                         <X className="w-4 h-4 mr-1" />
                         却下
@@ -1158,34 +831,20 @@ export function AdminManagement() {
             </Button>
           </div>
           
-          {/* 犬の基本情報 */}
-          <Card className="p-6">
-            <h3 className="font-semibold mb-4">基本情報</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">名前</p>
-                <p className="font-medium">{selectedVaccine.dog.name}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">犬種</p>
-                <p className="font-medium">{selectedVaccine.dog.breed}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">性別</p>
-                <p className="font-medium">{selectedVaccine.dog.gender}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">生年月日</p>
-                <p className="font-medium">{new Date(selectedVaccine.dog.birth_date).toLocaleDateString('ja-JP')}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">飼い主</p>
-                <p className="font-medium">{selectedVaccine.dog.owner.name}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">申請日</p>
-                <p className="font-medium">{new Date(selectedVaccine.created_at).toLocaleDateString('ja-JP')}</p>
-              </div>
+          {/* デバッグ情報 */}
+          <Card className="p-4 bg-gray-50">
+            <h4 className="font-medium mb-2">デバッグ情報</h4>
+            <div className="text-xs font-mono space-y-1">
+              <p>Supabase URL: {import.meta.env.VITE_SUPABASE_URL}</p>
+              <p>Certificate ID: {selectedVaccine.id}</p>
+              <p>Dog ID: {selectedVaccine.dog_id}</p>
+              <p>Status: {selectedVaccine.status}</p>
+              <p>Temp Storage: {selectedVaccine.temp_storage?.toString()}</p>
+              <p>Rabies Image Raw: {selectedVaccine.rabies_vaccine_image}</p>
+              <p>Combo Image Raw: {selectedVaccine.combo_vaccine_image}</p>
+              <p>Generated Rabies URL: {getVaccineImageUrl(selectedVaccine.rabies_vaccine_image)}</p>
+              <p>Generated Combo URL: {getVaccineImageUrl(selectedVaccine.combo_vaccine_image)}</p>
+              <p>Created at: {selectedVaccine.created_at}</p>
             </div>
           </Card>
 
@@ -1195,15 +854,46 @@ export function AdminManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* 狂犬病ワクチン */}
               <div>
-                <h4 className="font-medium mb-2">狂犬病ワクチン</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">狂犬病ワクチン</h4>
+                  <div className="flex space-x-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={async () => {
+                        console.log('🔄 Repairing rabies vaccine image...');
+                        const validUrl = await validateAndGetImageUrl(selectedVaccine.rabies_vaccine_image);
+                        if (validUrl !== getPlaceholderImageUrl()) {
+                          adminData.showSuccess('狂犬病ワクチン画像を修復しました！');
+                        } else {
+                          adminData.showError('狂犬病ワクチン画像の修復に失敗しました');
+                        }
+                      }}
+                    >
+                      🔄 修復
+                    </Button>
+                  </div>
+                </div>
                 {selectedVaccine.rabies_vaccine_image ? (
                   <div className="border rounded-lg overflow-hidden">
                     <img
-                      src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/vaccine-certs/${selectedVaccine.rabies_vaccine_image}`}
+                      src={getVaccineImageUrl(selectedVaccine.rabies_vaccine_image) || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzM3NDE1MSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPueUu+WDj+OCquOCiumFjeWginvoqLc6PC90ZXh0Pjwvc3ZnPg=='}
                       alt="狂犬病ワクチン証明書"
                       className="w-full h-64 object-contain"
-                      onError={(e) => {
-                        e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
+                      onError={async (e) => {
+                        const originalUrl = getVaccineImageUrl(selectedVaccine.rabies_vaccine_image);
+                        console.error('❌ Failed to load rabies vaccine image:', {
+                          original_path: selectedVaccine.rabies_vaccine_image,
+                          generated_url: originalUrl,
+                          temp_storage: selectedVaccine.temp_storage
+                        });
+                        
+                        // URLの存在をテスト
+                        if (originalUrl) {
+                          await testImageUrl(originalUrl);
+                        }
+                        
+                        e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzM3NDE1MSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPueUu+WDj+OBjOaip+OBv+OBpOOBi+OCiuOBvuOBm+OCk+OBp+OBl+OBn+OCPTwvdGV4dD48L3N2Zz4=';
                       }}
                     />
                   </div>
@@ -1211,25 +901,41 @@ export function AdminManagement() {
                   <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
                     <p className="text-gray-500">画像なし</p>
                   </div>
-                )}
-                {selectedVaccine.rabies_expiry_date && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    有効期限: {new Date(selectedVaccine.rabies_expiry_date).toLocaleDateString('ja-JP')}
-                  </p>
                 )}
               </div>
               
               {/* 混合ワクチン */}
               <div>
-                <h4 className="font-medium mb-2">混合ワクチン</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">混合ワクチン</h4>
+                  <div className="flex space-x-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={async () => {
+                        console.log('🔄 Repairing combo vaccine image...');
+                        const validUrl = await validateAndGetImageUrl(selectedVaccine.combo_vaccine_image);
+                        if (validUrl !== getPlaceholderImageUrl()) {
+                          adminData.showSuccess('混合ワクチン画像を修復しました！');
+                        } else {
+                          adminData.showError('混合ワクチン画像の修復に失敗しました');
+                        }
+                      }}
+                    >
+                      🔄 修復
+                    </Button>
+                  </div>
+                </div>
                 {selectedVaccine.combo_vaccine_image ? (
                   <div className="border rounded-lg overflow-hidden">
                     <img
-                      src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/vaccine-certs/${selectedVaccine.combo_vaccine_image}`}
+                      src={getVaccineImageUrl(selectedVaccine.combo_vaccine_image) || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzM3NDE1MSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPueUu+WDj+OCquOCiumFjeWginvoqLc6PC90ZXh0Pjwvc3ZnPg=='}
                       alt="混合ワクチン証明書"
                       className="w-full h-64 object-contain"
                       onError={(e) => {
-                        e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
+                        console.error('Failed to load combo vaccine image:', selectedVaccine.combo_vaccine_image);
+                        console.error('Generated URL:', getVaccineImageUrl(selectedVaccine.combo_vaccine_image));
+                        e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzM3NDE1MSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPueUu+WDj+OBjOaip+OBv+OBpOOBi+OCiuOBvuOBm+OCk+OBp+OBl+OBn+OCPTwvdGV4dD48L3N2Zz4=';
                       }}
                     />
                   </div>
@@ -1237,11 +943,6 @@ export function AdminManagement() {
                   <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
                     <p className="text-gray-500">画像なし</p>
                   </div>
-                )}
-                {selectedVaccine.combo_expiry_date && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    有効期限: {new Date(selectedVaccine.combo_expiry_date).toLocaleDateString('ja-JP')}
-                  </p>
                 )}
               </div>
             </div>
@@ -1267,7 +968,7 @@ export function AdminManagement() {
             <div className="flex justify-end space-x-3">
               <Button
                 onClick={() => handleVaccineApproval(selectedVaccine.id, false)}
-                isLoading={isProcessing}
+                isLoading={approval.isProcessing}
                 className="bg-red-600 hover:bg-red-700"
               >
                 <X className="w-4 h-4 mr-2" />
@@ -1275,7 +976,7 @@ export function AdminManagement() {
               </Button>
               <Button
                 onClick={() => handleVaccineApproval(selectedVaccine.id, true)}
-                isLoading={isProcessing}
+                isLoading={approval.isProcessing}
                 className="bg-green-600 hover:bg-green-700"
               >
                 <CheckCircle className="w-4 h-4 mr-2" />

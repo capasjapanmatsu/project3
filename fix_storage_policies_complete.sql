@@ -5,8 +5,9 @@
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES 
   ('dog-images', 'dog-images', true, 5242880, ARRAY['image/jpeg', 'image/png', 'image/webp']),
-  ('vaccine-certificates', 'vaccine-certificates', false, 10485760, ARRAY['image/jpeg', 'image/png', 'image/webp'])
+  ('vaccine-certs', 'vaccine-certs', true, 10485760, ARRAY['image/jpeg', 'image/png', 'image/webp'])
 ON CONFLICT (id) DO UPDATE SET
+  public = EXCLUDED.public,
   file_size_limit = EXCLUDED.file_size_limit,
   allowed_mime_types = EXCLUDED.allowed_mime_types;
 
@@ -47,26 +48,26 @@ ON storage.objects FOR DELETE
 TO authenticated
 USING (bucket_id = 'dog-images');
 
--- 4. ワクチン証明書用ポリシー（認証済みユーザーのみアクセス）
+-- 4. ワクチン証明書用ポリシー（パブリック読み取り、認証済みユーザーのみアップロード）
 CREATE POLICY "Authenticated users can upload vaccine certificates"
 ON storage.objects FOR INSERT
 TO authenticated
-WITH CHECK (bucket_id = 'vaccine-certificates');
+WITH CHECK (bucket_id = 'vaccine-certs');
 
-CREATE POLICY "Authenticated users can view vaccine certificates"
+CREATE POLICY "Public can view vaccine certificates"
 ON storage.objects FOR SELECT
-TO authenticated
-USING (bucket_id = 'vaccine-certificates');
+TO public
+USING (bucket_id = 'vaccine-certs');
 
 CREATE POLICY "Authenticated users can update vaccine certificates"
 ON storage.objects FOR UPDATE
 TO authenticated
-USING (bucket_id = 'vaccine-certificates');
+USING (bucket_id = 'vaccine-certs');
 
 CREATE POLICY "Authenticated users can delete vaccine certificates"
 ON storage.objects FOR DELETE
 TO authenticated
-USING (bucket_id = 'vaccine-certificates');
+USING (bucket_id = 'vaccine-certs');
 
 -- 5. 確認用クエリ
 SELECT 'Storage policies updated successfully' as status;
@@ -79,7 +80,7 @@ SELECT
   file_size_limit,
   allowed_mime_types
 FROM storage.buckets 
-WHERE id IN ('dog-images', 'vaccine-certificates');
+WHERE id IN ('dog-images', 'vaccine-certs');
 
 -- 7. ポリシー一覧の確認
 SELECT 

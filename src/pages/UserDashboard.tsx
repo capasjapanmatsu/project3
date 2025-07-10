@@ -30,17 +30,8 @@ import { ParkModal } from '../components/dashboard/ParkModal';
 import { ReservationCard } from '../components/dashboard/ReservationCard';
 import { NotificationCard } from '../components/dashboard/NotificationCard';
 import { StatCard } from '../components/dashboard/StatCard';
+import VaccineBadge, { getVaccineStatusFromDog } from '../components/VaccineBadge';
 import type { Dog, DogPark, Profile, Reservation, Notification, NewsAnnouncement } from '../types';
-import { processDogImage, processVaccineImage } from '../utils/imageUtils';
-import { 
-  uploadDogProfileImage, 
-  uploadVaccineImage, 
-  uploadWithRetry, 
-  deleteExistingImage,
-  validateDogImageFile,
-  UploadResult,
-  UploadError
-} from '../utils/imageUploadUtils';
 
 export function UserDashboard() {
   const { user, logout } = useAuth();
@@ -82,6 +73,9 @@ export function UserDashboard() {
   const [comboVaccineFile, setComboVaccineFile] = useState<File | null>(null);
   const [rabiesExpiryDate, setRabiesExpiryDate] = useState('');
   const [comboExpiryDate, setComboExpiryDate] = useState('');
+  
+  // 削除関連の状態
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     console.log('UserDashboard useEffect triggered');
@@ -148,7 +142,7 @@ export function UserDashboard() {
         
         supabase
           .from('dogs')
-          .select('*')
+          .select('*, vaccine_certifications(*)')
           .eq('owner_id', user?.id)
           .order('created_at', { ascending: false }),
         
@@ -282,6 +276,32 @@ export function UserDashboard() {
       setNotifications(notificationsResponse.data || []);
       setNews(newsResponse.data || []);
       
+      // デバッグ: 取得したdog情報（特にimage_url）の詳細を表示
+      console.log('🐕 === DOG IMAGE DEBUG ===');
+      dogsResponse.data?.forEach((dog, index) => {
+        console.log(`Dog ${index + 1} (${dog.name}):`, {
+          id: dog.id,
+          name: dog.name,
+          image_url: dog.image_url,
+          image_url_type: typeof dog.image_url,
+          image_url_length: dog.image_url?.length || 0,
+          has_image: !!dog.image_url
+        });
+        
+        // ニケちゃんの場合、ストレージのファイルパスと比較
+        if (dog.name === 'ニケ' || dog.id === 'ae1439a1-e741-4518-a3af-cddb19ac526f') {
+          console.log('🔍 ニケちゃんの詳細情報:', {
+            id: dog.id,
+            name: dog.name,
+            current_image_url: dog.image_url,
+            expected_storage_path_1: `${dog.id}/profile_174943206070.jpg`,
+            expected_storage_path_2: `${dog.id}/profile_175206817428_bu...`,
+            expected_public_url_1: `https://nmclwelnijcovptafjuq.supabase.co/storage/v1/object/public/dog-images/${dog.id}/profile_174943206070.jpg`,
+            expected_public_url_2: `https://nmclwelnijcovptafjuq.supabase.co/storage/v1/object/public/dog-images/${dog.id}/profile_175206817428_bu...`
+          });
+        }
+      });
+      
       console.log('State updated successfully');
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -308,6 +328,16 @@ export function UserDashboard() {
 
   const handleDogSelect = (dog: Dog) => {
     setSelectedDog(dog);
+    
+    // デバッグ: 選択されたdog情報を表示
+    console.log('🐕 Selected dog for editing:', {
+      id: dog.id,
+      name: dog.name,
+      current_image_url: dog.image_url,
+      image_url_type: typeof dog.image_url,
+      has_image: !!dog.image_url
+    });
+    
     // Format the birth date to YYYY-MM-DD for the input field
     const birthDate = new Date(dog.birth_date).toISOString().split('T')[0];
     setDogFormData({
@@ -328,27 +358,52 @@ export function UserDashboard() {
 
   const handleDogImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    console.log('🔍 File selected:', file ? {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastModified: file.lastModified,
+      isFileObject: file instanceof File
+    } : 'No file selected');
+    
     if (file) {
       try {
-        // 新しいユーティリティを使用してファイルを検証
-        const validationError = validateDogImageFile(file);
-        if (validationError) {
-          setDogUpdateError(validationError.message);
+        // より厳密なファイル検証
+        if (!(file instanceof File)) {
+          setDogUpdateError('有効なファイルを選択してください。');
+          return;
+        }
+        
+        if (file.size > 10 * 1024 * 1024) {
+          setDogUpdateError('ファイルサイズは10MB以下にしてください。');
+          return;
+        }
+        
+        if (!file.type || !file.type.startsWith('image/')) {
+          setDogUpdateError(`画像ファイルを選択してください。選択されたファイルタイプ: ${file.type}`);
           return;
         }
 
-        setDogUpdateError('画像を処理中...');
-        
-        // 画像をリサイズ・圧縮
-        const processedFile = await processDogImage(file);
-        setDogImageFile(processedFile);
+        // 許可されている画像形式を確認
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+          setDogUpdateError(`サポートされていない画像形式です: ${file.type}`);
+          return;
+        }
+
+        setDogImageFile(file);
+        console.log('✅ Dog image file set successfully:', {
+          name: file.name,
+          type: file.type,
+          size: file.size
+        });
         
         // プレビュー画像を作成
         const reader = new FileReader();
         reader.onload = (e) => {
           setDogImagePreview(e.target?.result as string);
         };
-        reader.readAsDataURL(processedFile);
+        reader.readAsDataURL(file);
         setDogUpdateError('');
       } catch (error) {
         console.error('Image processing error:', error);
@@ -357,34 +412,90 @@ export function UserDashboard() {
     }
   };
 
-  const handleDogImageRemove = () => {
-    setDogImageFile(null);
-    setDogImagePreview(selectedDog?.image_url || null);
+  const handleDogImageRemove = async () => {
+    if (!selectedDog || !selectedDog.image_url) return;
+    
+    try {
+      setIsUpdatingDog(true);
+      setDogUpdateError('');
+      
+      // 1. Supabase Storageから画像ファイルを削除
+      try {
+        const url = new URL(selectedDog.image_url);
+        const pathParts = url.pathname.split('/');
+        const fileName = pathParts[pathParts.length - 1];
+        const filePath = `${selectedDog.id}/${fileName}`;
+        
+        const { error: storageError } = await supabase.storage
+          .from('dog-images')
+          .remove([filePath]);
+        
+        if (storageError) {
+          console.warn('Warning: Could not delete image from storage:', storageError);
+          // ストレージ削除エラーは警告として扱い、DB更新は続行
+        }
+      } catch (storageErr) {
+        console.warn('Warning: Error processing image deletion:', storageErr);
+      }
+      
+      // 2. データベースのimage_urlをnullに更新
+      const { error: dbError } = await supabase
+        .from('dogs')
+        .update({ image_url: null })
+        .eq('id', selectedDog.id);
+      
+      if (dbError) {
+        console.error('Error updating dog image_url:', dbError);
+        setDogUpdateError('画像の削除に失敗しました。');
+        return;
+      }
+      
+      // 3. UIを更新
+      setDogImageFile(null);
+      setDogImagePreview(null);
+      setSelectedDog({ ...selectedDog, image_url: undefined });
+      
+      // 4. データを再取得
+      await fetchDashboardData();
+      
+      console.log('✅ Dog image removed successfully');
+      setDogUpdateSuccess('画像を削除しました。');
+      
+      // 成功メッセージをクリア
+      setTimeout(() => {
+        setDogUpdateSuccess('');
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error removing dog image:', error);
+      setDogUpdateError('画像の削除に失敗しました。');
+    } finally {
+      setIsUpdatingDog(false);
+    }
   };
 
   const handleRabiesVaccineSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        // 新しいユーティリティを使用してファイルを検証
-        const validationError = validateDogImageFile(file);
-        if (validationError) {
-          setDogUpdateError(validationError.message);
+        // 基本的なファイル検証
+        if (file.size > 10 * 1024 * 1024) {
+          setDogUpdateError('ファイルサイズは10MB以下にしてください。');
           return;
         }
         
-        setDogUpdateError('ワクチン証明書を処理中...');
+        if (!file.type.startsWith('image/')) {
+          setDogUpdateError('画像ファイルを選択してください。');
+          return;
+        }
         
-        // ワクチン証明書画像をリサイズ・圧縮
-        const processedFile = await processVaccineImage(file);
-        setRabiesVaccineFile(processedFile);
+        setRabiesVaccineFile(file);
         setDogUpdateError('');
       } catch (error) {
         console.error('Vaccine image processing error:', error);
         setDogUpdateError('ワクチン証明書の処理に失敗しました。別の画像をお試しください。');
       }
     } else {
-      // ファイルが選択されていない場合（削除の場合）
       setRabiesVaccineFile(null);
       setDogUpdateError('');
     }
@@ -394,25 +505,24 @@ export function UserDashboard() {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        // 新しいユーティリティを使用してファイルを検証
-        const validationError = validateDogImageFile(file);
-        if (validationError) {
-          setDogUpdateError(validationError.message);
+        // 基本的なファイル検証
+        if (file.size > 10 * 1024 * 1024) {
+          setDogUpdateError('ファイルサイズは10MB以下にしてください。');
           return;
         }
         
-        setDogUpdateError('ワクチン証明書を処理中...');
+        if (!file.type.startsWith('image/')) {
+          setDogUpdateError('画像ファイルを選択してください。');
+          return;
+        }
         
-        // ワクチン証明書画像をリサイズ・圧縮
-        const processedFile = await processVaccineImage(file);
-        setComboVaccineFile(processedFile);
+        setComboVaccineFile(file);
         setDogUpdateError('');
       } catch (error) {
         console.error('Vaccine image processing error:', error);
         setDogUpdateError('ワクチン証明書の処理に失敗しました。別の画像をお試しください。');
       }
     } else {
-      // ファイルが選択されていない場合（削除の場合）
       setComboVaccineFile(null);
       setDogUpdateError('');
     }
@@ -442,37 +552,68 @@ export function UserDashboard() {
       
       if (dogImageFile) {
         try {
-          // 既存の画像を削除
-          if (selectedDog.image_url) {
-            await deleteExistingImage('dog-images', selectedDog.image_url);
+          // 🔥 最終手段：fetch API で直接 Storage API を呼び出し
+          const fileName = `${selectedDog.id}/dog-photo.jpg`;
+          console.log('📁 File path:', fileName);
+          console.log('🚀 Using direct fetch API to bypass SDK...');
+          
+          // Supabase Storage API の直接呼び出し（正しい認証トークン使用）
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const uploadUrl = `${supabaseUrl}/storage/v1/object/dog-images/${fileName}`;
+          
+          // 現在のユーザーのアクセストークンを取得
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.access_token) {
+            throw new Error('認証されていません。ログインしてください。');
           }
           
-          // 新しいユーティリティを使用してアップロード
-          const uploadResult = await uploadWithRetry(dogImageFile, {
-            dogId: selectedDog.id,
-            imageType: 'profile',
-            replaceExisting: true,
-            maxRetries: 3
+          console.log('📡 Direct upload URL:', uploadUrl);
+          console.log('🔑 Using user access token for authentication');
+          
+          const response = await fetch(uploadUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,  // ユーザーのアクセストークンを使用
+              'Content-Type': dogImageFile.type,
+              'Cache-Control': '3600'
+            },
+            body: dogImageFile
           });
-
-          if (uploadResult.success) {
-            imageUrl = uploadResult.url!;
-            console.log('Dog profile image uploaded successfully:', {
-              url: imageUrl,
-              fileName: uploadResult.fileName
-            });
-          } else {
-            console.error('Dog profile image upload failed:', uploadResult.error);
-            throw new Error(uploadResult.error?.message || '画像のアップロードに失敗しました');
+          
+          console.log('📡 Response status:', response.status);
+          console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Direct upload failed:', errorText);
+            throw new Error(`直接アップロードに失敗しました: ${response.status} ${errorText}`);
           }
+          
+          const responseData = await response.json();
+          console.log('✅ Direct upload success:', responseData);
+
+          // 公開URLを取得
+          const { data: { publicUrl } } = supabase.storage
+            .from('dog-images')
+            .getPublicUrl(fileName);
+          
+          imageUrl = publicUrl;
+          console.log('✅ Dog profile image uploaded successfully:', imageUrl);
         } catch (imageError) {
           console.error('Image processing error:', imageError);
-          // 画像エラーは警告として扱い、更新は続行
-          setDogUpdateError('画像のアップロードに失敗しましたが、ワンちゃんの情報は更新されました。');
+          setDogUpdateError(`画像のアップロードに失敗しました: ${imageError instanceof Error ? imageError.message : '不明なエラー'}`);
+          return; // 画像エラーの場合は処理を停止
         }
       }
       
       // 犬の情報を更新
+      console.log('📝 Updating dog in database:', {
+        dogId: selectedDog.id,
+        dogName: dogFormData.name,
+        newImageUrl: imageUrl,
+        previousImageUrl: selectedDog.image_url
+      });
+      
       const { error } = await supabase
         .from('dogs')
         .update({
@@ -484,7 +625,25 @@ export function UserDashboard() {
         })
         .eq('id', selectedDog.id);
       
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Database update error:', error);
+        throw error;
+      }
+      
+      console.log('✅ Database update successful');
+      
+      // データベース更新後の確認
+      const { data: updatedDog, error: fetchError } = await supabase
+        .from('dogs')
+        .select('id, name, image_url')
+        .eq('id', selectedDog.id)
+        .single();
+      
+      if (fetchError) {
+        console.error('❌ Error fetching updated dog:', fetchError);
+      } else {
+        console.log('🔄 Updated dog data from database:', updatedDog);
+      }
 
       // ワクチン証明書のアップロード処理
       if (rabiesVaccineFile || comboVaccineFile) {
@@ -494,80 +653,82 @@ export function UserDashboard() {
 
           // 狂犬病ワクチン証明書のアップロード
           if (rabiesVaccineFile) {
-            const rabiesUploadResult = await uploadWithRetry(rabiesVaccineFile, {
-              dogId: selectedDog.id,
-              imageType: 'rabies',
-              maxRetries: 3
-            });
+            const timestamp = Date.now();
+            const rabiesExt = rabiesVaccineFile.name.split('.').pop() || 'jpg';
+            const rabiesFileName = `${selectedDog.id}/rabies_${timestamp}.${rabiesExt}`;
 
-            if (rabiesUploadResult.success) {
-              rabiesPath = rabiesUploadResult.url!;
-              console.log('Rabies vaccine certificate uploaded successfully:', {
-                url: rabiesPath,
-                fileName: rabiesUploadResult.fileName
+            const { data: rabiesUpload, error: rabiesError } = await supabase.storage
+              .from('vaccine-certs')
+              .upload(rabiesFileName, rabiesVaccineFile, {
+                cacheControl: '3600',
+                upsert: true
               });
-            } else {
-              console.error('Rabies vaccine upload failed:', rabiesUploadResult.error);
-              throw new Error(rabiesUploadResult.error?.message || '狂犬病ワクチン証明書のアップロードに失敗しました');
+
+            if (rabiesError) {
+              console.error('Rabies upload error:', rabiesError);
+              throw rabiesError;
             }
+            
+            rabiesPath = rabiesFileName;
           }
 
           // 混合ワクチン証明書のアップロード
           if (comboVaccineFile) {
-            const comboUploadResult = await uploadWithRetry(comboVaccineFile, {
-              dogId: selectedDog.id,
-              imageType: 'combo',
-              maxRetries: 3
-            });
+            const timestamp = Date.now();
+            const comboExt = comboVaccineFile.name.split('.').pop() || 'jpg';
+            const comboFileName = `${selectedDog.id}/combo_${timestamp}.${comboExt}`;
 
-            if (comboUploadResult.success) {
-              comboPath = comboUploadResult.url!;
-              console.log('Combo vaccine certificate uploaded successfully:', {
-                url: comboPath,
-                fileName: comboUploadResult.fileName
+            const { data: comboUpload, error: comboError } = await supabase.storage
+              .from('vaccine-certs')
+              .upload(comboFileName, comboVaccineFile, {
+                cacheControl: '3600',
+                upsert: true
               });
-            } else {
-              console.error('Combo vaccine upload failed:', comboUploadResult.error);
-              throw new Error(comboUploadResult.error?.message || '混合ワクチン証明書のアップロードに失敗しました');
+
+            if (comboError) {
+              console.error('Combo upload error:', comboError);
+              throw comboError;
             }
+            
+            comboPath = comboFileName;
           }
 
-          // 既存のワクチン証明書レコードを確認
-          const { data: existingCert } = await supabase
+          // 既存の証明書を確認
+          const { data: existingCert, error: certError } = await supabase
             .from('vaccine_certifications')
-            .select('*')
+            .select('id')
             .eq('dog_id', selectedDog.id)
-            .single();
-
+            .maybeSingle();
+            
+          if (certError && certError.code !== 'PGRST116') {
+            console.error('Error checking existing certificate:', certError);
+            throw certError;
+          }
+          
+          // 証明書情報の更新または作成
           if (existingCert) {
-            // 既存のレコードを更新
+            // 既存の証明書を更新
             const updateData: any = {
-              status: 'pending', // 新しい証明書は承認待ち状態に
-              temp_storage: true // 一時保存として設定
+              status: 'pending', // 新しい画像がアップロードされたら再審査
             };
             
-            if (rabiesPath) {
-              updateData.rabies_vaccine_image = rabiesPath;
-              updateData.rabies_expiry_date = rabiesExpiryDate;
-            }
+            if (rabiesPath) updateData.rabies_vaccine_image = rabiesPath;
+            if (comboPath) updateData.combo_vaccine_image = comboPath;
+            if (rabiesExpiryDate) updateData.rabies_expiry_date = rabiesExpiryDate;
+            if (comboExpiryDate) updateData.combo_expiry_date = comboExpiryDate;
             
-            if (comboPath) {
-              updateData.combo_vaccine_image = comboPath;
-              updateData.combo_expiry_date = comboExpiryDate;
-            }
-
-            const { error: updateCertError } = await supabase
+            const { error: updateError } = await supabase
               .from('vaccine_certifications')
               .update(updateData)
-              .eq('dog_id', selectedDog.id);
-
-            if (updateCertError) {
-              console.error('Certificate update error:', updateCertError);
-              throw updateCertError;
+              .eq('id', existingCert.id);
+              
+            if (updateError) {
+              console.error('Certificate update error:', updateError);
+              throw updateError;
             }
           } else {
-            // 新しいレコードを作成
-            const { error: insertCertError } = await supabase
+            // 新しい証明書を作成
+            const { error: insertError } = await supabase
               .from('vaccine_certifications')
               .insert([{
                 dog_id: selectedDog.id,
@@ -575,72 +736,135 @@ export function UserDashboard() {
                 combo_vaccine_image: comboPath,
                 rabies_expiry_date: rabiesExpiryDate,
                 combo_expiry_date: comboExpiryDate,
-                status: 'pending',
-                temp_storage: true // 一時保存として設定
               }]);
-
-            if (insertCertError) {
-              console.error('Certificate insert error:', insertCertError);
-              throw insertCertError;
+              
+            if (insertError) {
+              console.error('Certificate insert error:', insertError);
+              throw insertError;
             }
           }
+          
+          console.log('Vaccine certificates uploaded successfully');
         } catch (vaccineError) {
           console.error('Vaccine certificate error:', vaccineError);
-          const errorMessage = (vaccineError as Error).message || 'ワクチン証明書のアップロードに失敗しました。';
+          setDogUpdateError('ワクチン証明書のアップロードに失敗しました。後で再試行してください。');
+        }
+      }
+      
+      // Success! Refresh the data
+      await fetchDashboardData();
+      setDogUpdateSuccess('ワンちゃんの情報を更新しました！');
+      setShowDogEditModal(false);
+      
+      // Clean up form state
+      setDogImageFile(null);
+      setDogImagePreview(null);
+      setRabiesVaccineFile(null);
+      setComboVaccineFile(null);
+      setRabiesExpiryDate('');
+      setComboExpiryDate('');
+      setSelectedDog(null);
+      
+    } catch (error) {
+      console.error('Error updating dog:', error);
+      setDogUpdateError(error instanceof Error ? error.message : 'ワンちゃんの情報更新に失敗しました。');
+    } finally {
+      setIsUpdatingDog(false);
+    }
+  };
+
+  const handleDeleteDog = async (dog: Dog) => {
+    setIsDeleting(true);
+    setDogUpdateError('');
+    
+    try {
+      console.log('🗑️ Deleting dog from UserDashboard:', dog.name, 'ID:', dog.id);
+      
+      // 1. ワクチン証明書を削除
+      const { error: certError } = await supabase
+        .from('vaccine_certifications')
+        .delete()
+        .eq('dog_id', dog.id);
+      
+      if (certError) {
+        console.error('Error deleting vaccine certifications:', certError);
+        // ワクチン証明書の削除エラーは警告として扱い、犬の削除は続行
+      }
+      
+      // 2. 犬の画像を削除（dog-imagesバケットから）
+      if (dog.image_url) {
+        try {
+          // URLからファイルパスを抽出
+          const url = new URL(dog.image_url);
+          const pathParts = url.pathname.split('/');
+          const fileName = pathParts[pathParts.length - 1];
+          const filePath = `${dog.id}/${fileName}`;
           
-          // 具体的なエラーメッセージを提供
-          if (errorMessage.includes('row-level security')) {
-            setDogUpdateError('ワクチン証明書のアップロード権限がありません。ログインし直してください。');
-          } else if (errorMessage.includes('violates check constraint')) {
-            setDogUpdateError('ワクチン証明書の形式が正しくありません。');
-          } else if (errorMessage.includes('storage')) {
-            setDogUpdateError('ワクチン証明書のストレージエラーが発生しました。しばらく後にお試しください。');
-          } else {
-            setDogUpdateError(`ワクチン証明書のアップロードに失敗しました: ${errorMessage}`);
+          const { error: imageError } = await supabase.storage
+            .from('dog-images')
+            .remove([filePath]);
+          
+          if (imageError) {
+            console.warn('Warning: Could not delete dog image:', imageError);
+            // 画像削除エラーは警告として扱い、犬の削除は続行
+          }
+        } catch (imageErr) {
+          console.warn('Warning: Error processing dog image deletion:', imageErr);
+        }
+      }
+      
+      // 3. ワクチン証明書画像を削除（vaccine-certsバケットから）
+      const cert = dog.vaccine_certifications?.[0];
+      if (cert) {
+        const imagesToDelete = [];
+        if (cert.rabies_vaccine_image) imagesToDelete.push(cert.rabies_vaccine_image);
+        if (cert.combo_vaccine_image) imagesToDelete.push(cert.combo_vaccine_image);
+        
+        if (imagesToDelete.length > 0) {
+          const { error: vaccineImageError } = await supabase.storage
+            .from('vaccine-certs')
+            .remove(imagesToDelete);
+          
+          if (vaccineImageError) {
+            console.warn('Warning: Could not delete vaccine images:', vaccineImageError);
+            // ワクチン画像削除エラーは警告として扱い、犬の削除は続行
           }
         }
       }
       
-      setDogUpdateSuccess('ワンちゃん情報を更新しました');
-      
-      // Refresh dogs data
-      const { data, error: fetchError } = await supabase
+      // 4. 犬の情報を削除
+      const { error: dogError } = await supabase
         .from('dogs')
-        .select('*, vaccine_certifications(*)')
-        .eq('owner_id', user?.id)
-        .order('created_at', { ascending: false });
+        .delete()
+        .eq('id', dog.id);
       
-      if (fetchError) throw fetchError;
-      setDogs(data || []);
+      if (dogError) {
+        console.error('Error deleting dog:', dogError);
+        throw dogError;
+      }
       
-      // Close modal after 2 seconds
+      console.log('✅ Dog deleted successfully from UserDashboard:', dog.name);
+      
+      // データを再取得
+      await fetchDashboardData();
+      
+      // モーダルを閉じる
+      setShowDogEditModal(false);
+      
+      // 成功メッセージ
+      setDogUpdateSuccess(`${dog.name}の情報を削除しました。`);
+      
+      // 3秒後に成功メッセージをクリア
       setTimeout(() => {
-        setShowDogEditModal(false);
         setDogUpdateSuccess('');
-        setDogImageFile(null);
-        setDogImagePreview(null);
-        setRabiesVaccineFile(null);
-        setComboVaccineFile(null);
-        setRabiesExpiryDate('');
-        setComboExpiryDate('');
-      }, 2000);
+      }, 3000);
       
     } catch (error) {
-      console.error('Error updating dog:', error);
-      const errorMessage = (error as Error).message || 'ワンちゃん情報の更新に失敗しました';
-      
-      // 具体的なエラーメッセージを提供
-      if (errorMessage.includes('row-level security')) {
-        setDogUpdateError('ワンちゃん情報の更新権限がありません。ログインし直してください。');
-      } else if (errorMessage.includes('violates check constraint')) {
-        setDogUpdateError('入力された情報に不正な値が含まれています。');
-      } else if (errorMessage.includes('network')) {
-        setDogUpdateError('ネットワークエラーが発生しました。インターネット接続を確認してください。');
-      } else {
-        setDogUpdateError(`ワンちゃん情報の更新に失敗しました: ${errorMessage}`);
-      }
+      console.error('Error deleting dog:', error);
+      const errorMessage = (error as Error).message || 'ワンちゃんの削除に失敗しました';
+      setDogUpdateError(errorMessage);
     } finally {
-      setIsUpdatingDog(false);
+      setIsDeleting(false);
     }
   };
 
@@ -709,6 +933,8 @@ export function UserDashboard() {
         </div>
       )}
 
+
+
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
         <div>
@@ -770,7 +996,7 @@ export function UserDashboard() {
           icon={<PawPrint className="w-8 h-8 text-blue-600" />}
           count={dogs.length}
           label="登録済みワンちゃん"
-          linkTo="/register-dog"
+          linkTo="/dog-management"
           linkText="管理する"
           iconColor="text-blue-600"
         />
@@ -1059,13 +1285,14 @@ export function UserDashboard() {
       {showDogEditModal && (
         <DogEditModal
           dog={selectedDog}
-          isUpdating={isUpdatingDog}
+          isUpdating={isUpdatingDog || isDeleting}
           error={dogUpdateError}
           success={dogUpdateSuccess}
           dogFormData={dogFormData}
           dogImagePreview={dogImagePreview}
           onClose={() => setShowDogEditModal(false)}
           onSubmit={handleUpdateDog}
+          onDelete={handleDeleteDog}
           onFormChange={setDogFormData}
           onImageSelect={handleDogImageSelect}
           onImageRemove={handleDogImageRemove}

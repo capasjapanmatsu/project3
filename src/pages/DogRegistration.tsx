@@ -1,28 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import Input from '../components/Input';
 import Select from '../components/Select';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { X, PawPrint, Edit, AlertTriangle, Camera, Upload, Loader } from 'lucide-react';
+import { X, Camera, Upload, Loader, ArrowLeft } from 'lucide-react';
 import { dogBreeds } from '../data/dogBreeds';
 import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
-import type { Dog } from '../types';
-import { processDogImage, processVaccineImage, createImagePreview, formatFileSize } from '../utils/imageUtils';
-import VaccineBadge, { getVaccineStatusFromDog } from '../components/VaccineBadge';
+
 
 export function DogRegistration() {
-
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isProcessingImage, setIsProcessingImage] = useState(false);
-  const [registeredDogs, setRegisteredDogs] = useState<Dog[]>([]);
-  const [isLoadingDogs, setIsLoadingDogs] = useState(true);
-  const [selectedDog, setSelectedDog] = useState<Dog | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     breed: '',
@@ -35,33 +30,6 @@ export function DogRegistration() {
     rabiesExpiryDate: '',
     comboExpiryDate: '',
   });
-
-  useEffect(() => {
-    if (user) {
-      fetchRegisteredDogs();
-    }
-  }, [user]);
-
-  const fetchRegisteredDogs = async () => {
-    try {
-      setIsLoadingDogs(true);
-      const { data, error } = await supabase
-        .from('dogs')
-        .select(`
-          *,
-          vaccine_certifications(*)
-        `)
-        .eq('owner_id', user?.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setRegisteredDogs(data || []);
-    } catch (err) {
-      console.error('Error fetching registered dogs:', err);
-    } finally {
-      setIsLoadingDogs(false);
-    }
-  };
 
   // 年のオプション（現在年から20年前まで）
   const currentYear = new Date().getFullYear();
@@ -125,44 +93,33 @@ export function DogRegistration() {
   };
 
   // 画像ファイルの選択処理
-  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       console.log('Selected file:', file.name, file.size, file.type);
-      setIsProcessingImage(true);
-      setError('');
       
-      try {
-        // ファイルサイズチェック（20MB以下）
-        if (file.size > 20 * 1024 * 1024) {
-          setError('画像ファイルは20MB以下にしてください。');
-          return;
-        }
-        
-        // ファイル形式チェック
-        if (!file.type.startsWith('image/')) {
-          setError('画像ファイルを選択してください。');
-          return;
-        }
-        
-        console.log('Processing image...');
-        // 新しい画像処理機能を使用
-        const processedFile = await processDogImage(file);
-        console.log('Image processed:', processedFile.name, formatFileSize(processedFile.size));
-        
-        setImageFile(processedFile);
-        
-        // プレビュー画像を作成
-        const previewUrl = await createImagePreview(processedFile);
-        setImagePreview(previewUrl);
-        
-        console.log('Image preview created (processed)');
-      } catch (err) {
-        console.error('Image processing error:', err);
-        setError('画像の処理に失敗しました。別の画像をお試しください。');
-      } finally {
-        setIsProcessingImage(false);
+      // ファイルサイズチェック（10MB以下）
+      if (file.size > 10 * 1024 * 1024) {
+        setError('画像ファイルは10MB以下にしてください。');
+        return;
       }
+
+      // ファイル形式チェック
+      if (!file.type.startsWith('image/')) {
+        setError('画像ファイルを選択してください。');
+        return;
+      }
+
+      setImageFile(file);
+      
+      // プレビュー画像を作成
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+        console.log('Image preview created');
+      };
+      reader.readAsDataURL(file);
+      setError('');
     }
   };
 
@@ -209,7 +166,6 @@ export function DogRegistration() {
       const birthDate = `${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`;
       
       // 性別の値を正規化（データベース制約に合わせる）
-      // データベースの制約では 'オス' と 'メス' のみが許可されている
       let normalizedGender: string;
       if (formData.gender === 'オス' || formData.gender === 'male' || formData.gender.toLowerCase() === 'male') {
         normalizedGender = 'オス';
@@ -284,11 +240,18 @@ export function DogRegistration() {
       ]).select().single();
 
       if (dogError) {
-        console.error('Dog registration error:', dogError);
+        console.error('🚨 Dog registration error:', dogError);
+        console.error('🚨 Error details:', {
+          message: dogError.message,
+          code: dogError.code,
+          details: dogError.details,
+          hint: dogError.hint
+        });
         throw dogError;
       }
 
-      console.log('Dog registered successfully:', dog);
+      console.log('✅ Dog registered successfully:', dog);
+      console.log('✅ Dog ID generated:', dog.id);
 
       // 犬の画像をアップロード
       let imageUrl = null;
@@ -347,66 +310,62 @@ export function DogRegistration() {
 
       // ワクチン証明書の画像をアップロード
       if (formData.rabiesVaccineImage && formData.comboVaccineImage) {
-        console.log('Uploading vaccine certificates');
+        console.log('🧪 Starting vaccine certificates upload...');
+        console.log('🧪 Dog ID for upload:', dog.id);
+        console.log('🧪 Dog ID type:', typeof dog.id);
         
         try {
-          // ワクチン証明書画像を処理
-          console.log('Processing vaccine certificate images...');
-          const processedRabiesImage = await processVaccineImage(formData.rabiesVaccineImage);
-          const processedComboImage = await processVaccineImage(formData.comboVaccineImage);
-          
-          const rabiesExt = processedRabiesImage.name.split('.').pop() || 'jpg';
-          const comboExt = processedComboImage.name.split('.').pop() || 'jpg';
+          const rabiesExt = formData.rabiesVaccineImage.name.split('.').pop() || 'jpg';
+          const comboExt = formData.comboVaccineImage.name.split('.').pop() || 'jpg';
           const timestamp = Date.now();
           
-          const rabiesPath = `temp/${dog.id}/rabies_${timestamp}.${rabiesExt}`;
-          const comboPath = `temp/${dog.id}/combo_${timestamp}.${comboExt}`;
+          const rabiesPath = `${dog.id}/rabies_${timestamp}.${rabiesExt}`;
+          const comboPath = `${dog.id}/combo_${timestamp}.${comboExt}`;
+
+          console.log('🧪 Upload paths:', { rabiesPath, comboPath });
+          console.log('🧪 File sizes:', {
+            rabies: formData.rabiesVaccineImage.size,
+            combo: formData.comboVaccineImage.size
+          });
 
           const [rabiesUpload, comboUpload] = await Promise.all([
             supabase.storage
-              .from('vaccine-certificates')
-              .upload(rabiesPath, processedRabiesImage, {
+              .from('vaccine-certs')
+              .upload(rabiesPath, formData.rabiesVaccineImage, {
                 cacheControl: '3600',
                 upsert: true
               }),
             supabase.storage
-              .from('vaccine-certificates')
-              .upload(comboPath, processedComboImage, {
+              .from('vaccine-certs')
+              .upload(comboPath, formData.comboVaccineImage, {
                 cacheControl: '3600',
                 upsert: true
               }),
           ]);
 
+          console.log('🧪 Upload results:', { rabiesUpload, comboUpload });
+
           if (rabiesUpload.error) {
-            console.error('Rabies upload error:', rabiesUpload.error);
+            console.error('🚨 Rabies upload error:', rabiesUpload.error);
+            console.error('🚨 Rabies error details:', rabiesUpload.error);
             throw rabiesUpload.error;
           }
           if (comboUpload.error) {
-            console.error('Combo upload error:', comboUpload.error);
+            console.error('🚨 Combo upload error:', comboUpload.error);
+            console.error('🚨 Combo error details:', comboUpload.error);
             throw comboUpload.error;
           }
 
-          // 公開URLを取得
-          const { data: { publicUrl: rabiesPublicUrl } } = supabase.storage
-            .from('vaccine-certificates')
-            .getPublicUrl(rabiesPath);
-          
-          const { data: { publicUrl: comboPublicUrl } } = supabase.storage
-            .from('vaccine-certificates')
-            .getPublicUrl(comboPath);
-
-          // 証明書情報をデータベースに登録（有効期限付き、承認待ち状態）
+          // 証明書情報をデータベースに登録（有効期限付き）
           const { error: certError } = await supabase
             .from('vaccine_certifications')
             .insert([
               {
                 dog_id: dog.id,
-                rabies_vaccine_image: rabiesPublicUrl,
-                combo_vaccine_image: comboPublicUrl,
+                rabies_vaccine_image: rabiesPath,
+                combo_vaccine_image: comboPath,
                 rabies_expiry_date: formData.rabiesExpiryDate,
                 combo_expiry_date: formData.comboExpiryDate,
-                status: 'pending', // 承認待ち状態
-                temp_storage: true // 一時保管フラグ
               },
             ]);
 
@@ -423,10 +382,10 @@ export function DogRegistration() {
 
       console.log('Dog registration completed successfully');
       
-      // 登録完了後、登録済みの犬を再取得
-      await fetchRegisteredDogs();
+      // 成功メッセージを表示
+      alert('ワンちゃんの登録が完了しました！');
       
-      // フォームをリセットする
+      // フォームをリセット
       setFormData({
         name: '',
         breed: '',
@@ -441,278 +400,13 @@ export function DogRegistration() {
       });
       setImageFile(null);
       setImagePreview(null);
-      setIsEditing(false);
       
-      // 成功メッセージを表示
-      alert('ワンちゃんの登録が完了しました！');
     } catch (err) {
       console.error('Registration error:', err);
       setError('ワンちゃんの登録に失敗しました。もう一度お試しください。');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleEditDog = (dog: Dog) => {
-    setSelectedDog(dog);
-    
-    // 生年月日を分解
-    const birthDate = new Date(dog.birth_date);
-    const year = birthDate.getFullYear().toString();
-    const month = (birthDate.getMonth() + 1).toString().padStart(2, '0');
-    const day = birthDate.getDate().toString().padStart(2, '0');
-    
-    setFormData({
-      name: dog.name,
-      breed: dog.breed,
-      birthYear: year,
-      birthMonth: month,
-      birthDay: day,
-      gender: dog.gender,
-      rabiesVaccineImage: null,
-      comboVaccineImage: null,
-      rabiesExpiryDate: dog.vaccine_certifications?.[0]?.rabies_expiry_date || '',
-      comboExpiryDate: dog.vaccine_certifications?.[0]?.combo_expiry_date || '',
-    });
-    
-    setImagePreview(dog.image_url || null);
-    setIsEditing(true);
-  };
-
-  const handleUpdateDog = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedDog) return;
-    
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      // 生年月日の妥当性チェック
-      if (!isValidBirthDate()) {
-        setError('正しい生年月日を選択してください。');
-        setIsLoading(false);
-        return;
-      }
-      
-      // 生年月日を文字列に変換
-      const birthDate = `${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`;
-      
-      // 性別の値を正規化
-      let normalizedGender: string;
-      if (formData.gender === 'オス' || formData.gender === 'male' || formData.gender.toLowerCase() === 'male') {
-        normalizedGender = 'オス';
-      } else if (formData.gender === 'メス' || formData.gender === 'female' || formData.gender.toLowerCase() === 'female') {
-        normalizedGender = 'メス';
-      } else {
-        setError('性別を正しく選択してください。');
-        setIsLoading(false);
-        return;
-      }
-      
-      // 犬の画像をアップロード
-      let imageUrl = selectedDog.image_url;
-      if (imageFile) {
-        try {
-          // ファイル名を生成
-          const fileExt = imageFile.name.split('.').pop() || 'jpg';
-          const timestamp = Date.now();
-          const fileName = `${selectedDog.id}/profile_${timestamp}.${fileExt}`;
-          
-          // Supabaseストレージにアップロード
-          const { error: uploadError } = await supabase.storage
-            .from('dog-images')
-            .upload(fileName, imageFile, {
-              cacheControl: '3600',
-              upsert: true
-            });
-
-          if (uploadError) {
-            console.error('Image upload error:', uploadError);
-            throw new Error(`画像のアップロードに失敗しました: ${uploadError.message}`);
-          }
-
-          // 公開URLを取得
-          const { data: { publicUrl } } = supabase.storage
-            .from('dog-images')
-            .getPublicUrl(fileName);
-          
-          imageUrl = publicUrl;
-        } catch (imageError) {
-          console.error('Image processing error:', imageError);
-          // 画像エラーは警告として扱い、更新は続行
-          setError('画像のアップロードに失敗しましたが、ワンちゃんの情報は更新されました。');
-        }
-      }
-      
-      // 犬の情報を更新
-      const { error: dogError } = await supabase
-        .from('dogs')
-        .update({
-          name: formData.name,
-          breed: formData.breed,
-          birth_date: birthDate,
-          gender: normalizedGender,
-          image_url: imageUrl,
-        })
-        .eq('id', selectedDog.id);
-
-      if (dogError) {
-        console.error('Dog update error:', dogError);
-        throw dogError;
-      }
-      
-      // ワクチン証明書の更新（新しい画像がある場合）
-      if (formData.rabiesVaccineImage || formData.comboVaccineImage) {
-        try {
-          // 既存の証明書を確認
-          const { data: existingCert, error: certError } = await supabase
-            .from('vaccine_certifications')
-            .select('id')
-            .eq('dog_id', selectedDog.id)
-            .maybeSingle();
-            
-          if (certError && certError.code !== 'PGRST116') {
-            console.error('Error checking existing certificate:', certError);
-            throw certError;
-          }
-          
-          // 新しい画像のアップロード
-          let rabiesPath = selectedDog.vaccine_certifications?.[0]?.rabies_vaccine_image || null;
-          let comboPath = selectedDog.vaccine_certifications?.[0]?.combo_vaccine_image || null;
-          
-          if (formData.rabiesVaccineImage) {
-            // ワクチン証明書画像を処理
-            const processedRabiesImage = await processVaccineImage(formData.rabiesVaccineImage);
-            const rabiesExt = processedRabiesImage.name.split('.').pop() || 'jpg';
-            const timestamp = Date.now();
-            rabiesPath = `temp/${selectedDog.id}/rabies_${timestamp}.${rabiesExt}`;
-            console.log('rabiesPath:', rabiesPath);
-            console.log('processedRabiesImage:', processedRabiesImage);
-            const { error: rabiesError } = await supabase.storage
-              .from('vaccine-certificates')
-              .upload(rabiesPath, processedRabiesImage, {
-                cacheControl: '3600',
-                upsert: true
-              });
-            if (rabiesError) {
-              console.error('Rabies upload error:', rabiesError);
-              throw rabiesError;
-            }
-            
-            // 公開URLを取得
-            const { data: { publicUrl: rabiesPublicUrl } } = supabase.storage
-              .from('vaccine-certificates')
-              .getPublicUrl(rabiesPath);
-            
-            rabiesPath = rabiesPublicUrl;
-          }
-          
-          if (formData.comboVaccineImage) {
-            // ワクチン証明書画像を処理
-            const processedComboImage = await processVaccineImage(formData.comboVaccineImage);
-            const comboExt = processedComboImage.name.split('.').pop() || 'jpg';
-            const timestamp = Date.now();
-            comboPath = `temp/${selectedDog.id}/combo_${timestamp}.${comboExt}`;
-            console.log('comboPath:', comboPath);
-            console.log('processedComboImage:', processedComboImage);
-            const { error: comboError } = await supabase.storage
-              .from('vaccine-certificates')
-              .upload(comboPath, processedComboImage, {
-                cacheControl: '3600',
-                upsert: true
-              });
-            if (comboError) {
-              console.error('Combo upload error:', comboError);
-              throw comboError;
-            }
-            
-            // 公開URLを取得
-            const { data: { publicUrl: comboPublicUrl } } = supabase.storage
-              .from('vaccine-certificates')
-              .getPublicUrl(comboPath);
-            
-            comboPath = comboPublicUrl;
-          }
-          
-          // 証明書情報の更新または作成
-          const updateData: Record<string, unknown> = {
-            status: 'pending', // 新しい画像がアップロードされたら再審査
-            temp_storage: true // 一時保管フラグ
-          };
-          
-          if (rabiesPath) updateData.rabies_vaccine_image = rabiesPath;
-          if (comboPath) updateData.combo_vaccine_image = comboPath;
-          if (formData.rabiesExpiryDate) updateData.rabies_expiry_date = formData.rabiesExpiryDate;
-          if (formData.comboExpiryDate) updateData.combo_expiry_date = formData.comboExpiryDate;
-          
-          if (existingCert) {
-            // 既存の証明書を更新
-            const { error: updateError } = await supabase
-              .from('vaccine_certifications')
-              .update(updateData)
-              .eq('id', existingCert.id);
-              
-            if (updateError) {
-              console.error('Certificate update error:', updateError);
-              throw updateError;
-            }
-          }
-        } catch (vaccineError) {
-          console.error('Vaccine certificate error:', vaccineError);
-          setError('ワクチン証明書の更新に失敗しました。後でマイページから再試行してください。');
-        }
-      }
-      
-      // 登録済みの犬を再取得
-      await fetchRegisteredDogs();
-      
-      // フォームをリセットする
-      setFormData({
-        name: '',
-        breed: '',
-        birthYear: '',
-        birthMonth: '',
-        birthDay: '',
-        gender: '',
-        rabiesVaccineImage: null,
-        comboVaccineImage: null,
-        rabiesExpiryDate: '',
-        comboExpiryDate: '',
-      });
-      setImageFile(null);
-      setImagePreview(null);
-      setSelectedDog(null);
-      setIsEditing(false);
-      
-      // 成功メッセージを表示
-      alert('ワンちゃんの情報を更新しました！');
-    } catch (err) {
-      console.error('Update error:', err);
-      setError('ワンちゃんの情報更新に失敗しました。もう一度お試しください。');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getVaccineStatus = (dog: Dog) => {
-    const cert = dog.vaccine_certifications?.[0];
-    if (!cert) return { status: 'none', label: '未提出', color: 'text-red-600 bg-red-100' };
-    
-    switch (cert.status) {
-      case 'approved':
-        return { status: 'approved', label: '承認済み', color: 'text-green-600 bg-green-100' };
-      case 'pending':
-        return { status: 'pending', label: '承認待ち', color: 'text-yellow-600 bg-yellow-100' };
-      case 'rejected':
-        return { status: 'rejected', label: '却下', color: 'text-red-600 bg-red-100' };
-      default:
-        return { status: 'none', label: '未提出', color: 'text-red-600 bg-red-100' };
-    }
-  };
-
-  // 犬の性別に応じた敬称を取得する関数
-  const getDogHonorific = (gender: string) => {
-    return gender === 'オス' ? 'くん' : 'ちゃん';
   };
 
   const breedOptions = dogBreeds.map((breed) => ({
@@ -727,85 +421,52 @@ export function DogRegistration() {
   ];
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-center mb-8">ワンちゃん登録</h1>
-      
-      {/* 登録済みのワンちゃん一覧 */}
-      {isLoadingDogs ? (
-        <div className="flex justify-center items-center h-16 mb-6">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
-        </div>
-      ) : registeredDogs.length > 0 && (
-        <Card className="mb-8">
-          <h2 className="text-lg font-semibold mb-4 flex items-center">
-            <PawPrint className="w-5 h-5 text-blue-600 mr-2" />
-            登録済みのワンちゃん
-          </h2>
-          <div className="space-y-4">
-            {registeredDogs.map((dog) => {
-              const vaccineStatus = getVaccineStatus(dog);
-              const honorific = getDogHonorific(dog.gender);
-              return (
-                <div key={dog.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
-                      {dog.image_url ? (
-                        <img 
-                          src={dog.image_url} 
-                          alt={dog.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <PawPrint className="w-6 h-6 text-gray-500" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h3 className="font-semibold">{dog.name}{honorific}</h3>
-                        <VaccineBadge 
-                          status={getVaccineStatusFromDog(dog)} 
-                          size="sm" 
-                        />
-                      </div>
-                      <p className="text-sm text-gray-600">{dog.breed} • {dog.gender}</p>
-                    </div>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    variant="secondary"
-                    onClick={() => handleEditDog(dog)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                </div>
-              );
-            })}
+    <div className="max-w-2xl mx-auto space-y-6">
+      {/* ヘッダー */}
+      <div>
+        <Link to="/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-2">
+          <ArrowLeft className="w-4 h-4 mr-1" />
+          ダッシュボードに戻る
+        </Link>
+        <h1 className="text-2xl font-bold">ワンちゃん登録</h1>
+        <p className="text-gray-600">新しいワンちゃんを登録して、ドッグランを利用しましょう</p>
+      </div>
+
+      {/* 既存のワンちゃん管理へのリンク */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-medium text-blue-900">既に登録済みのワンちゃんがいますか？</h3>
+            <p className="text-sm text-blue-700">登録済みのワンちゃんの情報を確認・編集できます</p>
           </div>
-        </Card>
-      )}
+          <Link to="/dog-management">
+            <Button variant="secondary" size="sm">
+              ワンちゃん管理
+            </Button>
+          </Link>
+        </div>
+      </div>
       
       <Card>
-        <form onSubmit={isEditing ? handleUpdateDog : handleSubmit}>
+        <form onSubmit={handleSubmit}>
+          {/* エラーメッセージ */}
           {error && (
             <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
               {error}
             </div>
           )}
 
+
+
+
+
           {/* 犬の画像アップロード */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              ワンちゃんの写真{isEditing ? '' : '（任意）'}
+              ワンちゃんの写真（任意）
             </label>
             
-            {isProcessingImage && (
-              <div className="mb-3 p-3 bg-blue-50 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <Loader className="w-4 h-4 text-blue-600 animate-spin" />
-                  <span className="text-sm text-blue-800">画像を処理中です...</span>
-                </div>
-              </div>
-            )}
+
             
             {imagePreview ? (
               <div className="relative">
@@ -823,7 +484,7 @@ export function DogRegistration() {
                 </button>
                 {imageFile && (
                   <div className="absolute bottom-2 left-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
-                    {formatFileSize(imageFile.size)}
+                    {imageFile.name}
                   </div>
                 )}
               </div>
@@ -835,33 +496,33 @@ export function DogRegistration() {
                   onChange={handleImageSelect}
                   className="hidden"
                   id="dog-image"
-                  disabled={isProcessingImage}
+
                 />
                 <label
                   htmlFor="dog-image"
-                  className={`cursor-pointer flex flex-col items-center ${isProcessingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                      className="cursor-pointer flex flex-col items-center"
                 >
                   <Camera className="w-12 h-12 text-gray-400 mb-2" />
                   <span className="text-sm text-gray-600">
                     クリックして画像を選択
                   </span>
                   <span className="text-xs text-gray-500 mt-1">
-                    JPG, PNG, GIF (最大20MB)
+                    JPG, PNG, GIF (最大10MB)
                   </span>
-                  <span className="text-xs text-gray-400 mt-1">
-                    自動でリサイズ・圧縮されます
-                  </span>
+
                 </label>
               </div>
             )}
           </div>
 
+          {/* 基本情報 */}
           <Input
             label="名前"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
           />
+          
           <Select
             label="犬種"
             options={breedOptions}
@@ -883,7 +544,6 @@ export function DogRegistration() {
                     setFormData({ 
                       ...formData, 
                       birthYear: e.target.value,
-                      // 年が変更されたら日をリセット（月末日が変わる可能性があるため）
                       birthDay: ''
                     });
                   }}
@@ -905,7 +565,6 @@ export function DogRegistration() {
                     setFormData({ 
                       ...formData, 
                       birthMonth: e.target.value,
-                      // 月が変更されたら日をリセット（月末日が変わる可能性があるため）
                       birthDay: ''
                     });
                   }}
@@ -956,173 +615,92 @@ export function DogRegistration() {
             onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
             required
           />
-          
-          {!isEditing ? (
-            <>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  狂犬病ワクチン接種証明書
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setFormData({ ...formData, rabiesVaccineImage: e.target.files?.[0] || null })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  狂犬病ワクチン有効期限 *
-                </label>
-                <input
-                  type="date"
-                  value={formData.rabiesExpiryDate}
-                  onChange={(e) => setFormData({ ...formData, rabiesExpiryDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  min={new Date().toISOString().split('T')[0]}
-                  required
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  混合ワクチン接種証明書
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setFormData({ ...formData, comboVaccineImage: e.target.files?.[0] || null })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  混合ワクチン有効期限 *
-                </label>
-                <input
-                  type="date"
-                  value={formData.comboExpiryDate}
-                  onChange={(e) => setFormData({ ...formData, comboExpiryDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  min={new Date().toISOString().split('T')[0]}
-                  required
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  狂犬病ワクチン接種証明書（更新する場合のみ）
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setFormData({ ...formData, rabiesVaccineImage: e.target.files?.[0] || null })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  混合ワクチン接種証明書（更新する場合のみ）
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setFormData({ ...formData, comboVaccineImage: e.target.files?.[0] || null })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div className="p-4 bg-yellow-50 rounded-lg mb-4">
-                <div className="flex items-start space-x-2">
-                  <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                  <div className="text-sm text-yellow-800">
-                    <p className="font-medium mb-1">ワクチン証明書の更新について</p>
-                    <p>新しいワクチン証明書をアップロードすると、再度審査が必要になります。審査完了までドッグランの利用ができなくなる場合があります。</p>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-          
-          {!isEditing && (
-            <>
-              <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
-                <p className="text-sm text-yellow-800">
-                  ※ ワクチン接種証明書は運営による確認後に承認されます。承認されるまでドッグランの利用はできません。
-                </p>
-              </div>
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <span className="font-medium">生年月日について:</span><br />
-                  • 年、月、日をそれぞれ選択してください<br />
-                  • 未来の日付は選択できません<br />
-                  • 20年以上前の日付は選択できません<br />
-                  • 月を変更すると、その月の日数に応じて日の選択肢が更新されます
-                </p>
-              </div>
-              <div className="mt-4 p-3 bg-green-50 rounded-lg">
-                <p className="text-sm text-green-800">
-                  <span className="font-medium">写真について:</span><br />
-                  • ワンちゃんの写真は任意ですが、コミュニティで他の飼い主さんに見てもらえます<br />
-                  • JPG、PNG、GIF形式で最大20MBまでアップロード可能<br />
-                  • アップロード時に自動でリサイズ・圧縮されるため、大きなファイルでも安心です<br />
-                  • 後からマイページで変更することもできます
-                </p>
-              </div>
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <span className="font-medium">ワクチン証明書について:</span><br />
-                  • 画像は自動でリサイズ・圧縮され、管理者が確認しやすい形で保存されます<br />
-                  • 証明書は一時的に保管され、管理者の承認・却下後に自動削除されます<br />
-                  • これにより、サーバーの容量を効率的に管理しています<br />
-                  • 承認されると正式にワクチン情報として登録されます
-                </p>
-              </div>
-            </>
-          )}
-          
-          <div className="flex justify-between mt-4">
-            {isEditing && (
-              <Button 
-                type="button" 
-                variant="secondary"
-                onClick={() => {
-                  setIsEditing(false);
-                  setSelectedDog(null);
-                  setFormData({
-                    name: '',
-                    breed: '',
-                    birthYear: '',
-                    birthMonth: '',
-                    birthDay: '',
-                    gender: '',
-                    rabiesVaccineImage: null,
-                    comboVaccineImage: null,
-                    rabiesExpiryDate: '',
-                    comboExpiryDate: '',
-                  });
-                  setImageFile(null);
-                  setImagePreview(null);
-                }}
-              >
-                キャンセル
-              </Button>
-            )}
-            <Button 
-              type="submit" 
-              isLoading={isLoading} 
-              className={isEditing ? '' : 'w-full'}
-            >
-              {isEditing ? '更新する' : '登録する'}
-            </Button>
+
+          {/* ワクチン証明書 */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">ワクチン証明書</h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                狂犬病ワクチン接種証明書 *
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setFormData({ ...formData, rabiesVaccineImage: e.target.files?.[0] || null })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                狂犬病ワクチン有効期限 *
+              </label>
+              <input
+                type="date"
+                value={formData.rabiesExpiryDate}
+                onChange={(e) => setFormData({ ...formData, rabiesExpiryDate: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                min={new Date().toISOString().split('T')[0]}
+                required
+              />
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                混合ワクチン接種証明書 *
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setFormData({ ...formData, comboVaccineImage: e.target.files?.[0] || null })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                混合ワクチン有効期限 *
+              </label>
+              <input
+                type="date"
+                value={formData.comboExpiryDate}
+                onChange={(e) => setFormData({ ...formData, comboExpiryDate: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                min={new Date().toISOString().split('T')[0]}
+                required
+              />
+            </div>
           </div>
+
+          {/* 注意事項 */}
+          <div className="space-y-3">
+            <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                ※ ワクチン接種証明書は運営による確認後に承認されます。承認されるまでドッグランの利用はできません。
+              </p>
+            </div>
+            
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <span className="font-medium">ワクチン証明書について:</span><br />
+                • 管理者が確認しやすい形で保存されます<br />
+                • 承認されると正式にワクチン情報として登録されます<br />
+                • 承認後、全国のドッグランをご利用いただけます
+              </p>
+            </div>
+          </div>
+          
+          <Button 
+            type="submit" 
+            isLoading={isLoading} 
+            className="w-full"
+
+          >
+            ワンちゃんを登録する
+          </Button>
         </form>
       </Card>
     </div>

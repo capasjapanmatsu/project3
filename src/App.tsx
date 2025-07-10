@@ -19,6 +19,7 @@ const Login = lazy(() => import('./pages/Login').then(module => ({ default: modu
 const Register = lazy(() => import('./pages/Register').then(module => ({ default: module.Register })));
 const UserDashboard = lazy(() => import('./pages/UserDashboard').then(module => ({ default: module.UserDashboard })));
 const DogRegistration = lazy(() => import('./pages/DogRegistration').then(module => ({ default: module.DogRegistration })));
+const DogManagement = lazy(() => import('./pages/DogManagement').then(module => ({ default: module.DogManagement })));
 const DogParkList = lazy(() => import('./pages/DogParkList').then(module => ({ default: module.DogParkList })));
 const DogParkDetail = lazy(() => import('./pages/DogParkDetail').then(module => ({ default: module.DogParkDetail })));
 const DogParkRules = lazy(() => import('./pages/DogParkRules').then(module => ({ default: module.DogParkRules })));
@@ -143,6 +144,7 @@ function App() {
             {/* Protected routes */}
             <Route path="/dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
             <Route path="/register-dog" element={<ProtectedRoute><DogRegistration /></ProtectedRoute>} />
+            <Route path="/dog-management" element={<ProtectedRoute><DogManagement /></ProtectedRoute>} />
             <Route path="/parks/:parkId/reserve" element={<ProtectedRoute><ParkReservation /></ProtectedRoute>} />
             <Route path="/community" element={<ProtectedRoute><Community /></ProtectedRoute>} />
             <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />

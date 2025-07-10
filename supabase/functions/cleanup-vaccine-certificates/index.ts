@@ -44,7 +44,7 @@ serve(async (req) => {
             const rabiesPath = cert.rabies_vaccine_image.split('/').pop()
             if (rabiesPath && rabiesPath.startsWith('temp/')) {
               const { error: deleteRabiesError } = await supabaseClient.storage
-                .from('vaccine-certificates')
+                .from('vaccine-certs')
                 .remove([rabiesPath])
               
               if (deleteRabiesError) {
@@ -60,7 +60,7 @@ serve(async (req) => {
             const comboPath = cert.combo_vaccine_image.split('/').pop()
             if (comboPath && comboPath.startsWith('temp/')) {
               const { error: deleteComboError } = await supabaseClient.storage
-                .from('vaccine-certificates')
+                .from('vaccine-certs')
                 .remove([comboPath])
               
               if (deleteComboError) {
@@ -92,7 +92,7 @@ serve(async (req) => {
 
     // 古い一時保管ファイル（30日以上前）も削除
     const { data: oldTempFiles, error: oldFilesError } = await supabaseClient.storage
-      .from('vaccine-certificates')
+      .from('vaccine-certs')
       .list('temp', {
         limit: 1000,
         sortBy: { column: 'created_at', order: 'asc' }
@@ -106,7 +106,7 @@ serve(async (req) => {
 
       if (filesToDelete.length > 0) {
         const { error: deleteOldFilesError } = await supabaseClient.storage
-          .from('vaccine-certificates')
+          .from('vaccine-certs')
           .remove(filesToDelete)
 
         if (deleteOldFilesError) {

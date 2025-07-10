@@ -1,9 +1,10 @@
-import { Edit, Trash2, Camera, Shield, PawPrint, Upload, FileText } from 'lucide-react';
+import { Edit, Trash2, Camera, Shield, PawPrint, Upload, FileText, X, AlertTriangle } from 'lucide-react';
 import Button from '../Button';
 import Input from '../Input';
 import Select from '../Select';
 import { dogBreeds } from '../../data/dogBreeds';
 import type { Dog } from '../../types';
+import VaccineBadge, { getVaccineStatusFromDog } from '../VaccineBadge';
 
 interface DogCardProps {
   dog: Dog;
@@ -11,7 +12,7 @@ interface DogCardProps {
 }
 
 export function DogCard({ dog, onEdit }: DogCardProps) {
-  const vaccineStatus = getVaccineStatus(dog);
+  const vaccineStatus = getVaccineStatusFromDog(dog);
   const honorific = getDogHonorific(dog.gender);
   
   return (
@@ -32,12 +33,7 @@ export function DogCard({ dog, onEdit }: DogCardProps) {
           <h3 className="font-semibold">{dog.name}{honorific}</h3>
           <p className="text-sm text-gray-600">{dog.breed} • {dog.gender}</p>
           <div className="flex items-center space-x-2 mt-1">
-            <span className={`text-xs ${vaccineStatus.color}`}>
-              {vaccineStatus.label}
-            </span>
-            {vaccineStatus.status === 'approved' && (
-              <Shield className="w-3 h-3 text-green-600" />
-            )}
+            <VaccineBadge status={vaccineStatus} size="sm" />
           </div>
         </div>
       </div>
@@ -59,22 +55,7 @@ export function getDogHonorific(gender: string) {
   return gender === 'オス' ? 'くん' : 'ちゃん';
 }
 
-// ワクチン証明書のステータスを取得する関数
-export function getVaccineStatus(dog: Dog) {
-  const cert = dog.vaccine_certifications?.[0];
-  if (!cert) return { status: 'none', label: '未提出', color: 'text-red-600' };
-  
-  switch (cert.status) {
-    case 'approved':
-      return { status: 'approved', label: '承認済み', color: 'text-green-600' };
-    case 'pending':
-      return { status: 'pending', label: '承認待ち', color: 'text-yellow-600' };
-    case 'rejected':
-      return { status: 'rejected', label: '却下', color: 'text-red-600' };
-    default:
-      return { status: 'none', label: '未提出', color: 'text-red-600' };
-  }
-}
+
 
 interface DogEditModalProps {
   dog: Dog | null;
@@ -90,6 +71,7 @@ interface DogEditModalProps {
   dogImagePreview: string | null;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
+  onDelete?: (dog: Dog) => void; // 削除機能を追加
   onFormChange: (formData: {
     name: string;
     breed: string;
@@ -118,6 +100,7 @@ export function DogEditModal({
   dogImagePreview,
   onClose,
   onSubmit,
+  onDelete,
   onFormChange,
   onImageSelect,
   onImageRemove,
@@ -133,7 +116,7 @@ export function DogEditModal({
   if (!dog) return null;
   
   const honorific = getDogHonorific(dog.gender);
-  const vaccineStatus = getVaccineStatus(dog);
+  const vaccineStatus = getVaccineStatusFromDog(dog);
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -141,12 +124,29 @@ export function DogEditModal({
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold">{dog.name}{honorific}の情報編集</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <Trash2 className="w-6 h-6" />
-            </button>
+            <div className="flex space-x-2">
+              {onDelete && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`${dog.name}${honorific}を削除しますか？\n\nこの操作は元に戻せません。`)) {
+                      onDelete(dog);
+                    }
+                  }}
+                  className="text-red-500 hover:text-red-700 p-1 rounded-lg hover:bg-red-50 transition-colors"
+                  title="このワンちゃんを削除"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                title="編集を閉じる"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {error && (
@@ -266,11 +266,9 @@ export function DogEditModal({
                 <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-medium">現在のステータス:</span>
-                    <span className={`text-sm px-2 py-1 rounded-full ${vaccineStatus.color.replace('text-', 'bg-').replace('-600', '-100')} ${vaccineStatus.color}`}>
-                      {vaccineStatus.label}
-                    </span>
+                    <VaccineBadge status={vaccineStatus} size="md" />
                   </div>
-                  {vaccineStatus.status === 'pending' && (
+                  {vaccineStatus === 'pending' && (
                     <p className="text-xs text-gray-600 mt-1">
                       新しい証明書をアップロードすると、再度承認待ち状態になります。
                     </p>
