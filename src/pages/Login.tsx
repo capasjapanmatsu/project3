@@ -66,6 +66,7 @@ export function Login() {
       // 通常ログイン成功時
       navigate('/dashboard');
     } catch (err: any) {
+      console.error('Login error:', err);
       setError(err.message || 'ログインに失敗しました');
     } finally {
       setIsLoading(false);

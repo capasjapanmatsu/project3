@@ -46,6 +46,11 @@ export function UserDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // デバッグログ
+  console.log('UserDashboard rendered');
+  console.log('User details:', user);
+  console.log('User ID:', user?.id);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [ownedParks, setOwnedParks] = useState<DogPark[]>([]);
@@ -79,7 +84,11 @@ export function UserDashboard() {
   const [comboExpiryDate, setComboExpiryDate] = useState('');
 
   useEffect(() => {
+    console.log('UserDashboard useEffect triggered');
+    console.log('User exists:', !!user);
+    
     if (user) {
+      console.log('User authenticated, fetching dashboard data...');
       fetchDashboardData();
     }
     
@@ -110,10 +119,19 @@ export function UserDashboard() {
         setShowSuccessMessage(false);
       }, 5000);
     }
-  }, [user, location]);
+  }, [user, navigate, location]);
 
   const fetchDashboardData = async () => {
     try {
+      // 一時的にデバッグ情報を表示
+      console.log('User ID:', user?.id);
+      console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+      
+      console.log('Starting data fetch...');
+      console.log('Querying dogs for user_id:', user?.id);
+      
+      // 全てのデータを一度に取得
+      console.log('Fetching all data...');
       const [
         profileResponse,
         dogsResponse,
@@ -130,7 +148,7 @@ export function UserDashboard() {
         
         supabase
           .from('dogs')
-          .select('*, vaccine_certifications(*)')
+          .select('*')
           .eq('owner_id', user?.id)
           .order('created_at', { ascending: false }),
         
@@ -162,12 +180,100 @@ export function UserDashboard() {
           .limit(3)
       ]);
 
-      if (profileResponse.error) throw profileResponse.error;
-      if (dogsResponse.error) throw dogsResponse.error;
-      if (parksResponse.error) throw parksResponse.error;
-      if (reservationsResponse.error) throw reservationsResponse.error;
-      if (notificationsResponse.error) throw notificationsResponse.error;
-      if (newsResponse.error) throw newsResponse.error;
+      console.log('Data fetch completed, checking results...');
+      
+      if (profileResponse.error) {
+        console.error('Profile error:', profileResponse.error);
+        throw profileResponse.error;
+      }
+      if (dogsResponse.error) {
+        console.error('Dogs error:', dogsResponse.error);
+        throw dogsResponse.error;
+      }
+      if (parksResponse.error) {
+        console.error('Parks error:', parksResponse.error);
+        throw parksResponse.error;
+      }
+      if (reservationsResponse.error) {
+        console.error('Reservations error:', reservationsResponse.error);
+        throw reservationsResponse.error;
+      }
+      if (notificationsResponse.error) {
+        console.error('Notifications error:', notificationsResponse.error);
+        throw notificationsResponse.error;
+      }
+      if (newsResponse.error) {
+        console.error('News error:', newsResponse.error);
+        throw newsResponse.error;
+      }
+
+      console.log('Dogs response:', dogsResponse);
+      console.log('Dogs data:', dogsResponse.data);
+      console.log('Dogs count:', dogsResponse.data?.length);
+      
+      // 犬が0件の場合、データベースから全体のデータを確認
+      if (dogsResponse.data?.length === 0) {
+        console.log('No dogs found for user. Checking if any dogs exist...');
+        
+        // 認証状態と user ID を詳しく確認
+        console.log('=== DETAILED AUTH DEBUG ===');
+        console.log('User object:', user);
+        console.log('User ID:', user?.id);
+        console.log('User ID type:', typeof user?.id);
+        
+        // Supabase認証状態を確認
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        console.log('Supabase auth data:', authData);
+        console.log('Supabase auth error:', authError);
+        
+        // auth.uid()の値を確認
+        const { data: authUidResult, error: authUidError } = await supabase
+          .rpc('get_current_user_id');
+        console.log('auth.uid() result:', authUidResult);
+        console.log('auth.uid() error:', authUidError);
+        
+        // まず、現在のユーザーのプロフィールが取得できるかテスト
+        console.log('Testing profile access...');
+        const { data: profileTest, error: profileTestError } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .eq('id', user?.id)
+          .single();
+        
+        console.log('Profile test result:', { data: profileTest, error: profileTestError });
+        
+        // 全体の犬のデータを確認（管理者として）
+        const { data: allDogs, error: allDogsError } = await supabase
+          .from('dogs')
+          .select('id, name, owner_id')
+          .limit(10);
+        
+        if (allDogsError) {
+          console.error('Error fetching all dogs:', allDogsError);
+        } else {
+          console.log('All dogs in database (first 10):', allDogs);
+          console.log('Current user ID:', user?.id);
+          console.log('Connected to Supabase project:', import.meta.env.VITE_SUPABASE_URL?.split('//')[1]?.split('.')[0]);
+          
+          // 各犬のowner_idと現在のユーザーIDを比較
+          if (allDogs && allDogs.length > 0) {
+            console.log('=== OWNER ID COMPARISON ===');
+            allDogs.forEach((dog, index) => {
+              console.log(`Dog ${index + 1}:`, {
+                dogId: dog.id,
+                dogName: dog.name,
+                ownerId: dog.owner_id,
+                ownerIdType: typeof dog.owner_id,
+                currentUserId: user?.id,
+                currentUserIdType: typeof user?.id,
+                matches: dog.owner_id === user?.id,
+                matchesString: dog.owner_id?.toString() === user?.id,
+                matchesFromString: user?.id?.toString() === dog.owner_id,
+              });
+            });
+          }
+        }
+      }
 
       setProfile(profileResponse.data);
       setDogs(dogsResponse.data || []);
@@ -175,8 +281,12 @@ export function UserDashboard() {
       setRecentReservations(reservationsResponse.data || []);
       setNotifications(notificationsResponse.data || []);
       setNews(newsResponse.data || []);
+      
+      console.log('State updated successfully');
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      // 一時的にエラーを画面に表示
+      alert(`データ取得エラー: ${error instanceof Error ? error.message : '不明なエラー'}`);
     } finally {
       setIsLoading(false);
     }
@@ -556,10 +666,13 @@ export function UserDashboard() {
     }
   };
 
+  // ProtectedRouteで認証チェックが完了しているため、この部分は不要
+  
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <p className="ml-3 text-gray-600">データを読み込み中...</p>
       </div>
     );
   }
