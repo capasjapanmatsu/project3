@@ -29,11 +29,8 @@ export const getVaccineImageUrl = (imagePath: string | null): string | null => {
     return imagePath;
   }
   
-  // パスを正規化
-  let normalizedPath = imagePath;
-  if (!normalizedPath.startsWith('temp/')) {
-    normalizedPath = `temp/${normalizedPath}`;
-  }
+  // パスをそのまま使用（temp/を強制追加しない）
+  const normalizedPath = imagePath;
   
   // 公開URLを生成
   const { data } = supabase.storage

@@ -117,6 +117,14 @@ export const AdminVaccineApproval: React.FC<AdminVaccineApprovalProps> = ({
             {/* 狂犬病ワクチン */}
             <div>
               <h4 className="font-medium mb-2">狂犬病ワクチン</h4>
+              
+              {/* デバッグ情報 */}
+              <div className="mb-2 p-2 bg-gray-100 rounded text-xs">
+                <p><strong>Debug Info:</strong></p>
+                <p>Original path: {selectedVaccine.rabies_vaccine_image}</p>
+                <p>Generated URL: {getVaccineImageUrl(selectedVaccine.rabies_vaccine_image)}</p>
+              </div>
+              
               {selectedVaccine.rabies_vaccine_image ? (
                 <div className="border rounded-lg overflow-hidden relative">
                   {imageLoadingStates[`rabies-${selectedVaccine.id}`] && (
@@ -151,6 +159,14 @@ export const AdminVaccineApproval: React.FC<AdminVaccineApprovalProps> = ({
             {/* 混合ワクチン */}
             <div>
               <h4 className="font-medium mb-2">混合ワクチン</h4>
+              
+              {/* デバッグ情報 */}
+              <div className="mb-2 p-2 bg-gray-100 rounded text-xs">
+                <p><strong>Debug Info:</strong></p>
+                <p>Original path: {selectedVaccine.combo_vaccine_image}</p>
+                <p>Generated URL: {getVaccineImageUrl(selectedVaccine.combo_vaccine_image)}</p>
+              </div>
+              
               {selectedVaccine.combo_vaccine_image ? (
                 <div className="border rounded-lg overflow-hidden relative">
                   {imageLoadingStates[`combo-${selectedVaccine.id}`] && (
