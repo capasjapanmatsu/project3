@@ -20,7 +20,6 @@ import { useSubscription } from '../hooks/useSubscription';
 import { SubscriptionButton } from '../components/SubscriptionButton';
 import { DogManagementSection } from '../components/dashboard/DogManagementSection';
 import { NotificationSection } from '../components/dashboard/NotificationSection';
-import { RecentDogsSection } from '../components/dashboard/RecentDogsSection';
 import { StatsSection } from '../components/dashboard/StatsSection';
 import { ParkCard } from '../components/dashboard/ParkCard';
 import { ParkModal } from '../components/dashboard/ParkModal';
@@ -70,30 +69,14 @@ export function UserDashboard() {
   const [rabiesExpiryDate, setRabiesExpiryDate] = useState('');
   const [comboExpiryDate, setComboExpiryDate] = useState('');
   
-  // Recent dogs state
-  const [recentDogs, setRecentDogs] = useState<Dog[]>([]);
-  const [recentDogsError, setRecentDogsError] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (user) {
       fetchDashboardData();
     }
     
-    // Fetch recent dogs (public data)
-    const fetchRecentDogs = async () => {
-      const { data, error } = await supabase
-        .from('dogs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(8);
-      if (error) {
-        setRecentDogsError(error.message || 'データ取得エラー');
-      } else {
-        setRecentDogs(data || []);
-        setRecentDogsError(null);
-      }
-    };
-    fetchRecentDogs();
+
     
     // Check for success parameter in URL
     if (location.search.includes('success=true')) {
@@ -515,20 +498,15 @@ export function UserDashboard() {
         {/* Owned Parks Management Section */}
         {ownedParks.length > 0 && (
           <Card className="p-6">
-            <div className="flex justify-between items-center mb-4">
+            <div className="mb-4">
               <h2 className="text-xl font-semibold flex items-center">
                 <Building className="w-6 h-6 text-green-600 mr-2" />
                 管理中のドッグラン ({ownedParks.length}施設)
               </h2>
-              <Link to="/park-management">
-                <Button size="sm" variant="secondary">
-                  すべて管理
-                </Button>
-              </Link>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {ownedParks.slice(0, 6).map((park) => (
+              {ownedParks.map((park) => (
                 <ParkCard
                   key={park.id}
                   park={park}
@@ -536,16 +514,6 @@ export function UserDashboard() {
                 />
               ))}
             </div>
-            
-            {ownedParks.length > 6 && (
-              <div className="mt-4 text-center">
-                <Link to="/park-management">
-                  <Button variant="secondary" size="sm">
-                    さらに {ownedParks.length - 6} 施設を表示
-                  </Button>
-                </Link>
-              </div>
-            )}
           </Card>
         )}
 
@@ -595,12 +563,7 @@ export function UserDashboard() {
           />
         )}
 
-        {/* Recent Dogs Section */}
-        <RecentDogsSection
-          recentDogs={recentDogs}
-          recentDogsError={recentDogsError}
-          isLoading={false}
-        />
+
       </div>
 
       {/* Park Modal */}
