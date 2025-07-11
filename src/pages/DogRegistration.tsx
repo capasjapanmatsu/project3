@@ -8,6 +8,8 @@ import { X, Camera, Upload, Loader, ArrowLeft } from 'lucide-react';
 import { dogBreeds } from '../data/dogBreeds';
 import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
+import { validateVaccineFile } from '../utils/vaccineUpload';
+import { handleVaccineUploadFixed } from '../utils/vaccineUploadFixed';
 
 
 export function DogRegistration() {
@@ -266,12 +268,15 @@ export function DogRegistration() {
           
           console.log('Uploading to path:', fileName);
           
-          // Supabaseストレージにアップロード
+          // Supabaseストレージにアップロード（Content-Type明示）
+          console.log('🔧 Uploading dog image with Content-Type:', imageFile.type);
+          
           const { error: uploadError } = await supabase.storage
             .from('dog-images')
             .upload(fileName, imageFile, {
               cacheControl: '3600',
-              upsert: true
+              upsert: true,
+              contentType: imageFile.type  // ← 重要: Content-Typeを明示
             });
 
           if (uploadError) {
@@ -308,75 +313,24 @@ export function DogRegistration() {
         }
       }
 
-      // ワクチン証明書の画像をアップロード
+      // ワクチン証明書の画像をアップロード（新しいユーティリティを使用）
       if (formData.rabiesVaccineImage && formData.comboVaccineImage) {
-        console.log('🧪 Starting vaccine certificates upload...');
-        console.log('🧪 Dog ID for upload:', dog.id);
-        console.log('🧪 Dog ID type:', typeof dog.id);
+        console.log('🧪 Starting vaccine certificates upload using utility...');
         
-        try {
-          const rabiesExt = formData.rabiesVaccineImage.name.split('.').pop() || 'jpg';
-          const comboExt = formData.comboVaccineImage.name.split('.').pop() || 'jpg';
-          const timestamp = Date.now();
-          
-          const rabiesPath = `${dog.id}/rabies_${timestamp}.${rabiesExt}`;
-          const comboPath = `${dog.id}/combo_${timestamp}.${comboExt}`;
+        const uploadResult = await handleVaccineUploadFixed(
+          dog.id,
+          formData.rabiesVaccineImage,
+          formData.comboVaccineImage,
+          formData.rabiesExpiryDate,
+          formData.comboExpiryDate
+        );
 
-          console.log('🧪 Upload paths:', { rabiesPath, comboPath });
-          console.log('🧪 File sizes:', {
-            rabies: formData.rabiesVaccineImage.size,
-            combo: formData.comboVaccineImage.size
-          });
-
-          const [rabiesUpload, comboUpload] = await Promise.all([
-            supabase.storage
-              .from('vaccine-certs')
-              .upload(rabiesPath, formData.rabiesVaccineImage, {
-                cacheControl: '3600',
-                upsert: true
-              }),
-            supabase.storage
-              .from('vaccine-certs')
-              .upload(comboPath, formData.comboVaccineImage, {
-                cacheControl: '3600',
-                upsert: true
-              }),
-          ]);
-
-          console.log('🧪 Upload results:', { rabiesUpload, comboUpload });
-
-          if (rabiesUpload.error) {
-            console.error('🚨 Rabies upload error:', rabiesUpload.error);
-            console.error('🚨 Rabies error details:', rabiesUpload.error);
-            throw rabiesUpload.error;
-          }
-          if (comboUpload.error) {
-            console.error('🚨 Combo upload error:', comboUpload.error);
-            console.error('🚨 Combo error details:', comboUpload.error);
-            throw comboUpload.error;
-          }
-
-          // 証明書情報をデータベースに登録（有効期限付き）
-          const { error: certError } = await supabase
-            .from('vaccine_certifications')
-            .insert([
-              {
-                dog_id: dog.id,
-                rabies_vaccine_image: rabiesPath,
-                combo_vaccine_image: comboPath,
-                rabies_expiry_date: formData.rabiesExpiryDate,
-                combo_expiry_date: formData.comboExpiryDate,
-              },
-            ]);
-
-          if (certError) {
-            console.error('Certificate registration error:', certError);
-            throw certError;
-          }
-          console.log('Vaccine certificates uploaded successfully');
-        } catch (certError) {
-          console.error('Vaccine certificate error:', certError);
-          setError('ワクチン証明書のアップロードに失敗しました。後でマイページから追加してください。');
+        if (!uploadResult.success) {
+          console.error('Vaccine upload failed:', uploadResult.error);
+          setError(`ワクチン証明書のアップロードに失敗しました: ${uploadResult.error}`);
+          // エラーの場合でも登録は続行し、後でマイページから追加可能
+        } else {
+          console.log('✅ Vaccine certificates uploaded successfully');
         }
       }
 
@@ -627,7 +581,18 @@ export function DogRegistration() {
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => setFormData({ ...formData, rabiesVaccineImage: e.target.files?.[0] || null })}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const validation = validateVaccineFile(file);
+                    if (!validation.isValid) {
+                      setError(validation.error || 'ファイルの検証に失敗しました');
+                      return;
+                    }
+                    setError(''); // 成功時にエラーをクリア
+                  }
+                  setFormData({ ...formData, rabiesVaccineImage: file || null });
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
@@ -654,7 +619,18 @@ export function DogRegistration() {
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => setFormData({ ...formData, comboVaccineImage: e.target.files?.[0] || null })}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const validation = validateVaccineFile(file);
+                    if (!validation.isValid) {
+                      setError(validation.error || 'ファイルの検証に失敗しました');
+                      return;
+                    }
+                    setError(''); // 成功時にエラーをクリア
+                  }
+                  setFormData({ ...formData, comboVaccineImage: file || null });
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />

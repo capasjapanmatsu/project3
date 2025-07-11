@@ -309,11 +309,19 @@ export function DogManagement() {
         console.log('📡 Direct upload URL:', uploadUrl);
         console.log('🔑 Using user access token for authentication');
         
+        console.log('🔧 Using PUT method for Supabase Storage API...');
+        console.log('📤 Upload options:', {
+          method: 'PUT',
+          contentType: dogImageFile.type,
+          authorization: 'Bearer [token]',
+          cacheControl: '3600'
+        });
+
         const response = await fetch(uploadUrl, {
-          method: 'POST',
+          method: 'PUT',  // ← 修正: POSTからPUTに変更
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,  // ユーザーのアクセストークンを使用
-            'Content-Type': dogImageFile.type,
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': dogImageFile.type,  // ← Content-Type明示
             'Cache-Control': '3600'
           },
           body: dogImageFile
@@ -358,35 +366,51 @@ export function DogManagement() {
         const rabiesPath = `temp/${selectedDog.id}/rabies_${timestamp}.${rabiesExt}`;
         const comboPath = `temp/${selectedDog.id}/combo_${timestamp}.${comboExt}`;
 
+        console.log('🧪 Uploading vaccine certificates with direct method...');
+        
+        // First, debug authentication status
+        const { debugAuthStatus } = await import('../utils/authDebug');
+        await debugAuthStatus();
+        
+        // Import the direct upload function and execute uploads
+        const { directVaccineUpload } = await import('../utils/directVaccineUpload');
+        console.log('✅ Direct upload function imported successfully');
+        
         const [rabiesUpload, comboUpload] = await Promise.all([
-          supabase.storage
-            .from('vaccine-certs')
-            .upload(rabiesPath, rabiesVaccineFile, {
-              cacheControl: '3600',
-              upsert: true
-            }),
-          supabase.storage
-            .from('vaccine-certs')
-            .upload(comboPath, comboVaccineFile, {
-              cacheControl: '3600',
-              upsert: true
-            }),
+          directVaccineUpload(rabiesPath, rabiesVaccineFile),
+          directVaccineUpload(comboPath, comboVaccineFile),
         ]);
+        
+        console.log('📊 Upload results:', { rabiesUpload, comboUpload });
 
-        if (rabiesUpload.error || comboUpload.error) {
-          throw new Error('ワクチン証明書のアップロードに失敗しました。');
+        if (!rabiesUpload.success || !comboUpload.success) {
+          console.error('🚨 === VACCINE UPLOAD ERROR DETAILS ===');
+          if (!rabiesUpload.success) {
+            console.error('❌ Rabies upload error:', rabiesUpload.error);
+          }
+          if (!comboUpload.success) {
+            console.error('❌ Combo upload error:', comboUpload.error);
+          }
+          
+          const errorMessage = rabiesUpload.error || comboUpload.error || 'ワクチン証明書のアップロードに失敗しました。';
+          throw new Error(`ワクチン証明書のアップロードに失敗しました: ${errorMessage}`);
         }
 
+        console.log('✅ Vaccine certificates uploaded successfully');
+        console.log('📄 Rabies upload result:', rabiesUpload.url);
+        console.log('📄 Combo upload result:', comboUpload.url);
+
         // 公開URLを取得
-        const { data: { publicUrl: rabiesPublicUrl } } = supabase.storage
-          .from('vaccine-certs')
-          .getPublicUrl(rabiesPath);
+        const rabiesPublicUrl = rabiesUpload.url;
+        const comboPublicUrl = comboUpload.url;
         
-        const { data: { publicUrl: comboPublicUrl } } = supabase.storage
-          .from('vaccine-certs')
-          .getPublicUrl(comboPath);
+        console.log('🌐 Public URLs obtained:', {
+          rabiesPublicUrl,
+          comboPublicUrl
+        });
 
         // 既存のワクチン証明書を更新または新規作成
+        console.log('💾 Saving vaccine certificates to database...');
         const { error: certUpsertError } = await supabase
           .from('vaccine_certifications')
           .upsert([
@@ -396,14 +420,22 @@ export function DogManagement() {
               combo_vaccine_image: comboPublicUrl,
               rabies_expiry_date: rabiesExpiryDate,
               combo_expiry_date: comboExpiryDate,
-              status: 'pending', // 承認待ち状態
-              temp_storage: true
+              status: 'pending' // 承認待ち状態
             },
           ], { onConflict: 'dog_id' });
 
         if (certUpsertError) {
-          throw certUpsertError;
+          console.error('❌ Database save error:', certUpsertError);
+          
+          // サーバーエラーの場合、より適切なエラーメッセージを提供
+          if (certUpsertError.message && certUpsertError.message.includes('520')) {
+            throw new Error('一時的なサーバーエラーが発生しました。ファイルのアップロードは成功しましたが、データベースへの保存に失敗しました。しばらく待ってから再度お試しください。');
+          } else {
+            throw new Error(`データベースへの保存に失敗しました: ${certUpsertError.message}`);
+          }
         }
+        
+        console.log('✅ Vaccine certificates saved to database successfully');
       }
       
       setDogUpdateSuccess('ワンちゃん情報を更新しました');
@@ -425,7 +457,20 @@ export function DogManagement() {
       
     } catch (error) {
       console.error('Error updating dog:', error);
-      const errorMessage = (error as Error).message || 'ワンちゃん情報の更新に失敗しました';
+      
+      // エラーの詳細情報を提供
+      let errorMessage = 'ワンちゃん情報の更新に失敗しました';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('520') || error.message.includes('Cloudflare')) {
+          errorMessage = 'ワクチン証明書のアップロードは成功しましたが、一時的なサーバーエラーが発生しました。しばらく待ってから再度お試しください。';
+        } else if (error.message.includes('アップロードに失敗しました')) {
+          errorMessage = error.message;
+        } else {
+          errorMessage = `エラーが発生しました: ${error.message}`;
+        }
+      }
+      
       setDogUpdateError(errorMessage);
     } finally {
       setIsUpdatingDog(false);

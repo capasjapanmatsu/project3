@@ -1,126 +1,118 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables');
-  throw new Error('Supabase configuration is missing. Please check your .env file.');
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase environment variables');
 }
 
-// Validate Supabase URL format
-try {
-  new URL(supabaseUrl);
-} catch {
-  console.error('Invalid Supabase URL format:', supabaseUrl);
-  throw new Error('Invalid Supabase URL format. Please check your VITE_SUPABASE_URL in .env file.');
-}
-
-// Enhanced fetch function with better error handling and retry logic
-const enhancedFetch = async (...args: Parameters<typeof fetch>): Promise<Response> => {
-  const controller = new AbortController();
-  const { signal } = controller;
-  
-  // Set timeout to 15 seconds initially
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
-  
-  try {
-    const response = await fetch(args[0], {
-      ...args[1],
-      signal,
-      headers: {
-        ...args[1]?.headers,
-        'apikey': supabaseAnonKey,
-        'Authorization': `Bearer ${supabaseAnonKey}`,
-        'Cache-Control': 'no-cache',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    
-    console.warn('Initial fetch failed:', error);
-    
-    // Check if it's a network-related error that might benefit from retry
-    let isRetryableError = false;
-    if (error instanceof Error) {
-      isRetryableError =
-        error instanceof TypeError ||
-        error.name === 'AbortError' ||
-        error.message.includes('NetworkError') ||
-        error.message.includes('Failed to fetch') ||
-        error.message.includes('fetch');
-    }
-    
-    if (isRetryableError) {
-      console.warn('Network error detected, attempting retry after delay...');
-      
-      // Wait 2 seconds before retry
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Create new controller for retry
-      const retryController = new AbortController();
-      const retryTimeoutId = setTimeout(() => retryController.abort(), 20000); // Longer timeout for retry
-      
-      try {
-        const retryResponse = await fetch(args[0], {
-          ...args[1],
-          signal: retryController.signal,
-          headers: {
-            ...args[1]?.headers,
-            'apikey': supabaseAnonKey,
-            'Authorization': `Bearer ${supabaseAnonKey}`,
-            'Cache-Control': 'no-cache',
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        clearTimeout(retryTimeoutId);
-        console.log('Retry successful');
-        return retryResponse;
-      } catch (retryError) {
-        clearTimeout(retryTimeoutId);
-        console.error('Retry also failed:', retryError);
-        if (retryError instanceof Error) {
-          // Provide more specific error information
-          if (retryError.name === 'AbortError') {
-            throw new Error('Connection timeout - please check your internet connection and try again');
-          } else if (retryError instanceof TypeError) {
-            throw new Error('Network connection failed - please check if Supabase is accessible from your network');
-          }
-        }
-        throw retryError;
-      }
-    }
-    
-    throw error;
-  }
-};
-
-// Create a single instance of the Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storageKey: 'supabase.auth.token',
-  },
-  global: {
-    fetch: enhancedFetch,
+    persistSession: true,
+    detectSessionInUrl: true
   },
   realtime: {
     params: {
-      eventsPerSecond: 5,
+      eventsPerSecond: 10,
     },
   },
 });
 
-// Enhanced connection test function with better error reporting
+// Storage utility functions
+export const getVaccineImageUrl = (imagePath: string | null): string | null => {
+  if (!imagePath) return null;
+  
+  // 既にHTTPで始まる場合はそのまま返す
+  if (imagePath.startsWith('http')) {
+    return imagePath;
+  }
+  
+  // パスを正規化
+  let normalizedPath = imagePath;
+  if (!normalizedPath.startsWith('temp/')) {
+    normalizedPath = `temp/${normalizedPath}`;
+  }
+  
+  // 公開URLを生成
+  const { data } = supabase.storage
+    .from('vaccine-certs')
+    .getPublicUrl(normalizedPath);
+  
+  return data.publicUrl;
+};
+
+// 管理者かどうかをチェック
+export const isUserAdmin = async (userId: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('user_type')
+      .eq('id', userId)
+      .single();
+    
+    if (error) {
+      console.error('Admin check error:', error);
+      return false;
+    }
+    
+    return data?.user_type === 'admin';
+  } catch (error) {
+    console.error('Admin check exception:', error);
+    return false;
+  }
+};
+
+// Supabaseエラーハンドリング関数
+export const handleSupabaseError = (error: unknown): string => {
+  console.error('Supabase error:', error);
+  
+  if (error instanceof Error) {
+    // リフレッシュトークンエラー
+    if (error.message.includes('refresh_token_not_found')) {
+      console.warn('Invalid refresh token detected, signing out user');
+      supabase.auth.signOut();
+      return 'セッションが期限切れです。再度ログインしてください。';
+    }
+    
+    // ネットワーク接続エラー
+    if (
+      error.message.includes('NetworkError') ||
+      error.message.includes('Failed to fetch') ||
+      (error.name === 'TypeError' && error.message.includes('fetch'))
+    ) {
+      return 'ネットワーク接続に問題があります。インターネット接続を確認してください。';
+    }
+    
+    // タイムアウトエラー
+    if (
+      error.message.includes('timed out') ||
+      error.name === 'AbortError' ||
+      error.message.includes('timeout')
+    ) {
+      return 'リクエストがタイムアウトしました。もう一度お試しください。';
+    }
+    
+    // CORS エラー
+    if (error.message.includes('CORS') || error.message.includes('cross-origin')) {
+      return 'CORS設定に問題があります。';
+    }
+    
+    // 認証エラー
+    if (error.message.includes('JWT')) {
+      return '認証に問題があります。再度ログインしてください。';
+    }
+    
+    if (error.message) {
+      return error.message;
+    }
+  }
+  
+  return '予期しないエラーが発生しました。';
+};
+
+// Supabase接続テスト関数
 export const testSupabaseConnection = async (): Promise<boolean> => {
   try {
     const { error } = await supabase.from('profiles').select('count').limit(1);
@@ -130,52 +122,7 @@ export const testSupabaseConnection = async (): Promise<boolean> => {
   }
 };
 
-// Helper function to handle Supabase errors consistently
-export const handleSupabaseError = (error: unknown): string => {
-  console.error('Supabase error:', error);
-  if (error instanceof Error) {
-    // Handle refresh token errors by signing out the user
-    if (error.message.includes('refresh_token_not_found')) {
-      console.warn('Invalid refresh token detected, signing out user');
-      supabase.auth.signOut();
-      return 'セッションが期限切れです。再度ログインしてください。';
-    }
-    // Handle network connectivity issues with more specific messages
-    if (
-      error.message.includes('NetworkError') ||
-      error.message.includes('Failed to fetch') ||
-      (error.name === 'TypeError' && error.message.includes('fetch'))
-    ) {
-      return 'ネットワーク接続に問題があります。以下をご確認ください：\n• インターネット接続\n• ファイアウォール設定\n• VPN設定\n• Supabaseサービスの状態';
-    }
-    if (
-      error.message.includes('timed out') ||
-      error.name === 'AbortError' ||
-      error.message.includes('timeout')
-    ) {
-      return 'リクエストがタイムアウトしました。ネットワーク接続を確認してもう一度お試しください。';
-    }
-    // Handle CORS errors
-    if (error.message.includes('CORS') || error.message.includes('cross-origin')) {
-      return 'CORS設定に問題があります。Supabaseプロジェクトの設定を確認してください。';
-    }
-    // Handle authentication errors
-    if (error.message.includes('JWT')) {
-      return '認証に問題があります。再度ログインしてください。';
-    }
-    if (error.message) {
-      return error.message;
-    }
-  }
-  return '予期しないエラーが発生しました。';
-};
-
-// Helper function to check if we're in development mode
-export const isDevelopment = () => {
-  return import.meta.env.DEV;
-};
-
-// Helper function to safely execute Supabase queries with fallback
+// 安全なSupabaseクエリ実行関数
 export const safeSupabaseQuery = async <T>(
   queryFn: () => Promise<{ data: T | null; error: unknown }>
 ): Promise<{ data: T | null; error: unknown; isOffline: boolean }> => {
@@ -188,38 +135,23 @@ export const safeSupabaseQuery = async <T>(
   }
 };
 
-// Function to check Supabase service status
-export const checkSupabaseStatus = async (): Promise<{ isOnline: boolean; message: string }> => {
-  try {
-    // Try to access Supabase status page or a simple endpoint
-    const response = await fetch(`${supabaseUrl}/rest/v1/`, {
-      headers: {
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      },
-    });
-    
-    if (response.ok) {
-      return { isOnline: true, message: 'Supabase is accessible' };
-    } else {
-      return { 
-        isOnline: false, 
-        message: `Supabase returned status: ${response.status} ${response.statusText}` 
-      };
-    }
-  } catch (error) {
-    console.error('Supabase status check failed:', error);
-    
-    if (error instanceof TypeError || error.message.includes('NetworkError')) {
-      return { 
-        isOnline: false, 
-        message: 'Network error - check your internet connection and firewall settings' 
-      };
-    }
-    
-    return { 
-      isOnline: false, 
-      message: `Connection failed: ${error.message}` 
-    };
-  }
+// デバッグ用：現在の認証状態を表示
+export const debugAuth = async () => {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  console.log('🔍 Auth Debug:', {
+    session: session ? 'Present' : 'Missing',
+    user: user ? 'Present' : 'Missing',
+    userId: user?.id,
+    userEmail: user?.email,
+    error: error?.message
+  });
+  
+  return { session, user, error };
+};
+
+// 開発環境かどうかを判定
+export const isDevelopment = () => {
+  return import.meta.env.DEV;
 };

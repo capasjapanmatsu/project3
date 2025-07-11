@@ -48,11 +48,19 @@ export const useAdminApproval = () => {
 
       if (error) {
         console.error('Vaccine update error:', error);
-        throw error;
+        console.error('Error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        throw new Error(`ワクチン証明書の更新に失敗しました: ${error.message}`);
       }
       
       // 一時保存の画像を削除（承認・却下問わず）
-      if (vaccineData.temp_storage) {
+      // temp/フォルダ内の画像があれば削除
+      if (vaccineData.rabies_vaccine_image?.includes('/temp/') || 
+          vaccineData.combo_vaccine_image?.includes('/temp/')) {
         await deleteTemporaryImages(vaccineData);
       }
       
@@ -63,7 +71,7 @@ export const useAdminApproval = () => {
       
     } catch (error) {
       console.error('Vaccine approval error:', error);
-      return { success: false, message: '承認処理に失敗しました' };
+      return { success: false, message: `承認処理に失敗しました: ${(error as Error).message}` };
     } finally {
       setIsProcessing(false);
     }
@@ -151,54 +159,65 @@ export const useAdminApproval = () => {
   // プライベートヘルパー関数
   const deleteTemporaryImages = async (vaccineData: any) => {
     console.log('Deleting temporary vaccine images...');
+    console.log('Vaccine data:', {
+      rabies_vaccine_image: vaccineData.rabies_vaccine_image,
+      combo_vaccine_image: vaccineData.combo_vaccine_image
+    });
     
     const imagesToDelete = [];
+    
+    // Rabies画像のパス抽出
     if (vaccineData.rabies_vaccine_image) {
-      const rabiesPath = vaccineData.rabies_vaccine_image.startsWith('http')
-        ? vaccineData.rabies_vaccine_image.split('/').pop()
-        : vaccineData.rabies_vaccine_image;
-      if (rabiesPath) imagesToDelete.push(rabiesPath);
-    }
-    
-    if (vaccineData.combo_vaccine_image) {
-      const comboPath = vaccineData.combo_vaccine_image.startsWith('http')
-        ? vaccineData.combo_vaccine_image.split('/').pop()
-        : vaccineData.combo_vaccine_image;
-      if (comboPath) imagesToDelete.push(comboPath);
-    }
-    
-    // 画像を削除
-    for (const imagePath of imagesToDelete) {
-      try {
-        const { error: deleteError } = await supabase.storage
-          .from('vaccine-certs')
-          .remove([imagePath]);
-        
-        if (deleteError) {
-          console.error('Error deleting image:', imagePath, deleteError);
-        } else {
-          console.log('Successfully deleted image:', imagePath);
+      let filePath = '';
+      if (vaccineData.rabies_vaccine_image.includes('/temp/')) {
+        // URLから相対パスを抽出
+        const pathMatch = vaccineData.rabies_vaccine_image.match(/temp\/[^\/]+\/[^\/\?]+/);
+        if (pathMatch) {
+          filePath = pathMatch[0];
         }
-      } catch (deleteErr) {
-        console.error('Error deleting image:', imagePath, deleteErr);
+      }
+      if (filePath) {
+        imagesToDelete.push(filePath);
       }
     }
     
-    // 画像URLをクリア
-    const { error: clearError } = await supabase
-      .from('vaccine_certifications')
-      .update({
-        rabies_vaccine_image: null,
-        combo_vaccine_image: null,
-        temp_storage: false
-      })
-      .eq('id', vaccineData.id);
-      
-    if (clearError) {
-      console.error('Error clearing image URLs:', clearError);
-    } else {
-      console.log('Successfully cleared image URLs');
+    // Combo画像のパス抽出
+    if (vaccineData.combo_vaccine_image) {
+      let filePath = '';
+      if (vaccineData.combo_vaccine_image.includes('/temp/')) {
+        // URLから相対パスを抽出
+        const pathMatch = vaccineData.combo_vaccine_image.match(/temp\/[^\/]+\/[^\/\?]+/);
+        if (pathMatch) {
+          filePath = pathMatch[0];
+        }
+      }
+      if (filePath) {
+        imagesToDelete.push(filePath);
+      }
     }
+    
+    console.log('Paths to delete:', imagesToDelete);
+    
+    // 画像がある場合のみ削除実行
+    if (imagesToDelete.length > 0) {
+      try {
+        const { error: deleteError } = await supabase.storage
+          .from('vaccine-certs')
+          .remove(imagesToDelete);
+        
+        if (deleteError) {
+          console.error('Error deleting images:', deleteError);
+        } else {
+          console.log('Successfully deleted images:', imagesToDelete);
+        }
+      } catch (deleteErr) {
+        console.error('Error deleting images:', deleteErr);
+      }
+    } else {
+      console.log('No temporary images to delete');
+    }
+    
+    console.log('Temporary images deletion completed');
   };
 
   const createVaccineNotification = async (
@@ -220,7 +239,13 @@ export const useAdminApproval = () => {
     
     if (notifyError) {
       console.error('Notification error:', notifyError);
-      throw notifyError;
+      console.error('Notification error details:', {
+        message: notifyError.message,
+        code: notifyError.code,
+        details: notifyError.details,
+        hint: notifyError.hint
+      });
+      throw new Error(`通知の作成に失敗しました: ${notifyError.message}`);
     }
   };
 
@@ -307,7 +332,16 @@ export const useAdminApproval = () => {
         data: { park_id: parkData.id }
       }]);
     
-    if (notifyError) throw notifyError;
+    if (notifyError) {
+      console.error('Park notification error:', notifyError);
+      console.error('Park notification error details:', {
+        message: notifyError.message,
+        code: notifyError.code,
+        details: notifyError.details,
+        hint: notifyError.hint
+      });
+      throw new Error(`施設通知の作成に失敗しました: ${notifyError.message}`);
+    }
   };
 
   return {

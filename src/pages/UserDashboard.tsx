@@ -31,6 +31,8 @@ import { ReservationCard } from '../components/dashboard/ReservationCard';
 import { NotificationCard } from '../components/dashboard/NotificationCard';
 import { StatCard } from '../components/dashboard/StatCard';
 import VaccineBadge, { getVaccineStatusFromDog } from '../components/VaccineBadge';
+import { validateVaccineFile } from '../utils/vaccineUpload';
+import { handleVaccineUploadFixed } from '../utils/vaccineUploadFixed';
 import type { Dog, DogPark, Profile, Reservation, Notification, NewsAnnouncement } from '../types';
 
 export function UserDashboard() {
@@ -478,19 +480,16 @@ export function UserDashboard() {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        // 基本的なファイル検証
-        if (file.size > 10 * 1024 * 1024) {
-          setDogUpdateError('ファイルサイズは10MB以下にしてください。');
-          return;
-        }
-        
-        if (!file.type.startsWith('image/')) {
-          setDogUpdateError('画像ファイルを選択してください。');
+        // 新しいユーティリティを使用したファイル検証
+        const validation = validateVaccineFile(file);
+        if (!validation.isValid) {
+          setDogUpdateError(validation.error || 'ファイルの検証に失敗しました');
           return;
         }
         
         setRabiesVaccineFile(file);
         setDogUpdateError('');
+        console.log('✅ Rabies vaccine file selected:', file.name);
       } catch (error) {
         console.error('Vaccine image processing error:', error);
         setDogUpdateError('ワクチン証明書の処理に失敗しました。別の画像をお試しください。');
@@ -505,19 +504,16 @@ export function UserDashboard() {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        // 基本的なファイル検証
-        if (file.size > 10 * 1024 * 1024) {
-          setDogUpdateError('ファイルサイズは10MB以下にしてください。');
-          return;
-        }
-        
-        if (!file.type.startsWith('image/')) {
-          setDogUpdateError('画像ファイルを選択してください。');
+        // 新しいユーティリティを使用したファイル検証
+        const validation = validateVaccineFile(file);
+        if (!validation.isValid) {
+          setDogUpdateError(validation.error || 'ファイルの検証に失敗しました');
           return;
         }
         
         setComboVaccineFile(file);
         setDogUpdateError('');
+        console.log('✅ Combo vaccine file selected:', file.name);
       } catch (error) {
         console.error('Vaccine image processing error:', error);
         setDogUpdateError('ワクチン証明書の処理に失敗しました。別の画像をお試しください。');
@@ -645,109 +641,24 @@ export function UserDashboard() {
         console.log('🔄 Updated dog data from database:', updatedDog);
       }
 
-      // ワクチン証明書のアップロード処理
+      // ワクチン証明書のアップロード処理（元のBoltパターンを使用）
       if (rabiesVaccineFile || comboVaccineFile) {
-        try {
-          let rabiesPath = null;
-          let comboPath = null;
+        console.log('🔧 Uploading vaccine certificates using fixed method...');
+        
+        const uploadResult = await handleVaccineUploadFixed(
+          selectedDog.id,
+          rabiesVaccineFile || undefined,
+          comboVaccineFile || undefined,
+          rabiesExpiryDate || undefined,
+          comboExpiryDate || undefined
+        );
 
-          // 狂犬病ワクチン証明書のアップロード
-          if (rabiesVaccineFile) {
-            const timestamp = Date.now();
-            const rabiesExt = rabiesVaccineFile.name.split('.').pop() || 'jpg';
-            const rabiesFileName = `${selectedDog.id}/rabies_${timestamp}.${rabiesExt}`;
-
-            const { data: rabiesUpload, error: rabiesError } = await supabase.storage
-              .from('vaccine-certs')
-              .upload(rabiesFileName, rabiesVaccineFile, {
-                cacheControl: '3600',
-                upsert: true
-              });
-
-            if (rabiesError) {
-              console.error('Rabies upload error:', rabiesError);
-              throw rabiesError;
-            }
-            
-            rabiesPath = rabiesFileName;
-          }
-
-          // 混合ワクチン証明書のアップロード
-          if (comboVaccineFile) {
-            const timestamp = Date.now();
-            const comboExt = comboVaccineFile.name.split('.').pop() || 'jpg';
-            const comboFileName = `${selectedDog.id}/combo_${timestamp}.${comboExt}`;
-
-            const { data: comboUpload, error: comboError } = await supabase.storage
-              .from('vaccine-certs')
-              .upload(comboFileName, comboVaccineFile, {
-                cacheControl: '3600',
-                upsert: true
-              });
-
-            if (comboError) {
-              console.error('Combo upload error:', comboError);
-              throw comboError;
-            }
-            
-            comboPath = comboFileName;
-          }
-
-          // 既存の証明書を確認
-          const { data: existingCert, error: certError } = await supabase
-            .from('vaccine_certifications')
-            .select('id')
-            .eq('dog_id', selectedDog.id)
-            .maybeSingle();
-            
-          if (certError && certError.code !== 'PGRST116') {
-            console.error('Error checking existing certificate:', certError);
-            throw certError;
-          }
-          
-          // 証明書情報の更新または作成
-          if (existingCert) {
-            // 既存の証明書を更新
-            const updateData: any = {
-              status: 'pending', // 新しい画像がアップロードされたら再審査
-            };
-            
-            if (rabiesPath) updateData.rabies_vaccine_image = rabiesPath;
-            if (comboPath) updateData.combo_vaccine_image = comboPath;
-            if (rabiesExpiryDate) updateData.rabies_expiry_date = rabiesExpiryDate;
-            if (comboExpiryDate) updateData.combo_expiry_date = comboExpiryDate;
-            
-            const { error: updateError } = await supabase
-              .from('vaccine_certifications')
-              .update(updateData)
-              .eq('id', existingCert.id);
-              
-            if (updateError) {
-              console.error('Certificate update error:', updateError);
-              throw updateError;
-            }
-          } else {
-            // 新しい証明書を作成
-            const { error: insertError } = await supabase
-              .from('vaccine_certifications')
-              .insert([{
-                dog_id: selectedDog.id,
-                rabies_vaccine_image: rabiesPath,
-                combo_vaccine_image: comboPath,
-                rabies_expiry_date: rabiesExpiryDate,
-                combo_expiry_date: comboExpiryDate,
-              }]);
-              
-            if (insertError) {
-              console.error('Certificate insert error:', insertError);
-              throw insertError;
-            }
-          }
-          
-          console.log('Vaccine certificates uploaded successfully');
-        } catch (vaccineError) {
-          console.error('Vaccine certificate error:', vaccineError);
-          setDogUpdateError('ワクチン証明書のアップロードに失敗しました。後で再試行してください。');
+        if (!uploadResult.success) {
+          console.error('Fixed vaccine upload failed:', uploadResult.error);
+          // ワクチン証明書のエラーは警告として扱い、犬の更新は続行
+          setDogUpdateError(`ワクチン証明書のアップロードに失敗しましたが、ワンちゃんの情報は更新されました。エラー: ${uploadResult.error}`);
+        } else {
+          console.log('✅ Fixed vaccine certificates uploaded successfully');
         }
       }
       
