@@ -189,13 +189,13 @@ export function AdminDashboard() {
       </div>
 
       {/* 緊急対応が必要な項目 */}
-      {(stats.pendingParks > 0 || stats.pendingVaccines > 0 || stats.unreadMessages > 0) && (
+      {(stats.pendingParks > 0 || stats.pendingVaccines > 0) && (
         <Card className="p-6 bg-red-50 border-red-200">
           <div className="flex items-center space-x-3 mb-4">
             <AlertTriangle className="w-6 h-6 text-red-600" />
             <h2 className="text-lg font-semibold text-red-900">緊急対応が必要</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {stats.pendingParks > 0 && (
               <div className="bg-white p-4 rounded-lg border border-red-200">
                 <p className="font-medium text-red-900">ドッグラン承認待ち</p>
@@ -211,17 +211,6 @@ export function AdminDashboard() {
               <div className="bg-white p-4 rounded-lg border border-red-200">
                 <p className="font-medium text-red-900">ワクチン証明書承認待ち</p>
                 <p className="text-2xl font-bold text-red-600">{stats.pendingVaccines}件</p>
-                <Link to="/admin/management">
-                  <Button size="sm" className="mt-2">
-                    確認する
-                  </Button>
-                </Link>
-              </div>
-            )}
-            {stats.unreadMessages > 0 && (
-              <div className="bg-white p-4 rounded-lg border border-red-200">
-                <p className="font-medium text-red-900">未読お問い合わせ</p>
-                <p className="text-2xl font-bold text-red-600">{stats.unreadMessages}件</p>
                 <Link to="/admin/management">
                   <Button size="sm" className="mt-2">
                     確認する
@@ -386,12 +375,6 @@ export function AdminDashboard() {
                     <span>ワクチン証明書:</span>
                     <span className={`font-medium ${stats.pendingVaccines > 0 ? 'text-red-600' : 'text-green-600'}`}>
                       {stats.pendingVaccines}件
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>未読お問い合わせ:</span>
-                    <span className={`font-medium ${stats.unreadMessages > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {stats.unreadMessages}件
                     </span>
                   </div>
                 </div>
