@@ -7,7 +7,10 @@ import {
   LogOut,
   Bell,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  MapPin,
+  Users,
+  ShoppingBag
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -194,7 +197,7 @@ export function UserDashboard() {
       name: dog.name,
       breed: dog.breed,
       gender: dog.gender,
-      birthDate: birthDate,
+      birthDate: birthDate || '',
     });
     setDogImagePreview(dog.image_url || null);
     
@@ -254,7 +257,6 @@ export function UserDashboard() {
       
       setDogImageFile(null);
       setDogImagePreview(null);
-      setSelectedDog({ ...selectedDog, image_url: undefined });
       
       await fetchDashboardData();
       
@@ -509,6 +511,81 @@ export function UserDashboard() {
           onRabiesExpiryDateChange={setRabiesExpiryDate}
           onComboExpiryDateChange={setComboExpiryDate}
         />
+
+        {/* Owned Parks Management Section */}
+        {ownedParks.length > 0 && (
+          <Card className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold flex items-center">
+                <Building className="w-6 h-6 text-green-600 mr-2" />
+                管理中のドッグラン ({ownedParks.length}施設)
+              </h2>
+              <Link to="/park-management">
+                <Button size="sm" variant="secondary">
+                  すべて管理
+                </Button>
+              </Link>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {ownedParks.slice(0, 6).map((park) => (
+                <ParkCard
+                  key={park.id}
+                  park={park}
+                  onSelect={handleParkSelect}
+                />
+              ))}
+            </div>
+            
+            {ownedParks.length > 6 && (
+              <div className="mt-4 text-center">
+                <Link to="/park-management">
+                  <Button variant="secondary" size="sm">
+                    さらに {ownedParks.length - 6} 施設を表示
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* Quick Actions Section */}
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">クイックアクション</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Link to="/parks" className="group">
+              <div className="p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                <MapPin className="w-8 h-8 text-blue-600 mb-2" />
+                <h3 className="font-medium text-blue-900">ドッグラン検索</h3>
+                <p className="text-sm text-blue-700">近くのドッグランを探す</p>
+              </div>
+            </Link>
+            
+            <Link to="/community" className="group">
+              <div className="p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+                <Users className="w-8 h-8 text-green-600 mb-2" />
+                <h3 className="font-medium text-green-900">コミュニティ</h3>
+                <p className="text-sm text-green-700">他の飼い主と交流</p>
+              </div>
+            </Link>
+            
+            <Link to="/petshop" className="group">
+              <div className="p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
+                <ShoppingBag className="w-8 h-8 text-purple-600 mb-2" />
+                <h3 className="font-medium text-purple-900">ペットショップ</h3>
+                <p className="text-sm text-purple-700">ペット用品を購入</p>
+              </div>
+            </Link>
+            
+            <Link to="/news" className="group">
+              <div className="p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors">
+                <Bell className="w-8 h-8 text-orange-600 mb-2" />
+                <h3 className="font-medium text-orange-900">新着情報</h3>
+                <p className="text-sm text-orange-700">最新のお知らせ</p>
+              </div>
+            </Link>
+          </div>
+        </Card>
 
         {/* Notifications Section */}
         {notifications.length > 0 && (
