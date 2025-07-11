@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -32,6 +32,7 @@ export function ParkReservation() {
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [park, setPark] = useState<DogPark | null>(null);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+  const [existingReservations, setExistingReservations] = useState<Reservation[]>([]);
   const [selectedDogs, setSelectedDogs] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     date: '',
@@ -40,12 +41,17 @@ export function ParkReservation() {
     reservationType: 'whole_facility', // 施設貸し切りのみ
     paymentType: 'single', // 'single', 'subscription', 'facility_rental'
   });
+
+  // formData更新用のヘルパー関数
+  const updateFormData = (updates: Partial<typeof formData>) => {
+    setFormData(prev => ({ ...prev, ...updates }));
+  };
   const [isDateTooSoon, setIsDateTooSoon] = useState(false);
 
   const MAX_DOGS = 3; // 最大3頭まで選択可能
 
   // 営業時間の設定（6:00 - 22:00）
-  const generateTimeSlots = () => {
+  const generateTimeSlots = useMemo(() => {
     const slots: TimeSlot[] = [];
     for (let hour = 6; hour <= 21; hour++) { // 21時開始まで（22時終了のため）
       const time = `${hour.toString().padStart(2, '0')}:00`;
@@ -59,7 +65,7 @@ export function ParkReservation() {
       });
     }
     return slots;
-  };
+  }, [park?.max_capacity]);
 
   useEffect(() => {
     if (!user) {
@@ -76,10 +82,9 @@ export function ParkReservation() {
             .from('dogs')
             .select(`
               *,
-              vaccine_certifications!inner(*)
+              vaccine_certifications(*)
             `)
-            .eq('owner_id', user.id)
-            .eq('vaccine_certifications.status', 'approved'),
+            .eq('owner_id', user.id),
           supabase
             .from('dog_parks')
             .select('*')
@@ -90,20 +95,28 @@ export function ParkReservation() {
         if (dogsResponse.error) throw dogsResponse.error;
         if (parkResponse.error) throw parkResponse.error;
 
-        setDogs(dogsResponse.data || []);
+        // ワクチン証明書が承認済みの犬のみフィルター
+        const approvedDogs = (dogsResponse.data || []).filter(dog => 
+          dog.vaccine_certifications && 
+          dog.vaccine_certifications.some((cert: any) => cert.status === 'approved')
+        );
+
+        setDogs(approvedDogs);
         setPark(parkResponse.data);
-        
-        // サブスクリプションがある場合はデフォルトでサブスクを選択
-        if (hasSubscription) {
-          setFormData(prev => ({ ...prev, paymentType: 'subscription' }));
-        }
       } catch (error) {
         console.error('Error fetching data:', error);
       }
     }
 
     fetchData();
-  }, [user, parkId, hasSubscription, navigate]);
+  }, [user, parkId, navigate]);
+
+  // サブスクリプション状態に応じたデフォルト支払い方法の設定
+  useEffect(() => {
+    if (hasSubscription && formData.paymentType === 'single') {
+      updateFormData({ paymentType: 'subscription' });
+    }
+  }, [hasSubscription]);
 
   // 日付が変更されたときに予約状況を取得
   useEffect(() => {
@@ -153,10 +166,10 @@ export function ParkReservation() {
   };
 
   const updateTimeSlotAvailability = (reservations: Reservation[]) => {
-    const slots = generateTimeSlots();
+    const slots = [...generateTimeSlots];
     
     // 各時間スロットの予約状況を計算
-    slots.forEach(slot => {
+    slots.forEach((slot: TimeSlot) => {
       const slotHour = parseInt(slot.time.split(':')[0]);
       let regularReservationCount = 0;
       let privateBoothReservations = 0;
@@ -230,8 +243,8 @@ export function ParkReservation() {
   const handleTimeSlotSelect = (time: string) => {
     setFormData(prev => ({
       ...prev,
-      selectedTimeSlot: time,
-      duration: '1' // 施設貸し切りは1時間単位
+      selectedTimeSlot: time
+      // duration はそのまま保持（ユーザーが選択した時間数を維持）
     }));
   };
 
@@ -285,6 +298,14 @@ export function ParkReservation() {
     if (!user || !park) return;
     setIsLoading(true);
     setError('');
+    
+    console.log('Starting reservation submission...', {
+      formData,
+      selectedDogs,
+      hasSubscription,
+      totalPrice: calculateTotalPrice()
+    });
+    
     try {
       if (formData.paymentType === 'facility_rental' && !formData.selectedTimeSlot) {
         setError('施設貸し切りの場合は時間を選択してください。');
@@ -316,22 +337,7 @@ export function ParkReservation() {
           return;
         }
       }
-      // 全ての選択された犬のワクチン接種証明書を確認
-      for (const dogId of selectedDogs) {
-        const { data: certData, error: certError } = await supabase
-          .from('vaccine_certifications')
-          .select('status')
-          .eq('dog_id', dogId)
-          .eq('status', 'approved')
-          .single();
-
-        if (certError || !certData) {
-          const dog = dogs.find(d => d.id === dogId);
-          setError(`${dog?.name}のワクチン接種証明書が承認されていません。`);
-          setIsLoading(false);
-          return;
-        }
-      }
+      // 表示されている犬はすべて承認済みのワクチン証明書を持っているため、追加のチェックは不要
 
       // 予約データを準備
       const reservationData = {
@@ -352,6 +358,7 @@ export function ParkReservation() {
 
       // 1日券の場合
       if (formData.paymentType === 'single') {
+        console.log('Processing 1日券 payment...');
         const dayPassProduct = products.find(p => p.mode === 'payment');
         if (!dayPassProduct) {
           setError('1日券商品が見つかりません。');
@@ -359,6 +366,7 @@ export function ParkReservation() {
           return;
         }
 
+        console.log('Creating checkout session for 1日券:', dayPassProduct);
         await createCheckoutSession({
           priceId: dayPassProduct.priceId,
           mode: 'payment',
@@ -398,6 +406,10 @@ export function ParkReservation() {
 
       // 施設貸し切りの場合
       if (formData.paymentType === 'facility_rental') {
+        console.log('Processing 施設貸し切り payment...', {
+          customAmount: calculateFacilityPrice(),
+          customName: `${park.name} 施設貸し切り ${formData.date} ${formData.selectedTimeSlot}〜${parseInt(formData.selectedTimeSlot) + parseInt(formData.duration)}:00`
+        });
         await createCheckoutSession({
           priceId: 'price_placeholder', // 実際には使用されない
           mode: 'payment',
@@ -418,9 +430,16 @@ export function ParkReservation() {
 
     } catch (err) {
       console.error('Error processing reservation:', err);
-      setError('予約データの準備に失敗しました。もう一度お試しください。');
-      setIsLoading(false);
-    }
+      console.error('Error details:', {
+        message: (err as Error).message,
+        stack: (err as Error).stack,
+        formData,
+        selectedDogs
+      });
+             setError(`予約データの準備に失敗しました: ${(err as Error).message}`);
+     } finally {
+       setIsLoading(false);
+     }
   };
 
   const getEndTime = (startTime: string, duration: string) => {
@@ -463,7 +482,7 @@ export function ParkReservation() {
             park={park}
             error={error}
             formData={formData}
-            setFormData={setFormData}
+            setFormData={updateFormData}
             timeSlots={timeSlots}
             isDateTooSoon={isDateTooSoon}
             selectedDogs={selectedDogs}
@@ -486,7 +505,6 @@ export function ParkReservation() {
         {/* サイドバー情報 */}
         <ReservationSidebar 
           hasSubscription={hasSubscription}
-          calculateDayPassPrice={calculateDayPassPrice}
         />
       </div>
     </div>

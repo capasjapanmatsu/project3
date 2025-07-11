@@ -7,6 +7,10 @@ import VaccineBadge, { getVaccineStatusFromDog } from '../VaccineBadge';
 
 interface TimeSlot {
   time: string;
+  available: boolean;
+  reservationCount: number;
+  maxCapacity: number;
+  isPrivateBoothAvailable: boolean;
   isWholeFacilityAvailable: boolean;
 }
 
@@ -26,13 +30,13 @@ interface ReservationFormProps {
     reservationType: string;
     paymentType: string;
   };
-  setFormData: (data: {
+  setFormData: (updates: Partial<{
     date: string;
     selectedTimeSlot: string;
     duration: string;
     reservationType: string;
     paymentType: string;
-  }) => void;
+  }>) => void;
   timeSlots: TimeSlot[];
   isDateTooSoon: boolean;
   selectedDogs: string[];
@@ -195,7 +199,7 @@ export function ReservationForm({
           label="日付"
           type="date"
           value={formData.date}
-          onChange={(e) => setFormData({ ...formData, date: e.target.value, selectedTimeSlot: '' })}
+          onChange={(e) => setFormData({ date: e.target.value, selectedTimeSlot: '' })}
           min={new Date().toISOString().split('T')[0]}
           required
         />
@@ -217,7 +221,7 @@ export function ReservationForm({
                   type="radio"
                   value="single"
                   checked={formData.paymentType === 'single'}
-                  onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}
+                  onChange={(e) => setFormData({ paymentType: e.target.value })}
                   className="form-radio text-blue-600"
                 />
                 <div className="flex-1">
@@ -247,7 +251,7 @@ export function ReservationForm({
                 type="radio"
                 value="subscription"
                 checked={formData.paymentType === 'subscription'}
-                onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}
+                onChange={(e) => setFormData({ paymentType: e.target.value })}
                 className="form-radio text-purple-600"
               />
               <div className="flex-1">
@@ -285,7 +289,7 @@ export function ReservationForm({
                 type="radio"
                 value="facility_rental"
                 checked={formData.paymentType === 'facility_rental'}
-                onChange={(e) => setFormData({ ...formData, paymentType: e.target.value, duration: '1' })}
+                onChange={(e) => setFormData({ paymentType: e.target.value, duration: '1' })}
                 className="form-radio text-orange-600"
               />
               <div className="flex-1">
@@ -321,7 +325,7 @@ export function ReservationForm({
                   <label className="text-sm text-gray-700">利用時間:</label>
                   <select
                     value={formData.duration}
-                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                    onChange={(e) => setFormData({ duration: e.target.value })}
                     className="px-2 py-1 border border-gray-300 rounded text-sm"
                   >
                     {[1, 2, 3, 4].map(hours => (

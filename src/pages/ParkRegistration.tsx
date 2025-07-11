@@ -1,22 +1,27 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import Button from '../components/Button';
-import Card from '../components/Card';
-import Input from '../components/Input';
-import { CheckCircle, AlertTriangle, FileText, Building, DollarSign, ShieldAlert, Shield, Fingerprint, Trash2, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 import type { DogPark } from '../types';
+import RejectedParksManager from '../components/park/RejectedParksManager';
+import FirstStageForm from '../components/park/FirstStageForm';
+import IdentityVerificationForm from '../components/park/IdentityVerificationForm';
+import BasicInfoForm from '../components/park/BasicInfoForm';
+import ErrorNotification from '../components/ErrorNotification';
+import { useErrorHandler } from '../hooks/useErrorHandler';
+import { useRetryWithRecovery, retryConfigs } from '../hooks/useRetryWithRecovery';
 
 export function ParkRegistration() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
   const [currentStep, setCurrentStep] = useState(1); // 1: 第一審査, 2: 本人確認, 3: 基本情報入力
   const [rejectedParks, setRejectedParks] = useState<DogPark[]>([]);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null);
+  
+  // エラーハンドリング
+  const { error, clearError, handleError, executeWithErrorHandling } = useErrorHandler();
+  const retrySystem = useRetryWithRecovery(retryConfigs.api);
+
   const [formData, setFormData] = useState({
     // 第一審査の質問
     isCurrentlyOperating: '', // 'yes' or 'no'
@@ -46,9 +51,6 @@ export function ParkRegistration() {
     },
     facilityDetails: '',
   });
-  const [identityFile, setIdentityFile] = useState<File | null>(null);
-  const [identityUploadUrl, setIdentityUploadUrl] = useState<string>('');
-  const [isUploadingIdentity, setIsUploadingIdentity] = useState(false);
 
   useEffect(() => {
     // Check if user is logged in
@@ -61,186 +63,167 @@ export function ParkRegistration() {
   }, [user, navigate]);
 
   const fetchRejectedParks = async () => {
-    try {
+    await executeWithErrorHandling(async () => {
       const { data, error } = await supabase
         .from('dog_parks')
         .select('*')
         .eq('owner_id', user?.id)
         .eq('status', 'rejected');
+      
       if (error) throw error;
       setRejectedParks(data || []);
-    } catch (err) {
-      console.error('Error fetching rejected parks:', err);
-    }
+    }, { operation: 'fetch_rejected_parks' });
   };
 
-  const handleFirstStageSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
+  const validateFirstStage = (data: {
+    isCurrentlyOperating: string;
+    isOwnedLand: string;
+    hasOwnerPermission: string;
+    hasNeighborConsent: string;
+    landArea: string;
+    isAntiSocialForces: string;
+    canVisitWeekly: string;
+    canReachQuickly: string;
+  }) => {
     // 第一審査の必須項目チェック
-    if (!formData.isCurrentlyOperating) {
-      setError('現在の運営状況を選択してください。');
-      return;
+    if (!data.isCurrentlyOperating) {
+      throw new Error('現在の運営状況を選択してください。');
     }
 
-    if (formData.isCurrentlyOperating === 'no') {
-      if (!formData.isOwnedLand) {
-        setError('予定地の所有状況を選択してください。');
-        return;
+    if (data.isCurrentlyOperating === 'no') {
+      if (!data.isOwnedLand) {
+        throw new Error('予定地の所有状況を選択してください。');
       }
       
       // 借用地の場合の所有者許可チェック
-      if (formData.isOwnedLand === 'no' && !formData.hasOwnerPermission) {
-        setError('土地所有者の許可について選択してください。');
-        return;
+      if (data.isOwnedLand === 'no' && !data.hasOwnerPermission) {
+        throw new Error('土地所有者の許可について選択してください。');
       }
       
       // 近隣住民の理解チェック（所有地・借用地両方で必要）
-      if (!formData.hasNeighborConsent) {
-        setError('近隣住民の理解について選択してください。');
-        return;
+      if (!data.hasNeighborConsent) {
+        throw new Error('近隣住民の理解について選択してください。');
       }
     }
 
-    if (!formData.landArea || parseInt(formData.landArea) <= 0) {
-      setError('広さを正しく入力してください。');
-      return;
+    if (!data.landArea || parseInt(data.landArea) <= 0) {
+      throw new Error('広さを正しく入力してください。');
     }
 
     // 反社チェック
-    if (!formData.isAntiSocialForces) {
-      setError('反社会的勢力との関係について選択してください。');
-      return;
+    if (!data.isAntiSocialForces) {
+      throw new Error('反社会的勢力との関係について選択してください。');
     }
 
-    if (formData.isAntiSocialForces === 'yes') {
-      setError('反社会的勢力との関係がある場合、ドッグランの登録はできません。');
-      return;
+    if (data.isAntiSocialForces === 'yes') {
+      throw new Error('反社会的勢力との関係がある場合、ドッグランの登録はできません。');
     }
 
     // 週1回の訪問チェック
-    if (!formData.canVisitWeekly) {
-      setError('週1回の訪問可否について選択してください。');
-      return;
+    if (!data.canVisitWeekly) {
+      throw new Error('週1回の訪問可否について選択してください。');
     }
 
     // 緊急時の到着チェック
-    if (!formData.canReachQuickly) {
-      setError('緊急時の到着可否について選択してください。');
-      return;
+    if (!data.canReachQuickly) {
+      throw new Error('緊急時の到着可否について選択してください。');
     }
 
     // 第一審査の条件チェック
-    if (formData.isCurrentlyOperating === 'no') {
+    if (data.isCurrentlyOperating === 'no') {
       // 借用地で所有者の許可がない場合
-      if (formData.isOwnedLand === 'no' && formData.hasOwnerPermission === 'no') {
-        setError('土地所有者の許可を得てからお申し込みください。借用地でのドッグラン運営には所有者の同意が必要です。');
-        return;
+      if (data.isOwnedLand === 'no' && data.hasOwnerPermission === 'no') {
+        throw new Error('土地所有者の許可を得てからお申し込みください。借用地でのドッグラン運営には所有者の同意が必要です。');
       }
       
       // 近隣住民の理解がない場合
-      if (formData.hasNeighborConsent === 'no') {
-        setError('近隣住民の理解を得てからお申し込みください。地域との良好な関係は運営において重要です。');
-        return;
+      if (data.hasNeighborConsent === 'no') {
+        throw new Error('近隣住民の理解を得てからお申し込みください。地域との良好な関係は運営において重要です。');
       }
     }
 
-    if (parseInt(formData.landArea) < 100) {
-      setError('ドッグランの運営には最低100㎡以上の広さが必要です。');
-      return;
+    if (parseInt(data.landArea) < 100) {
+      throw new Error('ドッグランの運営には最低100㎡以上の広さが必要です。');
     }
 
     // 週1回の訪問ができない場合
-    if (formData.canVisitWeekly === 'no') {
-      setError('週に1度程度の訪問が必要です。施設の状況確認やメンテナンスのため、定期的な訪問ができる方のみお申し込みください。');
-      return;
+    if (data.canVisitWeekly === 'no') {
+      throw new Error('週に1度程度の訪問が必要です。施設の状況確認やメンテナンスのため、定期的な訪問ができる方のみお申し込みください。');
     }
 
     // 緊急時に1時間以内に到着できない場合
-    if (formData.canReachQuickly === 'no') {
-      setError('緊急時に1時間以内に施設に到着できることが必要です。迅速な対応ができる方のみお申し込みください。');
-      return;
+    if (data.canReachQuickly === 'no') {
+      throw new Error('緊急時に1時間以内に施設に到着できることが必要です。迅速な対応ができる方のみお申し込みください。');
     }
+  };
 
-    // 第一審査通過 - 本人確認へ
-    setCurrentStep(2);
+  const handleFirstStageSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    await executeWithErrorHandling(async () => {
+      validateFirstStage(formData);
+      // 第一審査通過 - 本人確認へ
+      setCurrentStep(2);
+    }, { operation: 'first_stage_validation' });
   };
 
   const handleFinalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
 
     try {
-      // Get the current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        throw new Error('ユーザー認証に失敗しました。再度ログインしてください。');
-      }
+      await retrySystem.execute(async () => {
+        // Get the current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          throw new Error('ユーザー認証に失敗しました。再度ログインしてください。');
+        }
 
-      // プロフィールのuser_typeを'owner'に更新
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ user_type: 'owner' })
-        .eq('id', user.id);
+        // プロフィールのuser_typeを'owner'に更新
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ user_type: 'owner' })
+          .eq('id', user.id);
 
-      if (profileError) {
-        console.error('Error updating profile:', profileError);
-        throw new Error('プロフィールの更新に失敗しました。');
-      }
+        if (profileError) {
+          console.error('Error updating profile:', profileError);
+          throw new Error('プロフィールの更新に失敗しました。');
+        }
 
-      const { error } = await supabase.from('dog_parks').insert([
-        {
-          owner_id: user.id, // Add the owner_id field to satisfy RLS policy
-          name: formData.name,
-          description: formData.description,
-          address: formData.address,
-          price: 800, // 固定料金
-          max_capacity: parseInt(formData.maxCapacity, 10),
-          large_dog_area: formData.largeDogArea,
-          small_dog_area: formData.smallDogArea,
-          private_booths: formData.privateBooths,
-          private_booth_count: parseInt(formData.privateBoothCount, 10),
-          private_booth_price: 5000, // 固定料金
-          facilities: formData.facilities,
-          facility_details: formData.facilityDetails,
-          status: 'pending', // 第一審査待ち状態
-        },
-      ]);
+        const { error } = await supabase.from('dog_parks').insert([
+          {
+            owner_id: user.id, // Add the owner_id field to satisfy RLS policy
+            name: formData.name,
+            description: formData.description,
+            address: formData.address,
+            price: 800, // 固定料金
+            max_capacity: parseInt(formData.maxCapacity, 10),
+            large_dog_area: formData.largeDogArea,
+            small_dog_area: formData.smallDogArea,
+            private_booths: formData.privateBooths,
+            private_booth_count: parseInt(formData.privateBoothCount, 10),
+            private_booth_price: 5000, // 固定料金
+            facilities: formData.facilities,
+            facility_details: formData.facilityDetails,
+            status: 'pending', // 第一審査待ち状態
+          },
+        ]);
 
-      if (error) throw error;
-      navigate('/owner-dashboard');
+        if (error) throw error;
+        navigate('/owner-dashboard');
+      });
     } catch (err) {
-      console.error('Registration error:', err);
-      setError(err instanceof Error ? err.message : 'ドッグランの登録に失敗しました。もう一度お試しください。');
+      handleError(err, { 
+        operation: 'park_registration_submit',
+        form_data: {
+          name: formData.name,
+          address: formData.address,
+          max_capacity: formData.maxCapacity,
+        }
+      });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleDeletePark = async (parkId: string) => {
-    try {
-      setIsDeleting(true);
-      
-      // Delete the park
-      const { error } = await supabase
-        .from('dog_parks')
-        .delete()
-        .eq('id', parkId);
-      
-      if (error) throw error;
-      
-      // Update the rejected parks list
-      setRejectedParks(prev => prev.filter(park => park.id !== parkId));
-      setShowConfirmDelete(null);
-      
-    } catch (err: unknown) {
-      console.error('Error deleting park:', err);
-      setError((err as Error).message || 'ドッグランの削除に失敗しました');
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -275,111 +258,57 @@ export function ParkRegistration() {
     });
     // Go to first step
     setCurrentStep(1);
+    clearError(); // エラーもクリア
   };
 
-  // 本人確認資料アップロード処理
-  const handleIdentityFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setIdentityFile(e.target.files[0]);
-    }
+  const handleFormDataChange = (updates: Partial<typeof formData>) => {
+    setFormData({ ...formData, ...updates });
   };
 
-  const handleIdentityUpload = async () => {
-    if (!identityFile) {
-      setError('本人確認書類のファイルを選択してください。');
-      return;
-    }
-    if (!user) {
-      setError('ユーザー情報が取得できません。再度ログインしてください。');
-      return;
-    }
-    setIsUploadingIdentity(true);
-    setError('');
-    try {
-      // ファイル名例: userId_タイムスタンプ_元ファイル名
-      const fileName = `${user.id}_${Date.now()}_${identityFile.name}`;
-      const { data, error: uploadError } = await supabase.storage
-        .from('identity-documents')
-        .upload(fileName, identityFile, { upsert: true });
-      if (uploadError) throw uploadError;
-      // パスをDBに保存
-      const { error: dbError } = await supabase
-        .from('owner_verifications')
-        .upsert({ user_id: user.id, document_url: data.path, status: 'uploaded', created_at: new Date().toISOString() }, { onConflict: 'user_id' });
-      if (dbError) throw dbError;
-      setIdentityUploadUrl(data.path);
-      setCurrentStep(3); // 次のステップへ
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'アップロードに失敗しました。');
-    } finally {
-      setIsUploadingIdentity(false);
-    }
+  const handleUpdateRejectedParks = (parks: DogPark[]) => {
+    setRejectedParks(parks);
   };
 
   // 本人確認資料アップロードUI
   if (currentStep === 2) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold text-center mb-8">ドッグラン登録 - 本人確認</h1>
-        <Card className="mb-6 bg-blue-50 border-blue-200">
-          <div className="flex items-start space-x-3">
-            <Shield className="w-6 h-6 text-blue-600 mt-1" />
-            <div>
-              <h3 className="font-semibold text-blue-900 mb-2">本人確認について</h3>
-              <div className="text-sm text-blue-800 space-y-1">
-                <p>安全なプラットフォーム運営のため、ドッグランオーナーには本人確認が必要です。</p>
-                <p>運転免許証、マイナンバーカード、パスポートなどの本人確認書類の画像をアップロードしてください。</p>
-                <p>アップロードされた書類は管理者が手動で確認します。</p>
+      <div>
+        {/* エラー表示 */}
+        <ErrorNotification 
+          error={error} 
+          onClear={clearError}
+          onRetry={retrySystem.state.isRetrying ? undefined : () => retrySystem.execute(() => fetchRejectedParks())}
+          className="mb-6"
+        />
+        
+        {/* リトライ状態表示 */}
+        {retrySystem.state.isRetrying && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-800 font-medium">自動リトライ中...</p>
+                <p className="text-blue-600 text-sm">
+                  試行回数: {retrySystem.state.attempts + 1}/{retryConfigs.api.maxAttempts}
+                  {retrySystem.state.nextRetryIn > 0 && ` | 次の試行まで: ${retrySystem.state.nextRetryIn}秒`}
+                </p>
               </div>
-            </div>
-          </div>
-        </Card>
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 rounded-lg">
-            <div className="flex items-start space-x-2">
-              <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
-              <p className="text-sm text-red-800">{error}</p>
+              <button 
+                onClick={retrySystem.cancelRetry}
+                className="text-blue-600 hover:text-blue-800 text-sm underline"
+              >
+                キャンセル
+              </button>
             </div>
           </div>
         )}
-        <Card className="p-6">
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">本人確認書類のアップロード *</label>
-            <input
-              type="file"
-              accept="image/*,application/pdf"
-              onChange={handleIdentityFileChange}
-              className="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <p className="text-xs text-gray-500 mt-1">運転免許証・マイナンバーカード・パスポート等の画像またはPDF</p>
-          </div>
-          <div className="flex justify-between items-center mt-6">
-            <Button variant="secondary" onClick={() => setCurrentStep(1)}>
-              前のステップに戻る
-            </Button>
-            <Button
-              onClick={handleIdentityUpload}
-              isLoading={isUploadingIdentity}
-              className="bg-blue-600 hover:bg-blue-700"
-              disabled={!identityFile || isUploadingIdentity}
-            >
-              <Shield className="w-4 h-4 mr-2" />
-              書類をアップロードして次へ
-            </Button>
-          </div>
-        </Card>
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <div className="flex items-start space-x-3">
-            <Lock className="w-5 h-5 text-gray-600 mt-1" />
-            <div className="text-sm text-gray-700">
-              <p className="font-medium mb-1">プライバシーと安全性</p>
-              <p>
-                アップロードされた本人確認書類は厳重に管理され、管理者以外が閲覧することはありません。
-                審査完了後、速やかに削除されます。
-              </p>
-            </div>
-          </div>
-        </div>
+
+        <IdentityVerificationForm
+          onBack={() => setCurrentStep(1)}
+          onNext={() => setCurrentStep(3)}
+          onError={handleError}
+          error={error?.userMessage || ''}
+          user={user}
+        />
       </div>
     );
   }
@@ -387,766 +316,69 @@ export function ParkRegistration() {
   // 第一審査フォーム
   if (currentStep === 1) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold text-center mb-8">ドッグラン登録 - 第一審査</h1>
-        
-        {/* 審査プロセスの説明 */}
-        <Card className="mb-6 bg-blue-50 border-blue-200">
-          <div className="flex items-start space-x-3">
-            <FileText className="w-6 h-6 text-blue-600 mt-1" />
-            <div>
-              <h3 className="font-semibold text-blue-900 mb-2">審査プロセスについて</h3>
-              <div className="text-sm text-blue-800 space-y-1">
-                <p><strong>第一審査:</strong> 基本的な条件の確認</p>
-                <p><strong>本人確認:</strong> 安全なプラットフォーム運営のための本人確認</p>
-                <p><strong>第二審査:</strong> 詳細な施設情報と書類審査</p>
-                <p><strong>QRコード実証検査:</strong> 実際の施設での動作確認</p>
-                <p><strong>掲載・運営開始:</strong> 一般公開と予約受付開始</p>
-              </div>
-              <div className="mt-3 flex items-center">
-                <Link to="/owner-payment-system" className="text-blue-600 hover:text-blue-800 flex items-center">
-                  <DollarSign className="w-4 h-4 mr-1" />
-                  <span className="text-sm font-medium">料金体系と収益システムについて詳しく見る</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </Card>
+      <div>
+        {/* エラー表示 */}
+        <ErrorNotification 
+          error={error} 
+          onClear={clearError}
+          className="mb-6"
+        />
 
-        {/* 却下された申請一覧 */}
-        {rejectedParks.length > 0 && (
-          <Card className="mb-6 bg-red-50 border-red-200">
-            <div className="flex items-start space-x-3">
-              <AlertTriangle className="w-6 h-6 text-red-600 mt-1" />
-              <div>
-                <h3 className="font-semibold text-red-900 mb-2">却下された申請</h3>
-                <p className="text-sm text-red-800 mb-4">
-                  以下の申請は審査の結果、却下されました。申請内容を見直して再提出するか、削除することができます。
-                </p>
-                <div className="space-y-4">
-                  {rejectedParks.map(park => (
-                    <div key={park.id} className="bg-white p-4 rounded-lg border border-red-200">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-medium">{park.name}</h4>
-                          <p className="text-sm text-gray-600">{park.address}</p>
-                          <p className="text-sm text-gray-500 mt-1">申請日: {new Date(park.created_at).toLocaleDateString('ja-JP')}</p>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button 
-                            size="sm" 
-                            variant="secondary"
-                            onClick={handleResubmitPark}
-                          >
-                            <RefreshCw className="w-4 h-4 mr-1" />
-                            再申請
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="secondary"
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => setShowConfirmDelete(park.id)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            削除
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        <Card>
-          <form onSubmit={handleFirstStageSubmit}>
-            {error && (
-              <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
-                {error}
-              </div>
-            )}
-
-            {/* 現在の運営状況 */}
-            <div className="mb-6">
-              <label className="block text-lg font-bold text-gray-800 mb-3">
-                予定地は現在すでにドッグランを運営していますか？ *
-              </label>
-              <div className="space-y-3">
-                <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    value="yes"
-                    checked={formData.isCurrentlyOperating === 'yes'}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      isCurrentlyOperating: e.target.value,
-                      isOwnedLand: '', // リセット
-                      hasOwnerPermission: '', // リセット
-                      hasNeighborConsent: '' // リセット
-                    })}
-                    className="form-radio text-blue-600"
-                  />
-                  <div>
-                    <span className="font-medium">はい</span>
-                    <p className="text-sm text-gray-600">既にドッグランとして運営している施設です</p>
-                  </div>
-                </label>
-                <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    value="no"
-                    checked={formData.isCurrentlyOperating === 'no'}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      isCurrentlyOperating: e.target.value 
-                    })}
-                    className="form-radio text-blue-600"
-                  />
-                  <div>
-                    <span className="font-medium">いいえ</span>
-                    <p className="text-sm text-gray-600">新規でドッグランを開設予定です</p>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* 新規開設の場合の追加質問 */}
-            {formData.isCurrentlyOperating === 'no' && (
-              <>
-                <div className="mb-6">
-                  <label className="block text-lg font-bold text-gray-800 mb-3">
-                    予定地は所有地ですか？ *
-                  </label>
-                  <div className="space-y-3">
-                    <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                      <input
-                        type="radio"
-                        value="yes"
-                        checked={formData.isOwnedLand === 'yes'}
-                        onChange={(e) => setFormData({ 
-                          ...formData, 
-                          isOwnedLand: e.target.value,
-                          hasOwnerPermission: '' // 所有地の場合はリセット
-                        })}
-                        className="form-radio text-blue-600"
-                      />
-                      <div>
-                        <span className="font-medium">はい</span>
-                        <p className="text-sm text-gray-600">自己所有の土地です</p>
-                      </div>
-                    </label>
-                    <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                      <input
-                        type="radio"
-                        value="no"
-                        checked={formData.isOwnedLand === 'no'}
-                        onChange={(e) => setFormData({ 
-                          ...formData, 
-                          isOwnedLand: e.target.value
-                        })}
-                        className="form-radio text-blue-600"
-                      />
-                      <div>
-                        <span className="font-medium">いいえ</span>
-                        <p className="text-sm text-gray-600">賃貸または借用地です</p>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                {/* 借用地の場合の所有者許可確認 */}
-                {formData.isOwnedLand === 'no' && (
-                  <div className="mb-6">
-                    <label className="block text-lg font-bold text-gray-800 mb-3">
-                      土地所有者の許可を得られていますか？ *
-                    </label>
-                    <div className="space-y-3">
-                      <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                        <input
-                          type="radio"
-                          value="yes"
-                          checked={formData.hasOwnerPermission === 'yes'}
-                          onChange={(e) => setFormData({ 
-                            ...formData, 
-                            hasOwnerPermission: e.target.value 
-                          })}
-                          className="form-radio text-blue-600"
-                        />
-                        <div>
-                          <span className="font-medium">はい</span>
-                          <p className="text-sm text-gray-600">土地所有者からドッグラン運営の許可を得ています</p>
-                        </div>
-                      </label>
-                      <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                        <input
-                          type="radio"
-                          value="no"
-                          checked={formData.hasOwnerPermission === 'no'}
-                          onChange={(e) => setFormData({ 
-                            ...formData, 
-                            hasOwnerPermission: e.target.value 
-                          })}
-                          className="form-radio text-blue-600"
-                        />
-                        <div>
-                          <span className="font-medium">いいえ</span>
-                          <p className="text-sm text-gray-600">まだ土地所有者の許可を得ていません</p>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                )}
-
-                {/* 近隣住民の理解確認（所有地・借用地両方で必要） */}
-                {(formData.isOwnedLand === 'yes' || formData.isOwnedLand === 'no') && (
-                  <div className="mb-6">
-                    <label className="block text-lg font-bold text-gray-800 mb-3">
-                      近隣住民の理解を得られていますか？ *
-                    </label>
-                    <div className="space-y-3">
-                      <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                        <input
-                          type="radio"
-                          value="yes"
-                          checked={formData.hasNeighborConsent === 'yes'}
-                          onChange={(e) => setFormData({ 
-                            ...formData, 
-                            hasNeighborConsent: e.target.value 
-                          })}
-                          className="form-radio text-blue-600"
-                        />
-                        <div>
-                          <span className="font-medium">はい</span>
-                          <p className="text-sm text-gray-600">近隣住民に説明し、理解を得ています</p>
-                        </div>
-                      </label>
-                      <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                        <input
-                          type="radio"
-                          value="no"
-                          checked={formData.hasNeighborConsent === 'no'}
-                          onChange={(e) => setFormData({ 
-                            ...formData, 
-                            hasNeighborConsent: e.target.value 
-                          })}
-                          className="form-radio text-blue-600"
-                        />
-                        <div>
-                          <span className="font-medium">いいえ</span>
-                          <p className="text-sm text-gray-600">まだ近隣住民への説明ができていません</p>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* 広さ */}
-            <div className="mb-6">
-              <Input
-                label={<span className="text-lg font-bold text-gray-800">広さ（㎡） *</span>}
-                type="number"
-                min="1"
-                value={formData.landArea}
-                onChange={(e) => setFormData({ ...formData, landArea: e.target.value })}
-                placeholder="例: 500"
-                required
-              />
-              <p className="text-sm text-gray-500 mt-1">
-                ドッグランの運営には最低100㎡以上の広さが必要です
-              </p>
-            </div>
-
-            {/* 週1回の訪問可否 */}
-            <div className="mb-6">
-              <label className="block text-lg font-bold text-gray-800 mb-3">
-                施設までは週に1度程度、状況の確認やメンテナンスに行くことができますか？ *
-              </label>
-              <div className="space-y-3">
-                <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    value="yes"
-                    checked={formData.canVisitWeekly === 'yes'}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      canVisitWeekly: e.target.value 
-                    })}
-                    className="form-radio text-blue-600"
-                  />
-                  <div>
-                    <span className="font-medium">はい</span>
-                    <p className="text-sm text-gray-600">週に1度程度の訪問が可能です</p>
-                  </div>
-                </label>
-                <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    value="no"
-                    checked={formData.canVisitWeekly === 'no'}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      canVisitWeekly: e.target.value 
-                    })}
-                    className="form-radio text-blue-600"
-                  />
-                  <div>
-                    <span className="font-medium">いいえ</span>
-                    <p className="text-sm text-gray-600">週に1度程度の訪問は難しいです</p>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* 緊急時の到着可否 */}
-            <div className="mb-6">
-              <label className="block text-lg font-bold text-gray-800 mb-3">
-                緊急時に1時間以内に施設まで行ける場所ですか？ *
-              </label>
-              <div className="space-y-3">
-                <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    value="yes"
-                    checked={formData.canReachQuickly === 'yes'}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      canReachQuickly: e.target.value 
-                    })}
-                    className="form-radio text-blue-600"
-                  />
-                  <div>
-                    <span className="font-medium">はい</span>
-                    <p className="text-sm text-gray-600">緊急時に1時間以内に到着できます</p>
-                  </div>
-                </label>
-                <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    value="no"
-                    checked={formData.canReachQuickly === 'no'}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      canReachQuickly: e.target.value 
-                    })}
-                    className="form-radio text-blue-600"
-                  />
-                  <div>
-                    <span className="font-medium">いいえ</span>
-                    <p className="text-sm text-gray-600">緊急時に1時間以内の到着は難しいです</p>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* 反社会的勢力との関係確認 */}
-            <div className="mb-6">
-              <label className="block text-lg font-bold text-gray-800 mb-3">
-                反社会的勢力との関係について *
-              </label>
-              <div className="space-y-3">
-                <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    value="no"
-                    checked={formData.isAntiSocialForces === 'no'}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      isAntiSocialForces: e.target.value 
-                    })}
-                    className="form-radio text-blue-600"
-                  />
-                  <div>
-                    <span className="font-medium">いいえ</span>
-                    <p className="text-sm text-gray-600">反社会的勢力との関係はありません</p>
-                  </div>
-                </label>
-                <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    value="yes"
-                    checked={formData.isAntiSocialForces === 'yes'}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      isAntiSocialForces: e.target.value 
-                    })}
-                    className="form-radio text-red-600"
-                  />
-                  <div>
-                    <span className="font-medium">はい</span>
-                    <p className="text-sm text-gray-600">反社会的勢力との関係があります</p>
-                  </div>
-                </label>
-              </div>
-              <div className="mt-2 p-3 bg-red-50 rounded-lg">
-                <div className="flex items-start space-x-2">
-                  <ShieldAlert className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-red-800">
-                    反社会的勢力との関係がある場合、ドッグランの登録はできません。当社は反社会的勢力との関係を一切認めておりません。
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* 予定設備 */}
-            <div className="mb-6">
-              <label className="block text-lg font-bold text-gray-800 mb-3">
-                予定設備 *
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {Object.entries({
-                  parking: '駐車場',
-                  shower: 'シャワー設備',
-                  restroom: 'トイレ',
-                  agility: 'アジリティ設備',
-                  rest_area: '休憩スペース',
-                  water_station: '給水設備',
-                }).map(([key, label]) => (
-                  <label key={key} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.facilities[key as keyof typeof formData.facilities]}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        facilities: {
-                          ...formData.facilities,
-                          [key]: e.target.checked,
-                        },
-                      })}
-                      className="rounded text-blue-600"
-                    />
-                    <span className="text-sm">{label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
-              <div className="flex items-start space-x-2">
-                <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                <div className="text-sm text-yellow-800">
-                  <p className="font-medium mb-1">第一審査について</p>
-                  <ul className="space-y-1 text-xs">
-                    <li>• 基本的な開設条件を満たしているかを確認します</li>
-                    <li>• 通過後、本人確認を行います</li>
-                    <li>• 本人確認後、詳細な施設情報の入力に進みます</li>
-                    <li>• 第二審査では書類審査を行います</li>
-                    <li>• 最終的にQRコード実証検査を経て掲載開始となります</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 flex justify-between items-center">
-              <Link to="/owner-payment-system" className="text-blue-600 hover:text-blue-800 flex items-center">
-                <DollarSign className="w-4 h-4 mr-1" />
-                <span className="text-sm">収益システムについて</span>
-              </Link>
-              <Button 
-                type="submit" 
-                className="w-1/2 bg-blue-600 hover:bg-blue-700"
-              >
-                第一審査を申し込む
-              </Button>
-            </div>
-          </form>
-        </Card>
-
-        {/* 削除確認モーダル */}
-        {showConfirmDelete && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-md w-full p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">申請を削除しますか？</h3>
-              <p className="text-gray-600 mb-6">
-                この操作は取り消せません。申請を削除してもよろしいですか？
-              </p>
-              <div className="flex justify-end space-x-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowConfirmDelete(null)}
-                >
-                  キャンセル
-                </Button>
-                <Button
-                  className="bg-red-600 hover:bg-red-700"
-                  isLoading={isDeleting}
-                  onClick={() => handleDeletePark(showConfirmDelete)}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  削除する
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        <RejectedParksManager
+          rejectedParks={rejectedParks}
+          onUpdateRejectedParks={handleUpdateRejectedParks}
+          onResubmit={handleResubmitPark}
+          onError={handleError}
+        />
+        <FirstStageForm
+          formData={formData}
+          onFormDataChange={handleFormDataChange}
+          onSubmit={handleFirstStageSubmit}
+          error={error?.userMessage || ''}
+        />
       </div>
     );
   }
 
   // 第二審査（基本情報入力）フォーム
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
-        <div className="flex items-center space-x-2 mb-4">
-          <CheckCircle className="w-6 h-6 text-green-600" />
-          <span className="text-green-800 font-medium">第一審査通過・本人確認完了</span>
-        </div>
-        <h1 className="text-2xl font-bold mb-2">ドッグラン登録 - 詳細情報入力</h1>
-        <p className="text-gray-600">第一審査を通過し、本人確認が完了しました。詳細な施設情報を入力してください。</p>
-      </div>
-
-      {/* 審査状況表示 */}
-      <Card className="mb-6 bg-green-50 border-green-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <CheckCircle className="w-6 h-6 text-green-600" />
+    <div>
+      {/* エラー表示 */}
+             <ErrorNotification 
+         error={error} 
+         onClear={clearError}
+         onRetry={retrySystem.state.isRetrying ? undefined : () => retrySystem.execute(() => Promise.resolve())}
+         className="mb-6"
+       />
+      
+      {/* リトライ状態表示 */}
+      {retrySystem.state.isRetrying && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-green-900">第一審査・本人確認完了</h3>
-              <p className="text-sm text-green-800">基本条件をクリアしました</p>
+              <p className="text-blue-800 font-medium">自動リトライ中...</p>
+              <p className="text-blue-600 text-sm">
+                試行回数: {retrySystem.state.attempts + 1}/{retryConfigs.api.maxAttempts}
+                {retrySystem.state.nextRetryIn > 0 && ` | 次の試行まで: ${retrySystem.state.nextRetryIn}秒`}
+              </p>
             </div>
-          </div>
-          <div className="text-right text-sm text-green-700">
-            <p>次のステップ: 第二審査（書類審査）</p>
+            <button 
+              onClick={retrySystem.cancelRetry}
+              className="text-blue-600 hover:text-blue-800 text-sm underline"
+            >
+              キャンセル
+            </button>
           </div>
         </div>
-      </Card>
+      )}
 
-      <Card>
-        <form onSubmit={handleFinalSubmit}>
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          <Input
-            label="施設名 *"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-          />
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              説明 *
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={4}
-              required
-            />
-          </div>
-          
-          <Input
-            label="住所 *"
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-            required
-          />
-          
-          {/* 料金情報（固定） */}
-          <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-            <h3 className="font-semibold text-blue-900 mb-2 flex items-center">
-              <DollarSign className="w-5 h-5 mr-2" />
-              料金情報（全国統一）
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
-              <div>
-                <p className="font-medium">通常利用料金</p>
-                <p>¥800/日（固定）</p>
-              </div>
-              <div>
-                <p className="font-medium">施設貸し切り料金</p>
-                <p>¥4,400/時間（固定）</p>
-              </div>
-              <div>
-                <p className="font-medium">サブスクリプション</p>
-                <p>¥3,800/月（全国共通）</p>
-              </div>
-            </div>
-            <p className="text-xs text-blue-600 mt-2">
-              ※ 料金はシステムで自動設定されます。オーナー様の取り分は売上の80%です。
-            </p>
-          </div>
-          
-          <Input
-            label="最大収容人数 *"
-            type="number"
-            min="1"
-            value={formData.maxCapacity}
-            onChange={(e) => setFormData({ ...formData, maxCapacity: e.target.value })}
-            required
-          />
-          
-          {/* Dog Size Areas */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              対応犬種サイズ
-            </label>
-            <div className="space-y-2">
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={formData.largeDogArea}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    largeDogArea: e.target.checked,
-                  })}
-                  className="rounded text-blue-600"
-                />
-                <span>大型犬エリア</span>
-              </label>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={formData.smallDogArea}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    smallDogArea: e.target.checked,
-                  })}
-                  className="rounded text-blue-600"
-                />
-                <span>小型犬エリア</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Private Booths */}
-          <div className="mb-4">
-            <label className="flex items-center space-x-2 mb-3">
-              <input
-                type="checkbox"
-                checked={formData.privateBooths}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  privateBooths: e.target.checked,
-                  privateBoothCount: e.target.checked ? formData.privateBoothCount : '0',
-                })}
-                className="rounded text-blue-600"
-              />
-              <span className="text-sm font-medium text-gray-700">プライベートブースあり</span>
-            </label>
-            
-            {formData.privateBooths && (
-              <div className="ml-6">
-                <Input
-                  label="ブース数"
-                  type="number"
-                  min="1"
-                  value={formData.privateBoothCount}
-                  onChange={(e) => setFormData({ ...formData, privateBoothCount: e.target.value })}
-                />
-                <div className="mt-2 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    <span className="font-medium">プライベートブース料金:</span> ¥5,000/2時間（固定）
-                  </p>
-                  <p className="text-xs text-blue-600 mt-1">
-                    ※ 料金はシステムで自動設定されます
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              設備・サービス（第一審査で選択した内容を確認・修正できます）
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {Object.entries({
-                parking: '駐車場',
-                shower: 'シャワー設備',
-                restroom: 'トイレ',
-                agility: 'アジリティ設備',
-                rest_area: '休憩スペース',
-                water_station: '給水設備',
-              }).map(([key, label]) => (
-                <label key={key} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.facilities[key as keyof typeof formData.facilities]}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      facilities: {
-                        ...formData.facilities,
-                        [key]: e.target.checked,
-                      },
-                    })}
-                    className="rounded text-blue-600"
-                  />
-                  <span>{label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              設備の詳細情報
-            </label>
-            <textarea
-              value={formData.facilityDetails}
-              onChange={(e) => setFormData({ ...formData, facilityDetails: e.target.value })}
-              placeholder="設備やサービスについての詳細な情報を入力してください"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={3}
-            />
-          </div>
-
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <div className="flex items-start space-x-2">
-              <Building className="w-5 h-5 text-blue-600 mt-0.5" />
-              <div className="text-sm text-blue-800">
-                <p className="font-medium mb-1">第二審査について</p>
-                <ul className="space-y-1 text-xs">
-                  <li>• 詳細な施設情報と必要書類の審査を行います</li>
-                  <li>• 審査期間は通常3-5営業日です</li>
-                  <li>• 通過後、QRコード実証検査の日程調整を行います</li>
-                  <li>• 実証検査完了後、一般公開となります</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 flex justify-between items-center">
-            <Link to="/owner-payment-system" className="text-blue-600 hover:text-blue-800 flex items-center">
-              <DollarSign className="w-4 h-4 mr-1" />
-              <span className="text-sm">収益システムについて</span>
-            </Link>
-            <Button 
-              type="submit" 
-              isLoading={isLoading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              第二審査に申し込む
-            </Button>
-          </div>
-        </form>
-      </Card>
+      <BasicInfoForm
+        formData={formData}
+        onFormDataChange={handleFormDataChange}
+        onSubmit={handleFinalSubmit}
+        error={error?.userMessage || ''}
+        isLoading={isLoading || retrySystem.state.isRetrying}
+      />
     </div>
-  );
-}
-
-// Lock component for privacy section
-function Lock({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-    </svg>
   );
 }
