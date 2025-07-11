@@ -1,20 +1,18 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, FileText, Megaphone, Tag, Building, ArrowRight, WifiOff, RefreshCw } from 'lucide-react';
+import { Bell, FileText, Megaphone, Tag, ArrowRight, WifiOff, RefreshCw } from 'lucide-react';
 import Card from '../Card';
 import Button from '../Button';
-import type { NewsAnnouncement, NewParkOpening } from '../../types';
+import type { NewsAnnouncement } from '../../types';
 
 interface NewsSectionProps {
   news: NewsAnnouncement[];
-  newParks: NewParkOpening[];
   isOffline: boolean;
   onRetryConnection: () => void;
 }
 
 export const NewsSection: React.FC<NewsSectionProps> = ({
   news,
-  newParks,
   isOffline,
   onRetryConnection,
 }) => {
@@ -89,68 +87,41 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
         </Link>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 新着情報 */}
-        <div className="space-y-4">
-          {!isOffline && news.length > 0 ? (
-            news.slice(0, 2).map((item) => (
-              <Link key={item.id} to={`/news/${item.id}`}>
-                <Card className="p-4 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center ${getCategoryColor(item.category)}`}>
-                          {getCategoryIcon(item.category)}
-                          <span className="ml-1">{getCategoryLabel(item.category)}</span>
+      <div className="space-y-4">
+        {!isOffline && news.length > 0 ? (
+          news.slice(0, 3).map((item) => (
+            <Link key={item.id} to={`/news/${item.id}`}>
+              <Card className="p-4 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center ${getCategoryColor(item.category)}`}>
+                        {getCategoryIcon(item.category)}
+                        <span className="ml-1">{getCategoryLabel(item.category)}</span>
+                      </span>
+                      {item.is_important && (
+                        <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
+                          重要
                         </span>
-                        {item.is_important && (
-                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
-                            重要
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="font-medium line-clamp-1">{item.title}</h3>
-                      <p className="text-xs text-gray-500 mt-1">{formatDate(item.created_at)}</p>
+                      )}
                     </div>
-                    <ArrowRight className="w-4 h-4 text-gray-400" />
+                    <h3 className="font-medium text-gray-900 mb-1">{item.title}</h3>
+                    {item.content && (
+                      <p className="text-sm text-gray-600 line-clamp-2 mb-2">{item.content}</p>
+                    )}
+                    <p className="text-xs text-gray-500">{formatDate(item.created_at)}</p>
                   </div>
-                </Card>
-              </Link>
-            ))
-          ) : (
-            <OfflineDataIndicator message={isOffline ? "オフライン：新着情報を読み込めません" : "新着情報を読み込み中..."} />
-          )}
-        </div>
-        
-        {/* 新規オープン */}
-        <div className="space-y-4">
-          {!isOffline && newParks.length > 0 ? (
-            newParks.slice(0, 2).map((park) => (
-              <Link key={park.id} to={`/news/park/${park.id}`}>
-                <Card className="p-4 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium flex items-center">
-                          <Building className="w-3 h-3 mr-1" />
-                          新規オープン
-                        </span>
-                      </div>
-                      <h3 className="font-medium line-clamp-1">{park.name}がオープンしました</h3>
-                      <p className="text-xs text-gray-500 mt-1">{formatDate(park.created_at)}</p>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-gray-400" />
-                  </div>
-                </Card>
-              </Link>
-            ))
-          ) : (
-            <OfflineDataIndicator message={isOffline ? "オフライン：新規オープン情報を読み込めません" : "新規オープン情報を読み込み中..."} />
-          )}
-        </div>
+                  <ArrowRight className="w-4 h-4 text-gray-400 ml-4" />
+                </div>
+              </Card>
+            </Link>
+          ))
+        ) : (
+          <OfflineDataIndicator message={isOffline ? "オフライン：新着情報を読み込めません" : "新着情報を読み込み中..."} />
+        )}
       </div>
       
-      <div className="mt-4 text-center">
+      <div className="mt-6 text-center">
         <Link to="/news">
           <Button variant="secondary">
             すべての新着情報を見る

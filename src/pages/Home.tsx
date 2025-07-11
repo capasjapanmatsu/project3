@@ -17,6 +17,7 @@ import { useResponsive } from '../hooks/useResponsive';
 export function Home() {
   const { user } = useAuth();
   const [recentDogs, setRecentDogs] = useState<Dog[]>([]);
+  const [news, setNews] = useState<any[]>([]);
   const [isOffline, setIsOffline] = useState(false);
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,12 +91,33 @@ export function Home() {
     }
   };
 
+  const fetchNews = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('news_announcements')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) {
+        console.error('Error fetching news:', error);
+        return;
+      }
+
+      setNews(data || []);
+    } catch (err) {
+      console.error('Error fetching news:', err);
+    }
+  };
+
   useEffect(() => {
     fetchRecentDogs();
+    fetchNews();
   }, []);
 
   const handleRetryConnection = async () => {
     await fetchRecentDogs();
+    await fetchNews();
   };
 
   // アニメーション設定をレスポンシブに調整
@@ -208,9 +230,8 @@ export function Home() {
                                  <NewsSection 
                    isOffline={isOffline}
                    onRetryConnection={handleRetryConnection}
-                   news={[]}
-                   newParks={[]}
-                 />
+                   news={news}
+                />
               </AnimatedElement>
             </section>
 
