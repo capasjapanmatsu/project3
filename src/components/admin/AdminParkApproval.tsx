@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { MapPin, CheckCircle, X, Eye, ArrowLeft, Building, Clock } from 'lucide-react';
+import { MapPin, CheckCircle, X, Eye, ArrowLeft, Building, Clock, ZoomIn, Loader } from 'lucide-react';
 import Card from '../Card';
 import Button from '../Button';
 import { PendingPark, FacilityImage } from '../../types/admin';
 import { useAdminApproval } from '../../hooks/useAdminApproval';
 import { useParkImages } from '../../hooks/useAdminData';
+import { supabase } from '../../utils/supabase';
 
 interface AdminParkApprovalProps {
   pendingParks: PendingPark[];
@@ -23,6 +24,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
   const [rejectionNote, setRejectionNote] = useState('');
   const [selectedImage, setSelectedImage] = useState<FacilityImage | null>(null);
   const [imageReviewMode, setImageReviewMode] = useState(false);
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
   const approval = useAdminApproval();
   const parkImages = useParkImages(selectedPark?.id || null);
@@ -82,6 +84,17 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
 
   const getImageTypeLabel = (type: string) => {
     const labels: { [key: string]: string } = {
+      'overview': '施設全景',
+      'entrance': '入口',
+      'large_dog_area': '大型犬エリア',
+      'small_dog_area': '小型犬エリア',
+      'private_booth': 'プライベートブース',
+      'parking': '駐車場',
+      'shower': 'シャワー設備',
+      'restroom': 'トイレ',
+      'agility': 'アジリティ設備',
+      'rest_area': '休憩スペース',
+      'water_station': '給水設備',
       'exterior': '外観',
       'interior': '内装',
       'equipment': '設備',
@@ -95,6 +108,30 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  // 画像拡大表示モーダル
+  if (enlargedImage) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50">
+        <div className="relative max-w-6xl w-full max-h-[90vh]">
+          <button
+            onClick={() => setEnlargedImage(null)}
+            className="absolute top-4 right-4 p-2 bg-white bg-opacity-90 shadow-lg rounded-full text-gray-800 hover:bg-opacity-100 transition-all z-10"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img 
+            src={enlargedImage} 
+            alt="拡大画像" 
+            className="max-w-full max-h-full mx-auto rounded-lg object-contain"
+            onError={(e) => {
+              e.currentTarget.src = 'https://via.placeholder.com/800x600?text=Image+Not+Available';
+            }}
+          />
+        </div>
       </div>
     );
   }
@@ -139,15 +176,31 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
           
           {/* 画像表示 */}
           <div className="mb-6">
-            <div className="w-full h-96 bg-gray-100 rounded-lg overflow-hidden">
+            <div className="w-full h-96 bg-gray-100 rounded-lg overflow-hidden relative group">
               <img
                 src={selectedImage.image_url}
                 alt={getImageTypeLabel(selectedImage.image_type)}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain cursor-pointer"
+                onClick={() => setEnlargedImage(selectedImage.image_url)}
                 onError={(e) => {
                   e.currentTarget.src = 'https://via.placeholder.com/800x600?text=Image+Not+Available';
                 }}
               />
+              
+              {/* 拡大アイコン */}
+              <div 
+                className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center cursor-pointer"
+                onClick={() => setEnlargedImage(selectedImage.image_url)}
+              >
+                <ZoomIn className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+              </div>
+              
+              {/* クリックで拡大のヒント */}
+              <div className="absolute bottom-4 right-4">
+                <span className="px-2 py-1 bg-black bg-opacity-50 text-white text-xs rounded">
+                  クリックで拡大
+                </span>
+              </div>
             </div>
           </div>
           
@@ -241,7 +294,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
         </Card>
 
         {/* 画像一覧 */}
-        {selectedPark.status === 'second_stage_review' && (
+        {(selectedPark.status === 'second_stage_review' || selectedPark.status === 'first_stage_passed' || selectedPark.total_images > 0) && (
           <Card className="p-6">
             <h3 className="font-semibold mb-4">施設画像</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
@@ -263,38 +316,156 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {parkImages.parkImages.map((image) => (
-                <div key={image.id} className="relative">
-                  <img
-                    src={image.image_url}
-                    alt={getImageTypeLabel(image.image_type)}
-                    className="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => handleImageSelect(image)}
-                  />
-                  <div className="absolute top-2 right-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      image.is_approved === true
-                        ? 'bg-green-100 text-green-800'
-                        : image.is_approved === false
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {image.is_approved === true
-                        ? '承認済み'
-                        : image.is_approved === false
-                        ? '却下'
-                        : '審査待ち'}
-                    </span>
-                  </div>
-                  <div className="absolute bottom-2 left-2">
-                    <span className="px-2 py-1 bg-black bg-opacity-50 text-white text-xs rounded">
-                      {getImageTypeLabel(image.image_type)}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            {/* デバッグ情報 */}
+            <div className="mb-4 p-3 bg-gray-50 rounded text-sm">
+              <p><strong>デバッグ情報:</strong></p>
+              <p>Park ID: {selectedPark.id}</p>
+              <p>Status: {selectedPark.status}</p>
+              <p>Images Loading: {parkImages.isLoading ? 'Yes' : 'No'}</p>
+              <p>Images Count: {parkImages.parkImages.length}</p>
+              <p>Images Error: {parkImages.error || 'None'}</p>
+              <p>Expected Total: {selectedPark.total_images}</p>
+              <div className="mt-2 flex space-x-2">
+                <Button 
+                  size="sm"
+                  variant="secondary" 
+                  onClick={() => {
+                    console.log('🔄 Manual refresh triggered for park:', selectedPark.id);
+                    parkImages.fetchParkImages(selectedPark.id);
+                  }}
+                >
+                  画像再取得
+                </Button>
+                <Button 
+                  size="sm"
+                  variant="secondary" 
+                  onClick={async () => {
+                    console.log('🗃️ Direct database query for park:', selectedPark.id);
+                    try {
+                      const { data, error } = await supabase
+                        .from('dog_park_facility_images')
+                        .select('*')
+                        .eq('park_id', selectedPark.id);
+                      
+                      if (error) {
+                        console.error('❌ Direct query error:', error);
+                      } else {
+                        console.log('📋 Direct query result:', data);
+                        alert('データベース直接クエリ結果をコンソールに出力しました');
+                      }
+                    } catch (err) {
+                      console.error('❌ Direct query failed:', err);
+                    }
+                  }}
+                >
+                  DB直接確認
+                </Button>
+              </div>
+              <div className="mt-2">
+                <p><strong>Raw Images Data:</strong></p>
+                <pre className="text-xs bg-white p-2 rounded border max-h-32 overflow-y-auto">
+                  {JSON.stringify(parkImages.parkImages, null, 2)}
+                </pre>
+              </div>
             </div>
+            
+            {parkImages.isLoading ? (
+              <div className="flex justify-center items-center h-32">
+                <Loader className="w-8 h-8 animate-spin text-blue-600" />
+                <span className="ml-2 text-gray-600">画像を読み込み中...</span>
+              </div>
+            ) : parkImages.error ? (
+              <div className="text-center py-8">
+                <p className="text-red-600 mb-2">画像の読み込みに失敗しました</p>
+                <p className="text-gray-500 text-sm">{parkImages.error}</p>
+                <Button 
+                  variant="secondary" 
+                  onClick={() => parkImages.fetchParkImages(selectedPark.id)}
+                  className="mt-4"
+                >
+                  再読み込み
+                </Button>
+              </div>
+            ) : parkImages.parkImages.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-600">アップロードされた画像がありません</p>
+                <p className="text-gray-500 text-sm">パークステータス: {selectedPark.status}</p>
+                <p className="text-gray-500 text-sm">期待される画像数: {selectedPark.total_images}</p>
+                <Button 
+                  variant="secondary" 
+                  onClick={() => {
+                    console.log('🔄 Manual refresh triggered for park:', selectedPark.id);
+                    parkImages.fetchParkImages(selectedPark.id);
+                  }}
+                  className="mt-4"
+                >
+                  手動でリフレッシュ
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {parkImages.parkImages.map((image, index) => (
+                  <div key={image.id} className="relative group">
+                    <div className="relative overflow-hidden rounded-lg bg-gray-100">
+                      <img
+                        src={image.image_url}
+                        alt={getImageTypeLabel(image.image_type)}
+                        className="w-full h-48 object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
+                        onClick={() => handleImageSelect(image)}
+                        onLoad={() => console.log(`🖼️ Image ${index + 1} loaded successfully:`, image.image_url)}
+                        onError={(e) => {
+                          console.error(`❌ Image ${index + 1} failed to load:`, image.image_url);
+                          e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
+                        }}
+                      />
+                      
+                      {/* 拡大アイコン */}
+                      <div 
+                        className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEnlargedImage(image.image_url);
+                        }}
+                      >
+                        <ZoomIn className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                      </div>
+                    </div>
+                    
+                    {/* ステータスバッジ */}
+                    <div className="absolute top-2 right-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        image.is_approved === true
+                          ? 'bg-green-100 text-green-800'
+                          : image.is_approved === false
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {image.is_approved === true
+                          ? '承認済み'
+                          : image.is_approved === false
+                          ? '却下'
+                          : '審査待ち'}
+                      </span>
+                    </div>
+                    
+                    {/* 画像タイプラベル */}
+                    <div className="absolute bottom-2 left-2">
+                      <span className="px-2 py-1 bg-black bg-opacity-70 text-white text-xs rounded">
+                        {getImageTypeLabel(image.image_type)}
+                      </span>
+                    </div>
+                    
+                    {/* 管理者ノート（却下の場合） */}
+                    {image.is_approved === false && image.admin_notes && (
+                      <div className="mt-2 p-2 bg-red-50 rounded text-sm">
+                        <p className="text-red-800 font-medium">却下理由:</p>
+                        <p className="text-red-700">{image.admin_notes}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
         )}
 

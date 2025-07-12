@@ -107,7 +107,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
   };
 
   // ローディング状態での読み上げテキスト
-  const loadingAnnouncement = loadingText || `${children}を処理中...`;
+  const loadingAnnouncement = loadingText || `${typeof children === 'string' ? children : 'ボタン'}を処理中...`;
 
   return (
     <button

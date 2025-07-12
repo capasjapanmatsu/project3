@@ -50,7 +50,7 @@ export interface FacilityImage {
 }
 
 export interface ApprovalStatus {
-  icon: any;
+  icon: React.ComponentType;
   color: string;
   label: string;
 }

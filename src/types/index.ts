@@ -53,6 +53,7 @@ export interface DogPark {
   average_rating: number;
   review_count: number;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface DogParkImage {

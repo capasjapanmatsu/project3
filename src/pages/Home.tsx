@@ -73,7 +73,7 @@ export function Home() {
         .from('dogs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(12);
+        .limit(10);
 
       if (error) throw error;
       setRecentDogs(data || []);
@@ -196,17 +196,6 @@ export function Home() {
               </AnimatedElement>
             </section>
 
-            {/* オーナー募集バナー */}
-            <AnimatedElement
-              animation="slideUp"
-              duration={animationDuration}
-              delay={staggerDelay * 3}
-              respectReducedMotion={true}
-              fallbackAnimation="fadeIn"
-            >
-              <OwnerRecruitmentBanner />
-            </AnimatedElement>
-
             {/* 新着情報セクション */}
             <section 
               id="news-section"
@@ -217,7 +206,7 @@ export function Home() {
               <AnimatedElement
                 animation="slideUp"
                 duration={animationDuration}
-                delay={staggerDelay * 4}
+                delay={staggerDelay * 3}
                 respectReducedMotion={true}
                 fallbackAnimation="fadeIn"
               >
@@ -227,13 +216,24 @@ export function Home() {
                 >
                   新着情報とお知らせ
                 </h2>
-                                 <NewsSection 
-                   isOffline={isOffline}
-                   onRetryConnection={handleRetryConnection}
-                   news={news}
+                <NewsSection 
+                  isOffline={isOffline}
+                  onRetryConnection={handleRetryConnection}
+                  news={news}
                 />
               </AnimatedElement>
             </section>
+
+            {/* オーナー募集バナー */}
+            <AnimatedElement
+              animation="slideUp"
+              duration={animationDuration}
+              delay={staggerDelay * 4}
+              respectReducedMotion={true}
+              fallbackAnimation="fadeIn"
+            >
+              <OwnerRecruitmentBanner />
+            </AnimatedElement>
 
             {/* 利用方法・料金セクション */}
             <section 

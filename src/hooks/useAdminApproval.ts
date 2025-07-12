@@ -156,6 +156,48 @@ export const useAdminApproval = () => {
     }
   };
 
+  const handleVaccineExpiryUpdate = async (
+    vaccineId: string,
+    rabiesExpiryDate?: string | null,
+    comboExpiryDate?: string | null
+  ) => {
+    try {
+      setIsProcessing(true);
+      
+      const updateData: Record<string, unknown> = {};
+      
+      // 狂犬病ワクチンの有効期限
+      if (rabiesExpiryDate !== undefined) {
+        updateData.rabies_expiry_date = rabiesExpiryDate;
+      }
+      
+      // 混合ワクチンの有効期限
+      if (comboExpiryDate !== undefined) {
+        updateData.combo_expiry_date = comboExpiryDate;
+      }
+      
+      console.log('Updating vaccine expiry dates:', updateData);
+      
+      const { error } = await supabase
+        .from('vaccine_certifications')
+        .update(updateData)
+        .eq('id', vaccineId);
+
+      if (error) {
+        console.error('Vaccine expiry update error:', error);
+        throw new Error(`有効期限の更新に失敗しました: ${error.message}`);
+      }
+      
+      return { success: true, message: '有効期限を更新しました' };
+      
+    } catch (error) {
+      console.error('Vaccine expiry update error:', error);
+      return { success: false, message: `有効期限の更新に失敗しました: ${(error as Error).message}` };
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // プライベートヘルパー関数
   const deleteTemporaryImages = async (vaccineData: any) => {
     console.log('Deleting temporary vaccine images...');
@@ -348,6 +390,7 @@ export const useAdminApproval = () => {
     isProcessing,
     handleVaccineApproval,
     handleParkApproval,
-    handleImageApproval
+    handleImageApproval,
+    handleVaccineExpiryUpdate
   };
 }; 

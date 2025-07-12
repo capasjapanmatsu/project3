@@ -66,11 +66,15 @@ export function PinCodeEntry({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json() as { error?: string };
         throw new Error(errorData.error || 'PINコードの検証に失敗しました');
       }
 
-      const result = await response.json();
+      const result = await response.json() as {
+        success: boolean;
+        error?: string;
+        message?: string;
+      };
       
       if (!result.success) {
         throw new Error(result.error || 'PINコードが無効です');
@@ -138,7 +142,7 @@ export function PinCodeEntry({
           )}
           
           <Button
-            onClick={verifyPin}
+            onClick={() => void verifyPin()}
             isLoading={isVerifying}
             disabled={pin.length !== 6}
             className="w-full"

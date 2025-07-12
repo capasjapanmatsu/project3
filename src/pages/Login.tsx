@@ -78,8 +78,38 @@ export function Login() {
       <h1 className="text-2xl font-bold text-center mb-8">ログイン</h1>
       <Card>
         <div className="flex justify-center mb-4 space-x-2">
-          <Button type="button" onClick={() => setIsPasswordLogin(false)} variant={!isPasswordLogin ? 'primary' : 'secondary'}>Magic Link</Button>
-          <Button type="button" onClick={() => setIsPasswordLogin(true)} variant={isPasswordLogin ? 'primary' : 'secondary'}>パスワード</Button>
+          <Button 
+            type="button" 
+            onClick={() => setIsPasswordLogin(false)} 
+            variant={!isPasswordLogin ? 'primary' : 'secondary'}
+            style={!isPasswordLogin ? { 
+              backgroundColor: '#2563eb', 
+              color: 'white',
+              borderColor: '#2563eb'
+            } : {
+              backgroundColor: 'white',
+              color: '#2563eb',
+              borderColor: '#2563eb'
+            }}
+          >
+            Magic Link
+          </Button>
+          <Button 
+            type="button" 
+            onClick={() => setIsPasswordLogin(true)} 
+            variant={isPasswordLogin ? 'primary' : 'secondary'}
+            style={isPasswordLogin ? { 
+              backgroundColor: '#2563eb', 
+              color: 'white',
+              borderColor: '#2563eb'
+            } : {
+              backgroundColor: 'white',
+              color: '#2563eb',
+              borderColor: '#2563eb'
+            }}
+          >
+            パスワード
+          </Button>
         </div>
         {!isPasswordLogin ? (
           <form onSubmit={handleMagicLink} className="p-6">

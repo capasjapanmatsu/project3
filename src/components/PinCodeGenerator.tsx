@@ -68,7 +68,9 @@ export function PinCodeGenerator({
   const calculateReservationEndTime = (reservation: Reservation): Date | null => {
     try {
       const reservationDate = new Date(reservation.date);
-      const [startHour, startMinute] = reservation.start_time.split(':').map(Number);
+      const timeParts = reservation.start_time.split(':').map(Number);
+      const startHour = timeParts[0] ?? 0;
+      const startMinute = timeParts[1] ?? 0;
       
       // 予約日の開始時刻を設定
       reservationDate.setHours(startHour, startMinute, 0, 0);
@@ -106,6 +108,8 @@ export function PinCodeGenerator({
 
       return () => clearInterval(timer);
     }
+    
+    return undefined;
   }, [pin, expiresAt]);
 
   const generatePin = async () => {
@@ -232,7 +236,7 @@ export function PinCodeGenerator({
             
             <div className="flex justify-center space-x-3">
               <Button
-                onClick={generatePin}
+                onClick={() => void generatePin()}
                 variant="secondary"
                 size="sm"
                 isLoading={isGenerating}
@@ -304,7 +308,7 @@ export function PinCodeGenerator({
             )}
             
             <Button
-              onClick={generatePin}
+              onClick={() => void generatePin()}
               isLoading={isGenerating}
               className="w-full"
             >

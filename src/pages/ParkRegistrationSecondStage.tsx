@@ -15,7 +15,7 @@ interface FacilityImage {
   admin_notes?: string | null;
   file?: File;
   uploading?: boolean;
-  error?: string;
+  error?: string | undefined;
 }
 
 interface DogPark {
@@ -179,6 +179,48 @@ export function ParkRegistrationSecondStage() {
       
       setPark(parkData);
       
+      // Fetch existing facility images
+      const { data: imageData, error: imageError } = await supabase
+        .from('dog_park_facility_images')
+        .select('*')
+        .eq('park_id', parkId);
+      
+      if (imageError) {
+        console.error('Error fetching images:', imageError);
+      }
+      
+      // Initialize images array based on park facilities and existing images
+      const requiredImageTypes = Object.entries(IMAGE_TYPES)
+        .filter(([, config]) => {
+          if (config.required) return true;
+          if (config.conditionalOn && parkData) {
+            const path = config.conditionalOn.split('.');
+            if (path.length === 1) {
+              return ((parkData as any)[path[0]]) ?? false;
+            } else if (path.length === 2) {
+              const parent = (parkData as any)[path[0]];
+              if (parent && typeof parent === 'object') {
+                return (parent as any)[path[1]] ?? false;
+              }
+            }
+          }
+          return false;
+        })
+        .map(([key]) => key);
+      
+      const facilityImages: FacilityImage[] = requiredImageTypes.map(imageType => {
+        const existingImage = (imageData || []).find(img => img.image_type === imageType);
+        return {
+          id: existingImage?.id,
+          image_type: imageType,
+          image_url: existingImage?.image_url,
+          is_approved: existingImage?.is_approved ?? null,
+          admin_notes: existingImage?.admin_notes
+        };
+      });
+      
+      setImages(facilityImages);
+      
       // Fetch bank account information
       const { data: bankData, error: bankError } = await supabase
         .rpc('get_owner_bank_account');
@@ -267,7 +309,9 @@ export function ParkRegistrationSecondStage() {
       // Refresh images
       await fetchParkData();
       
-      setSuccess(`${IMAGE_TYPES[imageType as keyof typeof IMAGE_TYPES].label}の画像をアップロードしました`);
+      const typeConfig = IMAGE_TYPES[imageType as keyof typeof IMAGE_TYPES];
+      const label = typeConfig?.label || imageType;
+      setSuccess(`${label}の画像をアップロードしました`);
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error(`Error uploading ${imageType} image:`, error);
@@ -373,11 +417,11 @@ export function ParkRegistrationSecondStage() {
           if (config.conditionalOn && park) {
             const path = config.conditionalOn.split('.');
             if (path.length === 1) {
-              return ((park as unknown) as Record<string, unknown>)[path[0]] ?? false;
+              return ((park as any)[path[0]]) ?? false;
             } else if (path.length === 2) {
-              const parent = ((park as unknown) as Record<string, unknown>)[path[0]];
+              const parent = (park as any)[path[0]];
               if (parent && typeof parent === 'object') {
-                return (parent as Record<string, unknown>)[path[1]] ?? false;
+                return (parent as any)[path[1]] ?? false;
               }
             }
           }
@@ -390,9 +434,10 @@ export function ParkRegistrationSecondStage() {
       );
       
       if (missingTypes.length > 0) {
-        const missingLabels = missingTypes.map(type => 
-          IMAGE_TYPES[type as keyof typeof IMAGE_TYPES].label
-        ).join('、');
+        const missingLabels = missingTypes.map(type => {
+          const typeConfig = IMAGE_TYPES[type as keyof typeof IMAGE_TYPES];
+          return typeConfig?.label || type;
+        }).join('、');
         
         setError(`以下の必要な画像がアップロードされていません: ${missingLabels}`);
         setIsSubmitting(false);
@@ -408,33 +453,89 @@ export function ParkRegistrationSecondStage() {
         return;
       }
       
-      // Submit for review using RPC function
-      const { error } = await supabase.rpc('submit_second_stage_review', {
-        park_id_param: parkId
-      });
-      
-      if (error) throw error;
-      
-      // Update the park status in the database
-      const { error: updateError } = await supabase
-        .from('dog_parks')
-        .update({ status: 'second_stage_review' })
-        .eq('id', parkId);
+      // Record the second stage review submission in the review stages table
+      try {
+        // First, check if a review stage record already exists
+        const { data: existingStage, error: checkError } = await supabase
+          .from('dog_park_review_stages')
+          .select('id')
+          .eq('park_id', parkId)
+          .single();
         
-      if (updateError) throw updateError;
+        if (checkError && checkError.code !== 'PGRST116') {
+          // PGRST116 is "not found" error, which is expected if no record exists
+          console.error('Error checking existing review stage:', checkError);
+        }
+        
+        if (existingStage) {
+          // Update existing record
+          const { error: updateError } = await supabase
+            .from('dog_park_review_stages')
+            .update({
+              second_stage_submitted_at: new Date().toISOString()
+            })
+            .eq('park_id', parkId);
+          
+          if (updateError) {
+            console.error('Error updating review stage:', updateError);
+          }
+        } else {
+          // Insert new record
+          const { error: insertError } = await supabase
+            .from('dog_park_review_stages')
+            .insert({
+              park_id: parkId,
+              second_stage_submitted_at: new Date().toISOString()
+            });
+          
+          if (insertError) {
+            console.error('Error inserting review stage:', insertError);
+          }
+        }
+      } catch (reviewError) {
+        console.error('Error recording review stage:', reviewError);
+        // Don't throw error, continue with submission
+      }
+      
+      // Save bank account information if not already saved
+      try {
+        const { error: bankError } = await supabase.rpc('update_owner_bank_account', {
+          bank_name_param: bankAccount.bank_name,
+          bank_code_param: bankAccount.bank_code,
+          branch_name_param: bankAccount.branch_name,
+          branch_code_param: bankAccount.branch_code,
+          account_type_param: bankAccount.account_type,
+          account_number_param: bankAccount.account_number,
+          account_holder_name_param: bankAccount.account_holder_name
+        });
+        
+        if (bankError) {
+          console.error('Error saving bank account:', bankError);
+          // Continue even if bank account save fails
+        }
+      } catch (bankError) {
+        console.error('Error with bank account RPC:', bankError);
+        // Continue even if bank account save fails
+      }
       
       // Create notification for admin
-      const { error: notifyError } = await supabase
-        .from('admin_notifications')
-        .insert([{
-          type: 'park_approval',
-          title: '新しいドッグラン第二審査申請',
-          message: `${park?.name}の第二審査が申請されました。確認してください。`,
-          data: { park_id: parkId }
-        }]);
-        
-      if (notifyError) {
-        console.error('Error creating admin notification:', notifyError);
+      try {
+        const { error: notifyError } = await supabase
+          .from('admin_notifications')
+          .insert([{
+            type: 'park_approval',
+            title: '新しいドッグラン第二審査申請',
+            message: `${park?.name}の第二審査が申請されました。確認してください。`,
+            data: { park_id: parkId },
+            created_at: new Date().toISOString()
+          }]);
+          
+        if (notifyError) {
+          console.error('Error creating admin notification:', notifyError);
+          // Continue even if notification fails
+        }
+      } catch (notifyError) {
+        console.error('Error with notification:', notifyError);
         // Continue even if notification fails
       }
       
@@ -473,14 +574,14 @@ export function ParkRegistrationSecondStage() {
     );
   }
 
-  // 画像レビューモード
+  // 画像レビューモーダル
   if (showImagePreview) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
         <div className="relative max-w-4xl w-full">
           <button
             onClick={() => setShowImagePreview(null)}
-            className="absolute top-2 right-2 p-2 bg-black bg-opacity-50 rounded-full text-white hover:bg-opacity-70 transition-opacity"
+            className="absolute top-2 right-2 p-2 bg-white bg-opacity-90 shadow-lg rounded-full text-gray-800 hover:bg-opacity-100 transition-all"
           >
             <X className="w-6 h-6" />
           </button>
@@ -669,8 +770,8 @@ export function ParkRegistrationSecondStage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {images.map((image) => {
                 const imageTypeConfig = IMAGE_TYPES[image.image_type as keyof typeof IMAGE_TYPES];
-                const Icon = imageTypeConfig.icon;
-                const isRequired = imageTypeConfig.required;
+                const IconComponent = imageTypeConfig?.icon || Building;
+                const isRequired = imageTypeConfig?.required || false;
                 
                 let approvalStatus = null;
                 if ((image.is_approved ?? null) !== null && image.image_url) {
@@ -689,9 +790,9 @@ export function ParkRegistrationSecondStage() {
                     {/* Image type header */}
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
-                        <Icon className="w-5 h-5 text-blue-600" />
+                        <IconComponent className="w-5 h-5 text-blue-600" />
                         <h3 className="font-medium">
-                          {imageTypeConfig.label}
+                          {imageTypeConfig?.label || image.image_type}
                           {isRequired && <span className="text-red-600 ml-1">*</span>}
                         </h3>
                       </div>
@@ -699,7 +800,7 @@ export function ParkRegistrationSecondStage() {
                     </div>
                     
                     {/* Description */}
-                    <p className="text-sm text-gray-600 mb-3">{imageTypeConfig.description}</p>
+                    <p className="text-sm text-gray-600 mb-3">{imageTypeConfig?.description || '画像をアップロードしてください'}</p>
                     
                     {/* Image preview or upload button */}
                     {image.image_url ? (
@@ -710,7 +811,7 @@ export function ParkRegistrationSecondStage() {
                         >
                           <img 
                             src={image.image_url} 
-                            alt={imageTypeConfig.label} 
+                            alt={imageTypeConfig?.label || image.image_type} 
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
@@ -773,7 +874,7 @@ export function ParkRegistrationSecondStage() {
                             <Button
                               size="sm"
                               onClick={() => handleImageUpload(image.image_type)}
-                              isLoading={image.uploading}
+                              isLoading={!!image.uploading}
                             >
                               アップロード
                             </Button>

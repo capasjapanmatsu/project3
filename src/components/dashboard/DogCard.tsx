@@ -40,7 +40,7 @@ export function DogCard({ dog, onEdit }: DogCardProps) {
       <div className="flex space-x-2">
         <Button 
           size="sm" 
-          variant="secondary"
+          className="bg-white hover:bg-gray-50 border border-gray-300 text-gray-700"
           onClick={() => onEdit(dog)}
         >
           <Edit className="w-4 h-4" />
@@ -412,7 +412,7 @@ export function DogEditModal({
               <div className="flex justify-end space-x-3 pt-4 border-t">
                 <Button
                   type="button"
-                  variant="secondary"
+                  className="bg-white hover:bg-gray-50 border border-gray-300 text-gray-700"
                   onClick={onClose}
                 >
                   キャンセル

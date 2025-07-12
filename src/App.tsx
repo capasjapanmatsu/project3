@@ -60,6 +60,7 @@ const NewsDetail = lazy(() => import('./pages/NewsDetail').then(module => ({ def
 const NewParkDetail = lazy(() => import('./pages/NewParkDetail').then(module => ({ default: module.NewParkDetail })));
 const TwoFactorSetup = lazy(() => import('./pages/TwoFactorSetup'));
 const TwoFactorVerify = lazy(() => import('./pages/TwoFactorVerify'));
+const DogProfile = lazy(() => import('./pages/DogProfile').then(module => ({ default: module.DogProfile })));
 
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
@@ -128,6 +129,7 @@ function App() {
             <Route path="/news" element={<News />} />
             <Route path="/news/:newsId" element={<NewsDetail />} />
             <Route path="/news/park/:parkId" element={<NewParkDetail />} />
+            <Route path="/dog/:id" element={<DogProfile />} />
             <Route path="/two-factor-setup" element={<ProtectedRoute><TwoFactorSetup /></ProtectedRoute>} />
             <Route path="/two-factor-verify" element={<ProtectedRoute><TwoFactorVerify /></ProtectedRoute>} />
             <Route path="/dog-info" element={<DogInfo />} />

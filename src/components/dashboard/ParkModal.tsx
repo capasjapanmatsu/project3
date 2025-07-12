@@ -89,8 +89,8 @@ export function ParkModal({ park, onClose }: ParkModalProps) {
                 <div>
                   <h3 className="font-semibold text-purple-900 mb-2">第二審査中</h3>
                   <p className="text-sm text-purple-800">
-                    現在、管理者が施設画像を確認しています。審査には通常3-5営業日かかります。
-                    結果はメールとアプリ内通知でお知らせします。
+                    現在、管理者が施設画像を確認しています。審査完了までお待ちください。
+                    審査には通常3-5営業日かかります。結果はメールとアプリ内通知でお知らせします。
                   </p>
                 </div>
               </div>
@@ -135,7 +135,7 @@ export function ParkModal({ park, onClose }: ParkModalProps) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {park.status === 'approved' && (
               <Link to={`/parks/${park.id}`}>
-                <Button variant="secondary" className="w-full">
+                <Button className="w-full bg-white hover:bg-gray-50 border border-gray-300 text-gray-700">
                   <Eye className="w-4 h-4 mr-2" />
                   公開ページを見る
                 </Button>
@@ -144,30 +144,36 @@ export function ParkModal({ park, onClose }: ParkModalProps) {
             
             {park.status === 'approved' && (
               <Link to="/owner-payment-system">
-                <Button variant="secondary" className="w-full">
+                <Button className="w-full bg-white hover:bg-gray-50 border border-gray-300 text-gray-700">
                   <BarChart4 className="w-4 h-4 mr-2" />
                   収益レポート
                 </Button>
               </Link>
             )}
             
-            <Link to={park.status === 'first_stage_passed' 
-              ? `/parks/${park.id}/second-stage` 
-              : `/parks/${park.id}/manage`}>
-              <Button className="w-full">
-                {park.status === 'first_stage_passed' ? (
-                  <>
-                    <Plus className="w-4 h-4 mr-2" />
-                    第二審査を進める
-                  </>
-                ) : (
-                  <>
-                    <Edit className="w-4 h-4 mr-2" />
-                    {park.status === 'approved' ? '設定を編集' : '詳細を見る'}
-                  </>
-                )}
-              </Button>
-            </Link>
+            {park.status === 'second_stage_review' ? (
+              <div className="w-full text-center py-3 text-gray-600 text-sm bg-gray-50 rounded border">
+                審査中のため操作できません
+              </div>
+            ) : (
+              <Link to={park.status === 'first_stage_passed' 
+                ? `/parks/${park.id}/second-stage` 
+                : `/parks/${park.id}/manage`}>
+                <Button className="w-full">
+                  {park.status === 'first_stage_passed' ? (
+                    <>
+                      <Plus className="w-4 h-4 mr-2" />
+                      第二審査を進める
+                    </>
+                  ) : (
+                    <>
+                      <Edit className="w-4 h-4 mr-2" />
+                      {park.status === 'approved' ? '設定を編集' : '詳細を見る'}
+                    </>
+                  )}
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>

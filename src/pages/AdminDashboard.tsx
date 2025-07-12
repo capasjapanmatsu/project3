@@ -34,6 +34,20 @@ interface AdminStats {
   unreadMessages: number;
 }
 
+interface AdminStatsResponse {
+  total_users: number;
+  total_parks: number;
+  pending_parks: number;
+  pending_vaccines: number;
+  total_reservations: number;
+  monthly_revenue: number;
+  last_month_revenue: number;
+  total_subscriptions: number;
+  active_subscriptions: number;
+  new_users_this_month: number;
+  unread_messages: number;
+}
+
 export function AdminDashboard() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -62,7 +76,7 @@ export function AdminDashboard() {
       return;
     }
     
-    fetchAdminData();
+    void fetchAdminData();
   }, [isAdmin, navigate]);
 
   const fetchAdminData = async () => {
@@ -76,18 +90,20 @@ export function AdminDashboard() {
       
       if (statsError) throw statsError;
       
+      const typedStatsData = statsData as AdminStatsResponse | null;
+      
       setStats({
-        totalUsers: statsData?.total_users || 0,
-        totalParks: statsData?.total_parks || 0,
-        pendingParks: statsData?.pending_parks || 0,
-        pendingVaccines: statsData?.pending_vaccines || 0,
-        totalReservations: statsData?.total_reservations || 0,
-        monthlyRevenue: statsData?.monthly_revenue || 0,
-        lastMonthRevenue: statsData?.last_month_revenue || 0,
-        totalSubscriptions: statsData?.total_subscriptions || 0,
-        activeSubscriptions: statsData?.active_subscriptions || 0,
-        newUsersThisMonth: statsData?.new_users_this_month || 0,
-        unreadMessages: statsData?.unread_messages || 0
+        totalUsers: typedStatsData?.total_users || 0,
+        totalParks: typedStatsData?.total_parks || 0,
+        pendingParks: typedStatsData?.pending_parks || 0,
+        pendingVaccines: typedStatsData?.pending_vaccines || 0,
+        totalReservations: typedStatsData?.total_reservations || 0,
+        monthlyRevenue: typedStatsData?.monthly_revenue || 0,
+        lastMonthRevenue: typedStatsData?.last_month_revenue || 0,
+        totalSubscriptions: typedStatsData?.total_subscriptions || 0,
+        activeSubscriptions: typedStatsData?.active_subscriptions || 0,
+        newUsersThisMonth: typedStatsData?.new_users_this_month || 0,
+        unreadMessages: typedStatsData?.unread_messages || 0
       });
     } catch (error) {
       console.error('Error fetching admin data:', error);

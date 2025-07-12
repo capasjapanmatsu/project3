@@ -75,26 +75,26 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
   );
 
   return (
-    <section className="bg-blue-50 p-6 rounded-lg">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-          <Bell className="w-6 h-6 text-blue-600 mr-2" />
+    <section className="bg-blue-50 p-4 rounded-lg">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold text-gray-900 flex items-center">
+          <Bell className="w-5 h-5 text-blue-600 mr-2" />
           新着情報
         </h2>
-        <Link to="/news" className="text-blue-600 hover:text-blue-800 flex items-center">
+        <Link to="/news" className="text-blue-600 hover:text-blue-800 flex items-center text-sm">
           すべて見る
           <ArrowRight className="w-4 h-4 ml-1" />
         </Link>
       </div>
       
-      <div className="space-y-4">
+      <div className="space-y-3">
         {!isOffline && news.length > 0 ? (
-          news.slice(0, 3).map((item) => (
+          news.slice(0, 2).map((item) => (
             <Link key={item.id} to={`/news/${item.id}`}>
-              <Card className="p-4 hover:shadow-md transition-shadow">
+              <Card className="p-3 hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
+                    <div className="flex items-center space-x-2 mb-1">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center ${getCategoryColor(item.category)}`}>
                         {getCategoryIcon(item.category)}
                         <span className="ml-1">{getCategoryLabel(item.category)}</span>
@@ -107,7 +107,7 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
                     </div>
                     <h3 className="font-medium text-gray-900 mb-1">{item.title}</h3>
                     {item.content && (
-                      <p className="text-sm text-gray-600 line-clamp-2 mb-2">{item.content}</p>
+                      <p className="text-sm text-gray-600 line-clamp-1 mb-1">{item.content}</p>
                     )}
                     <p className="text-xs text-gray-500">{formatDate(item.created_at)}</p>
                   </div>
@@ -121,9 +121,9 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
         )}
       </div>
       
-      <div className="mt-6 text-center">
+      <div className="mt-4 text-center">
         <Link to="/news">
-          <Button variant="secondary">
+          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
             すべての新着情報を見る
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>

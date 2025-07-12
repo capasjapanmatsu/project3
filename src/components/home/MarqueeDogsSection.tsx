@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { PawPrint } from 'lucide-react';
 import { getDogHonorific } from '../dashboard/DogCard';
 import type { Dog } from '../../types';
@@ -12,6 +13,9 @@ export const MarqueeDogsSection: React.FC<MarqueeDogsSectionProps> = ({
   recentDogs,
   isOffline,
 }) => {
+  // データを重複させて継続的なスクロール効果を作成
+  const duplicatedDogs = [...recentDogs, ...recentDogs];
+
   return (
     <section className="bg-gray-50 p-6 rounded-lg">
       <div className="flex justify-between items-center mb-6">
@@ -28,44 +32,54 @@ export const MarqueeDogsSection: React.FC<MarqueeDogsSectionProps> = ({
         </div>
       </div>
       
-      <div className="overflow-hidden w-full" style={{height: 140}}>
+      <div className="overflow-hidden w-full relative" style={{height: 140}}>
         <div
-          className="flex items-center animate-marquee"
+          className="flex items-center whitespace-nowrap"
           style={{
             width: 'max-content',
-            animation: 'marquee 24s linear infinite',
+            animation: 'marquee 60s linear infinite',
+            willChange: 'transform'
           }}
         >
           {(() => {
             if (!isOffline && recentDogs.length > 0) {
               return (
                 <>
-                  {recentDogs.map((dog, index) => (
-                    <div key={index} className="text-center mx-6 flex-shrink-0" style={{width: 80}}>
+                  {duplicatedDogs.map((dog, index) => (
+                    <Link
+                      key={`${dog.id}-${index}`}
+                      to={`/dog/${dog.id}`}
+                      className="inline-block text-center mx-4 flex-shrink-0 cursor-pointer hover:transform hover:scale-105 transition-transform duration-200 group"
+                      style={{width: 80}}
+                    >
                       <div className="flex justify-center mb-2">
-                        <img
-                          src={dog.image_url}
-                          alt={dog.name}
-                          width={56}
-                          height={56}
-                          loading="lazy"
-                          style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: '50%' }}
-                          onError={(e) => {
-                            e.currentTarget.src = 'https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300';
-                          }}
-                        />
+                        <div className="relative">
+                          <img
+                            src={dog.image_url}
+                            alt={dog.name}
+                            width={56}
+                            height={56}
+                            loading="lazy"
+                            className="rounded-full border-2 border-transparent group-hover:border-blue-400 transition-all duration-200"
+                            style={{ width: 56, height: 56, objectFit: 'cover' }}
+                            onError={(e) => {
+                              e.currentTarget.src = 'https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300';
+                            }}
+                          />
+                          <div className="absolute inset-0 rounded-full bg-blue-600 opacity-0 group-hover:opacity-10 transition-opacity duration-200"></div>
+                        </div>
                       </div>
-                      <p className="font-medium text-gray-900 whitespace-nowrap">
+                      <p className="font-medium text-gray-900 text-sm group-hover:text-blue-600 transition-colors duration-200">
                         {dog.name}{getDogHonorific(dog.gender)}
                       </p>
-                    </div>
+                    </Link>
                   ))}
                 </>
               );
             } else {
               return (
                 <div className="text-gray-500 text-center w-full py-8">
-                  まだ登録がありません
+                  {isOffline ? 'オフライン中です' : 'まだ登録がありません'}
                 </div>
               );
             }
@@ -75,11 +89,30 @@ export const MarqueeDogsSection: React.FC<MarqueeDogsSectionProps> = ({
       
       <style>{`
         @keyframes marquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
+          0% {
+            transform: translateX(100%);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
         }
-        @media (max-width: 640px) {
-          .animate-marquee { animation-duration: 36s !important; }
+        
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+          .marquee-container .flex {
+            animation-duration: 80s !important;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          .marquee-container .flex {
+            animation-duration: 100s !important;
+          }
+        }
+        
+        /* アニメーション最適化 */
+        .marquee-container {
+          contain: layout style paint;
         }
       `}</style>
     </section>

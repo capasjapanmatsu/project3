@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, MapPin, Key, User, Bell } from 'lucide-react';
+import { Home, MapPin, Key, User, Users } from 'lucide-react';
 
 export function BottomNavigation() {
   const location = useLocation();
@@ -23,7 +23,7 @@ export function BottomNavigation() {
     { path: '/', label: 'ホーム', icon: Home },
     { path: '/parks', label: 'ドッグラン', icon: MapPin },
     { path: '/access-control', label: '入退場', icon: Key },
-    { path: '/news', label: '新着情報', icon: Bell },
+    { path: '/community', label: 'コミュニティ', icon: Users },
     { path: '/dashboard', label: 'マイページ', icon: User },
   ];
 

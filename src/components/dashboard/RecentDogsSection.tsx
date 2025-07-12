@@ -142,8 +142,8 @@ export const RecentDogsSection: React.FC<RecentDogsSectionProps> = ({
           {recentDogs.length === 8 && (
             <div className="text-center pt-4">
               <Button
-                variant="secondary"
                 size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={() => {
                   // TODO: 全ての犬を表示するページに遷移
                   console.log('Navigate to all dogs page');

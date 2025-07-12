@@ -43,8 +43,8 @@ export const NotificationSection: React.FC<NotificationSectionProps> = ({
         </h2>
         {notifications.length > 0 && (
           <Button
-            variant="secondary"
             size="sm"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
             onClick={() => {
               notifications.forEach(notification => {
                 onMarkAsRead(notification.id);
@@ -88,10 +88,9 @@ export const NotificationSection: React.FC<NotificationSectionProps> = ({
               </div>
               <div className="flex-shrink-0">
                 <Button
-                  variant="secondary"
                   size="sm"
                   onClick={() => onMarkAsRead(notification.id)}
-                  className="text-gray-600 hover:text-gray-800"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   <Check className="w-4 h-4" />
                 </Button>

@@ -422,7 +422,7 @@ export function UserDashboard() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            マイダッシュボード
+            マイページ
           </h1>
           <p className="text-gray-600 mt-1">
             ようこそ、{profile?.name || 'ユーザー'}さん！
@@ -438,13 +438,6 @@ export function UserDashboard() {
                オーナー画面
              </a>
            )}
-          <Button
-            variant="secondary"
-            onClick={handleLogout}
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            ログアウト
-          </Button>
         </div>
       </div>
 

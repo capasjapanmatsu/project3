@@ -783,7 +783,15 @@ export function DogParkList() {
                   {/* ボタンを2列に配置 */}
                   <div className="grid grid-cols-2 gap-2">
                     <Link to={`/parks/${park.id}`}>
-                      <Button variant="secondary" className="w-full">
+                      <Button 
+                        variant="secondary" 
+                        className="w-full"
+                        style={{
+                          backgroundColor: 'white',
+                          color: '#2563eb',
+                          borderColor: '#d1d5db'
+                        }}
+                      >
                         詳細・レビュー
                       </Button>
                     </Link>

@@ -26,7 +26,7 @@ export function ParkCard({ park, onSelect }: ParkCardProps) {
         </div>
         <div className="flex items-center space-x-2">
           {getStatusBadge(park.status)}
-          <Button size="sm" variant="secondary">
+          <Button size="sm" className="bg-white hover:bg-gray-50 border border-gray-300 text-gray-700">
             <Edit className="w-4 h-4" />
           </Button>
         </div>
@@ -52,7 +52,7 @@ export function ParkCard({ park, onSelect }: ParkCardProps) {
       {park.status === 'second_stage_review' && (
         <div className="mt-3 p-2 bg-purple-50 rounded text-sm text-purple-800">
           <Clock className="w-4 h-4 inline mr-1" />
-          第二審査中です。審査結果をお待ちください
+          第二審査中です。審査完了までお待ちください
         </div>
       )}
     </div>
