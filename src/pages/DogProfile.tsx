@@ -1,23 +1,50 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, Heart, PawPrint } from 'lucide-react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, Heart, UserPlus, Calendar, AlertCircle, CheckCircle, MapPin, PawPrint } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { supabase } from '../utils/supabase';
+import useAuth from '../context/AuthContext';
 import type { Dog, DogPark, Reservation } from '../types';
 
+interface DogProfile {
+  id: string;
+  name: string;
+  breed: string;
+  gender: string;
+  birth_date: string;
+  image_url?: string;
+  owner_id: string;
+  created_at: string;
+}
+
 export function DogProfile() {
-  const { id } = useParams<{ id: string }>();
-  const [dog, setDog] = useState<Dog | null>(null);
-  const [favoriteParks, setFavoriteParks] = useState<Array<{ park: DogPark; visits: number }>>([]);
+  const { id, dogId } = useParams<{ id?: string; dogId?: string }>();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [dog, setDog] = useState<DogProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [isSendingRequest, setIsSendingRequest] = useState(false);
+  const [hasSentRequest, setHasSentRequest] = useState(false);
+  const [favoriteParks, setFavoriteParks] = useState<Array<{ park: any; visits: number }>>([]);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [isLikeLoading, setIsLikeLoading] = useState(false);
+  
+  // パラメータからIDを取得（既存のルート /dog/:id か新しいルート /dog-profile/:dogId）
+  const currentDogId = id || dogId;
 
   useEffect(() => {
-    if (id) {
+    if (currentDogId) {
       fetchDogProfile();
+      if (user) {
+        checkFriendRequestStatus();
+        checkLikeStatus();
+      }
     }
-  }, [id]);
+  }, [currentDogId, user]);
 
   const fetchDogProfile = async () => {
     try {
@@ -28,11 +55,12 @@ export function DogProfile() {
       const { data: dogData, error: dogError } = await supabase
         .from('dogs')
         .select('*')
-        .eq('id', id)
+        .eq('id', currentDogId)
         .single();
 
       if (dogError) throw dogError;
       setDog(dogData);
+      setLikeCount(dogData.like_count || 0);
 
       // 予約履歴を取得してよく遊ぶドッグランを計算
       const { data: reservationsData, error: reservationsError } = await supabase
@@ -41,11 +69,11 @@ export function DogProfile() {
           *,
           dog_park:dog_parks(*)
         `)
-        .eq('dog_id', id)
+        .eq('dog_id', currentDogId)
         .eq('status', 'confirmed');
 
       if (reservationsError) throw reservationsError;
-
+      
       // ドッグランごとの訪問回数を計算
       const parkCounts: Record<string, { park: DogPark; visits: number }> = {};
       
@@ -74,8 +102,120 @@ export function DogProfile() {
     }
   };
 
-  const getDogHonorific = (gender: string) => {
-    return gender === 'オス' ? 'くん' : 'ちゃん';
+  const checkFriendRequestStatus = async () => {
+    if (!user || !currentDogId) return;
+
+    try {
+      const { data: dogData } = await supabase
+        .from('dogs')
+        .select('owner_id')
+        .eq('id', currentDogId)
+        .single();
+
+      if (!dogData) return;
+
+      const { data, error } = await supabase
+        .from('friend_requests')
+        .select('id, status')
+        .or(`and(requester_id.eq.${user.id},requested_id.eq.${dogData.owner_id}),and(requester_id.eq.${dogData.owner_id},requested_id.eq.${user.id})`)
+        .maybeSingle();
+
+      if (!error && data) {
+        setHasSentRequest(true);
+      }
+    } catch (err) {
+      console.error('Error checking friend request status:', err);
+    }
+  };
+
+  const checkLikeStatus = async () => {
+    if (!user || !currentDogId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('dog_likes')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('dog_id', currentDogId)
+        .maybeSingle();
+
+      if (!error && data) {
+        setIsLiked(true);
+      }
+    } catch (err) {
+      console.error('Error checking like status:', err);
+    }
+  };
+
+  const handleLike = async () => {
+    if (!user || !dog || isLikeLoading) return;
+
+    setIsLikeLoading(true);
+    try {
+      if (isLiked) {
+        // いいねを取り消す
+        const { error } = await supabase
+          .from('dog_likes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('dog_id', dog.id);
+
+        if (error) throw error;
+
+        setIsLiked(false);
+        setLikeCount(prev => prev - 1);
+        setSuccess('いいねを取り消しました');
+      } else {
+        // いいねを追加
+        const { error } = await supabase
+          .from('dog_likes')
+          .insert({
+            user_id: user.id,
+            dog_id: dog.id
+          });
+
+        if (error) throw error;
+
+        setIsLiked(true);
+        setLikeCount(prev => prev + 1);
+        setSuccess('いいねしました');
+      }
+
+      setTimeout(() => setSuccess(''), 2000);
+    } catch (error) {
+      console.error('Error handling like:', error);
+      setError('いいねの処理に失敗しました');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setIsLikeLoading(false);
+    }
+  };
+
+  const sendFriendRequest = async () => {
+    if (!user || !dog) return;
+
+    setIsSendingRequest(true);
+    try {
+      const { error } = await supabase
+        .from('friend_requests')
+        .insert({
+          requester_id: user.id,
+          requested_id: dog.owner_id,
+          message: `ドッグランでお会いした際は、よろしくお願いします！`
+        });
+
+      if (error) throw error;
+
+      setHasSentRequest(true);
+      setSuccess('友達申請を送信しました');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      setError('友達申請の送信に失敗しました');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setIsSendingRequest(false);
+    }
   };
 
   const calculateAge = (birthDate: string) => {
@@ -89,6 +229,22 @@ export function DogProfile() {
     }
     
     return age;
+  };
+
+  const getDogGenderIcon = (gender: string) => {
+    return gender === 'オス' ? '♂' : '♀';
+  };
+
+  const getDogHonorific = (gender: string) => {
+    return gender === 'オス' ? 'くん' : 'ちゃん';
+  };
+
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
 
   if (isLoading) {
@@ -131,6 +287,14 @@ export function DogProfile() {
           ホームに戻る
         </Link>
       </div>
+
+      {/* エラー・成功メッセージ */}
+      {success && (
+        <div className="mb-6 p-4 bg-green-50 rounded-lg flex items-start">
+          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
+          <p className="text-green-800">{success}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* メイン情報 */}
@@ -178,13 +342,67 @@ export function DogProfile() {
                     </span>
                   </div>
                   
-                  <div className="flex items-center">
-                    <Heart className="w-5 h-5 text-gray-500 mr-3" />
-                    <span className="text-lg text-gray-700">
-                      {dog.gender}
-                    </span>
+                                     <div className="flex items-center">
+                     <Heart className="w-5 h-5 text-gray-500 mr-3" />
+                     <span className="text-lg text-gray-700">
+                       {dog.gender}
+                     </span>
+                   </div>
+                 </div>
+
+                 {/* いいねボタン */}
+                 <div className="mt-6 pt-4 border-t border-gray-200">
+                   <div className="flex items-center justify-between">
+                     <div className="flex items-center space-x-2">
+                       <span className="text-sm text-gray-600">{likeCount}件のいいね</span>
+                     </div>
+                     {user && (
+                       <Button
+                         onClick={handleLike}
+                         disabled={isLikeLoading}
+                         variant={isLiked ? "primary" : "secondary"}
+                         size="sm"
+                         className={`px-4 py-2 ${isLiked ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white hover:bg-pink-50 text-pink-600 border-pink-300'}`}
+                       >
+                         <Heart className={`w-4 h-4 mr-1 ${isLiked ? 'fill-current' : ''}`} />
+                         {isLiked ? 'いいね済み' : 'いいね'}
+                       </Button>
+                     )}
+                   </div>
+                 </div>
+
+                {/* 友達申請ボタン（自分の犬でない場合のみ表示） */}
+                {user && dog.owner_id !== user.id && (
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <div className="text-center">
+                      {hasSentRequest ? (
+                        <div className="flex items-center justify-center text-green-600">
+                          <CheckCircle className="w-5 h-5 mr-2" />
+                          <span className="font-medium">友達申請済み</span>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={sendFriendRequest}
+                          isLoading={isSendingRequest}
+                          className="px-8 py-3"
+                        >
+                          <UserPlus className="w-5 h-5 mr-2" />
+                          友達申請を送る
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-1">友達申請について</p>
+                        <p>
+                          友達申請を送ると、相手の飼い主さんに通知が届きます。
+                          承認されると、メッセージのやり取りができるようになります。
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </Card>
@@ -214,7 +432,7 @@ export function DogProfile() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500">未記入</p>
+              <p className="text-gray-500">まだドッグランの利用履歴がありません</p>
             )}
           </Card>
 

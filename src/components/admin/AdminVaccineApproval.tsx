@@ -341,7 +341,7 @@ export const AdminVaccineApproval: React.FC<AdminVaccineApprovalProps> = ({
                     onClick={() => handleImageClick(getVaccineImageUrl(selectedVaccine.rabies_vaccine_image) || getPlaceholderImage(), "狂犬病ワクチン証明書", "rabies")}
                   />
                   {/* クリック可能アイコン */}
-                  <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white p-1 rounded">
+                  <div className="absolute top-2 left-2 bg-white bg-opacity-90 text-gray-800 p-1 rounded border shadow-sm">
                     <ZoomIn className="w-4 h-4" />
                   </div>
                   {imageErrorStates[`rabies-${selectedVaccine.id}`] && (
@@ -381,7 +381,7 @@ export const AdminVaccineApproval: React.FC<AdminVaccineApprovalProps> = ({
                     onClick={() => handleImageClick(getVaccineImageUrl(selectedVaccine.combo_vaccine_image) || getPlaceholderImage(), "混合ワクチン証明書", "combo")}
                   />
                   {/* クリック可能アイコン */}
-                  <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white p-1 rounded">
+                  <div className="absolute top-2 left-2 bg-white bg-opacity-90 text-gray-800 p-1 rounded border shadow-sm">
                     <ZoomIn className="w-4 h-4" />
                   </div>
                   {imageErrorStates[`combo-${selectedVaccine.id}`] && (
@@ -445,7 +445,7 @@ export const AdminVaccineApproval: React.FC<AdminVaccineApprovalProps> = ({
             <div className="relative max-w-full max-h-full">
               {/* コントロールバー */}
               <div className="absolute top-4 right-4 flex items-center space-x-2 z-10">
-                <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
+                <div className="bg-white bg-opacity-90 text-gray-800 px-3 py-1 rounded border shadow-sm text-sm">
                   {enlargedImage.type === 'rabies' ? '狂犬病ワクチン' : '混合ワクチン'}
                 </div>
                 <Button
@@ -488,7 +488,7 @@ export const AdminVaccineApproval: React.FC<AdminVaccineApprovalProps> = ({
               </div>
               
               {/* 使用方法のヒント */}
-              <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 text-white px-3 py-2 rounded text-sm">
+              <div className="absolute bottom-4 left-4 bg-white bg-opacity-90 text-gray-800 px-3 py-2 rounded border shadow-sm text-sm">
                 <p>拡大/縮小: ズームボタンを使用</p>
                 <p>閉じる: Xボタンまたは画像外をクリック</p>
               </div>
@@ -589,7 +589,7 @@ export const AdminVaccineApproval: React.FC<AdminVaccineApprovalProps> = ({
           <div className="relative max-w-full max-h-full">
             {/* コントロールバー */}
             <div className="absolute top-4 right-4 flex items-center space-x-2 z-10">
-              <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
+              <div className="bg-white bg-opacity-90 text-gray-800 px-3 py-1 rounded border shadow-sm text-sm">
                 {enlargedImage.type === 'rabies' ? '狂犬病ワクチン' : '混合ワクチン'}
               </div>
               <Button
@@ -632,7 +632,7 @@ export const AdminVaccineApproval: React.FC<AdminVaccineApprovalProps> = ({
             </div>
             
             {/* 使用方法のヒント */}
-            <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 text-white px-3 py-2 rounded text-sm">
+            <div className="absolute bottom-4 left-4 bg-white bg-opacity-90 text-gray-800 px-3 py-2 rounded border shadow-sm text-sm">
               <p>拡大/縮小: ズームボタンを使用</p>
               <p>閉じる: Xボタンまたは画像外をクリック</p>
             </div>

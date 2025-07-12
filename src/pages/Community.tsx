@@ -24,10 +24,11 @@ import Button from '../components/Button';
 import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 import type { FriendRequest, Friendship, Notification, Message, Dog, DogEncounter } from '../types';
+import { NearbyDogs } from '../components/NearbyDogs';
 
 export function Community() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'notifications' | 'messages' | 'blacklist'>('friends');
+  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'notifications' | 'messages' | 'blacklist' | 'nearby'>('friends');
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [friends, setFriends] = useState<Friendship[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -330,18 +331,18 @@ export function Community() {
     }
   };
 
-  const sendFriendRequest = async (targetUserId: string, dogName: string) => {
+    const sendFriendRequest = async (targetUserId: string, dogName: string) => {
     try {
       const { error } = await supabase
         .from('friend_requests')
         .insert({
           requester_id: user?.id,
           requested_id: targetUserId,
-          message: `${dogName}の飼い主さんと友達になりたいです！`
+          message: `ドッグランでお会いした際は、よろしくお願いします！`
         });
-      
+
       if (error) throw error;
-      
+
       setSuccess('友達申請を送信しました');
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
@@ -398,13 +399,13 @@ export function Community() {
     return gender === 'オス' ? 'くん' : 'ちゃん';
   };
 
-  // ユーザー名を「ワンちゃん名+くん/ちゃん+の飼い主さん」形式で表示
+  // ユーザー名を匿名化して表示（プライバシー保護）
   const formatUserDisplayName = (user: any, dogs?: any[]) => {
     if (dogs && dogs.length > 0) {
       const firstDog = dogs[0];
       return `${firstDog.name}${getDogHonorific(firstDog.gender)}の飼い主さん`;
     }
-    return `${user?.name || 'ユーザー'}さん`;
+    return 'ワンちゃんの飼い主さん';
   };
 
   if (isLoading) {
@@ -499,6 +500,17 @@ export function Community() {
                   {messages.filter(m => !m.read && m.receiver_id === user?.id).length}
                 </span>
               )}
+            </button>
+            <button
+              className={`px-4 py-2 font-medium relative whitespace-nowrap ${
+                activeTab === 'nearby'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              onClick={() => setActiveTab('nearby')}
+            >
+              <MapPin className="w-5 h-5 inline mr-1" />
+              近くのワンちゃん
             </button>
             <button
               className={`px-4 py-2 font-medium relative whitespace-nowrap ${
@@ -607,7 +619,7 @@ export function Community() {
                             <Users className="w-6 h-6 text-gray-500" />
                           </div>
                           <div>
-                            <h3 className="font-semibold">{request.requester.name}さんからのリクエスト</h3>
+                            <h3 className="font-semibold">ワンちゃんの飼い主さんからのリクエスト</h3>
                             <p className="text-sm text-gray-600">
                               {new Date(request.created_at).toLocaleDateString('ja-JP')}
                             </p>
@@ -641,6 +653,24 @@ export function Community() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* 近くのワンちゃんタブ */}
+          {activeTab === 'nearby' && (
+            <div className="space-y-6">
+              <div className="block lg:hidden">
+                <NearbyDogs />
+              </div>
+              <div className="hidden lg:block">
+                <Card className="p-6 text-center">
+                  <MapPin className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">近くのワンちゃんたち</h3>
+                  <p className="text-gray-600">
+                    この機能はサイドバーでご利用いただけます
+                  </p>
+                </Card>
+              </div>
             </div>
           )}
 
@@ -680,7 +710,7 @@ export function Community() {
                               {blacklisted.blacklisted_dog?.gender && getDogHonorific(blacklisted.blacklisted_dog.gender)}
                             </h3>
                             <p className="text-sm text-red-700">
-                              飼い主: {formatUserDisplayName(blacklisted.blacklisted_dog?.owner, [blacklisted.blacklisted_dog])}
+                              飼い主: ワンちゃんの飼い主さん
                             </p>
                             <p className="text-sm text-red-600 mt-1">
                               理由: {blacklisted.reason}
@@ -788,7 +818,7 @@ export function Community() {
                           <div className="flex-1">
                             <div className="flex justify-between">
                               <h3 className="font-semibold">
-                                {isReceived ? otherUser?.name : '自分'} {isReceived ? 'から' : 'から'}
+                                {isReceived ? 'ワンちゃんの飼い主さん' : '自分'} {isReceived ? 'から' : 'から'}
                               </h3>
                               <p className="text-xs text-gray-500">
                                 {new Date(message.created_at).toLocaleDateString('ja-JP')}
@@ -816,7 +846,7 @@ export function Community() {
               <div className="bg-white rounded-lg max-w-lg w-full">
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">{selectedFriend.friend.name}さんとのメッセージ</h2>
+                    <h2 className="text-xl font-semibold">ワンちゃんの飼い主さんとのメッセージ</h2>
                     <button
                       onClick={() => setSelectedFriend(null)}
                       className="text-gray-500 hover:text-gray-700"
@@ -883,6 +913,9 @@ export function Community() {
         
         {/* サイドバー */}
         <div className="space-y-6">
+          {/* 近くのワンちゃんたち */}
+          <NearbyDogs />
+          
           {/* 最近の出会い */}
           <Card className="p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center">

@@ -35,6 +35,10 @@ const Checkout = lazy(() => import('./pages/Checkout').then(module => ({ default
 const OrderHistory = lazy(() => import('./pages/OrderHistory').then(module => ({ default: module.OrderHistory })));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 const AdminManagement = lazy(() => import('./pages/AdminManagement').then(module => ({ default: module.AdminManagement })));
+const AdminUserManagement = lazy(() => import('./pages/AdminUserManagement').then(module => ({ default: module.AdminUserManagement })));
+const AdminParkManagement = lazy(() => import('./pages/AdminParkManagement').then(module => ({ default: module.AdminParkManagement })));
+const AdminReservationManagement = lazy(() => import('./pages/AdminReservationManagement').then(module => ({ default: module.AdminReservationManagement })));
+const AdminSalesManagement = lazy(() => import('./pages/AdminSalesManagement').then(module => ({ default: module.AdminSalesManagement })));
 const AdminTasks = lazy(() => import('./pages/AdminTasks').then(module => ({ default: module.AdminTasks })));
 const AdminRevenueReport = lazy(() => import('./pages/AdminRevenueReport').then(module => ({ default: module.AdminRevenueReport })));
 const AccessControl = lazy(() => import('./pages/AccessControl').then(module => ({ default: module.AccessControl })));
@@ -130,6 +134,7 @@ function App() {
             <Route path="/news/:newsId" element={<NewsDetail />} />
             <Route path="/news/park/:parkId" element={<NewParkDetail />} />
             <Route path="/dog/:id" element={<DogProfile />} />
+            <Route path="/dog-profile/:dogId" element={<DogProfile />} />
             <Route path="/two-factor-setup" element={<ProtectedRoute><TwoFactorSetup /></ProtectedRoute>} />
             <Route path="/two-factor-verify" element={<ProtectedRoute><TwoFactorVerify /></ProtectedRoute>} />
             <Route path="/dog-info" element={<DogInfo />} />
@@ -156,6 +161,10 @@ function App() {
             <Route path="/park-registration-agreement" element={<ProtectedRoute><ParkRegistrationAgreement /></ProtectedRoute>} />
             <Route path="/register-park" element={<ProtectedRoute><ParkRegistration /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute><AdminUserManagement /></ProtectedRoute>} />
+            <Route path="/admin/parks" element={<ProtectedRoute><AdminParkManagement /></ProtectedRoute>} />
+            <Route path="/admin/reservations" element={<ProtectedRoute><AdminReservationManagement /></ProtectedRoute>} />
+            <Route path="/admin/sales" element={<ProtectedRoute><AdminSalesManagement /></ProtectedRoute>} />
             <Route path="/admin/management" element={<ProtectedRoute><AdminManagement /></ProtectedRoute>} />
             <Route path="/admin/tasks" element={<ProtectedRoute><AdminTasks /></ProtectedRoute>} />
             <Route path="/admin/shop" element={<ProtectedRoute><AdminShopManagement /></ProtectedRoute>} />

@@ -65,6 +65,7 @@ const ErrorNotification: React.FC<ErrorNotificationProps> = ({
       }, 5000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [error, onClear]);
 
   if (!error) return null;
@@ -120,7 +121,7 @@ const ErrorNotification: React.FC<ErrorNotificationProps> = ({
         <Button
           key="retry"
           size="sm"
-          onClick={onRetry}
+          onClick={() => void onRetry()}
           className={colors.button}
         >
           <RefreshCw className="w-4 h-4 mr-1" />

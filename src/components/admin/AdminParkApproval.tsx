@@ -197,7 +197,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
               
               {/* クリックで拡大のヒント */}
               <div className="absolute bottom-4 right-4">
-                <span className="px-2 py-1 bg-black bg-opacity-50 text-white text-xs rounded">
+                <span className="px-2 py-1 bg-white bg-opacity-90 text-gray-800 text-xs rounded border shadow-sm">
                   クリックで拡大
                 </span>
               </div>
@@ -450,7 +450,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                     
                     {/* 画像タイプラベル */}
                     <div className="absolute bottom-2 left-2">
-                      <span className="px-2 py-1 bg-black bg-opacity-70 text-white text-xs rounded">
+                      <span className="px-2 py-1 bg-white bg-opacity-90 text-gray-800 text-xs rounded border shadow-sm">
                         {getImageTypeLabel(image.image_type)}
                       </span>
                     </div>

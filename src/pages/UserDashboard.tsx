@@ -10,7 +10,8 @@ import {
   CheckCircle,
   MapPin,
   Users,
-  ShoppingBag
+  ShoppingBag,
+  Heart
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -40,6 +41,7 @@ export function UserDashboard() {
   const [recentReservations, setRecentReservations] = useState<Reservation[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [news, setNews] = useState<NewsAnnouncement[]>([]);
+  const [likedDogs, setLikedDogs] = useState<Dog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { isActive: hasSubscription } = useSubscription();
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -94,7 +96,8 @@ export function UserDashboard() {
         parksResponse,
         reservationsResponse,
         notificationsResponse,
-        newsResponse
+        newsResponse,
+        likedDogsResponse
       ] = await Promise.all([
         supabase
           .from('profiles')
@@ -133,11 +136,24 @@ export function UserDashboard() {
           .from('news_announcements')
           .select('*')
           .order('created_at', { ascending: false })
-          .limit(3)
+          .limit(3),
+        
+        supabase
+          .from('dog_likes')
+          .select(`
+            *,
+            dog:dogs(
+              *,
+              vaccine_certifications(*)
+            )
+          `)
+          .eq('user_id', user?.id)
+          .order('created_at', { ascending: false })
+          .limit(10)
       ]);
 
       // Error handling
-      [profileResponse, dogsResponse, parksResponse, reservationsResponse, notificationsResponse, newsResponse]
+      [profileResponse, dogsResponse, parksResponse, reservationsResponse, notificationsResponse, newsResponse, likedDogsResponse]
         .forEach((response, index) => {
           if (response.error) {
             console.error(`Error in response ${index}:`, response.error);
@@ -150,6 +166,7 @@ export function UserDashboard() {
       setRecentReservations(reservationsResponse.data || []);
       setNotifications(notificationsResponse.data || []);
       setNews(newsResponse.data || []);
+      setLikedDogs((likedDogsResponse.data || []).map((like: any) => like.dog).filter(Boolean));
       
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -555,6 +572,74 @@ export function UserDashboard() {
             onMarkAsRead={markNotificationAsRead}
           />
         )}
+
+        {/* Liked Dogs Section */}
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4 flex items-center">
+            <Heart className="w-6 h-6 text-pink-600 mr-2" />
+            いいねしたワンちゃん ({likedDogs.length}匹)
+          </h2>
+          
+          {likedDogs.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Heart className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-lg font-medium mb-2">まだいいねしたワンちゃんはいません</p>
+              <p className="text-sm">
+                気になるワンちゃんがいたら、いいねしてみましょう！
+              </p>
+              <Link to="/community" className="mt-4 inline-block">
+                <Button size="sm">
+                  コミュニティを見る
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {likedDogs.map((dog) => (
+                <Link
+                  key={dog.id}
+                  to={`/dog/${dog.id}`}
+                  className="group block bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow overflow-hidden"
+                >
+                  <div className="aspect-square bg-gray-200 overflow-hidden">
+                    {dog.image_url ? (
+                      <img
+                        src={dog.image_url}
+                        alt={dog.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl">
+                        🐕
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-gray-900 truncate">
+                        {dog.name}{dog.gender === 'オス' ? 'くん' : 'ちゃん'}
+                      </h3>
+                      <Heart className="w-4 h-4 text-pink-500 fill-current" />
+                    </div>
+                    <p className="text-sm text-gray-600 mb-1">{dog.breed}</p>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>{dog.gender === 'オス' ? '♂' : '♀'} {dog.gender}</span>
+                      {(dog as any).like_count > 0 && (
+                        <span>{(dog as any).like_count}件のいいね</span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+          
+          {likedDogs.length >= 10 && (
+            <div className="mt-4 text-center">
+              <p className="text-sm text-gray-500">最新の10匹を表示中</p>
+            </div>
+          )}
+        </Card>
 
 
       </div>

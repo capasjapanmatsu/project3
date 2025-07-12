@@ -45,16 +45,16 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
   
   const variants = {
     primary: [
-      'bg-blue-700 text-white',
-      'hover:bg-blue-800 disabled:bg-blue-400',
-      'focus:ring-blue-600',
-      'dark:bg-blue-600 dark:hover:bg-blue-700'
-    ].join(' '),
-    secondary: [
-      'bg-white text-blue-700 border border-blue-700',
+      'bg-white text-blue-700 border-2 border-blue-700',
       'hover:bg-blue-50 disabled:bg-gray-100',
       'focus:ring-blue-600',
-      'dark:bg-gray-800 dark:text-blue-400 dark:border-blue-400 dark:hover:bg-gray-700'
+      'dark:bg-white dark:text-blue-700 dark:border-blue-700 dark:hover:bg-blue-50'
+    ].join(' '),
+    secondary: [
+      'bg-gray-100 text-gray-700 border border-gray-300',
+      'hover:bg-gray-200 disabled:bg-gray-50',
+      'focus:ring-gray-500',
+      'dark:bg-gray-100 dark:text-gray-700 dark:border-gray-300 dark:hover:bg-gray-200'
     ].join(' '),
     danger: [
       'bg-red-600 text-white',

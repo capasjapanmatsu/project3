@@ -153,55 +153,63 @@ export function AdminDashboard() {
 
       {/* 統計カード */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">総ユーザー数</p>
-              <p className="text-2xl font-bold text-blue-600">{stats.totalUsers}</p>
-              <p className="text-xs text-green-600">+{stats.newUsersThisMonth} 今月</p>
+        <Link to="/admin/users">
+          <Card className="p-6 hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">総ユーザー数</p>
+                <p className="text-2xl font-bold text-blue-600">{stats.totalUsers}</p>
+                <p className="text-xs text-green-600">+{stats.newUsersThisMonth} 今月</p>
+              </div>
+              <Users className="w-8 h-8 text-blue-600" />
             </div>
-            <Users className="w-8 h-8 text-blue-600" />
-          </div>
-        </Card>
+          </Card>
+        </Link>
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">総ドッグラン数</p>
-              <p className="text-2xl font-bold text-green-600">{stats.totalParks}</p>
-              {stats.pendingParks > 0 && (
-                <p className="text-xs text-orange-600">承認待ち: {stats.pendingParks}</p>
-              )}
+        <Link to="/admin/parks">
+          <Card className="p-6 hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">総ドッグラン数</p>
+                <p className="text-2xl font-bold text-green-600">{stats.totalParks}</p>
+                {stats.pendingParks > 0 && (
+                  <p className="text-xs text-orange-600">承認待ち: {stats.pendingParks}</p>
+                )}
+              </div>
+              <MapPin className="w-8 h-8 text-green-600" />
             </div>
-            <MapPin className="w-8 h-8 text-green-600" />
-          </div>
-        </Card>
+          </Card>
+        </Link>
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">今月の予約数</p>
-              <p className="text-2xl font-bold text-purple-600">{stats.totalReservations}</p>
-              <p className="text-xs text-purple-600">サブスク会員: {stats.activeSubscriptions}</p>
+        <Link to="/admin/reservations">
+          <Card className="p-6 hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">今月の予約数</p>
+                <p className="text-2xl font-bold text-purple-600">{stats.totalReservations}</p>
+                <p className="text-xs text-purple-600">サブスク会員: {stats.activeSubscriptions}</p>
+              </div>
+              <Calendar className="w-8 h-8 text-purple-600" />
             </div>
-            <Calendar className="w-8 h-8 text-purple-600" />
-          </div>
-        </Card>
+          </Card>
+        </Link>
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">今月の売上</p>
-              <p className="text-2xl font-bold text-orange-600">¥{stats.monthlyRevenue.toLocaleString()}</p>
-              {stats.lastMonthRevenue > 0 && (
-                <p className="text-xs text-gray-500">
-                  前月比: {Math.round((stats.monthlyRevenue / stats.lastMonthRevenue - 1) * 100)}%
-                </p>
-              )}
+        <Link to="/admin/sales">
+          <Card className="p-6 hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">今月の売上</p>
+                <p className="text-2xl font-bold text-orange-600">¥{stats.monthlyRevenue.toLocaleString()}</p>
+                {stats.lastMonthRevenue > 0 && (
+                  <p className="text-xs text-gray-500">
+                    前月比: {Math.round((stats.monthlyRevenue / stats.lastMonthRevenue - 1) * 100)}%
+                  </p>
+                )}
+              </div>
+              <DollarSign className="w-8 h-8 text-orange-600" />
             </div>
-            <DollarSign className="w-8 h-8 text-orange-600" />
-          </div>
-        </Card>
+          </Card>
+        </Link>
       </div>
 
       {/* 緊急対応が必要な項目 */}

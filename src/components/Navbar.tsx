@@ -5,6 +5,14 @@ import { useState, useEffect, useCallback, memo } from 'react';
 import { supabase } from '../utils/supabase';
 import { useSubscription } from '../hooks/useSubscription';
 
+interface ProfileData {
+  name?: string;
+  user_type?: string;
+  postal_code?: string;
+  address?: string;
+  phone_number?: string;
+}
+
 // Memoize the Navbar component to prevent unnecessary re-renders
 export const Navbar = memo(function Navbar() {
   const { user, logout, isAdmin } = useAuth();
@@ -34,7 +42,7 @@ export const Navbar = memo(function Navbar() {
         setUserName(data.name);
       } else {
         // Use metadata or email if profile name is not available
-        const metaName = user.user_metadata?.name || user.email?.split('@')[0];
+        const metaName = user.user_metadata?.name as string | undefined || user.email?.split('@')[0];
         
         if (metaName) {
           setUserName(metaName);
@@ -115,9 +123,9 @@ export const Navbar = memo(function Navbar() {
   useEffect(() => {
     if (user && isAdmin) {
       // Fetch data with error handling
-      fetchUserName().catch(console.error);
-      fetchUnreadNotifications().catch(console.error);
-      fetchCartItemCount().catch(console.error);
+      void fetchUserName();
+      void fetchUnreadNotifications();
+      void fetchCartItemCount();
 
       // Set up real-time subscriptions with error handling
       const notificationSubscription = supabase
@@ -128,11 +136,11 @@ export const Navbar = memo(function Navbar() {
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         }, () => {
-          fetchUnreadNotifications().catch(console.error);
+          void fetchUnreadNotifications();
         })
-        .subscribe((status) => {
-          if (status === 'SUBSCRIPTION_ERROR') {
-            console.error('Failed to subscribe to notifications');
+        .subscribe((status, err) => {
+          if (err) {
+            console.error('Failed to subscribe to notifications', err);
           }
         });
 
@@ -144,11 +152,11 @@ export const Navbar = memo(function Navbar() {
           table: 'cart_items',
           filter: `user_id=eq.${user.id}`,
         }, () => {
-          fetchCartItemCount().catch(console.error);
+          void fetchCartItemCount();
         })
-        .subscribe((status) => {
-          if (status === 'SUBSCRIPTION_ERROR') {
-            console.error('Failed to subscribe to cart items');
+        .subscribe((status, err) => {
+          if (err) {
+            console.error('Failed to subscribe to cart items', err);
           }
         });
 
@@ -160,20 +168,21 @@ export const Navbar = memo(function Navbar() {
           table: 'profiles',
           filter: `id=eq.${user.id}`,
         }, (payload) => {
-          if (payload.new && payload.new.name) {
-            setUserName(payload.new.name);
+          const newRecord = payload.new as ProfileData | null;
+          if (newRecord?.name) {
+            setUserName(newRecord.name);
           }
         })
-        .subscribe((status) => {
-          if (status === 'SUBSCRIPTION_ERROR') {
-            console.error('Failed to subscribe to profile changes');
+        .subscribe((status, err) => {
+          if (err) {
+            console.error('Failed to subscribe to profile changes', err);
           }
         });
 
       return () => {
-        notificationSubscription.unsubscribe();
-        cartSubscription.unsubscribe();
-        profileSubscription.unsubscribe();
+        void notificationSubscription.unsubscribe();
+        void cartSubscription.unsubscribe();
+        void profileSubscription.unsubscribe();
       };
     } else {
       // Reset state when user logs out
@@ -181,6 +190,7 @@ export const Navbar = memo(function Navbar() {
       setUnreadNotifications(0);
       setCartItemCount(0);
     }
+    return undefined;
   }, [user, isAdmin, fetchUserName, fetchUnreadNotifications, fetchCartItemCount]);
 
   const handleLogout = async () => {

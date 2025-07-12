@@ -43,7 +43,7 @@ export const SmartVaccineImage: React.FC<SmartVaccineImageProps> = ({
       }
     };
 
-    loadImage();
+    void loadImage();
   }, [imagePath]);
 
   // 画像の修復処理
@@ -90,7 +90,7 @@ export const SmartVaccineImage: React.FC<SmartVaccineImageProps> = ({
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      handleImageReupload(file);
+      void handleImageReupload(file);
     }
   };
 
@@ -157,7 +157,7 @@ export const SmartVaccineImage: React.FC<SmartVaccineImageProps> = ({
             <Button
               size="sm"
               variant="secondary"
-              onClick={handleRepairImage}
+              onClick={() => void handleRepairImage()}
               disabled={isRepairing}
             >
               {isRepairing ? (
