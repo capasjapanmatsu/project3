@@ -84,18 +84,25 @@ export function AdminUserManagement() {
       }
 
       if (!profiles || profiles.length === 0) {
+        console.log('No profiles found');
         setUsers([]);
         return;
       }
+      
+      console.log('Found profiles:', profiles.length);
+      console.log('Profile sample:', profiles[0]);
 
       // 管理者専用関数を使用してauth.usersテーブルからメール情報を取得
+      console.log('Calling get_admin_user_data function...');
       const { data: authUsers, error: authError } = await supabase
         .rpc('get_admin_user_data');
 
       if (authError) {
-        console.warn('Auth users fetch failed:', authError);
+        console.error('Auth users fetch failed:', authError);
+        console.error('Error details:', JSON.stringify(authError, null, 2));
       } else {
         console.log('Successfully fetched auth users:', authUsers?.length || 0);
+        console.log('Auth users data:', authUsers);
       }
 
       // 各ユーザーの関連データを取得
@@ -140,6 +147,12 @@ export function AdminUserManagement() {
           // auth.usersからメール情報を取得（利用可能な場合）
           const authUser = authUsers?.find((u: any) => u.id === profile.id);
           const actualEmail = authUser?.email;
+          
+          console.log(`Processing user ${profile.id}:`);
+          console.log('  Profile name:', profile.name);
+          console.log('  Found auth user:', !!authUser);
+          console.log('  Auth user email:', actualEmail);
+          console.log('  Will use email:', actualEmail || `user_${profile.id.slice(0, 8)}@unknown.com`);
 
           return {
             id: profile.id,
@@ -159,6 +172,12 @@ export function AdminUserManagement() {
           // エラーが発生した場合もauth.usersからメール情報を取得
           const authUser = authUsers?.find((u: any) => u.id === profile.id);
           const actualEmail = authUser?.email;
+          
+          console.log(`Error case - Processing user ${profile.id}:`);
+          console.log('  Profile name:', profile.name);
+          console.log('  Found auth user:', !!authUser);
+          console.log('  Auth user email:', actualEmail);
+          console.log('  Will use email:', actualEmail || `user_${profile.id.slice(0, 8)}@unknown.com`);
           
           return {
             id: profile.id,
