@@ -65,12 +65,13 @@ export function AdminUserManagement() {
       setIsLoading(true);
       setError('');
 
-      // ユーザープロファイル情報を取得
+      // ユーザープロファイル情報を取得（emailも含む）
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select(`
           id,
           name,
+          email,
           user_type,
           postal_code,
           address,
@@ -91,19 +92,6 @@ export function AdminUserManagement() {
       
       console.log('Found profiles:', profiles.length);
       console.log('Profile sample:', profiles[0]);
-
-      // 管理者専用関数を使用してauth.usersテーブルからメール情報を取得
-      console.log('Calling get_admin_user_data function...');
-      const { data: authUsers, error: authError } = await supabase
-        .rpc('get_admin_user_data');
-
-      if (authError) {
-        console.error('Auth users fetch failed:', authError);
-        console.error('Error details:', JSON.stringify(authError, null, 2));
-      } else {
-        console.log('Successfully fetched auth users:', authUsers?.length || 0);
-        console.log('Auth users data:', authUsers);
-      }
 
       // 各ユーザーの関連データを取得
       const userPromises = profiles.map(async (profile) => {
@@ -144,14 +132,12 @@ export function AdminUserManagement() {
             (sum, payment) => sum + (payment.total_amount || 0), 0
           );
 
-          // auth.usersからメール情報を取得（利用可能な場合）
-          const authUser = authUsers?.find((u: any) => u.id === profile.id);
-          const actualEmail = authUser?.email;
+          // profileから直接メール情報を取得
+          const actualEmail = profile.email;
           
           console.log(`Processing user ${profile.id}:`);
           console.log('  Profile name:', profile.name);
-          console.log('  Found auth user:', !!authUser);
-          console.log('  Auth user email:', actualEmail);
+          console.log('  Profile email:', actualEmail);
           console.log('  Will use email:', actualEmail || `user_${profile.id.slice(0, 8)}@unknown.com`);
 
           return {
@@ -160,8 +146,8 @@ export function AdminUserManagement() {
             email: actualEmail || `user_${profile.id.slice(0, 8)}@unknown.com`,
             phone: profile.phone_number || '',
             created_at: profile.created_at,
-            last_sign_in_at: authUser?.last_sign_in_at,
-            is_active: actualEmail ? (!!authUser?.email_confirmed_at && !authUser?.deleted_at) : true,
+            last_sign_in_at: '', // TODO: この情報が必要な場合は別途取得
+            is_active: !!actualEmail, // メールアドレスがあればアクティブとみなす
             subscription_status: subscription?.status || 'inactive',
             dog_count: dogCount || 0,
             reservation_count: reservationCount || 0,
@@ -169,14 +155,12 @@ export function AdminUserManagement() {
           } as UserData;
         } catch (err) {
           console.error(`Error fetching data for user ${profile.id}:`, err);
-          // エラーが発生した場合もauth.usersからメール情報を取得
-          const authUser = authUsers?.find((u: any) => u.id === profile.id);
-          const actualEmail = authUser?.email;
+          // エラーが発生した場合もprofileから直接メール情報を取得
+          const actualEmail = profile.email;
           
           console.log(`Error case - Processing user ${profile.id}:`);
           console.log('  Profile name:', profile.name);
-          console.log('  Found auth user:', !!authUser);
-          console.log('  Auth user email:', actualEmail);
+          console.log('  Profile email:', actualEmail);
           console.log('  Will use email:', actualEmail || `user_${profile.id.slice(0, 8)}@unknown.com`);
           
           return {
@@ -185,8 +169,8 @@ export function AdminUserManagement() {
             email: actualEmail || `user_${profile.id.slice(0, 8)}@unknown.com`,
             phone: profile.phone_number || '',
             created_at: profile.created_at,
-            last_sign_in_at: authUser?.last_sign_in_at,
-            is_active: actualEmail ? (!!authUser?.email_confirmed_at && !authUser?.deleted_at) : true,
+            last_sign_in_at: '',
+            is_active: !!actualEmail,
             subscription_status: 'inactive',
             dog_count: 0,
             reservation_count: 0,
