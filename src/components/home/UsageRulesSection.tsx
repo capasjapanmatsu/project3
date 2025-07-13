@@ -56,7 +56,7 @@ export const UsageRulesSection: React.FC = () => {
           
           <div className="bg-white p-6 rounded-lg shadow-sm">
             <h3 className="text-xl font-semibold text-gray-900 mb-3">施設貸し切り</h3>
-            <div className="text-3xl font-bold text-green-600 mb-2">¥5,000</div>
+            <div className="text-3xl font-bold text-green-600 mb-2">¥4,400</div>
             <p className="text-gray-600 mb-4">1時間の貸し切り料金</p>
             <ul className="text-sm text-gray-600 space-y-1">
               <li>• 完全プライベート空間</li>
