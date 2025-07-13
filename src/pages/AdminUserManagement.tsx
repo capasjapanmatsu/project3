@@ -88,11 +88,9 @@ export function AdminUserManagement() {
         return;
       }
 
-      // auth.usersテーブルからメール情報を取得
+      // 管理者専用関数を使用してauth.usersテーブルからメール情報を取得
       const { data: authUsers, error: authError } = await supabase
-        .from('auth.users')
-        .select('id, email, email_confirmed_at, created_at, last_sign_in_at, deleted_at')
-        .in('id', profiles.map(p => p.id));
+        .rpc('get_admin_user_data');
 
       if (authError) {
         console.warn('Auth users fetch failed:', authError);
