@@ -26,7 +26,7 @@ import { ParkImageGallery } from '../components/park/ParkImageGallery';
 import { ParkFacilityInfo } from '../components/park/ParkFacilityInfo';
 import { ParkReviewSection } from '../components/park/ParkReviewSection';
 import { ParkRentalInfo } from '../components/park/ParkRentalInfo';
-import type { DogPark, DogParkReview, UserParkReview, Dog, Reservation, Profile } from '../types';
+import type { DogPark, DogParkReview, UserParkReview, Dog, Reservation, Profile, ReviewImage } from '../types';
 
 interface ParkImage {
   id: string;
@@ -39,6 +39,16 @@ interface SmartLock {
   lock_id: string;
   lock_name: string;
   park_id: string;
+}
+
+interface MaintenanceInfo {
+  id: string;
+  title: string;
+  description?: string;
+  start_date: string;
+  end_date: string;
+  is_emergency: boolean;
+  status: 'scheduled' | 'active' | 'completed' | 'cancelled';
 }
 
 export function DogParkDetail() {
@@ -71,6 +81,8 @@ export function DogParkDetail() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [error, setError] = useState<string | null>(null);
+  const [maintenanceInfo, setMaintenanceInfo] = useState<MaintenanceInfo[]>([]);
+  const [currentMaintenance, setCurrentMaintenance] = useState<MaintenanceInfo | null>(null);
 
   useEffect(() => {
     if (parkId) {
@@ -258,6 +270,29 @@ export function DogParkDetail() {
         if (!userReservationError && userReservationData) {
           setUserReservation(userReservationData);
         }
+      }
+
+      // メンテナンス情報を取得（現在進行中または今後のメンテナンス）
+      const { data: maintenanceData, error: maintenanceError } = await supabase
+        .from('park_maintenance')
+        .select('*')
+        .eq('park_id', parkId)
+        .in('status', ['scheduled', 'active'])
+        .gte('end_date', new Date().toISOString())
+        .order('start_date', { ascending: true });
+
+      if (!maintenanceError && maintenanceData) {
+        setMaintenanceInfo(maintenanceData);
+        
+        // 現在メンテナンス中の情報を取得
+        const now = new Date();
+        const activeMaintenance = maintenanceData.find(m => {
+          const startDate = new Date(m.start_date);
+          const endDate = new Date(m.end_date);
+          return startDate <= now && endDate > now;
+        });
+        
+        setCurrentMaintenance(activeMaintenance || null);
       }
     } catch (error) {
       setError((error as Error).message || 'エラーが発生しました');
@@ -543,11 +578,21 @@ export function DogParkDetail() {
                       </div>
                     </div>
                   </div>
-                  <Link to={`/parks/${park.id}/reserve`}>
-                    <Button className="bg-blue-600 hover:bg-blue-700">
-                      予約する
+                  {currentMaintenance ? (
+                    <Button 
+                      className="bg-gray-400 cursor-not-allowed" 
+                      disabled
+                      title="メンテナンス中のため予約できません"
+                    >
+                      予約不可
                     </Button>
-                  </Link>
+                  ) : (
+                    <Link to={`/parks/${park.id}/reserve`}>
+                      <Button className="bg-blue-600 hover:bg-blue-700">
+                        予約する
+                      </Button>
+                    </Link>
+                  )}
                 </div>
 
                 <p className="text-gray-700 mb-6">{park.description}</p>
@@ -590,6 +635,144 @@ export function DogParkDetail() {
                   </div>
                 </div>
               </Card>
+
+              {/* メンテナンス情報 */}
+              {(currentMaintenance || maintenanceInfo.length > 0) && (
+                <Card className="p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                    <AlertTriangle className="w-6 h-6 text-yellow-600 mr-2" />
+                    メンテナンス情報
+                  </h2>
+                  
+                  {/* 現在のメンテナンス */}
+                  {currentMaintenance && (
+                    <div className={`mb-4 p-4 rounded-lg ${
+                      currentMaintenance.is_emergency ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'
+                    } border`}>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <AlertTriangle className={`w-5 h-5 ${
+                          currentMaintenance.is_emergency ? 'text-red-600' : 'text-yellow-600'
+                        }`} />
+                        <span className={`text-lg font-semibold ${
+                          currentMaintenance.is_emergency ? 'text-red-800' : 'text-yellow-800'
+                        }`}>
+                          {currentMaintenance.is_emergency ? '緊急メンテナンス中' : 'メンテナンス中'}
+                        </span>
+                      </div>
+                      <p className={`text-lg font-medium ${
+                        currentMaintenance.is_emergency ? 'text-red-700' : 'text-yellow-700'
+                      } mb-2`}>
+                        {currentMaintenance.title}
+                      </p>
+                      {currentMaintenance.description && (
+                        <p className={`text-sm ${
+                          currentMaintenance.is_emergency ? 'text-red-600' : 'text-yellow-600'
+                        } mb-3`}>
+                          {currentMaintenance.description}
+                        </p>
+                      )}
+                      <div className="flex items-center space-x-4 text-sm">
+                        <div className="flex items-center space-x-1">
+                          <Clock className={`w-4 h-4 ${
+                            currentMaintenance.is_emergency ? 'text-red-600' : 'text-yellow-600'
+                          }`} />
+                          <span className={`font-medium ${
+                            currentMaintenance.is_emergency ? 'text-red-700' : 'text-yellow-700'
+                          }`}>
+                            {new Date(currentMaintenance.start_date).toLocaleDateString('ja-JP', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                            {' '}
+                            {new Date(currentMaintenance.start_date).toLocaleTimeString('ja-JP', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                            〜
+                            {new Date(currentMaintenance.end_date).toLocaleDateString('ja-JP', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                            {' '}
+                            {new Date(currentMaintenance.end_date).toLocaleTimeString('ja-JP', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                      <p className={`text-sm ${
+                        currentMaintenance.is_emergency ? 'text-red-600' : 'text-yellow-600'
+                      } mt-3 font-medium`}>
+                        ※メンテナンス期間中は休業となります
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 今後のメンテナンス予定 */}
+                  {maintenanceInfo.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        今後のメンテナンス予定
+                      </h3>
+                      <div className="space-y-3">
+                        {maintenanceInfo
+                          .filter(m => m.status === 'scheduled' && new Date(m.start_date) > new Date())
+                          .slice(0, 3)
+                          .map((maintenance, index) => (
+                            <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    <Clock className="w-4 h-4 text-gray-600" />
+                                    <span className="font-medium text-gray-900">
+                                      {maintenance.title}
+                                    </span>
+                                    {maintenance.is_emergency && (
+                                      <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                                        緊急
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-600 mb-2">
+                                    {new Date(maintenance.start_date).toLocaleDateString('ja-JP', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    })}
+                                    {' '}
+                                    {new Date(maintenance.start_date).toLocaleTimeString('ja-JP', {
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                    〜
+                                    {new Date(maintenance.end_date).toLocaleDateString('ja-JP', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    })}
+                                    {' '}
+                                    {new Date(maintenance.end_date).toLocaleTimeString('ja-JP', {
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </p>
+                                  {maintenance.description && (
+                                    <p className="text-sm text-gray-500">
+                                      {maintenance.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              )}
 
               {/* スマートロック操作セクション */}
               {smartLocks.length > 0 && userHasAccess && (

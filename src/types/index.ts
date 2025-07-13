@@ -292,6 +292,14 @@ export interface DogParkReview {
   dog_name: string;
   dog_image_url?: string;
   dog_breed: string;
+  main_image_url?: string;
+  review_images?: ReviewImage[];
+  image_count?: number;
+}
+
+export interface ReviewImage {
+  url: string;
+  caption?: string;
 }
 
 export interface UserParkReview {

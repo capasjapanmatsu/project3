@@ -65,9 +65,10 @@ export function Login() {
       }
       // 通常ログイン成功時
       navigate('/dashboard');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Login error:', err);
-      setError(err.message || 'ログインに失敗しました');
+      const errorMessage = err instanceof Error ? err.message : 'ログインに失敗しました';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -112,7 +113,7 @@ export function Login() {
           </Button>
         </div>
         {!isPasswordLogin ? (
-          <form onSubmit={handleMagicLink} className="p-6">
+          <form onSubmit={(e) => void handleMagicLink(e)} className="p-6">
             <div className="text-center mb-6">
               <Mail className="w-12 h-12 text-blue-600 mx-auto mb-4" />
               <h2 className="text-xl font-semibold mb-2">Magic Linkでログイン</h2>
@@ -164,7 +165,7 @@ export function Login() {
             </div>
           </form>
         ) : (
-          <form onSubmit={handlePasswordLogin} className="p-6">
+          <form onSubmit={(e) => void handlePasswordLogin(e)} className="p-6">
             <div className="text-center mb-6">
               <Lock className="w-12 h-12 text-blue-600 mx-auto mb-4" />
               <h2 className="text-xl font-semibold mb-2">パスワードでログイン</h2>

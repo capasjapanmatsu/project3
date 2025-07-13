@@ -111,8 +111,8 @@ export function Home() {
   };
 
   useEffect(() => {
-    fetchRecentDogs();
-    fetchNews();
+    void fetchRecentDogs();
+    void fetchNews();
   }, []);
 
   const handleRetryConnection = async () => {
@@ -134,7 +134,7 @@ export function Home() {
           <NetworkErrorBanner
             isOffline={isOffline}
             networkError={networkError}
-            onRetryConnection={handleRetryConnection}
+            onRetryConnection={() => void handleRetryConnection()}
           />
         </FadeIn>
 
@@ -218,7 +218,7 @@ export function Home() {
                 </h2>
                 <NewsSection 
                   isOffline={isOffline}
-                  onRetryConnection={handleRetryConnection}
+                  onRetryConnection={() => void handleRetryConnection()}
                   news={news}
                 />
               </AnimatedElement>

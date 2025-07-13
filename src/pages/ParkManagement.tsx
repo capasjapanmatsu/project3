@@ -17,7 +17,10 @@ import {
   Key,
   QrCode,
   FileText,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Wrench,
+  Plus,
+  X
 } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -26,6 +29,18 @@ import { PinCodeGenerator } from '../components/PinCodeGenerator';
 import { supabase } from '../utils/supabase';
 import type { DogPark, SmartLock, Dog } from '../types';
 import VaccineBadge, { getVaccineStatusFromDog } from '../components/VaccineBadge';
+
+interface MaintenanceSchedule {
+  id: string;
+  title: string;
+  description?: string;
+  start_date: string;
+  end_date: string;
+  status: 'scheduled' | 'active' | 'completed' | 'cancelled';
+  is_emergency: boolean;
+  notify_users: boolean;
+  created_at: string;
+}
 
 export function ParkManagement() {
   const { parkId } = useParams();
@@ -41,6 +56,40 @@ export function ParkManagement() {
   const [pinPurpose, setPinPurpose] = useState<'entry' | 'exit'>('entry');
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [selectedDogs, setSelectedDogs] = useState<string[]>([]);
+  
+  // メンテナンス関連のstate
+  const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>([]);
+  const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
+  const [maintenanceForm, setMaintenanceForm] = useState({
+    title: '',
+    description: '',
+    start_date: '',
+    end_date: '',
+    is_emergency: false,
+    notify_users: true
+  });
+  const [isMaintenanceLoading, setIsMaintenanceLoading] = useState(false);
+
+  // 編集関連のstate
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [isEditLoading, setIsEditLoading] = useState(false);
+  const [editForm, setEditForm] = useState({
+    max_capacity: 0,
+    facilities: {
+      parking: false,
+      shower: false,
+      restroom: false,
+      agility: false,
+      rest_area: false,
+      water_station: false,
+    },
+    large_dog_area: false,
+    small_dog_area: false,
+    private_booths: false,
+    private_booth_count: 0,
+    facility_details: '',
+    description: ''
+  });
 
   const MAX_DOGS = 3; // 最大3頭まで選択可能
 
@@ -109,6 +158,25 @@ export function ParkManagement() {
       
       setPark(parkData);
       
+      // 編集フォームに現在の値を設定
+      setEditForm({
+        max_capacity: parkData.max_capacity || 0,
+        facilities: parkData.facilities || {
+          parking: false,
+          shower: false,
+          restroom: false,
+          agility: false,
+          rest_area: false,
+          water_station: false,
+        },
+        large_dog_area: parkData.large_dog_area || false,
+        small_dog_area: parkData.small_dog_area || false,
+        private_booths: parkData.private_booths || false,
+        private_booth_count: parkData.private_booth_count || 0,
+        facility_details: parkData.facility_details || '',
+        description: parkData.description || ''
+      });
+      
       // Fetch smart locks for this park
       const { data: locksData, error: locksError } = await supabase
         .from('smart_locks')
@@ -136,11 +204,179 @@ export function ParkManagement() {
       if (dogsError) throw dogsError;
       setDogs(dogsData || []);
       
+      // Fetch maintenance schedules
+      await fetchMaintenanceSchedules();
+      
     } catch (error) {
       console.error('Error fetching park data:', error);
       setError('データの取得に失敗しました。');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // メンテナンススケジュールを取得
+  const fetchMaintenanceSchedules = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('park_maintenance')
+        .select('*')
+        .eq('park_id', parkId)
+        .order('start_date', { ascending: false });
+      
+      if (error) throw error;
+      setMaintenanceSchedules(data || []);
+    } catch (error) {
+      console.error('Error fetching maintenance schedules:', error);
+    }
+  };
+
+  // メンテナンススケジュールを作成
+  const handleCreateMaintenance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !parkId) return;
+
+    setIsMaintenanceLoading(true);
+    try {
+      // バリデーション
+      if (!maintenanceForm.title || !maintenanceForm.start_date || !maintenanceForm.end_date) {
+        throw new Error('必須項目を入力してください。');
+      }
+
+      const startDate = new Date(maintenanceForm.start_date);
+      const endDate = new Date(maintenanceForm.end_date);
+      
+      if (endDate <= startDate) {
+        throw new Error('終了日時は開始日時より後に設定してください。');
+      }
+
+      if (startDate < new Date()) {
+        throw new Error('開始日時は現在時刻より後に設定してください。');
+      }
+
+      const { error } = await supabase
+        .from('park_maintenance')
+        .insert({
+          park_id: parkId,
+          title: maintenanceForm.title,
+          description: maintenanceForm.description,
+          start_date: maintenanceForm.start_date,
+          end_date: maintenanceForm.end_date,
+          is_emergency: maintenanceForm.is_emergency,
+          notify_users: maintenanceForm.notify_users,
+          created_by: user.id
+        });
+
+      if (error) throw error;
+
+      setSuccess('メンテナンススケジュールを作成しました。');
+      setShowMaintenanceForm(false);
+      setMaintenanceForm({
+        title: '',
+        description: '',
+        start_date: '',
+        end_date: '',
+        is_emergency: false,
+        notify_users: true
+      });
+      
+      await fetchMaintenanceSchedules();
+      
+    } catch (error) {
+      console.error('Error creating maintenance:', error);
+      setError(error instanceof Error ? error.message : 'メンテナンススケジュールの作成に失敗しました。');
+    } finally {
+      setIsMaintenanceLoading(false);
+    }
+  };
+
+  // メンテナンススケジュールを削除
+  const handleDeleteMaintenance = async (maintenanceId: string) => {
+    if (!window.confirm('このメンテナンススケジュールを削除しますか？')) return;
+
+    try {
+      const { error } = await supabase
+        .from('park_maintenance')
+        .delete()
+        .eq('id', maintenanceId);
+
+      if (error) throw error;
+
+      setSuccess('メンテナンススケジュールを削除しました。');
+      await fetchMaintenanceSchedules();
+    } catch (error) {
+      console.error('Error deleting maintenance:', error);
+      setError('メンテナンススケジュールの削除に失敗しました。');
+    }
+  };
+
+  // メンテナンス状態を取得
+  const getMaintenanceStatus = (maintenance: MaintenanceSchedule) => {
+    const now = new Date();
+    const start = new Date(maintenance.start_date);
+    const end = new Date(maintenance.end_date);
+
+    if (maintenance.status === 'cancelled') return { status: 'cancelled', label: 'キャンセル済み', color: 'bg-gray-500' };
+    if (maintenance.status === 'completed') return { status: 'completed', label: '完了', color: 'bg-gray-500' };
+    if (now >= start && now < end) return { status: 'active', label: 'メンテナンス中', color: 'bg-red-500' };
+    if (now < start) return { status: 'scheduled', label: '予定', color: 'bg-yellow-500' };
+    return { status: 'completed', label: '完了', color: 'bg-gray-500' };
+  };
+
+  // パーク情報編集処理
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!park || !user) return;
+
+    setIsEditLoading(true);
+    try {
+      // バリデーション
+      if (editForm.max_capacity < 1) {
+        throw new Error('収容人数は1人以上で入力してください。');
+      }
+
+      if (editForm.private_booths && editForm.private_booth_count < 1) {
+        throw new Error('プライベートブースがある場合は、部屋数を1以上で入力してください。');
+      }
+
+      const { error } = await supabase
+        .from('dog_parks')
+        .update({
+          max_capacity: editForm.max_capacity,
+          facilities: editForm.facilities,
+          large_dog_area: editForm.large_dog_area,
+          small_dog_area: editForm.small_dog_area,
+          private_booths: editForm.private_booths,
+          private_booth_count: editForm.private_booths ? editForm.private_booth_count : 0,
+          facility_details: editForm.facility_details,
+          description: editForm.description,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', park.id);
+
+      if (error) throw error;
+
+      setSuccess('施設情報を更新しました。');
+      setShowEditForm(false);
+      
+      // データを再取得
+      await fetchParkData();
+      
+      // 3秒後に成功メッセージを消す
+      setTimeout(() => {
+        setSuccess('');
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error updating park:', error);
+      setError(error instanceof Error ? error.message : '施設情報の更新に失敗しました。');
+      
+      // 5秒後にエラーメッセージを消す
+      setTimeout(() => {
+        setError('');
+      }, 5000);
+    } finally {
+      setIsEditLoading(false);
     }
   };
 
@@ -244,7 +480,7 @@ export function ParkManagement() {
               公開ページを見る
             </Button>
           </Link>
-          <Button>
+          <Button onClick={() => setShowEditForm(true)}>
             <Edit className="w-4 h-4 mr-2" />
             設定を編集
           </Button>
@@ -771,6 +1007,188 @@ export function ParkManagement() {
       {/* 設定タブ */}
       {activeTab === 'settings' && (
         <div className="space-y-6">
+          {/* 編集フォーム */}
+          {showEditForm && (
+            <Card className="p-6 bg-blue-50 border-blue-200">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold text-blue-900">施設情報の編集</h3>
+                <button
+                  onClick={() => setShowEditForm(false)}
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleEditSubmit} className="space-y-6">
+                {/* 変更不可情報の表示 */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-gray-900 mb-3">変更不可項目</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                    <div>
+                      <span className="font-medium">住所:</span> {park.address}
+                    </div>
+                    <div>
+                      <span className="font-medium">料金:</span> ¥{park.price}/日（全国統一料金）
+                    </div>
+                  </div>
+                </div>
+
+                {/* 基本情報 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      最大収容人数 *
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={editForm.max_capacity}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, max_capacity: parseInt(e.target.value) || 0 }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      説明文
+                    </label>
+                    <textarea
+                      value={editForm.description}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={3}
+                      placeholder="施設の特徴や利用案内など"
+                    />
+                  </div>
+                </div>
+
+                {/* エリア設定 */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">エリア設定</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={editForm.large_dog_area}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, large_dog_area: e.target.checked }))}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">大型犬エリア</span>
+                    </label>
+
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={editForm.small_dog_area}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, small_dog_area: e.target.checked }))}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">小型犬エリア</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* プライベートブース設定 */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">プライベートブース</h4>
+                  <div className="space-y-3">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={editForm.private_booths}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, private_booths: e.target.checked }))}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">プライベートブースあり</span>
+                    </label>
+
+                    {editForm.private_booths && (
+                      <div className="ml-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          部屋数
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="10"
+                          value={editForm.private_booth_count}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, private_booth_count: parseInt(e.target.value) || 0 }))}
+                          className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 設備情報 */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">設備情報</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {Object.entries({
+                      parking: '駐車場',
+                      shower: 'シャワー設備',
+                      restroom: 'トイレ',
+                      agility: 'アジリティ設備',
+                      rest_area: '休憩スペース',
+                      water_station: '給水設備',
+                    }).map(([key, label]) => (
+                      <label key={key} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={editForm.facilities[key as keyof typeof editForm.facilities]}
+                          onChange={(e) => setEditForm(prev => ({
+                            ...prev,
+                            facilities: {
+                              ...prev.facilities,
+                              [key]: e.target.checked
+                            }
+                          }))}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 設備詳細 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    設備詳細説明
+                  </label>
+                  <textarea
+                    value={editForm.facility_details}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, facility_details: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={3}
+                    placeholder="設備の詳細説明や利用案内など"
+                  />
+                </div>
+
+                {/* ボタン */}
+                <div className="flex justify-end space-x-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setShowEditForm(false)}
+                  >
+                    キャンセル
+                  </Button>
+                  <Button
+                    type="submit"
+                    isLoading={isEditLoading}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    更新
+                  </Button>
+                </div>
+              </form>
+            </Card>
+          )}
+
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-6 flex items-center">
               <Settings className="w-6 h-6 text-blue-600 mr-2" />
@@ -781,9 +1199,9 @@ export function ParkManagement() {
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h3 className="font-semibold text-blue-900 mb-3">基本設定</h3>
                 <p className="text-sm text-blue-800 mb-3">
-                  施設の基本情報や設備情報を編集できます。
+                  施設の基本情報や設備情報を編集できます。住所と料金は変更できません。
                 </p>
-                <Button size="sm">
+                <Button size="sm" onClick={() => setShowEditForm(true)}>
                   <Edit className="w-4 h-4 mr-2" />
                   基本情報を編集
                 </Button>
@@ -820,6 +1238,211 @@ export function ParkManagement() {
                 <div className="flex items-center space-x-2">
                   <Clock className="w-5 h-5 text-orange-600" />
                   <span className="font-medium">24時間営業</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* メンテナンス管理 */}
+          <Card className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold flex items-center">
+                <Wrench className="w-6 h-6 text-blue-600 mr-2" />
+                メンテナンス管理
+              </h2>
+              <Button
+                onClick={() => setShowMaintenanceForm(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                メンテナンス予定を追加
+              </Button>
+            </div>
+
+            {/* メンテナンス作成フォーム */}
+            {showMaintenanceForm && (
+              <Card className="p-4 mb-6 bg-blue-50 border-blue-200">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-blue-900">新しいメンテナンス予定</h3>
+                  <button
+                    onClick={() => setShowMaintenanceForm(false)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateMaintenance} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        メンテナンス内容 *
+                      </label>
+                      <input
+                        type="text"
+                        value={maintenanceForm.title}
+                        onChange={(e) => setMaintenanceForm(prev => ({ ...prev, title: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="例：設備点検・清掃作業"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        開始日時 *
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={maintenanceForm.start_date}
+                        onChange={(e) => setMaintenanceForm(prev => ({ ...prev, start_date: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        終了日時 *
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={maintenanceForm.end_date}
+                        onChange={(e) => setMaintenanceForm(prev => ({ ...prev, end_date: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      詳細説明
+                    </label>
+                    <textarea
+                      value={maintenanceForm.description}
+                      onChange={(e) => setMaintenanceForm(prev => ({ ...prev, description: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={3}
+                      placeholder="メンテナンス内容の詳細説明（任意）"
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-6">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={maintenanceForm.is_emergency}
+                        onChange={(e) => setMaintenanceForm(prev => ({ ...prev, is_emergency: e.target.checked }))}
+                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                      />
+                      <span className="text-sm text-gray-700">緊急メンテナンス</span>
+                    </label>
+
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={maintenanceForm.notify_users}
+                        onChange={(e) => setMaintenanceForm(prev => ({ ...prev, notify_users: e.target.checked }))}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">ユーザーに通知</span>
+                    </label>
+                  </div>
+
+                  <div className="flex justify-end space-x-3">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setShowMaintenanceForm(false)}
+                    >
+                      キャンセル
+                    </Button>
+                    <Button
+                      type="submit"
+                      isLoading={isMaintenanceLoading}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      作成
+                    </Button>
+                  </div>
+                </form>
+              </Card>
+            )}
+
+            {/* メンテナンススケジュール一覧 */}
+            <div className="space-y-4">
+              {maintenanceSchedules.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Wrench className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-lg font-medium mb-2">メンテナンス予定がありません</p>
+                  <p className="text-sm">施設のメンテナンス予定を追加してください</p>
+                </div>
+              ) : (
+                maintenanceSchedules.map((maintenance) => {
+                  const status = getMaintenanceStatus(maintenance);
+                  return (
+                    <Card key={maintenance.id} className="p-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h3 className="font-semibold text-lg">{maintenance.title}</h3>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium text-white ${status.color}`}>
+                              {status.label}
+                            </span>
+                            {maintenance.is_emergency && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                緊急
+                              </span>
+                            )}
+                          </div>
+                          
+                          {maintenance.description && (
+                            <p className="text-gray-600 mb-3">{maintenance.description}</p>
+                          )}
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                            <div>
+                              <span className="font-medium">開始:</span>{' '}
+                              {new Date(maintenance.start_date).toLocaleString('ja-JP')}
+                            </div>
+                            <div>
+                              <span className="font-medium">終了:</span>{' '}
+                              {new Date(maintenance.end_date).toLocaleString('ja-JP')}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          {maintenance.status === 'scheduled' && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleDeleteMaintenance(maintenance.id)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                <div className="text-sm text-yellow-800">
+                  <p className="font-medium mb-1">メンテナンス機能について</p>
+                  <ul className="space-y-1">
+                    <li>• メンテナンス中は新規予約を受け付けません</li>
+                    <li>• 既存の予約がある場合は事前に利用者に連絡してください</li>
+                    <li>• 緊急メンテナンスの場合は即座に施設が利用停止になります</li>
+                    <li>• ユーザー通知を有効にすると、利用者にメール通知が送信されます</li>
+                  </ul>
                 </div>
               </div>
             </div>

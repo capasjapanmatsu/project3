@@ -3,7 +3,7 @@ import Card from '../Card';
 import Button from '../Button';
 import Input from '../Input';
 import Select from '../Select';
-import type { DogPark, DogParkReview, UserParkReview, Dog, Profile } from '../../types';
+import type { DogPark, DogParkReview, UserParkReview, Dog, Profile, ReviewImage } from '../../types';
 
 interface ParkReviewSectionProps {
   park: DogPark;
@@ -138,6 +138,8 @@ export function ParkReviewSection({
               />
             </div>
 
+            {/* 画像アップロード機能は後で実装 */}
+
             <div className="flex justify-between">
               <div className="flex space-x-2">
                 <Button
@@ -234,7 +236,42 @@ export function ParkReviewSection({
                   </div>
 
                   {review.review_text && (
-                    <p className="text-gray-700 leading-relaxed">{review.review_text}</p>
+                    <p className="text-gray-700 leading-relaxed mb-3">{review.review_text}</p>
+                  )}
+
+                  {/* レビュー画像ギャラリー */}
+                  {review.review_images && review.review_images.length > 0 && (
+                    <div className="mt-3">
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                        {review.review_images.map((image, index) => (
+                          <div key={index} className="relative group cursor-pointer">
+                            <img
+                              src={image.url}
+                              alt={image.caption || `レビュー画像 ${index + 1}`}
+                              className="w-full h-24 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition-opacity"
+                              onClick={() => window.open(image.url, '_blank')}
+                            />
+                            {image.caption && (
+                              <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                {image.caption}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* メイン画像がある場合（review_imagesがない古いレビュー対応） */}
+                  {review.main_image_url && (!review.review_images || review.review_images.length === 0) && (
+                    <div className="mt-3">
+                      <img
+                        src={review.main_image_url}
+                        alt="レビュー画像"
+                        className="w-full max-w-md h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => window.open(review.main_image_url, '_blank')}
+                      />
+                    </div>
                   )}
                 </div>
               </div>

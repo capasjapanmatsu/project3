@@ -116,18 +116,50 @@ export function AdminSalesManagement() {
         throw new Error('予約売上データの取得に失敗しました');
       }
 
-      // サブスクリプション売上データを取得
-      const { data: subscriptionData, error: subscriptionError } = await supabase
-        .from('stripe_subscriptions')
-        .select(`
-          id,
-          user_id,
-          status,
-          current_period_start,
-          current_period_end,
-          created_at
-        `)
-        .in('status', ['active', 'trialing', 'past_due', 'canceled']);
+      // まず従来のsubscriptionsテーブルを試す
+      let subscriptionData = null;
+      let subscriptionError = null;
+      
+      try {
+        const { data: legacySubscriptionData, error: legacyError } = await supabase
+          .from('subscriptions')
+          .select(`
+            id,
+            user_id,
+            status,
+            start_date,
+            end_date,
+            created_at
+          `)
+          .in('status', ['active', 'trialing']);
+        
+        if (legacyError) {
+          console.log('Legacy subscriptions table not available:', legacyError);
+        } else {
+          subscriptionData = legacySubscriptionData;
+        }
+      } catch (err) {
+        console.log('Legacy subscriptions table not available:', err);
+      }
+      
+      // 従来のテーブルが利用できない場合はstripe_subscriptionsを使用
+      if (!subscriptionData) {
+        const { data: stripeSubscriptionData, error: stripeError } = await supabase
+          .from('stripe_subscriptions')
+          .select(`
+            id,
+            customer_id,
+            status,
+            current_period_start,
+            current_period_end,
+            created_at
+          `)
+          .in('status', ['active', 'trialing', 'past_due', 'canceled'])
+          .not('deleted_at', 'is', null);
+        
+        subscriptionData = stripeSubscriptionData;
+        subscriptionError = stripeError;
+      }
 
       if (subscriptionError) {
         console.error('Subscription error:', subscriptionError);
@@ -216,11 +248,31 @@ export function AdminSalesManagement() {
       const subscriptionSales = await Promise.all(
         (subscriptionData || []).map(async (subscription) => {
           try {
+            let userId = null;
+            
+            // 従来のsubscriptionsテーブルの場合、user_idが直接存在
+            if ('user_id' in subscription) {
+              userId = subscription.user_id;
+            } else {
+              // stripe_subscriptionsテーブルの場合、customer_idから取得
+              const { data: customerData } = await supabase
+                .from('stripe_customers')
+                .select('user_id')
+                .eq('customer_id', subscription.customer_id)
+                .not('deleted_at', 'is', null)
+                .single();
+              userId = customerData?.user_id;
+            }
+
+            if (!userId) {
+              throw new Error('User ID not found for subscription');
+            }
+
             // ユーザー情報を取得
             const { data: userProfile } = await supabase
               .from('profiles')
               .select('name')
-              .eq('id', subscription.user_id)
+              .eq('id', userId)
               .single();
 
             // 月額サブスクリプション料金（仮定）
@@ -229,13 +281,13 @@ export function AdminSalesManagement() {
             const netAmount = amount - commission;
 
             // auth.usersからユーザーのメール情報を取得（利用可能な場合）
-            const authUser = authUsers?.users?.find((u: any) => u.id === subscription.user_id);
+            const authUser = authUsers?.users?.find((u: any) => u.id === userId);
             const actualEmail = authUser?.email;
 
             return {
               id: subscription.id,
               user_name: userProfile?.name || 'Unknown',
-              user_email: actualEmail || `user_${subscription.user_id.slice(0, 8)}@unknown.com`,
+              user_email: actualEmail || `user_${userId.slice(0, 8)}@unknown.com`,
               transaction_type: 'subscription',
               transaction_date: subscription.created_at,
               amount: amount,
@@ -253,7 +305,7 @@ export function AdminSalesManagement() {
             return {
               id: subscription.id,
               user_name: 'Unknown',
-              user_email: `user_${subscription.user_id.slice(0, 8)}@unknown.com`,
+              user_email: 'unknown@unknown.com',
               transaction_type: 'subscription',
               transaction_date: subscription.created_at,
               amount: 2980,

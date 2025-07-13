@@ -237,7 +237,7 @@ export const Navbar = memo(function Navbar() {
           </Link>
           
           <div className="flex items-center space-x-4">
-            {user && isAdmin ? (
+            {user ? (
               <>
                 <span className="text-gray-700 hidden md:inline-block">
                   こんにちは、{userName || 'ユーザー'}さん
@@ -304,16 +304,18 @@ export const Navbar = memo(function Navbar() {
                     </span>
                   )}
                 </Link>
-                <Link 
-                  to="/admin" 
-                  className="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors"
-                  aria-label="管理者ページ"
-                >
-                  <Shield className="h-4 w-4" aria-hidden="true" />
-                  <span className="hidden md:inline">管理者</span>
-                </Link>
+                {isAdmin && (
+                  <Link 
+                    to="/admin" 
+                    className="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors"
+                    aria-label="管理者ページ"
+                  >
+                    <Shield className="h-4 w-4" aria-hidden="true" />
+                    <span className="hidden md:inline">管理者</span>
+                  </Link>
+                )}
                 <button
-                  onClick={handleLogout}
+                  onClick={() => void handleLogout()}
                   className="flex items-center space-x-1 text-gray-600 hover:text-red-600 transition-colors"
                   aria-label="ログアウト"
                 >

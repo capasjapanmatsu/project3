@@ -48,8 +48,6 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchUserProfile = async (userId: string, userEmail?: string): Promise<UserProfile | null> => {
     try {
-      console.warn('👤 Fetching user profile for:', userId);
-      
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -57,52 +55,41 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         .single();
 
       if (error) {
-        console.error('❌ Error fetching user profile:', error);
-        console.error('Error details:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        });
-        
-        // プロファイルが存在しない場合、自動作成を試みる
+        // プロファイルが存在しない場合のみ、自動作成を試みる
         if (error.code === 'PGRST116' && userEmail) {
-          console.warn('🆕 Profile not found, attempting to create...');
-          
-          const profileData = {
-            id: userId,
-            name: userEmail.split('@')[0],
-            user_type: userEmail === 'capasjapan@gmail.com' ? 'admin' : 'user',
-            created_at: new Date().toISOString()
-          };
-          
-          const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .insert([profileData])
-            .select()
-            .single();
-          
-          if (createError) {
-            console.error('❌ Error creating profile:', createError);
+          try {
+            const profileData = {
+              id: userId,
+              name: userEmail.split('@')[0],
+              user_type: userEmail === 'capasjapan@gmail.com' ? 'admin' : 'user',
+              created_at: new Date().toISOString()
+            };
+            
+            const { data: newProfile, error: createError } = await supabase
+              .from('profiles')
+              .insert([profileData])
+              .select()
+              .single();
+            
+            if (createError) {
+              console.error('Error creating profile:', createError);
+              return null;
+            }
+            
+            return newProfile as UserProfile;
+          } catch (createError) {
+            console.error('Exception creating profile:', createError);
             return null;
           }
-          
-          console.warn('✅ Profile created successfully:', newProfile);
-          return newProfile as UserProfile;
         }
         
+        console.error('Error fetching user profile:', error.message);
         return null;
       }
       
-      console.warn('✅ User profile fetched:', {
-        id: (profile as UserProfile).id,
-        user_type: (profile as UserProfile).user_type,
-        created_at: (profile as UserProfile).created_at
-      });
-      
       return profile as UserProfile;
     } catch (error) {
-      console.error('❌ Exception fetching user profile:', error);
+      console.error('Exception in fetchUserProfile:', error);
       return null;
     }
   };
@@ -133,17 +120,13 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    console.warn('🚀 Auth initialization started');
+    let isMounted = true;
     
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        console.warn('📋 Initial session:', {
-          hasSession: !!session,
-          hasUser: !!session?.user,
-          userEmail: session?.user?.email,
-          sessionExpiry: session?.expires_at
-        });
+        
+        if (!isMounted) return;
         
         setSession(session);
         setUser(session?.user ?? null);
@@ -151,26 +134,28 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (session?.user) {
           const profile = await fetchUserProfile(session.user.id, session.user.email);
-          setUserProfile(profile);
-          const adminStatus = checkAdminStatus(session.user, profile);
-          setIsAdmin(adminStatus);
+          if (isMounted) {
+            setUserProfile(profile);
+            const adminStatus = checkAdminStatus(session.user, profile);
+            setIsAdmin(adminStatus);
+          }
         }
-        setLoading(false);
+        
+        if (isMounted) {
+          setLoading(false);
+        }
       } catch (error) {
-        console.error('❌ Error initializing auth:', error);
-        setLoading(false);
+        console.error('Error initializing auth:', error);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     void initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.warn('🔄 Auth state changed:', {
-        event,
-        hasSession: !!session,
-        hasUser: !!session?.user,
-        userEmail: session?.user?.email
-      });
+      if (!isMounted) return;
       
       setSession(session);
       setUser(session?.user ?? null);
@@ -178,17 +163,27 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (session?.user) {
         const profile = await fetchUserProfile(session.user.id, session.user.email);
-        setUserProfile(profile);
-        const adminStatus = checkAdminStatus(session.user, profile);
-        setIsAdmin(adminStatus);
+        if (isMounted) {
+          setUserProfile(profile);
+          const adminStatus = checkAdminStatus(session.user, profile);
+          setIsAdmin(adminStatus);
+        }
       } else {
-        setUserProfile(null);
-        setIsAdmin(false);
+        if (isMounted) {
+          setUserProfile(null);
+          setIsAdmin(false);
+        }
       }
-      setLoading(false);
+      
+      if (isMounted) {
+        setLoading(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signInWithMagicLink = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {

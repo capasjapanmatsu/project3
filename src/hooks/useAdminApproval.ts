@@ -4,6 +4,15 @@ import { useState } from 'react';
 import { supabase } from '../utils/supabase';
 import { PendingPark, PendingVaccine, FacilityImage } from '../types/admin';
 
+interface VaccineData {
+  id: string;
+  dog: {
+    name: string;
+    owner_id: string;
+  };
+  [key: string]: unknown;
+}
+
 export const useAdminApproval = () => {
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -28,6 +37,8 @@ export const useAdminApproval = () => {
         console.error('Vaccine data fetch error:', vaccineError);
         throw vaccineError;
       }
+
+      const typedVaccineData = vaccineData as VaccineData;
       
       // ワクチン証明書のステータスを更新
       const vaccineUpdateData: Record<string, unknown> = {
@@ -59,13 +70,15 @@ export const useAdminApproval = () => {
       
       // 一時保存の画像を削除（承認・却下問わず）
       // temp/フォルダ内の画像があれば削除
-      if (vaccineData.rabies_vaccine_image?.includes('/temp/') || 
-          vaccineData.combo_vaccine_image?.includes('/temp/')) {
-        await deleteTemporaryImages(vaccineData);
+      const rabiesImage = typedVaccineData.rabies_vaccine_image as string | undefined;
+      const comboImage = typedVaccineData.combo_vaccine_image as string | undefined;
+      
+      if (rabiesImage?.includes('/temp/') || comboImage?.includes('/temp/')) {
+        await deleteTemporaryImages(typedVaccineData);
       }
       
       // 通知を作成
-      await createVaccineNotification(vaccineData, approved, rejectionNote);
+      await createVaccineNotification(typedVaccineData, approved, rejectionNote);
       
       return { success: true, message: `ワクチン証明書を${approved ? '承認' : '却下'}しました` };
       
@@ -393,4 +406,4 @@ export const useAdminApproval = () => {
     handleImageApproval,
     handleVaccineExpiryUpdate
   };
-}; 
+};

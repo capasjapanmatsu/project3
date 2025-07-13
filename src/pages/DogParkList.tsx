@@ -13,9 +13,19 @@ interface OccupancyHistory {
   maxCapacity: number;
 }
 
+interface MaintenanceInfo {
+  id: string;
+  title: string;
+  description?: string;
+  start_date: string;
+  end_date: string;
+  is_emergency: boolean;
+}
+
 export function DogParkList() {
   const [parks, setParks] = useState<DogPark[]>([]);
   const [facilityRentals, setFacilityRentals] = useState<Record<string, Reservation[]>>({});
+  const [maintenanceInfo, setMaintenanceInfo] = useState<Record<string, MaintenanceInfo>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mapError, setMapError] = useState<string>('');
@@ -73,7 +83,7 @@ export function DogParkList() {
       setParks(currentParks => 
         currentParks.map(park => {
           const updatedPark = data?.find(p => p.id === park.id);
-          if (updatedPark) {
+          if (updatedPark && data) {
             // 履歴に追加
             const history = occupancyHistory[park.id] || [];
             const newHistory = [
@@ -163,6 +173,43 @@ export function DogParkList() {
         });
         
         setFacilityRentals(rentalsByParkId);
+
+        // メンテナンス情報を取得（現在進行中または今後のメンテナンス）
+        const { data: maintenanceData, error: maintenanceError } = await supabase
+          .from('park_maintenance')
+          .select('park_id, title, description, start_date, end_date, is_emergency, status')
+          .in('status', ['scheduled', 'active'])
+          .gte('end_date', new Date().toISOString());
+
+        if (maintenanceError) {
+          console.error('Error fetching maintenance info:', maintenanceError);
+          // メンテナンス情報の取得エラーは致命的ではないので、エラーログのみ
+        } else {
+          const maintenanceByParkId: Record<string, MaintenanceInfo> = {};
+          (maintenanceData || []).forEach(maintenance => {
+            // 現在進行中のメンテナンスまたは最も近い今後のメンテナンスを優先
+            const now = new Date();
+            const startDate = new Date(maintenance.start_date);
+            const endDate = new Date(maintenance.end_date);
+            
+            // 現在進行中または今後のメンテナンス
+            if (endDate > now) {
+              // 既存のメンテナンス情報がない場合、または現在進行中のメンテナンスの場合は上書き
+              if (!maintenanceByParkId[maintenance.park_id] || 
+                  (startDate <= now && endDate > now)) {
+                maintenanceByParkId[maintenance.park_id] = {
+                  id: maintenance.park_id,
+                  title: maintenance.title,
+                  description: maintenance.description,
+                  start_date: maintenance.start_date,
+                  end_date: maintenance.end_date,
+                  is_emergency: maintenance.is_emergency
+                };
+              }
+            }
+          });
+          setMaintenanceInfo(maintenanceByParkId);
+        }
       } catch (error) {
         console.error('Error fetching dog parks:', error);
         setError((error as Error).message || 'データ取得エラー');
@@ -577,6 +624,24 @@ export function DogParkList() {
           const rentalTimes = getParkRentals(park.id);
           const hasRentalsToday = rentalTimes && rentalTimes.length > 0;
           
+          // メンテナンス情報
+          const maintenance = maintenanceInfo[park.id];
+          const isUnderMaintenance = maintenance !== undefined;
+          
+          // メンテナンス状態を判定
+          let maintenanceStatus = null;
+          if (maintenance) {
+            const now = new Date();
+            const startDate = new Date(maintenance.start_date);
+            const endDate = new Date(maintenance.end_date);
+            
+            if (now >= startDate && now < endDate) {
+              maintenanceStatus = 'active'; // 現在メンテナンス中
+            } else if (now < startDate) {
+              maintenanceStatus = 'scheduled'; // 今後のメンテナンス予定
+            }
+          }
+          
           return (
             <Card key={park.id} className="overflow-hidden">
               {/* Park Image */}
@@ -598,8 +663,24 @@ export function DogParkList() {
                     </span>
                   </div>
                   
+                  {/* メンテナンス情報の表示 */}
+                  {maintenanceStatus && maintenance && (
+                    <div className="absolute top-3 left-3">
+                      <span className={`px-2 py-1 rounded-full text-sm font-medium text-white ${
+                        maintenanceStatus === 'active' 
+                          ? (maintenance.is_emergency ? 'bg-red-600' : 'bg-orange-600')
+                          : 'bg-blue-600'
+                      }`}>
+                        {maintenanceStatus === 'active' 
+                          ? (maintenance.is_emergency ? '緊急メンテナンス中' : 'メンテナンス中')
+                          : 'メンテナンス予定'
+                        }
+                      </span>
+                    </div>
+                  )}
+                  
                   {/* 本日貸し切りありの表示 */}
-                  {hasRentalsToday && (
+                  {!maintenanceStatus && hasRentalsToday && (
                     <div className="absolute top-3 left-3">
                       <span className="px-2 py-1 rounded-full text-sm font-medium bg-orange-500 text-white">
                         本日貸し切りあり
@@ -695,8 +776,93 @@ export function DogParkList() {
                     </p>
                   )}
                   
+                  {/* メンテナンス情報の詳細表示 */}
+                  {maintenanceStatus && maintenance && (
+                    <div className={`p-3 rounded-lg ${
+                      maintenanceStatus === 'active'
+                        ? (maintenance.is_emergency ? 'bg-red-50' : 'bg-orange-50')
+                        : 'bg-blue-50'
+                    }`}>
+                      <div className="flex items-center space-x-2 mb-1">
+                        <AlertTriangle className={`w-4 h-4 ${
+                          maintenanceStatus === 'active'
+                            ? (maintenance.is_emergency ? 'text-red-600' : 'text-orange-600')
+                            : 'text-blue-600'
+                        }`} />
+                        <span className={`text-sm font-medium ${
+                          maintenanceStatus === 'active'
+                            ? (maintenance.is_emergency ? 'text-red-800' : 'text-orange-800')
+                            : 'text-blue-800'
+                        }`}>
+                          {maintenanceStatus === 'active'
+                            ? (maintenance.is_emergency ? '緊急メンテナンス中' : 'メンテナンス中')
+                            : 'メンテナンス予定'
+                          }
+                        </span>
+                      </div>
+                      <p className={`text-sm font-medium ${
+                        maintenanceStatus === 'active'
+                          ? (maintenance.is_emergency ? 'text-red-700' : 'text-orange-700')
+                          : 'text-blue-700'
+                      } mb-1`}>
+                        {maintenance.title}
+                      </p>
+                      {maintenance.description && (
+                        <p className={`text-xs ${
+                          maintenanceStatus === 'active'
+                            ? (maintenance.is_emergency ? 'text-red-600' : 'text-orange-600')
+                            : 'text-blue-600'
+                        } mb-2`}>
+                          {maintenance.description}
+                        </p>
+                      )}
+                      <div className="space-y-1">
+                        <div className={`flex items-center text-xs ${
+                          maintenanceStatus === 'active'
+                            ? (maintenance.is_emergency ? 'text-red-700' : 'text-orange-700')
+                            : 'text-blue-700'
+                        }`}>
+                          <Clock className="w-3 h-3 mr-1 flex-shrink-0" />
+                          <span>
+                            {new Date(maintenance.start_date).toLocaleDateString('ja-JP', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                            {' '}
+                            {new Date(maintenance.start_date).toLocaleTimeString('ja-JP', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                            〜
+                            {new Date(maintenance.end_date).toLocaleDateString('ja-JP', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                            {' '}
+                            {new Date(maintenance.end_date).toLocaleTimeString('ja-JP', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                      <p className={`text-xs ${
+                        maintenanceStatus === 'active'
+                          ? (maintenance.is_emergency ? 'text-red-600' : 'text-orange-600')
+                          : 'text-blue-600'
+                      } mt-2`}>
+                        {maintenanceStatus === 'active' 
+                          ? '※メンテナンス期間中は利用できません'
+                          : '※メンテナンス期間中は利用できません'
+                        }
+                      </p>
+                    </div>
+                  )}
+                  
                   {/* 本日の貸し切り時間表示 */}
-                  {hasRentalsToday && (
+                  {!maintenanceStatus && hasRentalsToday && (
                     <div className="bg-orange-50 p-3 rounded-lg">
                       <div className="flex items-center space-x-2 mb-1">
                         <AlertTriangle className="w-4 h-4 text-orange-600" />
@@ -795,9 +961,19 @@ export function DogParkList() {
                         詳細・レビュー
                       </Button>
                     </Link>
-                    <Link to={`/parks/${park.id}/reserve`}>
-                      <Button className="w-full">予約する</Button>
-                    </Link>
+                    {maintenanceStatus === 'active' ? (
+                      <Button 
+                        className="w-full bg-gray-400 cursor-not-allowed" 
+                        disabled
+                        title="メンテナンス中のため予約できません"
+                      >
+                        予約不可
+                      </Button>
+                    ) : (
+                      <Link to={`/parks/${park.id}/reserve`}>
+                        <Button className="w-full">予約する</Button>
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>
