@@ -88,18 +88,16 @@ export function AdminUserManagement() {
         return;
       }
 
-      // auth.usersテーブルからメール情報を取得（管理者権限があれば）
-      let authUsers: any = null;
-      try {
-        const { data: authUsersData, error: authError } = await supabase.auth.admin.listUsers();
-        if (!authError) {
-          authUsers = authUsersData;
-          console.log('Successfully fetched auth users');
-        } else {
-          console.warn('Auth users fetch failed, will use fallback:', authError);
-        }
-      } catch (authError) {
-        console.warn('Auth admin API not available:', authError);
+      // auth.usersテーブルからメール情報を取得
+      const { data: authUsers, error: authError } = await supabase
+        .from('auth.users')
+        .select('id, email, email_confirmed_at, created_at, last_sign_in_at, deleted_at')
+        .in('id', profiles.map(p => p.id));
+
+      if (authError) {
+        console.warn('Auth users fetch failed:', authError);
+      } else {
+        console.log('Successfully fetched auth users:', authUsers?.length || 0);
       }
 
       // 各ユーザーの関連データを取得
@@ -142,7 +140,7 @@ export function AdminUserManagement() {
           );
 
           // auth.usersからメール情報を取得（利用可能な場合）
-          const authUser = authUsers?.users?.find((u: any) => u.id === profile.id);
+          const authUser = authUsers?.find((u: any) => u.id === profile.id);
           const actualEmail = authUser?.email;
 
           return {
@@ -151,6 +149,7 @@ export function AdminUserManagement() {
             email: actualEmail || `user_${profile.id.slice(0, 8)}@unknown.com`,
             phone: profile.phone_number || '',
             created_at: profile.created_at,
+            last_sign_in_at: authUser?.last_sign_in_at,
             is_active: actualEmail ? (!!authUser?.email_confirmed_at && !authUser?.deleted_at) : true,
             subscription_status: subscription?.status || 'inactive',
             dog_count: dogCount || 0,
@@ -159,13 +158,18 @@ export function AdminUserManagement() {
           } as UserData;
         } catch (err) {
           console.error(`Error fetching data for user ${profile.id}:`, err);
+          // エラーが発生した場合もauth.usersからメール情報を取得
+          const authUser = authUsers?.find((u: any) => u.id === profile.id);
+          const actualEmail = authUser?.email;
+          
           return {
             id: profile.id,
             name: profile.name || 'Unknown',
-            email: `user_${profile.id.slice(0, 8)}@unknown.com`,
+            email: actualEmail || `user_${profile.id.slice(0, 8)}@unknown.com`,
             phone: profile.phone_number || '',
             created_at: profile.created_at,
-            is_active: true,
+            last_sign_in_at: authUser?.last_sign_in_at,
+            is_active: actualEmail ? (!!authUser?.email_confirmed_at && !authUser?.deleted_at) : true,
             subscription_status: 'inactive',
             dog_count: 0,
             reservation_count: 0,
