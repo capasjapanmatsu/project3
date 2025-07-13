@@ -616,7 +616,7 @@ export function OwnerPaymentSystem() {
               <ul className="list-disc pl-5 space-y-1 mt-1">
                 <li>通常利用（1日券）：800円/日</li>
                 <li>施設貸し切り：4,400円/時間</li>
-                <li>プライベートブース：5,000円/2時間</li>
+                <li>プライベートブース：サブスク使い放題・1日券でも利用可能（追加料金なし）</li>
               </ul>
               <p>• サブスクリプション収益は利用回数に応じて分配されます</p>
             </div>

@@ -905,7 +905,7 @@ export function DogParkDetail() {
                   {park.private_booths && (
                     <div className="flex justify-between">
                       <span>プライベートブース</span>
-                      <span className="font-medium">¥{park.private_booth_price}/2時間</span>
+                      <span className="font-medium text-green-600">追加料金なし</span>
                     </div>
                   )}
                   <div className="flex justify-between">

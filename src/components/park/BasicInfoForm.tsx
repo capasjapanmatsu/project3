@@ -196,7 +196,7 @@ export default function BasicInfoForm({
                 />
                 <div className="mt-2 p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    <span className="font-medium">プライベートブース料金:</span> ¥5,000/2時間（固定）
+                    <span className="font-medium">プライベートブース料金:</span> サブスク使い放題・1日券でも利用可能（追加料金なし）
                   </p>
                   <p className="text-xs text-blue-600 mt-1">
                     ※ 料金はシステムで自動設定されます

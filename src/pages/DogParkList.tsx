@@ -453,7 +453,7 @@ export function DogParkList() {
                 <p style="margin: 0 0 4px 0; font-size: 14px; color: #666;">${park.address}</p>
                 <p style="margin: 0 0 4px 0; font-size: 14px;">通常利用: ¥800/日</p>
                 <p style="margin: 0 0 4px 0; font-size: 14px;">施設貸し切り: ¥4,400/時間</p>
-                ${park.private_booths ? `<p style="margin: 0 0 4px 0; font-size: 14px;">プライベートブース: ¥5,000/2時間</p>` : ''}
+                ${park.private_booths ? `<p style="margin: 0 0 4px 0; font-size: 14px;">プライベートブース: サブスク使い放題・1日券でも利用可能</p>` : ''}
                 <p style="margin: 0 0 8px 0; font-size: 14px;">${status.text} (${park.current_occupancy}/${park.max_capacity})</p>
                 ${rentalInfoHtml}
                 <a href="/parks/${park.id}" style="display: inline-block; padding: 8px 16px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 6px; font-size: 14px; margin-top: 8px;">詳細を見る</a>
@@ -915,7 +915,7 @@ export function DogParkList() {
                         </span>
                       </div>
                       <p className="text-xs text-purple-600 mt-1">
-                        ¥5,000/2時間（人数制限なし）
+                        サブスク使い放題・1日券でも利用可能（追加料金なし）
                       </p>
                     </div>
                   )}

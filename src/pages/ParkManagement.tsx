@@ -1215,7 +1215,7 @@ export function ParkManagement() {
                 <ul className="text-sm text-green-800 space-y-1">
                   <li>• 通常利用: ¥800/日（固定）</li>
                   <li>• 施設貸し切り: ¥4,400/時間（固定）</li>
-                  <li>• プライベートブース: ¥5,000/2時間（固定）</li>
+                  <li>• プライベートブース: サブスク使い放題・1日券でも利用可能（追加料金なし）</li>
                 </ul>
               </div>
               

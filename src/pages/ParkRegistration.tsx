@@ -203,7 +203,7 @@ export function ParkRegistration() {
             small_dog_area: formData.smallDogArea,
             private_booths: formData.privateBooths,
             private_booth_count: parseInt(formData.privateBoothCount, 10),
-            private_booth_price: 5000, // 固定料金
+            private_booth_price: 0, // 追加料金なし（サブスク・1日券に含まれる）
             facilities: formData.facilities,
             facility_details: formData.facilityDetails,
             status: 'pending', // 第一審査待ち状態
