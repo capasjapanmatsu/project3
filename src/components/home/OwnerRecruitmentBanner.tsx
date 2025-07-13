@@ -2,8 +2,23 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Building, Crown, Plus } from 'lucide-react';
 import Button from '../Button';
+import useAuth from '../../context/AuthContext';
 
-export const OwnerRecruitmentBanner: React.FC = () => {
+interface OwnerRecruitmentBannerProps {}
+
+export const OwnerRecruitmentBanner: React.FC<OwnerRecruitmentBannerProps> = () => {
+  const { user } = useAuth();
+
+  // ログイン状態に応じてリンク先を決定
+  const getRegistrationLink = () => {
+    return user ? '/park-registration-agreement' : '/register';
+  };
+
+  // ボタンテキストをログイン状態に応じて変更
+  const getButtonText = () => {
+    return user ? 'オーナー契約に進む' : 'オーナー登録';
+  };
+
   return (
     <section className="relative overflow-hidden">
       <div className="bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 text-white p-8 rounded-xl shadow-2xl">
@@ -23,10 +38,10 @@ export const OwnerRecruitmentBanner: React.FC = () => {
             </div>
           </div>
           <div className="text-right">
-            <Link to="/register">
+            <Link to={getRegistrationLink()}>
               <Button className="bg-white hover:bg-gray-100 text-purple-700 font-bold px-6 py-3 text-lg shadow-md">
                 <Plus className="w-5 h-5 mr-2" />
-                オーナー登録
+                {getButtonText()}
               </Button>
             </Link>
             <p className="text-sm opacity-80 mt-2">初期費用無料・サポート充実</p>
