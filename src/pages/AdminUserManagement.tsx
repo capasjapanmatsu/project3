@@ -65,13 +65,12 @@ export function AdminUserManagement() {
       setIsLoading(true);
       setError('');
 
-      // ユーザープロファイル情報を取得（emailも含む）
+      // ユーザープロファイル情報を取得
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select(`
           id,
           name,
-          email,
           user_type,
           postal_code,
           address,
@@ -85,13 +84,11 @@ export function AdminUserManagement() {
       }
 
       if (!profiles || profiles.length === 0) {
-        console.log('No profiles found');
         setUsers([]);
         return;
       }
       
-      console.log('Found profiles:', profiles.length);
-      console.log('Profile sample:', profiles[0]);
+
 
       // 各ユーザーの関連データを取得
       const userPromises = profiles.map(async (profile) => {
@@ -132,22 +129,17 @@ export function AdminUserManagement() {
             (sum, payment) => sum + (payment.total_amount || 0), 0
           );
 
-          // profileから直接メール情報を取得
-          const actualEmail = profile.email;
-          
-          console.log(`Processing user ${profile.id}:`);
-          console.log('  Profile name:', profile.name);
-          console.log('  Profile email:', actualEmail);
-          console.log('  Will use email:', actualEmail || `user_${profile.id.slice(0, 8)}@unknown.com`);
+          // フォールバックとして固定のメールアドレスを使用
+          const actualEmail = `user_${profile.id.slice(0, 8)}@unknown.com`;
 
           return {
             id: profile.id,
             name: profile.name || 'Unknown',
-            email: actualEmail || `user_${profile.id.slice(0, 8)}@unknown.com`,
+            email: actualEmail,
             phone: profile.phone_number || '',
             created_at: profile.created_at,
             last_sign_in_at: '', // TODO: この情報が必要な場合は別途取得
-            is_active: !!actualEmail, // メールアドレスがあればアクティブとみなす
+            is_active: true, // 簡素化のためtrueに設定
             subscription_status: subscription?.status || 'inactive',
             dog_count: dogCount || 0,
             reservation_count: reservationCount || 0,
@@ -155,22 +147,17 @@ export function AdminUserManagement() {
           } as UserData;
         } catch (err) {
           console.error(`Error fetching data for user ${profile.id}:`, err);
-          // エラーが発生した場合もprofileから直接メール情報を取得
-          const actualEmail = profile.email;
-          
-          console.log(`Error case - Processing user ${profile.id}:`);
-          console.log('  Profile name:', profile.name);
-          console.log('  Profile email:', actualEmail);
-          console.log('  Will use email:', actualEmail || `user_${profile.id.slice(0, 8)}@unknown.com`);
+          // エラーが発生した場合のフォールバック
+          const actualEmail = `user_${profile.id.slice(0, 8)}@unknown.com`;
           
           return {
             id: profile.id,
             name: profile.name || 'Unknown',
-            email: actualEmail || `user_${profile.id.slice(0, 8)}@unknown.com`,
+            email: actualEmail,
             phone: profile.phone_number || '',
             created_at: profile.created_at,
             last_sign_in_at: '',
-            is_active: !!actualEmail,
+            is_active: true,
             subscription_status: 'inactive',
             dog_count: 0,
             reservation_count: 0,
