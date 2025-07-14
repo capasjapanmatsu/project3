@@ -111,15 +111,29 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const initializeAuth = async () => {
       try {
+        if (import.meta.env.DEV) {
+          console.log('Auth initialization started...');
+        }
+        
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error getting session:', error);
           // エラーがあってもアプリをクラッシュさせない
+          // ログアウト状態として続行
           if (isMounted) {
+            setSession(null);
+            setUser(null);
+            setIsAuthenticated(false);
+            setUserProfile(null);
+            setIsAdmin(false);
             setLoading(false);
           }
           return;
+        }
+        
+        if (import.meta.env.DEV) {
+          console.log('Session retrieved:', session ? 'exists' : 'none');
         }
         
         if (!isMounted) return;
@@ -129,22 +143,51 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(!!session?.user);
 
         if (session?.user) {
-          const profile = await fetchUserProfile(session.user.id, session.user.email);
+          try {
+            if (import.meta.env.DEV) {
+              console.log('Fetching user profile...');
+            }
+            const profile = await fetchUserProfile(session.user.id, session.user.email);
+            if (isMounted) {
+              setUserProfile(profile);
+              const adminStatus = checkAdminStatus(session.user, profile);
+              setIsAdmin(adminStatus);
+                              if (import.meta.env.DEV) {
+                  console.log('User profile loaded successfully');
+                }
+            }
+          } catch (profileError) {
+            console.error('Error fetching user profile:', profileError);
+            // プロフィール取得に失敗してもセッションは有効として続行
+            if (isMounted) {
+              setUserProfile(null);
+              setIsAdmin(false);
+            }
+          }
+        } else {
           if (isMounted) {
-            setUserProfile(profile);
-            const adminStatus = checkAdminStatus(session.user, profile);
-            setIsAdmin(adminStatus);
+            setUserProfile(null);
+            setIsAdmin(false);
           }
         }
         
-        if (isMounted) {
-          setLoading(false);
-        }
       } catch (error) {
         console.error('Error initializing auth:', error);
-        // エラーが発生してもアプリは継続
+        // 致命的なエラーが発生した場合もログアウト状態として続行
+        if (isMounted) {
+          setSession(null);
+          setUser(null);
+          setIsAuthenticated(false);
+          setUserProfile(null);
+          setIsAdmin(false);
+        }
+      } finally {
+        // エラーの有無に関わらず必ずローディングを終了
         if (isMounted) {
           setLoading(false);
+          if (import.meta.env.DEV) {
+            console.log('Auth initialization completed');
+          }
         }
       }
     };
@@ -154,16 +197,28 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
       
+      if (import.meta.env.DEV) {
+        console.log('Auth state changed:', event, session ? 'session exists' : 'no session');
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       setIsAuthenticated(!!session?.user);
 
       if (session?.user) {
-        const profile = await fetchUserProfile(session.user.id, session.user.email);
-        if (isMounted) {
-          setUserProfile(profile);
-          const adminStatus = checkAdminStatus(session.user, profile);
-          setIsAdmin(adminStatus);
+        try {
+          const profile = await fetchUserProfile(session.user.id, session.user.email);
+          if (isMounted) {
+            setUserProfile(profile);
+            const adminStatus = checkAdminStatus(session.user, profile);
+            setIsAdmin(adminStatus);
+          }
+        } catch (profileError) {
+          console.error('Error fetching profile in auth state change:', profileError);
+          if (isMounted) {
+            setUserProfile(null);
+            setIsAdmin(false);
+          }
         }
       } else {
         if (isMounted) {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, CheckCircle, X, Eye, ArrowLeft, Building, Clock, ZoomIn, Loader } from 'lucide-react';
+import { MapPin, CheckCircle, X, Eye, ArrowLeft, Building, ZoomIn, Loader } from 'lucide-react';
 import Card from '../Card';
 import Button from '../Button';
 import { PendingPark, FacilityImage } from '../../types/admin';

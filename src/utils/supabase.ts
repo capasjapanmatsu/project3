@@ -3,22 +3,23 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-// 本番環境での詳細なエラーログ
-console.log('Supabase configuration:', {
-  hasUrl: !!supabaseUrl,
-  hasKey: !!supabaseKey,
-  url: supabaseUrl ? supabaseUrl.substring(0, 30) + '...' : 'missing',
-  environment: import.meta.env.MODE || 'unknown',
-  timestamp: new Date().toISOString()
-});
+// 開発環境でのみ詳細なログを出力
+if (import.meta.env.DEV) {
+  console.log('Supabase configuration:', {
+    hasUrl: !!supabaseUrl,
+    hasKey: !!supabaseKey,
+    url: supabaseUrl ? supabaseUrl.substring(0, 30) + '...' : 'missing',
+    environment: import.meta.env.MODE || 'unknown',
+    timestamp: new Date().toISOString()
+  });
+}
 
 if (!supabaseUrl || !supabaseKey) {
   const error = new Error('Missing Supabase environment variables');
   console.error('Supabase initialization error:', {
     supabaseUrl: !!supabaseUrl ? 'present' : 'missing',
     supabaseKey: !!supabaseKey ? 'present' : 'missing',
-    allEnvVars: Object.keys(import.meta.env),
-    error: error.message
+    environment: import.meta.env.MODE || 'unknown'
   });
   throw error;
 }
@@ -36,10 +37,12 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-// Supabase接続テスト
-supabase.auth.onAuthStateChange((event, session) => {
-  console.log('Auth state changed:', event, session ? 'session exists' : 'no session');
-});
+// 開発環境でのみ認証状態の変化をログ出力
+if (import.meta.env.DEV) {
+  supabase.auth.onAuthStateChange((event, session) => {
+    console.log('Auth state changed:', event, session ? 'session exists' : 'no session');
+  });
+}
 
 // Storage utility functions
 export const getVaccineImageUrl = (imagePath: string | null): string | null => {
