@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, CheckCircle, Clock, X, AlertTriangle } from 'lucide-react';
+import { Shield, Clock, X, AlertTriangle } from 'lucide-react';
 
 export interface VaccineBadgeProps {
   status: 'approved' | 'pending' | 'rejected' | 'none' | 'expired';

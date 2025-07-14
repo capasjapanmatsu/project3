@@ -48,31 +48,18 @@ const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
       const ipInfo = await getCachedClientIP();
       setClientIP(ipInfo.ip);
 
-      // Check maintenance status and IP whitelist
-      const { data, error } = await supabase
-        .rpc('should_show_maintenance', { client_ip: ipInfo.ip });
+      // Check maintenance status with IP whitelist
+      const { data, error } = await supabase.rpc('should_show_maintenance', {
+        client_ip: ipInfo.ip
+      });
 
       if (error) {
-        console.warn('メンテナンス状態の取得に失敗:', error.message);
-        // Fallback to original method
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .rpc('get_current_maintenance');
-        
-        if (fallbackError) {
-          setError(fallbackError.message);
-          return;
-        }
-
-        if (fallbackData && fallbackData.length > 0) {
-          const maintenance = fallbackData[0];
-          setMaintenanceInfo(maintenance);
-          setIsMaintenanceActive(true);
-          setIsIPWhitelisted(false); // Unknown IP status
-        } else {
-          setMaintenanceInfo(null);
-          setIsMaintenanceActive(false);
-          setIsIPWhitelisted(true); // No maintenance, allow access
-        }
+        console.warn('メンテナンス状態チェックでエラー:', error);
+        // エラーが発生した場合は、メンテナンス状態を無効として処理
+        setMaintenanceInfo(null);
+        setIsMaintenanceActive(false);
+        setIsIPWhitelisted(true);
+        setError(null);
         return;
       }
 
@@ -93,28 +80,44 @@ const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (err) {
       console.warn('メンテナンス状態の取得でエラー:', err);
-      // エラーが発生した場合は、メンテナンス状態を無効として処理
       setMaintenanceInfo(null);
       setIsMaintenanceActive(false);
-      setIsIPWhitelisted(true); // Error state should allow access
-      setError(null); // エラーを表示しない
+      setIsIPWhitelisted(true);
+      setError(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // 空の依存配列を維持
 
   const refreshMaintenanceStatus = useCallback(async () => {
     await fetchMaintenanceStatus();
   }, [fetchMaintenanceStatus]);
 
+  // 初回実行とインターバル設定
   useEffect(() => {
-    fetchMaintenanceStatus();
+    let isMounted = true;
+
+    const runFetch = async () => {
+      if (isMounted) {
+        await fetchMaintenanceStatus();
+      }
+    };
+
+    // 初回実行
+    runFetch();
 
     // 5分おきにメンテナンス状態をチェック
-    const interval = setInterval(fetchMaintenanceStatus, 5 * 60 * 1000);
+    const interval = setInterval(() => {
+      if (isMounted) {
+        runFetch();
+      }
+    }, 5 * 60 * 1000);
 
-    return () => clearInterval(interval);
-  }, [fetchMaintenanceStatus]);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []); // 空の依存配列で初回のみ実行
 
   const value = {
     isMaintenanceActive,

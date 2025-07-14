@@ -69,7 +69,7 @@ export const SkipNavigation: React.FC<SkipNavigationProps> = ({
       aria-label="スキップナビゲーション"
     >
       <ul className="flex flex-col">
-        {links.map((link, index) => (
+        {links.map((link, _index) => (
           <li key={link.href}>
             <a
               href={link.href}

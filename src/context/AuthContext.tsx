@@ -95,26 +95,13 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const checkAdminStatus = (user: User | null, profile: UserProfile | null): boolean => {
-    console.warn('🔍 Checking admin status:', {
-      user_email: user?.email,
-      profile_user_type: profile?.user_type,
-      is_target_admin_email: user?.email === 'capasjapan@gmail.com'
-    });
-    
     if (!user) {
-      console.warn('❌ No user found');
       return false;
     }
     
     const isAdminByEmail = user.email === 'capasjapan@gmail.com';
     const isAdminByProfile = profile?.user_type === 'admin';
     const isAdmin = isAdminByEmail || isAdminByProfile;
-    
-    console.warn('🔐 Admin check result:', {
-      isAdminByEmail,
-      isAdminByProfile,
-      finalResult: isAdmin
-    });
     
     return isAdmin;
   };
@@ -124,26 +111,16 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const initializeAuth = async () => {
       try {
-        // 本番環境での詳細なログ
-        console.log('Initializing auth...', {
-          timestamp: new Date().toISOString(),
-          environment: import.meta.env.MODE || 'unknown'
-        });
-        
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error getting session:', error);
-          console.error('Session error details:', {
-            message: error.message,
-            name: error.name,
-            stack: error.stack,
-            timestamp: new Date().toISOString()
-          });
-          throw error;
+          // エラーがあってもアプリをクラッシュさせない
+          if (isMounted) {
+            setLoading(false);
+          }
+          return;
         }
-        
-        console.log('Session retrieved:', session ? 'exists' : 'none');
         
         if (!isMounted) return;
         
@@ -152,13 +129,11 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(!!session?.user);
 
         if (session?.user) {
-          console.log('Fetching user profile for:', session.user.id);
           const profile = await fetchUserProfile(session.user.id, session.user.email);
           if (isMounted) {
             setUserProfile(profile);
             const adminStatus = checkAdminStatus(session.user, profile);
             setIsAdmin(adminStatus);
-            console.log('User profile loaded:', profile ? 'success' : 'failed');
           }
         }
         
@@ -167,11 +142,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
-        console.error('Auth error details:', {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : 'No stack',
-          timestamp: new Date().toISOString()
-        });
+        // エラーが発生してもアプリは継続
         if (isMounted) {
           setLoading(false);
         }
@@ -200,17 +171,13 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
           setIsAdmin(false);
         }
       }
-      
-      if (isMounted) {
-        setLoading(false);
-      }
     });
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // 空の依存配列で初回のみ実行
 
   const signInWithMagicLink = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
     try {

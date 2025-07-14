@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 export type Breakpoint = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
@@ -22,7 +22,11 @@ const defaultBreakpoints: BreakpointValues = {
 };
 
 export function useResponsive(customBreakpoints?: Partial<BreakpointValues>) {
-  const breakpoints = { ...defaultBreakpoints, ...customBreakpoints };
+  // useMemoを使用してbreakpointsオブジェクトの参照を安定させる
+  const breakpoints = useMemo(() => ({ 
+    ...defaultBreakpoints, 
+    ...customBreakpoints 
+  }), [customBreakpoints]);
   
   const [windowSize, setWindowSize] = useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 1024,
@@ -60,7 +64,7 @@ export function useResponsive(customBreakpoints?: Partial<BreakpointValues>) {
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [breakpoints]);
+  }, []); // 空の依存配列にして初回のみ実行
 
   // 特定のブレークポイント以上かどうかを判定
   const isAbove = (breakpoint: Breakpoint): boolean => {
@@ -124,7 +128,7 @@ export function useResponsiveValue<T>(
   
   for (let i = currentIndex; i >= 0; i--) {
     const breakpoint = breakpointKeys[i];
-    if (values[breakpoint] !== undefined) {
+    if (breakpoint && values[breakpoint] !== undefined) {
       return values[breakpoint]!;
     }
   }
@@ -158,7 +162,7 @@ export function useResponsiveSpacing(
   
   for (let i = currentIndex; i >= 0; i--) {
     const breakpoint = breakpointKeys[i];
-    if (spacing[breakpoint] !== undefined) {
+    if (breakpoint && spacing[breakpoint] !== undefined) {
       return spacing[breakpoint]!;
     }
   }

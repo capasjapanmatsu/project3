@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { 
   Settings, 
-  Clock, 
-  AlertTriangle, 
   CheckCircle, 
   Plus, 
   Edit2, 
@@ -90,7 +88,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
       }
 
       setSchedules(data || []);
-    } catch (err) {
+    } catch (_err) {
       onError('メンテナンス予定の取得中にエラーが発生しました');
     } finally {
       setIsLoading(false);
@@ -149,7 +147,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
       setShowCreateForm(false);
       setEditingSchedule(null);
       await fetchSchedules();
-    } catch (err) {
+    } catch (_err) {
       onError('メンテナンス予定の保存中にエラーが発生しました');
     }
   };
@@ -169,7 +167,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
       onSuccess(`メンテナンスを${schedule.is_active ? '無効' : '有効'}にしました`);
       await fetchSchedules();
       await refreshMaintenanceStatus();
-    } catch (err) {
+    } catch (_err) {
       onError('メンテナンス状態の変更中にエラーが発生しました');
     }
   };
@@ -203,7 +201,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
       onSuccess('メンテナンス予定を削除しました');
       await fetchSchedules();
       await refreshMaintenanceStatus();
-    } catch (err) {
+    } catch (_err) {
       onError('メンテナンス予定の削除中にエラーが発生しました');
     }
   };
