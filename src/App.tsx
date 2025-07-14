@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import useAuth from './context/AuthContext';
 import DogInfo from './pages/DogInfo';
@@ -110,10 +110,9 @@ const AuthCallback = () => {
 
 function App() {
   return (
-    <Router>
-      <Layout>
-        <Suspense fallback={<LoadingSpinner />}>
-          <Routes>
+    <Layout>
+      <Suspense fallback={<LoadingSpinner />}>
+        <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -186,7 +185,6 @@ function App() {
           </Routes>
         </Suspense>
       </Layout>
-    </Router>
   );
 }
 

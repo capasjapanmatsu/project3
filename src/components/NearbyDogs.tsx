@@ -43,7 +43,8 @@ export function NearbyDogs() {
     if (userLocation) {
       void fetchNearbyDogs();
     }
-  }, [userLocation, user, fetchNearbyDogs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLocation, user]);
 
   const getCurrentLocation = () => {
     setIsLoading(true);

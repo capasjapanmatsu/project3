@@ -124,7 +124,26 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // 本番環境での詳細なログ
+        console.log('Initializing auth...', {
+          timestamp: new Date().toISOString(),
+          environment: import.meta.env.MODE || 'unknown'
+        });
+        
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          console.error('Session error details:', {
+            message: error.message,
+            name: error.name,
+            stack: error.stack,
+            timestamp: new Date().toISOString()
+          });
+          throw error;
+        }
+        
+        console.log('Session retrieved:', session ? 'exists' : 'none');
         
         if (!isMounted) return;
         
@@ -133,11 +152,13 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(!!session?.user);
 
         if (session?.user) {
+          console.log('Fetching user profile for:', session.user.id);
           const profile = await fetchUserProfile(session.user.id, session.user.email);
           if (isMounted) {
             setUserProfile(profile);
             const adminStatus = checkAdminStatus(session.user, profile);
             setIsAdmin(adminStatus);
+            console.log('User profile loaded:', profile ? 'success' : 'failed');
           }
         }
         
@@ -146,6 +167,11 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
+        console.error('Auth error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : 'No stack',
+          timestamp: new Date().toISOString()
+        });
         if (isMounted) {
           setLoading(false);
         }

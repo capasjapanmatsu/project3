@@ -1,25 +1,32 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.tsx';
+import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { MaintenanceProvider } from './context/MaintenanceContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import App from './App';
 import './index.css';
 import { isStorageAvailable } from './utils/safeStorage';
 
-// Global error handling
+// グローバルエラーハンドラーを追加
 window.addEventListener('error', (event) => {
-  if (import.meta.env.PROD) {
-    // In production, you would send this to an error tracking service
-    console.error('Global error:', event.error);
-  }
+  console.error('Global error:', event.error);
+  console.error('Error details:', {
+    message: event.error?.message,
+    stack: event.error?.stack,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+    timestamp: new Date().toISOString()
+  });
 });
 
 window.addEventListener('unhandledrejection', (event) => {
-  if (import.meta.env.PROD) {
-    // In production, you would send this to an error tracking service
-    console.error('Unhandled promise rejection:', event.reason);
-  }
+  console.error('Unhandled promise rejection:', event.reason);
+  console.error('Rejection details:', {
+    reason: event.reason,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Check storage availability and log warnings if not available
@@ -31,20 +38,16 @@ if (!isStorageAvailable('sessionStorage')) {
   console.warn('sessionStorage is not available. Using in-memory storage instead.');
 }
 
-const root = document.getElementById('root');
-
-if (!root) {
-  throw new Error('Root element not found');
-}
-
-ReactDOM.createRoot(root).render(
+ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <AuthProvider>
-        <MaintenanceProvider>
-          <App />
-        </MaintenanceProvider>
-      </AuthProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <MaintenanceProvider>
+            <App />
+          </MaintenanceProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </ErrorBoundary>
-  </React.StrictMode>,
+  </React.StrictMode>
 );
