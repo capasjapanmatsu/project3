@@ -1,7 +1,7 @@
-import { Suspense, lazy, useEffect, useState } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Suspense, lazy, useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
-import PWAManager from './components/PWAManager';
+import ErrorBoundary from './components/ErrorBoundary';
 import useAuth from './context/AuthContext';
 import DogInfo from './pages/DogInfo';
 import DogInfoFoods from './pages/DogInfoFoods';
@@ -72,6 +72,9 @@ const NetlifySetupGuide = lazy(() => import('./pages/NetlifySetupGuide'));
 const PWASetupGuide = lazy(() => import('./pages/PWASetupGuide'));
 const PWAImplementationGuide = lazy(() => import('./pages/PWAImplementationGuide'));
 const PWADocumentation = lazy(() => import('./pages/PWADocumentation'));
+const PWATestingSuite = lazy(() => import('./pages/PWATestingSuite'));
+const PWALighthouseAudit = lazy(() => import('./pages/PWALighthouseAudit'));
+const PWADeploymentGuide = lazy(() => import('./pages/PWADeploymentGuide'));
 
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
@@ -91,34 +94,20 @@ const FastLoadingSpinner = () => (
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated, loading } = useAuth();
-  const location = useLocation();
-  const [forceShowContent, setForceShowContent] = useState(false);
-
-  // 10秒後に強制的にコンテンツを表示（緊急フォールバック）
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (loading) {
-        console.warn('⚠️ ProtectedRoute: Force showing content after timeout');
-        setForceShowContent(true);
-      }
-    }, 10000); // 20秒から10秒に短縮
-
-    return () => clearTimeout(timeout);
-  }, [loading]);
-
+  
   // Show loading spinner while authentication state is being determined
-  if (loading && !forceShowContent) {
+  if (loading) {
     return <LoadingSpinner />;
   }
 
-  if (!user && !forceShowContent) {
+  if (!user) {
     // Redirect to login if not logged in
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: window.location.pathname }} replace />;
   }
 
-  if (!isAuthenticated && !forceShowContent) {
+  if (!isAuthenticated) {
     // If user is logged in but not fully authenticated
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: window.location.pathname }} replace />;
   }
 
   return <>{children}</>;
@@ -126,7 +115,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Auth callback handler component
 const AuthCallback = () => {
-  const navigate = useLocation();
+  const navigate = window.location.hash;
   
   useEffect(() => {
     // Redirect to MagicLink component to handle the authentication
@@ -211,6 +200,9 @@ function App() {
             <Route path="/pwa-setup-guide" element={<PWASetupGuide />} />
             <Route path="/pwa-implementation-guide" element={<PWAImplementationGuide />} />
             <Route path="/pwa-documentation" element={<PWADocumentation />} />
+            <Route path="/pwa-testing-suite" element={<PWATestingSuite />} />
+            <Route path="/pwa-lighthouse-audit" element={<PWALighthouseAudit />} />
+            <Route path="/pwa-deployment-guide" element={<PWADeploymentGuide />} />
             <Route path="/dog-info" element={<DogInfo />} />
             <Route path="/dog-info/foods" element={<DogInfoFoods />} />
             <Route path="/dog-info/vaccine" element={<DogInfoVaccine />} />
@@ -264,7 +256,7 @@ function App() {
       </Layout>
       
       {/* PWA管理機能 */}
-      <PWAManager />
+      {/* <PWAManager /> */}
     </>
   );
 }

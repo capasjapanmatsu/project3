@@ -5,9 +5,13 @@
  * ドッグパークJP PWA対応のための追加最適化を実行
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // 設定
 const config = {
@@ -269,11 +273,11 @@ function buildPWA() {
 }
 
 // メイン実行
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   buildPWA();
 }
 
-module.exports = {
+export {
   buildPWA,
   checkPWAFiles,
   validateManifest,

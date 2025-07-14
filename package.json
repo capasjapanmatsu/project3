@@ -12,6 +12,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "analyze": "npx vite-bundle-analyzer",
+    "test": "echo 'No tests specified' && exit 0",
+    "pwa:sitemap": "node scripts/generate-sitemap.js",
     "deploy": "npm run build && git add . && git commit -m 'Deploy to Netlify' && git push origin main",
     "deploy:preview": "npm run build && netlify deploy",
     "deploy:prod": "npm run build && netlify deploy --prod",
