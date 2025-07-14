@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Navigation, AlertCircle, ChevronDown } from 'lucide-react';
 import Card from './Card';
@@ -43,7 +43,7 @@ export function NearbyDogs() {
     if (userLocation) {
       void fetchNearbyDogs();
     }
-  }, [userLocation, user]);
+  }, [userLocation, user, fetchNearbyDogs]);
 
   const getCurrentLocation = () => {
     setIsLoading(true);
@@ -89,7 +89,7 @@ export function NearbyDogs() {
     );
   };
 
-  const fetchNearbyDogs = async () => {
+  const fetchNearbyDogs = useCallback(async () => {
     if (!userLocation || !user) return;
 
     try {
@@ -162,7 +162,7 @@ export function NearbyDogs() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userLocation, user]);
 
   // 2点間の距離を計算（Haversine式）
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
