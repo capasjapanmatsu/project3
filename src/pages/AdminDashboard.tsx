@@ -13,11 +13,11 @@ import {
   DollarSign,
   Calendar,
   ShoppingBag,
-  Settings
+  Settings,
+  Bell
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { NewsManagement } from '../components/admin/NewsManagement';
 import AdminMaintenanceManagement from '../components/admin/AdminMaintenanceManagement';
 import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
@@ -249,7 +249,7 @@ export function AdminDashboard() {
       )}
 
       {/* 管理メニュー */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Link to="/admin/management">
           <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
             <div className="flex items-center space-x-3">
@@ -297,6 +297,38 @@ export function AdminDashboard() {
             </div>
           </Card>
         </Link>
+
+        <Link to="/admin/news">
+          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
+            <div className="flex items-center space-x-3">
+              <div className="bg-yellow-100 p-3 rounded-full">
+                <Bell className="w-6 h-6 text-yellow-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold">新着情報管理</h3>
+                <p className="text-sm text-gray-600">
+                  サイトの新着情報・お知らせを管理
+                </p>
+              </div>
+            </div>
+          </Card>
+        </Link>
+
+        <div onClick={() => setActiveTab('maintenance')}>
+          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
+            <div className="flex items-center space-x-3">
+              <div className="bg-orange-100 p-3 rounded-full">
+                <Settings className="w-6 h-6 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold">メンテナンス管理</h3>
+                <p className="text-sm text-gray-600">
+                  システムメンテナンス・IP管理
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
       </div>
 
       {/* タブナビゲーション */}
@@ -442,7 +474,16 @@ export function AdminDashboard() {
           </Card>
 
           {/* 新着情報管理 */}
-          <NewsManagement />
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4">新着情報管理</h3>
+            <p className="text-gray-600">
+              サイトの新着情報・お知らせを管理するには 
+              <Link to="/admin/news" className="text-blue-600 hover:text-blue-800 mx-1">
+                こちら
+              </Link>
+              からアクセスしてください。
+            </p>
+          </Card>
         </div>
       )}
 

@@ -72,20 +72,46 @@ export function Login() {
     setError('');
     
     try {
+      console.log('🔐 Starting password login for:', email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email,
         password: password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Login error:', error);
+        throw error;
+      }
 
-      safeSetItem('lastUsedEmail', email);
-      
-      // ログイン成功時のリダイレクト
-      navigate('/dashboard');
+      if (data.user) {
+        console.log('✅ Login successful for:', data.user.email);
+        safeSetItem('lastUsedEmail', email);
+        
+        // 短い遅延を追加してセッション確立を待つ
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // ログイン成功時のリダイレクト
+        console.log('🚀 Redirecting to dashboard...');
+        navigate('/dashboard');
+      } else {
+        throw new Error('ログインに成功しましたが、ユーザー情報を取得できませんでした。');
+      }
     } catch (err: unknown) {
-      console.warn('Password login error:', err);
-      setError((err as Error).message || 'ログインに失敗しました。メールアドレスとパスワードを確認してください。');
+      console.warn('❌ Password login error:', err);
+      
+      const errorMessage = err instanceof Error ? err.message : 'ログインに失敗しました。';
+      
+      // Supabase特有のエラーメッセージを日本語化
+      if (errorMessage.includes('Invalid login credentials')) {
+        setError('メールアドレスまたはパスワードが正しくありません。');
+      } else if (errorMessage.includes('Email not confirmed')) {
+        setError('メールアドレスが確認されていません。メールを確認してリンクをクリックしてください。');
+      } else if (errorMessage.includes('Too many requests')) {
+        setError('ログイン試行回数が上限に達しました。しばらく待ってから再度お試しください。');
+      } else {
+        setError(`ログインに失敗しました: ${errorMessage}`);
+      }
     } finally {
       setIsLoading(false);
     }

@@ -29,53 +29,55 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
         .order('created_at', { ascending: false });
       
       if (parksError) throw parksError;
-      
-      // Get owner information
-      const ownerIds = parksData?.map(park => park.owner_id) || [];
-      let ownersData: any[] = [];
-      if (ownerIds.length > 0) {
-        const { data: owners, error: ownersError } = await supabase
-          .from('profiles')
-          .select('id, name')
-          .in('id', ownerIds);
-        
-        if (ownersError) {
-          console.warn('Error fetching owners:', ownersError);
-        } else {
-          ownersData = owners || [];
-        }
+      if (!parksData || parksData.length === 0) {
+        setPendingParks([]);
+        return;
       }
-      
-      // Get review stages for these parks
-      const parkIds = parksData?.map(park => park.id) || [];
-      
-      let reviewStagesData: any[] = [];
-      if (parkIds.length > 0) {
-        const { data: stagesData, error: stagesError } = await supabase
-          .from('dog_park_review_stages')
-          .select('park_id, second_stage_submitted_at')
-          .in('park_id', parkIds);
+
+      // Extract IDs for parallel queries
+      const ownerIds = [...new Set(parksData.map(park => park.owner_id))];
+      const parkIds = parksData.map(park => park.id);
+
+      // Fetch all related data in parallel for better performance
+      const [ownersResponse, reviewStagesResponse, imagesResponse] = await Promise.allSettled([
+        // Get owner information
+        ownerIds.length > 0 
+          ? supabase.from('profiles').select('id, name').in('id', ownerIds)
+          : Promise.resolve({ data: [], error: null }),
         
-        if (stagesError) {
-          console.warn('Error fetching review stages:', stagesError);
-        } else {
-          reviewStagesData = stagesData || [];
-        }
+        // Get review stages
+        parkIds.length > 0
+          ? supabase.from('dog_park_review_stages').select('park_id, second_stage_submitted_at').in('park_id', parkIds)
+          : Promise.resolve({ data: [], error: null }),
+        
+        // Get facility images stats
+        parkIds.length > 0
+          ? supabase.from('dog_park_facility_images').select('park_id, is_approved').in('park_id', parkIds)
+          : Promise.resolve({ data: [], error: null })
+      ]);
+
+      // Process results safely
+      const ownersData = ownersResponse.status === 'fulfilled' && !ownersResponse.value.error 
+        ? ownersResponse.value.data || [] 
+        : [];
+      
+      const reviewStagesData = reviewStagesResponse.status === 'fulfilled' && !reviewStagesResponse.value.error
+        ? reviewStagesResponse.value.data || []
+        : [];
+      
+      const imagesData = imagesResponse.status === 'fulfilled' && !imagesResponse.value.error
+        ? imagesResponse.value.data || []
+        : [];
+
+      // Log any errors but continue processing
+      if (ownersResponse.status === 'rejected' || (ownersResponse.status === 'fulfilled' && ownersResponse.value.error)) {
+        console.warn('Error fetching owners:', ownersResponse.status === 'rejected' ? ownersResponse.reason : ownersResponse.value.error);
       }
-      
-      // Get facility images count for these parks
-      let imagesData: any[] = [];
-      if (parkIds.length > 0) {
-        const { data: imageStats, error: imagesError } = await supabase
-          .from('dog_park_facility_images')
-          .select('park_id, is_approved')
-          .in('park_id', parkIds);
-        
-        if (imagesError) {
-          console.warn('Error fetching image stats:', imagesError);
-        } else {
-          imagesData = imageStats || [];
-        }
+      if (reviewStagesResponse.status === 'rejected' || (reviewStagesResponse.status === 'fulfilled' && reviewStagesResponse.value.error)) {
+        console.warn('Error fetching review stages:', reviewStagesResponse.status === 'rejected' ? reviewStagesResponse.reason : reviewStagesResponse.value.error);
+      }
+      if (imagesResponse.status === 'rejected' || (imagesResponse.status === 'fulfilled' && imagesResponse.value.error)) {
+        console.warn('Error fetching image stats:', imagesResponse.status === 'rejected' ? imagesResponse.reason : imagesResponse.value.error);
       }
       
       // Combine the data
@@ -93,8 +95,6 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
           rejected_images: parkImages.filter(img => img.is_approved === false).length
         };
       }) || [];
-      
-      console.log('📊 Combined data:', combinedData);
       
       // Show all parks that are in first_stage_passed or second_stage_review
       // For first_stage_passed, only show if they have submitted second stage

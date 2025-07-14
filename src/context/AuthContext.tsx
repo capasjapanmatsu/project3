@@ -112,8 +112,10 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const initializeAuth = async () => {
       try {
-        // 本番環境での最適化: より短いタイムアウトと早期のフォールバック
-        const timeoutDuration = import.meta.env.PROD ? 8000 : 5000; // 本番環境でも8秒に短縮
+        console.log('🔐 Auth initialization started...');
+        
+        // タイムアウト時間を大幅に延長（開発: 30秒, 本番: 20秒）
+        const timeoutDuration = import.meta.env.PROD ? 20000 : 30000;
         
         timeoutId = setTimeout(() => {
           if (isMounted) {
@@ -146,13 +148,14 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         }
 
+        console.log('🔍 Getting session from Supabase...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         // タイムアウトをクリア
         if (timeoutId) clearTimeout(timeoutId);
         
         if (error) {
-          console.warn('Session retrieval error:', error.message);
+          console.warn('❌ Session retrieval error:', error.message);
           
           // エラーがあってもアプリをクラッシュさせない
           // ログアウト状態として続行
@@ -166,58 +169,35 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
           return;
         }
-        
-        if (!isMounted) return;
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-        setIsAuthenticated(!!session?.user);
 
-        if (session?.user) {
-          // セッション情報をキャッシュ
-          safeSetItem('sb-auth-user', JSON.stringify(session.user));
+        if (session && session.user && isMounted) {
+          console.log('✅ Session found, user:', session.user.email);
           
-          try {
-            const profile = await fetchUserProfile(session.user.id, session.user.email);
-            if (isMounted) {
-              setUserProfile(profile);
-              const adminStatus = checkAdminStatus(session.user, profile);
-              setIsAdmin(adminStatus);
-            }
-          } catch (profileError) {
-            console.warn('Profile fetch error:', profileError instanceof Error ? profileError.message : 'Unknown error');
-            
-            // プロフィール取得に失敗してもセッションは有効として続行
-            if (isMounted) {
-              setUserProfile(null);
-              setIsAdmin(false);
-            }
+          setSession(session);
+          setUser(session.user);
+          setIsAuthenticated(true);
+          
+          // ユーザープロフィールを取得
+          const profile = await fetchUserProfile(session.user.id, session.user.email);
+          if (isMounted) {
+            setUserProfile(profile);
+            setIsAdmin(checkAdminStatus(session.user, profile));
           }
         } else {
-          // ログアウト時はキャッシュをクリア
-          safeSetItem('sb-auth-user', '');
-          
+          console.log('ℹ️ No active session found');
           if (isMounted) {
+            setSession(null);
+            setUser(null);
+            setIsAuthenticated(false);
             setUserProfile(null);
             setIsAdmin(false);
           }
         }
+      } catch (err) {
+        console.error('❌ Auth initialization error:', err);
         
-      } catch (error) {
-        console.error('💥 Error initializing auth:', error);
+        if (timeoutId) clearTimeout(timeoutId);
         
-        // 本番環境での初期化エラー詳細を記録
-        if (import.meta.env.PROD) {
-          console.error('Production auth initialization error:', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
-            url: window.location.href,
-            timestamp: new Date().toISOString(),
-            userAgent: navigator.userAgent
-          });
-        }
-        
-        // 致命的なエラーが発生した場合もログアウト状態として続行
         if (isMounted) {
           setSession(null);
           setUser(null);
@@ -226,78 +206,59 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
           setIsAdmin(false);
         }
       } finally {
-        // タイムアウトをクリア
-        if (timeoutId) clearTimeout(timeoutId);
-        // エラーの有無に関わらず必ずローディングを終了
         if (isMounted) {
           setLoading(false);
-          if (import.meta.env.PROD) {
-            console.log('🏁 Production auth initialization completed');
-          }
+          console.log('🔐 Auth initialization completed');
         }
       }
     };
 
-    // 最大待機時間の緊急フォールバック（本番環境: 15秒、開発環境: 10秒）
-    const emergencyTimeoutDuration = import.meta.env.PROD ? 15000 : 10000;
-    
-    const emergencyTimeout = setTimeout(() => {
-      if (isMounted && loading) {
-        console.warn(`⚠️ Emergency timeout after ${emergencyTimeoutDuration}ms: Force completing auth initialization`);
-        setLoading(false);
-      }
-    }, emergencyTimeoutDuration);
+    initializeAuth();
 
-    void initializeAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!isMounted) return;
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsAuthenticated(!!session?.user);
-
-      if (session?.user) {
-        // セッション情報をキャッシュ
-        safeSetItem('sb-auth-user', JSON.stringify(session.user));
+    // セッション変更を監視
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔄 Auth state changed:', event, session?.user?.email || 'No user');
         
-        try {
+        if (!isMounted) return;
+
+        if (event === 'SIGNED_IN' && session) {
+          console.log('✅ User signed in:', session.user.email);
+          setSession(session);
+          setUser(session.user);
+          setIsAuthenticated(true);
+          
+          // ユーザープロフィールを取得
           const profile = await fetchUserProfile(session.user.id, session.user.email);
           if (isMounted) {
             setUserProfile(profile);
-            const adminStatus = checkAdminStatus(session.user, profile);
-            setIsAdmin(adminStatus);
+            setIsAdmin(checkAdminStatus(session.user, profile));
           }
-        } catch (profileError) {
-          console.warn('Profile fetch error in auth state change:', profileError instanceof Error ? profileError.message : 'Unknown');
+        } else if (event === 'SIGNED_OUT') {
+          console.log('👋 User signed out');
           if (isMounted) {
+            setSession(null);
+            setUser(null);
+            setIsAuthenticated(false);
             setUserProfile(null);
             setIsAdmin(false);
           }
-        }
-      } else {
-        // ログアウト時はキャッシュをクリア
-        safeSetItem('sb-auth-user', '');
-        
-        if (isMounted) {
-          setUserProfile(null);
-          setIsAdmin(false);
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+          console.log('🔄 Token refreshed for:', session.user.email);
+          if (isMounted) {
+            setSession(session);
+            setUser(session.user);
+          }
         }
       }
-      
-      // Auth state changeが発生したらloadingを終了
-      if (isMounted) {
-        setLoading(false);
-      }
-    });
+    );
 
     return () => {
       isMounted = false;
       if (timeoutId) clearTimeout(timeoutId);
-      clearTimeout(emergencyTimeout);
       subscription.unsubscribe();
     };
-  }, []); // 空の依存配列で初回のみ実行
+  }, []);
 
   const signInWithMagicLink = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -363,15 +324,16 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = useCallback(async () => {
     try {
-      await supabase.auth.signOut();
-      setIsAuthenticated(false);
-      setUser(null);
-      setSession(null);
-      setUserProfile(null);
-      setIsAdmin(false);
+      console.log('👋 Logging out...');
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      // ローカルストレージをクリア
+      localStorage.removeItem('sb-auth-user');
+      
+      console.log('✅ Logout successful');
     } catch (error) {
-      console.error('Logout error:', error);
-      throw error;
+      console.error('❌ Logout error:', error);
     }
   }, []);
 

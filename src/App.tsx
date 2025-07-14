@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
+import PWAManager from './components/PWAManager';
 import useAuth from './context/AuthContext';
 import DogInfo from './pages/DogInfo';
 import DogInfoFoods from './pages/DogInfoFoods';
@@ -40,6 +41,7 @@ const AdminUserDetail = lazy(() => import('./pages/AdminUserDetail').then(module
 const AdminParkManagement = lazy(() => import('./pages/AdminParkManagement').then(module => ({ default: module.AdminParkManagement })));
 const AdminReservationManagement = lazy(() => import('./pages/AdminReservationManagement').then(module => ({ default: module.AdminReservationManagement })));
 const AdminSalesManagement = lazy(() => import('./pages/AdminSalesManagement').then(module => ({ default: module.AdminSalesManagement })));
+const AdminNewsManagement = lazy(() => import('./pages/AdminNewsManagement').then(module => ({ default: module.AdminNewsManagement })));
 const AdminTasks = lazy(() => import('./pages/AdminTasks').then(module => ({ default: module.AdminTasks })));
 const AdminRevenueReport = lazy(() => import('./pages/AdminRevenueReport').then(module => ({ default: module.AdminRevenueReport })));
 const AccessControl = lazy(() => import('./pages/AccessControl').then(module => ({ default: module.AccessControl })));
@@ -66,15 +68,23 @@ const NewParkDetail = lazy(() => import('./pages/NewParkDetail').then(module => 
 const TwoFactorSetup = lazy(() => import('./pages/TwoFactorSetup'));
 const TwoFactorVerify = lazy(() => import('./pages/TwoFactorVerify'));
 const DogProfile = lazy(() => import('./pages/DogProfile').then(module => ({ default: module.DogProfile })));
+const NetlifySetupGuide = lazy(() => import('./pages/NetlifySetupGuide'));
+const PWASetupGuide = lazy(() => import('./pages/PWASetupGuide'));
+const PWAImplementationGuide = lazy(() => import('./pages/PWAImplementationGuide'));
+const PWADocumentation = lazy(() => import('./pages/PWADocumentation'));
 
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
   <div className="flex flex-col justify-center items-center h-screen bg-gray-50">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4" />
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2" />
     <p className="text-gray-600 text-sm">読み込み中...</p>
-    <div className="mt-2 text-xs text-gray-400">
-      {import.meta.env.PROD ? '本番環境' : '開発環境'}
-    </div>
+  </div>
+);
+
+// Optimized loading component with faster rendering
+const FastLoadingSpinner = () => (
+  <div className="flex justify-center items-center h-32">
+    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
   </div>
 );
 
@@ -170,9 +180,10 @@ function App() {
   }, []);
 
   return (
-    <Layout>
-      <Suspense fallback={<LoadingSpinner />}>
-        <Routes>
+    <>
+      <Layout>
+        <Suspense fallback={<LoadingSpinner />}>
+          <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -196,6 +207,10 @@ function App() {
             <Route path="/dog-profile/:dogId" element={<DogProfile />} />
             <Route path="/two-factor-setup" element={<ProtectedRoute><TwoFactorSetup /></ProtectedRoute>} />
             <Route path="/two-factor-verify" element={<ProtectedRoute><TwoFactorVerify /></ProtectedRoute>} />
+            <Route path="/netlify-setup-guide" element={<NetlifySetupGuide />} />
+            <Route path="/pwa-setup-guide" element={<PWASetupGuide />} />
+            <Route path="/pwa-implementation-guide" element={<PWAImplementationGuide />} />
+            <Route path="/pwa-documentation" element={<PWADocumentation />} />
             <Route path="/dog-info" element={<DogInfo />} />
             <Route path="/dog-info/foods" element={<DogInfoFoods />} />
             <Route path="/dog-info/vaccine" element={<DogInfoVaccine />} />
@@ -229,6 +244,7 @@ function App() {
             <Route path="/admin/tasks" element={<ProtectedRoute><AdminTasks /></ProtectedRoute>} />
             <Route path="/admin/shop" element={<ProtectedRoute><AdminShopManagement /></ProtectedRoute>} />
             <Route path="/admin/revenue" element={<ProtectedRoute><AdminRevenueReport /></ProtectedRoute>} />
+            <Route path="/admin/news" element={<ProtectedRoute><AdminNewsManagement /></ProtectedRoute>} />
             <Route path="/access-control" element={<ProtectedRoute><AccessControl /></ProtectedRoute>} />
             <Route path="/payment-setup" element={<ProtectedRoute><PaymentSetup /></ProtectedRoute>} />
             <Route path="/owner-payment-system" element={<ProtectedRoute><OwnerPaymentSystem /></ProtectedRoute>} />
@@ -246,6 +262,10 @@ function App() {
           </Routes>
         </Suspense>
       </Layout>
+      
+      {/* PWA管理機能 */}
+      <PWAManager />
+    </>
   );
 }
 

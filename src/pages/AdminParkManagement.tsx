@@ -20,7 +20,7 @@ import {
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
-import { supabase } from '../utils/supabase';
+import { supabase, supabaseAdmin, isAdminClientAvailable } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 
 interface ParkData {
@@ -62,23 +62,37 @@ export function AdminParkManagement() {
 
   useEffect(() => {
     if (!isAdmin) {
+      console.warn('❌ 管理者権限がありません。ホームページにリダイレクトします。');
       navigate('/');
       return;
     }
+    
+    console.log('✅ 管理者権限を確認しました。データ取得を開始します。');
     fetchParks();
   }, [isAdmin, navigate]);
 
   useEffect(() => {
-    filterAndSortParks();
+    if (parks.length > 0) {
+      console.log('🔄 パークデータが更新されました。フィルタリングを実行します。');
+      filterAndSortParks();
+    }
   }, [parks, searchTerm, filterStatus, sortBy, sortOrder]);
 
   const fetchParks = async () => {
     try {
       setIsLoading(true);
       setError('');
+      
+      console.log('🔍 管理者パーク管理: データ取得開始');
+      
+      // 管理者クライアントが利用可能かチェック
+      const adminClient = supabaseAdmin || supabase;
+      if (!supabaseAdmin) {
+        console.warn('⚠️ 管理者クライアントが利用できません。通常のクライアントを使用します。');
+      }
 
       // ドッグラン情報を取得
-      const { data: parksData, error: parksError } = await supabase
+      const { data: parksData, error: parksError } = await adminClient
         .from('dog_parks')
         .select(`
           id,
@@ -96,102 +110,120 @@ export function AdminParkManagement() {
         `);
 
       if (parksError) {
-        console.error('Parks error:', parksError);
-        throw new Error('ドッグラン情報の取得に失敗しました');
+        console.error('❌ Parks error:', parksError);
+        throw new Error(`ドッグラン情報の取得に失敗しました: ${parksError.message}`);
       }
 
       if (!parksData || parksData.length === 0) {
+        console.log('ℹ️ パークデータが見つかりません');
         setParks([]);
         return;
       }
 
-      // auth.usersテーブルからメール情報を取得（管理者権限があれば）
-      let authUsers: any = null;
-      try {
-        const { data: authUsersData, error: authError } = await supabase.auth.admin.listUsers();
-        if (!authError) {
-          authUsers = authUsersData;
-          console.log('Successfully fetched auth users for parks');
-        } else {
-          console.warn('Auth users fetch failed for parks:', authError);
-        }
-      } catch (authError) {
-        console.warn('Auth admin API not available for parks:', authError);
-      }
+      console.log(`✅ ${parksData.length} 件のパークデータを取得しました`);
 
       // 各ドッグランの詳細データを取得
       const parkPromises = parksData.map(async (park) => {
         try {
-          // オーナー情報を取得
-          const { data: ownerProfile } = await supabase
-            .from('profiles')
-            .select('name, user_type')
-            .eq('id', park.owner_id)
-            .single();
+          console.log(`🔍 パーク詳細取得中: ${park.name} (ID: ${park.id})`);
+          
+          // オーナー情報を取得（owner_idが存在する場合のみ）
+          let ownerProfile = null;
+          if (park.owner_id) {
+            try {
+              const { data: profileData, error: profileError } = await adminClient
+                .from('profiles')
+                .select('name, user_type, email')
+                .eq('id', park.owner_id)
+                .single();
+              
+              if (profileError) {
+                console.warn(`⚠️ プロファイル取得エラー (park: ${park.id}):`, profileError);
+              } else {
+                ownerProfile = profileData;
+              }
+            } catch (profileError) {
+              console.warn(`⚠️ プロファイル取得例外 (park: ${park.id}):`, profileError);
+            }
+          }
 
           // 予約数を取得（今月）
           const startOfMonth = new Date();
           startOfMonth.setDate(1);
           startOfMonth.setHours(0, 0, 0, 0);
 
-          const { count: reservationCount } = await supabase
-            .from('reservations')
-            .select('id', { count: 'exact' })
-            .eq('park_id', park.id)
-            .gte('created_at', startOfMonth.toISOString());
+          let reservationCount = 0;
+          let monthlyRevenue = 0;
+          let totalRevenue = 0;
+          
+          try {
+            const { count } = await adminClient
+              .from('reservations')
+              .select('id', { count: 'exact' })
+              .eq('park_id', park.id)
+              .gte('created_at', startOfMonth.toISOString());
+            
+            reservationCount = count || 0;
 
-          // 売上を取得（今月）
-          const { data: reservationRevenue } = await supabase
-            .from('reservations')
-            .select('total_amount')
-            .eq('park_id', park.id)
-            .gte('created_at', startOfMonth.toISOString())
-            .not('total_amount', 'is', null);
+            // 売上を取得（今月）
+            const { data: reservationRevenue } = await adminClient
+              .from('reservations')
+              .select('total_amount')
+              .eq('park_id', park.id)
+              .gte('created_at', startOfMonth.toISOString())
+              .not('total_amount', 'is', null);
 
-          const monthlyRevenue = (reservationRevenue || []).reduce(
-            (sum, res) => sum + (res.total_amount || 0), 0
-          );
+            monthlyRevenue = (reservationRevenue || []).reduce(
+              (sum, res) => sum + (res.total_amount || 0), 0
+            );
 
-          // 総売上を取得
-          const { data: totalRevenueData } = await supabase
-            .from('reservations')
-            .select('total_amount')
-            .eq('park_id', park.id)
-            .not('total_amount', 'is', null);
+            // 総売上を取得
+            const { data: totalRevenueData } = await adminClient
+              .from('reservations')
+              .select('total_amount')
+              .eq('park_id', park.id)
+              .not('total_amount', 'is', null);
 
-          const totalRevenue = (totalRevenueData || []).reduce(
-            (sum, res) => sum + (res.total_amount || 0), 0
-          );
+            totalRevenue = (totalRevenueData || []).reduce(
+              (sum, res) => sum + (res.total_amount || 0), 0
+            );
+          } catch (reservationError) {
+            console.warn(`⚠️ 予約データ取得エラー (park: ${park.id}):`, reservationError);
+          }
 
           // レビュー情報を取得
-          const { data: reviewsData } = await supabase
-            .from('dog_park_reviews')
-            .select('rating')
-            .eq('park_id', park.id);
+          let reviewCount = 0;
+          let averageRating = 0;
+          
+          try {
+            const { data: reviewsData } = await adminClient
+              .from('dog_park_reviews')
+              .select('rating')
+              .eq('park_id', park.id);
 
-          const reviewCount = reviewsData?.length || 0;
-          const averageRating = reviewCount > 0 
-            ? (reviewsData || []).reduce((sum, review) => sum + review.rating, 0) / reviewCount
-            : 0;
+            reviewCount = reviewsData?.length || 0;
+            averageRating = reviewCount > 0 
+              ? (reviewsData || []).reduce((sum, review) => sum + review.rating, 0) / reviewCount
+              : 0;
+          } catch (reviewError) {
+            console.warn(`⚠️ レビューデータ取得エラー (park: ${park.id}):`, reviewError);
+          }
 
-          // auth.usersからオーナーのメール情報を取得（利用可能な場合）
-          const authUser = authUsers?.users?.find((u: any) => u.id === park.owner_id);
-          const actualEmail = authUser?.email;
-
-          return {
+          // 結果を構築
+          const parkResult: ParkData = {
             id: park.id,
             name: park.name,
             address: park.address,
             created_at: park.created_at,
             status: park.status,
             owner_name: ownerProfile?.name || 'Unknown',
-            owner_email: actualEmail || `owner_${park.owner_id.slice(0, 8)}@unknown.com`,
+            owner_email: ownerProfile?.email || `owner_${park.owner_id?.slice(0, 8) || 'unknown'}@example.com`,
             price: park.price || 0,
             max_capacity: park.max_capacity || 0,
             average_rating: parseFloat(averageRating.toFixed(1)),
             review_count: reviewCount,
             monthly_revenue: monthlyRevenue,
-            monthly_reservations: reservationCount || 0,
+            monthly_reservations: reservationCount,
             total_revenue: totalRevenue,
             facilities: park.facilities || {
               parking: false,
@@ -201,9 +233,14 @@ export function AdminParkManagement() {
               rest_area: false,
               water_station: false
             }
-          } as ParkData;
+          };
+
+          console.log(`✅ パーク詳細取得完了: ${park.name}`);
+          return parkResult;
         } catch (err) {
-          console.error(`Error fetching data for park ${park.id}:`, err);
+          console.error(`❌ パーク詳細取得エラー (park: ${park.id}):`, err);
+          
+          // エラーが発生した場合でも基本的な情報だけ返す
           return {
             id: park.id,
             name: park.name || 'Unknown Park',
@@ -211,7 +248,7 @@ export function AdminParkManagement() {
             created_at: park.created_at,
             status: park.status || 'pending',
             owner_name: 'Unknown',
-            owner_email: `owner_${park.owner_id.slice(0, 8)}@unknown.com`,
+            owner_email: `owner_${park.owner_id?.slice(0, 8) || 'unknown'}@example.com`,
             price: park.price || 0,
             max_capacity: park.max_capacity || 0,
             average_rating: 0,
@@ -231,11 +268,15 @@ export function AdminParkManagement() {
         }
       });
 
+      console.log('🔄 全パークの詳細データを並列取得中...');
       const parksWithDetails = await Promise.all(parkPromises);
+      
+      console.log(`✅ ${parksWithDetails.length} 件のパーク詳細データを取得完了`);
       setParks(parksWithDetails);
     } catch (err) {
-      console.error('Error fetching parks:', err);
-      setError(`ドッグランデータの取得に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`);
+      console.error('❌ パーク取得エラー:', err);
+      const errorMessage = err instanceof Error ? err.message : '不明なエラーが発生しました';
+      setError(`ドッグランデータの取得に失敗しました: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -367,7 +408,40 @@ export function AdminParkManagement() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600" />
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">🔄 ドッグランデータを読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <XCircle className="w-5 h-5 text-red-500 mr-2" />
+            <h3 className="text-red-800 font-medium">エラーが発生しました</h3>
+          </div>
+          <p className="text-red-700 mt-2">{error}</p>
+          <div className="mt-4 space-x-2">
+            <Button 
+              onClick={() => fetchParks()}
+              size="sm"
+              className="bg-red-600 hover:bg-red-700"
+            >
+              🔄 再試行
+            </Button>
+            <Button 
+              onClick={() => navigate('/admin')}
+              size="sm"
+              variant="secondary"
+            >
+              ← 管理者ダッシュボードに戻る
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }

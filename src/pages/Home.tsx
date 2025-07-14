@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { HeroSection } from '../components/home/HeroSection';
 import { NetworkErrorBanner } from '../components/home/NetworkErrorBanner';
 import { MarqueeDogsSection } from '../components/home/MarqueeDogsSection';
@@ -21,17 +21,19 @@ export function Home() {
   const [isOffline, setIsOffline] = useState(false);
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isNewsLoading, setIsNewsLoading] = useState(true); // 新着情報専用のローディング状態
   
   // レスポンシブフック
   const { isMobile, isTablet, prefersReducedMotion } = useResponsive();
 
-  const skipLinks = [
+  // スキップリンクをメモ化
+  const skipLinks = useMemo(() => [
     { href: '#main-content', label: 'メインコンテンツにスキップ' },
     { href: '#hero-section', label: 'ヒーローセクションにスキップ' },
     { href: '#features-section', label: '機能紹介にスキップ' },
     { href: '#news-section', label: '新着情報にスキップ' },
     { href: '#usage-rules', label: '利用方法・料金にスキップ' },
-  ];
+  ], []);
 
   // ネットワーク状態の監視
   useEffect(() => {
@@ -59,8 +61,34 @@ export function Home() {
     };
   }, []);
 
-  const fetchRecentDogs = async () => {
+  // キャッシュ関数 (5分間キャッシュ)
+  const cacheTimeout = 5 * 60 * 1000; // 5分
+  const cache = useMemo(() => new Map<string, { data: any; timestamp: number }>(), []);
+  
+  const getCachedData = useCallback((key: string) => {
+    const cached = cache.get(key);
+    if (cached && Date.now() - cached.timestamp < cacheTimeout) {
+      return cached.data;
+    }
+    return null;
+  }, [cache, cacheTimeout]);
+  
+  const setCachedData = useCallback((key: string, data: any) => {
+    cache.set(key, { data, timestamp: Date.now() });
+  }, [cache]);
+
+  const fetchRecentDogs = useCallback(async () => {
     try {
+      console.log('🐕 最近仲間入りしたワンちゃんを取得中...');
+      
+      // キャッシュから取得を試行
+      const cachedData = getCachedData('recentDogs');
+      if (cachedData) {
+        console.log('✅ キャッシュから最近仲間入りしたワンちゃんを取得:', cachedData.length, '匹');
+        setRecentDogs(cachedData);
+        return cachedData;
+      }
+      
       setIsLoading(true);
       setNetworkError(null);
 
@@ -69,16 +97,22 @@ export function Home() {
         throw new Error('データベース接続に失敗しました');
       }
 
+      // 必要なフィールドのみを取得してパフォーマンスを向上
       const { data, error } = await supabase
         .from('dogs')
-        .select('*')
+        .select('id, owner_id, name, breed, birth_date, gender, image_url, created_at')
         .order('created_at', { ascending: false })
         .limit(10);
-
+      
       if (error) throw error;
-      setRecentDogs(data || []);
+      
+      console.log('✅ 最近仲間入りしたワンちゃん取得成功:', data?.length || 0, '匹');
+      const dogs = data || [];
+      setRecentDogs(dogs);
+      setCachedData('recentDogs', dogs);
+      return dogs;
     } catch (err) {
-      console.error('Error fetching recent dogs:', err);
+      console.warn('❌ Error fetching recent dogs:', err);
       const errorMessage = err instanceof Error ? err.message : '接続エラーが発生しました';
       
       if (errorMessage.includes('NetworkError') || errorMessage.includes('Failed to fetch')) {
@@ -86,13 +120,27 @@ export function Home() {
       } else {
         setNetworkError(`データの取得に失敗しました。\nエラー詳細: ${errorMessage}`);
       }
+      return [];
     } finally {
       setIsLoading(false);
+      console.log('🐕 最近仲間入りしたワンちゃん取得処理完了');
     }
-  };
+  }, [getCachedData, setCachedData]);
 
-  const fetchNews = async () => {
+  const fetchNews = useCallback(async () => {
     try {
+      console.log('📰 新着情報を取得中...');
+      
+      // キャッシュから取得を試行
+      const cachedData = getCachedData('news');
+      if (cachedData) {
+        console.log('✅ キャッシュから新着情報を取得:', cachedData.length, '件');
+        setNews(cachedData);
+        return cachedData;
+      }
+      
+      setIsNewsLoading(true);
+      
       const { data, error } = await supabase
         .from('news_announcements')
         .select('*')
@@ -100,29 +148,66 @@ export function Home() {
         .limit(5);
 
       if (error) {
-        console.error('Error fetching news:', error);
-        return;
+        console.error('❌ 新着情報取得エラー:', error);
+        // エラーがあっても空配列を設定して処理を続行
+        setNews([]);
+        return [];
       }
 
-      setNews(data || []);
+      console.log('✅ 新着情報取得成功:', data?.length || 0, '件');
+      const newsData = data || [];
+      setNews(newsData);
+      setCachedData('news', newsData);
+      return newsData;
     } catch (err) {
-      console.error('Error fetching news:', err);
+      console.error('❌ 新着情報取得例外:', err);
+      // エラーが発生しても空配列を設定
+      setNews([]);
+      return [];
+    } finally {
+      setIsNewsLoading(false);
+      console.log('📰 新着情報取得処理完了');
     }
-  };
+  }, [getCachedData, setCachedData]);
+
+  // 並列でデータ取得を実行
+  const fetchAllData = useCallback(async () => {
+    console.log('🚀 データ取得を並列で開始...');
+    const startTime = Date.now();
+    
+    try {
+      // 並列でデータ取得を実行
+      const [dogs, news] = await Promise.all([
+        fetchRecentDogs(),
+        fetchNews()
+      ]);
+      
+      const endTime = Date.now();
+      console.log(`✅ 並列データ取得完了: ${endTime - startTime}ms`);
+      
+      return { dogs, news };
+    } catch (error) {
+      console.error('❌ 並列データ取得エラー:', error);
+      return { dogs: [], news: [] };
+    }
+  }, [fetchRecentDogs, fetchNews]);
 
   useEffect(() => {
-    void fetchRecentDogs();
-    void fetchNews();
-  }, []);
+    void fetchAllData();
+  }, [fetchAllData]);
 
-  const handleRetryConnection = async () => {
-    await fetchRecentDogs();
-    await fetchNews();
-  };
+  const handleRetryConnection = useCallback(async () => {
+    // キャッシュをクリアして再取得
+    cache.clear();
+    await fetchAllData();
+  }, [fetchAllData, cache]);
 
-  // アニメーション設定をレスポンシブに調整
+  // アニメーション設定をレスポンシブに調整 (遅延を削減)
   const animationDuration = isMobile ? 'fast' : 'normal';
-  const staggerDelay = prefersReducedMotion ? 0 : 100;
+  const staggerDelay = prefersReducedMotion ? 0 : 25; // 100から25に削減
+
+  // isLoggedInをメモ化
+  const isLoggedIn = useMemo(() => !!user, [user]);
 
   return (
     <>
@@ -134,7 +219,7 @@ export function Home() {
           <NetworkErrorBanner
             isOffline={isOffline}
             networkError={networkError}
-            onRetryConnection={() => void handleRetryConnection()}
+            onRetryConnection={handleRetryConnection}
           />
         </FadeIn>
 
@@ -147,7 +232,7 @@ export function Home() {
             tabIndex={-1}
           >
             <SlideUp duration={animationDuration} delay={staggerDelay * 0}>
-              <HeroSection isLoggedIn={!!user} />
+              <HeroSection isLoggedIn={isLoggedIn} />
             </SlideUp>
           </section>
 
@@ -167,6 +252,7 @@ export function Home() {
               <MarqueeDogsSection 
                 recentDogs={recentDogs} 
                 isOffline={isOffline}
+                isLoading={isLoading}
               />
             </AnimatedElement>
           </section>
@@ -192,7 +278,7 @@ export function Home() {
                 >
                   アプリの主な機能
                 </h2>
-                <FeaturesSection isLoggedIn={!!user} />
+                <FeaturesSection isLoggedIn={isLoggedIn} />
               </AnimatedElement>
             </section>
 
@@ -218,8 +304,9 @@ export function Home() {
                 </h2>
                 <NewsSection 
                   isOffline={isOffline}
-                  onRetryConnection={() => void handleRetryConnection()}
+                  onRetryConnection={handleRetryConnection}
                   news={news}
+                  isLoading={isNewsLoading}
                 />
               </AnimatedElement>
             </section>

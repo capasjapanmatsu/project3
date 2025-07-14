@@ -50,21 +50,18 @@ const Layout = ({ children }: LayoutProps) => {
     return true;
   };
 
+  // メンテナンス画面を表示する場合
   if (shouldShowMaintenance()) {
-    return (
-      <HelmetProvider>
-        <SEO />
-        <MaintenanceScreen />
-      </HelmetProvider>
-    );
+    return <MaintenanceScreen />;
   }
 
+  // 通常のレイアウトを表示
   return (
     <HelmetProvider>
-      <SEO />
-      <div className="min-h-screen flex flex-col bg-gray-50">
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <SEO />
         <Navbar />
-        <main id="main-content" className="flex-grow container mx-auto px-4 py-8 pb-20 md:pb-8">
+        <main className="flex-1 container mx-auto px-4 py-8">
           {children}
         </main>
         <Footer />
