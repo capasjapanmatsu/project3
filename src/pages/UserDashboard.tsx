@@ -96,8 +96,7 @@ export function UserDashboard() {
         parksResponse,
         reservationsResponse,
         notificationsResponse,
-        newsResponse,
-        likedDogsResponse
+        newsResponse
       ] = await Promise.all([
         supabase
           .from('profiles')
@@ -136,9 +135,13 @@ export function UserDashboard() {
           .from('news_announcements')
           .select('*')
           .order('created_at', { ascending: false })
-          .limit(3),
-        
-        supabase
+          .limit(3)
+      ]);
+
+      // いいねしたワンちゃんの情報を別途取得（エラーハンドリング付き）
+      let likedDogsData: any[] = [];
+      try {
+        const likedDogsResponse = await supabase
           .from('dog_likes')
           .select(`
             *,
@@ -149,11 +152,18 @@ export function UserDashboard() {
           `)
           .eq('user_id', user?.id)
           .order('created_at', { ascending: false })
-          .limit(10)
-      ]);
+          .limit(10);
+        
+        if (likedDogsResponse.data) {
+          likedDogsData = likedDogsResponse.data;
+        }
+      } catch (likesError) {
+        console.warn('Dog likes table not available:', likesError);
+        // テーブルが存在しない場合はスキップ
+      }
 
       // Error handling
-      [profileResponse, dogsResponse, parksResponse, reservationsResponse, notificationsResponse, newsResponse, likedDogsResponse]
+      [profileResponse, dogsResponse, parksResponse, reservationsResponse, notificationsResponse, newsResponse]
         .forEach((response, index) => {
           if (response.error) {
             console.error(`Error in response ${index}:`, response.error);
@@ -166,7 +176,7 @@ export function UserDashboard() {
       setRecentReservations(reservationsResponse.data || []);
       setNotifications(notificationsResponse.data || []);
       setNews(newsResponse.data || []);
-      setLikedDogs((likedDogsResponse.data || []).map((like: any) => like.dog).filter(Boolean));
+      setLikedDogs(likedDogsData.map((like: any) => like.dog).filter(Boolean));
       
     } catch (error) {
       console.error('Error fetching dashboard data:', error);

@@ -111,12 +111,19 @@ export function AdminUserManagement() {
             .gte('created_at', startOfMonth.toISOString());
 
           // サブスクリプション状況を取得
-          const { data: subscription } = await supabase
-            .from('stripe_subscriptions')
-            .select('status')
-            .eq('user_id', profile.id)
-            .eq('status', 'active')
-            .maybeSingle();
+          let subscription = null;
+          try {
+            const { data: subscriptionData } = await supabase
+              .from('stripe_subscriptions')
+              .select('status')
+              .eq('user_id', profile.id)
+              .eq('status', 'active')
+              .maybeSingle();
+            subscription = subscriptionData;
+          } catch (subscriptionError) {
+            console.warn('Stripe subscriptions table not available:', subscriptionError);
+            // テーブルが存在しない場合はスキップ
+          }
 
           // 売上情報を取得（予約のみ）
           const { data: reservationPayments } = await supabase

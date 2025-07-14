@@ -116,34 +116,12 @@ export function AdminSalesManagement() {
         throw new Error('予約売上データの取得に失敗しました');
       }
 
-      // まず従来のsubscriptionsテーブルを試す
+      // サブスクリプション売上データを取得
       let subscriptionData = null;
       let subscriptionError = null;
       
       try {
-        const { data: legacySubscriptionData, error: legacyError } = await supabase
-          .from('subscriptions')
-          .select(`
-            id,
-            user_id,
-            status,
-            start_date,
-            end_date,
-            created_at
-          `)
-          .in('status', ['active', 'trialing']);
-        
-        if (legacyError) {
-          console.log('Legacy subscriptions table not available:', legacyError);
-        } else {
-          subscriptionData = legacySubscriptionData;
-        }
-      } catch (err) {
-        console.log('Legacy subscriptions table not available:', err);
-      }
-      
-      // 従来のテーブルが利用できない場合はstripe_subscriptionsを使用
-      if (!subscriptionData) {
+        // 従来のテーブルが利用できない場合はstripe_subscriptionsを使用
         const { data: stripeSubscriptionData, error: stripeError } = await supabase
           .from('stripe_subscriptions')
           .select(`
@@ -159,11 +137,11 @@ export function AdminSalesManagement() {
         
         subscriptionData = stripeSubscriptionData;
         subscriptionError = stripeError;
-      }
-
-      if (subscriptionError) {
-        console.error('Subscription error:', subscriptionError);
-        throw new Error('サブスクリプション売上データの取得に失敗しました');
+      } catch (tableError) {
+        console.warn('Stripe subscriptions table not available:', tableError);
+        // テーブルが存在しない場合はスキップ
+        subscriptionData = [];
+        subscriptionError = null;
       }
 
       // auth.usersテーブルからメール情報を取得（管理者権限があれば）

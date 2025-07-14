@@ -159,12 +159,19 @@ export function AdminReservationManagement() {
             .single();
 
           // サブスクリプション情報を取得
-          const { data: subscription } = await supabase
-            .from('stripe_subscriptions')
-            .select('status')
-            .eq('user_id', reservation.user_id)
-            .eq('status', 'active')
-            .maybeSingle();
+          let subscription = null;
+          try {
+            const { data: subscriptionData } = await supabase
+              .from('stripe_subscriptions')
+              .select('status')
+              .eq('user_id', reservation.user_id)
+              .eq('status', 'active')
+              .maybeSingle();
+            subscription = subscriptionData;
+          } catch (subscriptionError) {
+            console.warn('Stripe subscriptions table not available:', subscriptionError);
+            // テーブルが存在しない場合はスキップ
+          }
 
           // auth.usersからユーザーのメール情報を取得（利用可能な場合）
           const authUser = authUsers?.users?.find((u: any) => u.id === reservation.user_id);
