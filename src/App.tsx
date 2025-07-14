@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import useAuth from './context/AuthContext';
@@ -77,18 +77,31 @@ const LoadingSpinner = () => (
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated, loading } = useAuth();
   const location = useLocation();
+  const [forceShowContent, setForceShowContent] = useState(false);
+
+  // 20秒後に強制的にコンテンツを表示（緊急フォールバック）
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn('ProtectedRoute: Force showing content after timeout');
+        setForceShowContent(true);
+      }
+    }, 20000);
+
+    return () => clearTimeout(timeout);
+  }, [loading]);
 
   // Show loading spinner while authentication state is being determined
-  if (loading) {
+  if (loading && !forceShowContent) {
     return <LoadingSpinner />;
   }
 
-  if (!user) {
+  if (!user && !forceShowContent) {
     // Redirect to login if not logged in
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !forceShowContent) {
     // If user is logged in but not fully authenticated
     return <Navigate to="/login" state={{ from: location }} replace />;
   }

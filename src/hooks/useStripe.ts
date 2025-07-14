@@ -68,8 +68,6 @@ export function useStripe() {
         });
       }
 
-      console.log('Sending Stripe checkout request:', requestBody);
-
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
         method: 'POST',
         headers: {
@@ -81,7 +79,6 @@ export function useStripe() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Stripe checkout error response:', errorData);
         throw new Error(errorData.error || 'チェックアウトセッションの作成に失敗しました');
       }
 
@@ -115,7 +112,6 @@ export function useStripe() {
         throw new Error('チェックアウトURLが取得できませんでした');
       }
     } catch (err) {
-      console.error('Stripe checkout error:', err);
       setError((err as Error).message || 'チェックアウトに失敗しました');
       throw err;
     } finally {

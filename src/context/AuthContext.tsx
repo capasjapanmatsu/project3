@@ -108,6 +108,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
     
     const initializeAuth = async () => {
       try {
@@ -115,7 +116,23 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.log('Auth initialization started...');
         }
         
+        // 10秒のタイムアウトを設定
+        timeoutId = setTimeout(() => {
+          if (isMounted) {
+            console.warn('Auth initialization timeout, setting to logged out state');
+            setSession(null);
+            setUser(null);
+            setIsAuthenticated(false);
+            setUserProfile(null);
+            setIsAdmin(false);
+            setLoading(false);
+          }
+        }, 10000);
+        
         const { data: { session }, error } = await supabase.auth.getSession();
+        
+        // タイムアウトをクリア
+        if (timeoutId) clearTimeout(timeoutId);
         
         if (error) {
           console.error('Error getting session:', error);
@@ -152,9 +169,9 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
               setUserProfile(profile);
               const adminStatus = checkAdminStatus(session.user, profile);
               setIsAdmin(adminStatus);
-                              if (import.meta.env.DEV) {
-                  console.log('User profile loaded successfully');
-                }
+              if (import.meta.env.DEV) {
+                console.log('User profile loaded successfully');
+              }
             }
           } catch (profileError) {
             console.error('Error fetching user profile:', profileError);
@@ -182,6 +199,8 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
           setIsAdmin(false);
         }
       } finally {
+        // タイムアウトをクリア
+        if (timeoutId) clearTimeout(timeoutId);
         // エラーの有無に関わらず必ずローディングを終了
         if (isMounted) {
           setLoading(false);
@@ -191,6 +210,14 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     };
+
+    // 即座にローディング完了のフォールバックを設定（15秒後）
+    const emergencyTimeout = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn('Emergency timeout: Force completing auth initialization');
+        setLoading(false);
+      }
+    }, 15000);
 
     void initializeAuth();
 
@@ -230,6 +257,8 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+      clearTimeout(emergencyTimeout);
       subscription.unsubscribe();
     };
   }, []); // 空の依存配列で初回のみ実行

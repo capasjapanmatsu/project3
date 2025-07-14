@@ -14,8 +14,6 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
 
   const fetchParks = async () => {
     try {
-      console.log('📊 Fetching pending parks...');
-      
       // Get parks that have passed first stage or are in second stage review
       const { data: parksData, error: parksError } = await supabase
         .from('dog_parks')
@@ -32,8 +30,6 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
       
       if (parksError) throw parksError;
       
-      console.log('📊 Found parks:', parksData);
-      
       // Get owner information
       const ownerIds = parksData?.map(park => park.owner_id) || [];
       let ownersData: any[] = [];
@@ -44,7 +40,7 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
           .in('id', ownerIds);
         
         if (ownersError) {
-          console.error('Error fetching owners:', ownersError);
+          console.warn('Error fetching owners:', ownersError);
         } else {
           ownersData = owners || [];
         }
@@ -61,7 +57,7 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
           .in('park_id', parkIds);
         
         if (stagesError) {
-          console.error('Error fetching review stages:', stagesError);
+          console.warn('Error fetching review stages:', stagesError);
         } else {
           reviewStagesData = stagesData || [];
         }
@@ -76,7 +72,7 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
           .in('park_id', parkIds);
         
         if (imagesError) {
-          console.error('Error fetching image stats:', imagesError);
+          console.warn('Error fetching image stats:', imagesError);
         } else {
           imagesData = imageStats || [];
         }
@@ -112,18 +108,15 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
         return false;
       });
       
-      console.log('📊 Filtered data:', filteredData);
-      
       setPendingParks(filteredData);
     } catch (error) {
-      console.error('Parks fetch error:', error);
+      console.warn('Parks fetch error:', error);
       throw error;
     }
   };
 
   const fetchVaccines = async () => {
     try {
-      console.log('📊 Fetching pending vaccines...');
       const { data: vaccinesData, error: vaccinesError } = await supabase
         .from('vaccine_certifications')
         .select(`
@@ -136,7 +129,7 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
       if (vaccinesError) throw vaccinesError;
       setPendingVaccines(vaccinesData || []);
     } catch (error) {
-      console.error('Vaccines fetch error:', error);
+      console.warn('Vaccines fetch error:', error);
       throw error;
     }
   };
@@ -148,7 +141,6 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
       setSuccess('');
       
       // バケットをパブリックに設定
-      console.log('🔧 Ensuring vaccine-certs bucket is public...');
       await ensureVaccineBucketIsPublic();
       
       if (activeTab === 'parks') {
@@ -203,8 +195,6 @@ export const useParkImages = (parkId: string | null) => {
       setIsLoading(true);
       setError('');
       
-      console.log('🖼️ Fetching park images for park ID:', id);
-      
       const { data, error } = await supabase
         .from('dog_park_facility_images')
         .select('*')
@@ -212,21 +202,16 @@ export const useParkImages = (parkId: string | null) => {
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('❌ Error fetching park images:', error);
+        console.warn('Error fetching park images:', error);
         throw error;
       }
-      
-      console.log('🖼️ Raw image data:', data);
       
       // プロセス画像データ - 必要に応じてURLを生成
       const processedImages = data?.map(img => {
         let imageUrl = img.image_url;
         
-        console.log('🔧 Processing image URL:', imageUrl);
-        
         // URLがnullまたは空の場合の処理
         if (!imageUrl) {
-          console.warn('⚠️ Empty image URL for image:', img.id);
           return {
             ...img,
             image_url: 'https://via.placeholder.com/400x300?text=No+Image+URL'
@@ -235,19 +220,8 @@ export const useParkImages = (parkId: string | null) => {
         
         // もしimage_urlが相対パスの場合、フルURLを生成
         if (!imageUrl.startsWith('http')) {
-          // 複数のバケットパターンを試す
-          const bucketNames = ['dog-park-images', 'facility-images', 'park-images'];
-          let foundUrl = null;
-          
-          for (const bucketName of bucketNames) {
-            const testUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/${bucketName}/${imageUrl}`;
-            console.log(`🔍 Testing bucket ${bucketName}:`, testUrl);
-            foundUrl = testUrl;
-            break; // 最初のバケット名を使用（後でテストして動作するものを選択）
-          }
-          
-          imageUrl = foundUrl || `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/dog-park-images/${imageUrl}`;
-          console.log('🎯 Generated URL:', imageUrl);
+          // dog-park-imagesバケットを使用
+          imageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/dog-park-images/${imageUrl}`;
         }
         
         return {
@@ -256,17 +230,13 @@ export const useParkImages = (parkId: string | null) => {
         };
       }) || [];
       
-      console.log('🖼️ Processed image data:', processedImages);
-      
       setParkImages(processedImages);
       
       // すべての画像が承認されているかチェック
       const allApproved = processedImages.length > 0 && processedImages.every(img => img.is_approved === true);
       setAllImagesApproved(allApproved);
-      
-      console.log('🖼️ All images approved:', allApproved);
     } catch (error) {
-      console.error('❌ Error in fetchParkImages:', error);
+      console.warn('Error in fetchParkImages:', error);
       setError((error as Error).message || '施設画像の取得に失敗しました');
     } finally {
       setIsLoading(false);

@@ -31,12 +31,6 @@ export const getVaccineImageUrl = (imagePath: string | null): string | null => {
   // vaccine-certsバケットの公開URLを生成
   const fullUrl = `${supabaseUrl}/storage/v1/object/public/vaccine-certs/${finalPath}`;
   
-  console.log(`🖼️ Generating vaccine image URL:`, {
-    original: imagePath,
-    finalPath,
-    fullUrl
-  });
-  
   return fullUrl;
 };
 
@@ -45,22 +39,19 @@ export const getVaccineImageUrl = (imagePath: string | null): string | null => {
  */
 export const ensureVaccineBucketIsPublic = async (): Promise<boolean> => {
   try {
-    console.log('🔧 Making vaccine-certs bucket public...');
-    
     // バケットをpublicに設定
     const { error } = await supabase.storage.updateBucket('vaccine-certs', {
       public: true
     });
     
     if (error) {
-      console.error('Failed to make vaccine-certs bucket public:', error);
+      console.warn('Failed to make vaccine-certs bucket public:', error);
       return false;
     }
     
-    console.log('✅ Successfully made vaccine-certs bucket public');
     return true;
   } catch (error) {
-    console.error('Error updating bucket settings:', error);
+    console.warn('Error updating bucket settings:', error);
     return false;
   }
 };

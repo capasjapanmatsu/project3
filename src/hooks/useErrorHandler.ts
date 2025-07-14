@@ -202,12 +202,12 @@ export function useErrorHandler(): UseErrorHandlerReturn {
     // 開発環境では詳細ログを出力
     if (import.meta.env.DEV) {
       console.group(`🚨 Error [${errorDetails.severity.toUpperCase()}] - ${errorDetails.type}`);
-      console.error('User Message:', errorDetails.userMessage);
-      console.error('Technical Message:', errorDetails.message);
-      console.error('Original Error:', errorDetails.originalError);
-      console.error('Context:', errorDetails.context);
-      console.error('Recoverable:', errorDetails.recoverable);
-      console.error('Retryable:', errorDetails.retryable);
+      console.warn('User Message:', errorDetails.userMessage);
+      console.warn('Technical Message:', errorDetails.message);
+      console.warn('Original Error:', errorDetails.originalError);
+      console.warn('Context:', errorDetails.context);
+      console.warn('Recoverable:', errorDetails.recoverable);
+      console.warn('Retryable:', errorDetails.retryable);
       console.groupEnd();
     }
 
@@ -227,7 +227,7 @@ export function useErrorHandler(): UseErrorHandlerReturn {
     const errorDetails: ErrorDetails = {
       ...classifyError(error),
       timestamp: new Date(),
-      context,
+      ...(context && { context }),
     };
 
     logError(errorDetails);

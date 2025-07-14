@@ -42,8 +42,8 @@ export function useRetryWithRecovery(config: Partial<RetryConfig> = {}): UseRetr
     nextRetryIn: 0,
   });
 
-  const retryTimeoutRef = useRef<NodeJS.Timeout>();
-  const countdownIntervalRef = useRef<NodeJS.Timeout>();
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval>>();
 
   const reset = useCallback(() => {
     if (retryTimeoutRef.current) {

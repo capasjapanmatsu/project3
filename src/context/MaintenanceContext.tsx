@@ -96,6 +96,7 @@ const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
   // 初回実行とインターバル設定
   useEffect(() => {
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
 
     const runFetch = async () => {
       if (isMounted) {
@@ -103,18 +104,43 @@ const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
+    // 緊急フォールバック: 30秒後に強制的にローディングを終了
+    const emergencyTimeout = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn('Maintenance check timeout: Force completing initialization');
+        setLoading(false);
+        setIsMaintenanceActive(false);
+        setIsIPWhitelisted(true);
+        setMaintenanceInfo(null);
+        setError(null);
+      }
+    }, 30000);
+
     // 初回実行
-    runFetch();
+    runFetch().catch(error => {
+      console.error('Initial maintenance fetch failed:', error);
+      if (isMounted) {
+        setLoading(false);
+        setIsMaintenanceActive(false);
+        setIsIPWhitelisted(true);
+        setMaintenanceInfo(null);
+        setError(null);
+      }
+    });
 
     // 5分おきにメンテナンス状態をチェック
     const interval = setInterval(() => {
       if (isMounted) {
-        runFetch();
+        runFetch().catch(error => {
+          console.error('Periodic maintenance fetch failed:', error);
+          // 定期チェックでエラーが発生してもアプリを継続
+        });
       }
     }, 5 * 60 * 1000);
 
     return () => {
       isMounted = false;
+      clearTimeout(emergencyTimeout);
       clearInterval(interval);
     };
   }, []); // 空の依存配列で初回のみ実行

@@ -46,6 +46,10 @@ export async function processImage(
 
     img.onload = () => {
       try {
+        if (!ctx) {
+          reject(new Error('Canvas context を取得できませんでした'));
+          return;
+        }
         // アスペクト比を保持してリサイズ
         const { width, height } = calculateDimensions(
           img.width, 
@@ -58,7 +62,7 @@ export async function processImage(
         canvas.height = height;
 
         // 画像を描画
-        ctx?.drawImage(img, 0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
 
         // MIME typeを決定
         const mimeType = opts.outputFormat === 'jpeg' ? 'image/jpeg' : 
