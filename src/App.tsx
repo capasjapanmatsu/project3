@@ -36,6 +36,7 @@ const OrderHistory = lazy(() => import('./pages/OrderHistory').then(module => ({
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 const AdminManagement = lazy(() => import('./pages/AdminManagement').then(module => ({ default: module.AdminManagement })));
 const AdminUserManagement = lazy(() => import('./pages/AdminUserManagement').then(module => ({ default: module.AdminUserManagement })));
+const AdminUserDetail = lazy(() => import('./pages/AdminUserDetail').then(module => ({ default: module.AdminUserDetail })));
 const AdminParkManagement = lazy(() => import('./pages/AdminParkManagement').then(module => ({ default: module.AdminParkManagement })));
 const AdminReservationManagement = lazy(() => import('./pages/AdminReservationManagement').then(module => ({ default: module.AdminReservationManagement })));
 const AdminSalesManagement = lazy(() => import('./pages/AdminSalesManagement').then(module => ({ default: module.AdminSalesManagement })));
@@ -68,8 +69,12 @@ const DogProfile = lazy(() => import('./pages/DogProfile').then(module => ({ def
 
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
-  <div className="flex justify-center items-center h-screen">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+  <div className="flex flex-col justify-center items-center h-screen bg-gray-50">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4" />
+    <p className="text-gray-600 text-sm">読み込み中...</p>
+    <div className="mt-2 text-xs text-gray-400">
+      {import.meta.env.PROD ? '本番環境' : '開発環境'}
+    </div>
   </div>
 );
 
@@ -79,14 +84,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const [forceShowContent, setForceShowContent] = useState(false);
 
-  // 20秒後に強制的にコンテンツを表示（緊急フォールバック）
+  // 10秒後に強制的にコンテンツを表示（緊急フォールバック）
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (loading) {
-        console.warn('ProtectedRoute: Force showing content after timeout');
+        console.warn('⚠️ ProtectedRoute: Force showing content after timeout');
         setForceShowContent(true);
       }
-    }, 20000);
+    }, 10000); // 20秒から10秒に短縮
 
     return () => clearTimeout(timeout);
   }, [loading]);
@@ -122,6 +127,48 @@ const AuthCallback = () => {
 };
 
 function App() {
+  // ネットワーク状態とパフォーマンス監視
+  useEffect(() => {
+    if (import.meta.env.PROD) {
+      // ネットワーク状態監視
+      const handleOnline = () => console.log('🌐 Network: Online');
+      const handleOffline = () => console.warn('🔌 Network: Offline');
+      
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+      
+      // パフォーマンス監視
+      const reportWebVitals = () => {
+        if ('PerformanceObserver' in window) {
+          const observer = new PerformanceObserver((list) => {
+            list.getEntries().forEach((entry) => {
+              // Core Web Vitalsのログ記録
+              if (entry.entryType === 'measure') {
+                console.log(`📊 Performance: ${entry.name} - ${entry.duration.toFixed(2)}ms`);
+              }
+            });
+          });
+          
+          try {
+            observer.observe({ entryTypes: ['measure', 'navigation'] });
+          } catch (e) {
+            // ブラウザサポートの問題を無視
+          }
+        }
+      };
+      
+      reportWebVitals();
+      
+      return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      };
+    }
+    
+    // 本番環境以外では何も返さない
+    return undefined;
+  }, []);
+
   return (
     <Layout>
       <Suspense fallback={<LoadingSpinner />}>
@@ -174,6 +221,7 @@ function App() {
             <Route path="/register-park" element={<ProtectedRoute><ParkRegistration /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute><AdminUserManagement /></ProtectedRoute>} />
+            <Route path="/admin/users/:userId" element={<ProtectedRoute><AdminUserDetail /></ProtectedRoute>} />
             <Route path="/admin/parks" element={<ProtectedRoute><AdminParkManagement /></ProtectedRoute>} />
             <Route path="/admin/reservations" element={<ProtectedRoute><AdminReservationManagement /></ProtectedRoute>} />
             <Route path="/admin/sales" element={<ProtectedRoute><AdminSalesManagement /></ProtectedRoute>} />

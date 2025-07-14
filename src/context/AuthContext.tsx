@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabase';
-import { safeSetItem } from '../utils/safeStorage';
+import { safeSetItem, safeGetItem } from '../utils/safeStorage';
 
 interface UserProfile {
   id: string;
@@ -108,18 +108,17 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     let isMounted = true;
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: ReturnType<typeof setTimeout>;
     
     const initializeAuth = async () => {
       try {
-        if (import.meta.env.DEV) {
-          console.log('Auth initialization started...');
-        }
+        // 本番環境での最適化: より短いタイムアウトと早期のフォールバック
+        const timeoutDuration = import.meta.env.PROD ? 8000 : 5000; // 本番環境でも8秒に短縮
         
-        // 10秒のタイムアウトを設定
         timeoutId = setTimeout(() => {
           if (isMounted) {
-            console.warn('Auth initialization timeout, setting to logged out state');
+            console.warn(`⏱️ Auth initialization timeout after ${timeoutDuration}ms, falling back to logged out state`);
+            
             setSession(null);
             setUser(null);
             setIsAuthenticated(false);
@@ -127,15 +126,34 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
             setIsAdmin(false);
             setLoading(false);
           }
-        }, 10000);
-        
+        }, timeoutDuration);
+
+        // Supabaseセッション取得の前にネットワーク状態をチェック
+        if (!navigator.onLine) {
+          console.warn('⚠️ Network is offline, using cached state');
+          // オフライン時はローカルストレージから復元を試みる
+          const cachedUser = safeGetItem('sb-auth-user');
+          if (cachedUser && isMounted) {
+            try {
+              const user = JSON.parse(cachedUser);
+              setUser(user);
+              setIsAuthenticated(true);
+              setLoading(false);
+              return;
+            } catch (e) {
+              console.warn('Failed to parse cached user');
+            }
+          }
+        }
+
         const { data: { session }, error } = await supabase.auth.getSession();
         
         // タイムアウトをクリア
         if (timeoutId) clearTimeout(timeoutId);
         
         if (error) {
-          console.error('Error getting session:', error);
+          console.warn('Session retrieval error:', error.message);
+          
           // エラーがあってもアプリをクラッシュさせない
           // ログアウト状態として続行
           if (isMounted) {
@@ -149,10 +167,6 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
         
-        if (import.meta.env.DEV) {
-          console.log('Session retrieved:', session ? 'exists' : 'none');
-        }
-        
         if (!isMounted) return;
         
         setSession(session);
@@ -160,21 +174,19 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(!!session?.user);
 
         if (session?.user) {
+          // セッション情報をキャッシュ
+          safeSetItem('sb-auth-user', JSON.stringify(session.user));
+          
           try {
-            if (import.meta.env.DEV) {
-              console.log('Fetching user profile...');
-            }
             const profile = await fetchUserProfile(session.user.id, session.user.email);
             if (isMounted) {
               setUserProfile(profile);
               const adminStatus = checkAdminStatus(session.user, profile);
               setIsAdmin(adminStatus);
-              if (import.meta.env.DEV) {
-                console.log('User profile loaded successfully');
-              }
             }
           } catch (profileError) {
-            console.error('Error fetching user profile:', profileError);
+            console.warn('Profile fetch error:', profileError instanceof Error ? profileError.message : 'Unknown error');
+            
             // プロフィール取得に失敗してもセッションは有効として続行
             if (isMounted) {
               setUserProfile(null);
@@ -182,6 +194,9 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
           }
         } else {
+          // ログアウト時はキャッシュをクリア
+          safeSetItem('sb-auth-user', '');
+          
           if (isMounted) {
             setUserProfile(null);
             setIsAdmin(false);
@@ -189,7 +204,19 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('💥 Error initializing auth:', error);
+        
+        // 本番環境での初期化エラー詳細を記録
+        if (import.meta.env.PROD) {
+          console.error('Production auth initialization error:', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            url: window.location.href,
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent
+          });
+        }
+        
         // 致命的なエラーが発生した場合もログアウト状態として続行
         if (isMounted) {
           setSession(null);
@@ -204,35 +231,36 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         // エラーの有無に関わらず必ずローディングを終了
         if (isMounted) {
           setLoading(false);
-          if (import.meta.env.DEV) {
-            console.log('Auth initialization completed');
+          if (import.meta.env.PROD) {
+            console.log('🏁 Production auth initialization completed');
           }
         }
       }
     };
 
-    // 即座にローディング完了のフォールバックを設定（15秒後）
+    // 最大待機時間の緊急フォールバック（本番環境: 15秒、開発環境: 10秒）
+    const emergencyTimeoutDuration = import.meta.env.PROD ? 15000 : 10000;
+    
     const emergencyTimeout = setTimeout(() => {
       if (isMounted && loading) {
-        console.warn('Emergency timeout: Force completing auth initialization');
+        console.warn(`⚠️ Emergency timeout after ${emergencyTimeoutDuration}ms: Force completing auth initialization`);
         setLoading(false);
       }
-    }, 15000);
+    }, emergencyTimeoutDuration);
 
     void initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
       
-      if (import.meta.env.DEV) {
-        console.log('Auth state changed:', event, session ? 'session exists' : 'no session');
-      }
-      
       setSession(session);
       setUser(session?.user ?? null);
       setIsAuthenticated(!!session?.user);
 
       if (session?.user) {
+        // セッション情報をキャッシュ
+        safeSetItem('sb-auth-user', JSON.stringify(session.user));
+        
         try {
           const profile = await fetchUserProfile(session.user.id, session.user.email);
           if (isMounted) {
@@ -241,17 +269,25 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
             setIsAdmin(adminStatus);
           }
         } catch (profileError) {
-          console.error('Error fetching profile in auth state change:', profileError);
+          console.warn('Profile fetch error in auth state change:', profileError instanceof Error ? profileError.message : 'Unknown');
           if (isMounted) {
             setUserProfile(null);
             setIsAdmin(false);
           }
         }
       } else {
+        // ログアウト時はキャッシュをクリア
+        safeSetItem('sb-auth-user', '');
+        
         if (isMounted) {
           setUserProfile(null);
           setIsAdmin(false);
         }
+      }
+      
+      // Auth state changeが発生したらloadingを終了
+      if (isMounted) {
+        setLoading(false);
       }
     });
 

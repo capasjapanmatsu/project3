@@ -71,23 +71,6 @@ export function UserDashboard() {
   const [rabiesExpiryDate, setRabiesExpiryDate] = useState('');
   const [comboExpiryDate, setComboExpiryDate] = useState('');
   
-
-
-  useEffect(() => {
-    if (user) {
-      fetchDashboardData();
-    }
-    
-
-    
-    // Check for success parameter in URL
-    if (location.search.includes('success=true')) {
-      setShowSuccessMessage(true);
-      window.history.replaceState({}, document.title, location.pathname);
-      setTimeout(() => setShowSuccessMessage(false), 5000);
-    }
-  }, [user, navigate, location]);
-
   const fetchDashboardData = async () => {
     try {
       const [
@@ -193,6 +176,19 @@ export function UserDashboard() {
       console.error('ログアウトエラー:', error);
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      fetchDashboardData();
+    }
+    
+    // Check for success parameter in URL
+    if (location.search.includes('success=true')) {
+      setShowSuccessMessage(true);
+      window.history.replaceState({}, document.title, location.pathname);
+      setTimeout(() => setShowSuccessMessage(false), 5000);
+    }
+  }, [user, navigate, location]);
 
   const handleParkSelect = (park: DogPark) => {
     setSelectedPark(park);
@@ -504,10 +500,10 @@ export function UserDashboard() {
           comboExpiryDate={comboExpiryDate}
           onDogSelect={handleDogSelect}
           onCloseDogEditModal={() => setShowDogEditModal(false)}
-          onUpdateDog={handleUpdateDog}
-          onDeleteDog={handleDeleteDog}
+          onUpdateDog={(e) => void handleUpdateDog(e)}
+          onDeleteDog={(id) => void handleDeleteDog(id)}
           onDogImageSelect={handleDogImageSelect}
-          onDogImageRemove={handleDogImageRemove}
+          onDogImageRemove={() => void handleDogImageRemove()}
           onRabiesVaccineSelect={handleRabiesVaccineSelect}
           onComboVaccineSelect={handleComboVaccineSelect}
           onFormDataChange={setDogFormData}
@@ -579,7 +575,7 @@ export function UserDashboard() {
         {notifications.length > 0 && (
           <NotificationSection
             notifications={notifications}
-            onMarkAsRead={markNotificationAsRead}
+            onMarkAsRead={(id) => void markNotificationAsRead(id)}
           />
         )}
 

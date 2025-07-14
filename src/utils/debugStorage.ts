@@ -164,3 +164,70 @@ export const debugVaccineData = async () => {
     return { success: false, error };
   }
 }; 
+
+// 本番環境でのストレージクリア機能
+export const clearAllStorageForLoginIssues = (): boolean => {
+  try {
+    // ローカルストレージをクリア
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const keysToRemove = [
+        'sb-onmcivwxtzqajcovptgf-auth-token',
+        'supabase.auth.token',
+        'lastUsedEmail',
+        'isTrustedDevice',
+        'maintenance_last_check',
+        'maintenance_status'
+      ];
+      
+      keysToRemove.forEach(key => {
+        try {
+          localStorage.removeItem(key);
+        } catch (error) {
+          console.warn(`Failed to remove ${key} from localStorage:`, error);
+        }
+      });
+      
+      // セッションストレージもクリア
+      if (window.sessionStorage) {
+        window.sessionStorage.clear();
+      }
+      
+      console.log('✅ Storage cleared successfully for login issues');
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('❌ Failed to clear storage:', error);
+    return false;
+  }
+};
+
+// 本番環境でのログイン問題診断
+export const diagnoseLoginIssues = (): void => {
+  console.log('🔍 Login Issues Diagnosis:');
+  console.log('Environment:', import.meta.env.PROD ? 'Production' : 'Development');
+  console.log('User Agent:', navigator.userAgent);
+  console.log('LocalStorage available:', typeof window !== 'undefined' && !!window.localStorage);
+  console.log('SessionStorage available:', typeof window !== 'undefined' && !!window.sessionStorage);
+  
+  // Supabaseセッションをチェック
+  try {
+    const authTokens = Object.keys(localStorage).filter(key => 
+      key.includes('supabase') || key.includes('auth')
+    );
+    console.log('Auth tokens in localStorage:', authTokens);
+  } catch (error) {
+    console.log('Cannot access localStorage:', error);
+  }
+  
+  // Network状態をチェック
+  console.log('Online status:', navigator.onLine);
+  
+  // 推奨アクション
+  console.log('📋 Recommended actions:');
+  console.log('1. Clear browser cache and cookies');
+  console.log('2. Try incognito/private mode');
+  console.log('3. Run: clearAllStorageForLoginIssues()');
+  console.log('4. Check network connection');
+}; 

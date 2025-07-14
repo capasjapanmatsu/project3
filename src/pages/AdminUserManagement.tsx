@@ -88,8 +88,6 @@ export function AdminUserManagement() {
         return;
       }
       
-
-
       // 各ユーザーの関連データを取得
       const userPromises = profiles.map(async (profile) => {
         try {
@@ -109,21 +107,6 @@ export function AdminUserManagement() {
             .select('id', { count: 'exact' })
             .eq('user_id', profile.id)
             .gte('created_at', startOfMonth.toISOString());
-
-          // サブスクリプション状況を取得
-          let subscription = null;
-          try {
-            const { data: subscriptionData } = await supabase
-              .from('stripe_subscriptions')
-              .select('status')
-              .eq('user_id', profile.id)
-              .eq('status', 'active')
-              .maybeSingle();
-            subscription = subscriptionData;
-          } catch (subscriptionError) {
-            console.warn('Stripe subscriptions table not available:', subscriptionError);
-            // テーブルが存在しない場合はスキップ
-          }
 
           // 売上情報を取得（予約のみ）
           const { data: reservationPayments } = await supabase
@@ -147,20 +130,17 @@ export function AdminUserManagement() {
             created_at: profile.created_at,
             last_sign_in_at: '', // TODO: この情報が必要な場合は別途取得
             is_active: true, // 簡素化のためtrueに設定
-            subscription_status: subscription?.status || 'inactive',
+            subscription_status: 'inactive', // Stripe関連を無効化
             dog_count: dogCount || 0,
             reservation_count: reservationCount || 0,
             total_spent: reservationTotal
           } as UserData;
-        } catch (err) {
-          console.error(`Error fetching data for user ${profile.id}:`, err);
-          // エラーが発生した場合のフォールバック
-          const actualEmail = `user_${profile.id.slice(0, 8)}@unknown.com`;
-          
+        } catch (userError) {
+          console.error(`Error fetching data for user ${profile.id}:`, userError);
           return {
             id: profile.id,
             name: profile.name || 'Unknown',
-            email: actualEmail,
+            email: `user_${profile.id.slice(0, 8)}@unknown.com`,
             phone: profile.phone_number || '',
             created_at: profile.created_at,
             last_sign_in_at: '',
@@ -175,9 +155,9 @@ export function AdminUserManagement() {
 
       const usersData = await Promise.all(userPromises);
       setUsers(usersData);
-    } catch (err) {
-      console.error('Error fetching users:', err);
-      setError(`ユーザーデータの取得に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setError(error instanceof Error ? error.message : 'ユーザー情報の取得に失敗しました');
     } finally {
       setIsLoading(false);
     }
@@ -188,35 +168,33 @@ export function AdminUserManagement() {
 
     // 検索フィルター
     if (searchTerm) {
-      filtered = filtered.filter(user =>
+      filtered = filtered.filter(user => 
         user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // ステータスフィルター
-    switch (filterStatus) {
-      case 'active':
-        filtered = filtered.filter(user => user.is_active);
-        break;
-      case 'inactive':
-        filtered = filtered.filter(user => !user.is_active);
-        break;
-      case 'subscribers':
-        filtered = filtered.filter(user => user.subscription_status === 'active');
-        break;
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(user => {
+        switch (filterStatus) {
+          case 'active':
+            return user.is_active;
+          case 'inactive':
+            return !user.is_active;
+          case 'subscribers':
+            return user.subscription_status === 'active';
+          default:
+            return true;
+        }
+      });
     }
 
     // ソート
     filtered.sort((a, b) => {
-      let aValue: any = a[sortBy];
-      let bValue: any = b[sortBy];
-
-      if (sortBy === 'created_at' || sortBy === 'last_sign_in_at') {
-        aValue = new Date(aValue || 0).getTime();
-        bValue = new Date(bValue || 0).getTime();
-      }
-
+      const aValue = a[sortBy] || '';
+      const bValue = b[sortBy] || '';
+      
       if (sortOrder === 'asc') {
         return aValue > bValue ? 1 : -1;
       } else {
@@ -228,49 +206,49 @@ export function AdminUserManagement() {
   };
 
   const exportToCSV = () => {
-    const headers = ['名前', 'メールアドレス', '電話番号', '登録日', '最終ログイン', 'ステータス', '犬の数', '予約数', '総支払額'];
-    const csvData = filteredUsers.map(user => [
-      user.name,
-      user.email,
-      user.phone || '',
-      new Date(user.created_at).toLocaleDateString('ja-JP'),
-      user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('ja-JP') : '未ログイン',
-      user.is_active ? 'アクティブ' : '非アクティブ',
-      user.dog_count,
-      user.reservation_count,
-      `¥${user.total_spent.toLocaleString()}`
-    ]);
+    const csvContent = [
+      ['名前', 'メールアドレス', '電話番号', '登録日', '犬数', '予約数', '支払額', 'サブスクリプション'].join(','),
+      ...filteredUsers.map(user => [
+        user.name,
+        user.email,
+        user.phone || '',
+        new Date(user.created_at).toLocaleDateString('ja-JP'),
+        user.dog_count,
+        user.reservation_count,
+        user.total_spent,
+        user.subscription_status
+      ].join(','))
+    ].join('\n');
 
-    const csvContent = [headers, ...csvData].map(row => row.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `users_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `users-${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   };
 
   const getStatusBadge = (user: UserData) => {
     if (user.subscription_status === 'active') {
       return (
-        <div className="flex items-center space-x-1">
-          <Crown className="w-4 h-4 text-purple-600" />
-          <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
-            サブスク会員
-          </span>
-        </div>
+        <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium flex items-center">
+          <Crown className="w-3 h-3 mr-1" />
+          サブスク
+        </span>
       );
     }
     
     if (user.is_active) {
       return (
-        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+        <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium flex items-center">
+          <UserCheck className="w-3 h-3 mr-1" />
           アクティブ
         </span>
       );
     }
     
     return (
-      <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">
+      <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium flex items-center">
+        <UserX className="w-3 h-3 mr-1" />
         非アクティブ
       </span>
     );

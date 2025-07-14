@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
-import { Mail, Lock, AlertTriangle, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, AlertTriangle, ArrowRight, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import useAuth from '../context/AuthContext';
 import { safeGetItem, safeSetItem } from '../utils/safeStorage';
+import { clearAllStorageForLoginIssues, diagnoseLoginIssues } from '../utils/debugStorage';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabase';
 
@@ -16,6 +17,7 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [isPasswordLogin, setIsPasswordLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const navigate = useNavigate();
 
   // ローカルストレージからメールアドレスを取得して自動入力
@@ -24,6 +26,25 @@ export function Login() {
     if (savedEmail) {
       setEmail(savedEmail);
     }
+    
+    // 本番環境でのプリロード最適化
+    if (import.meta.env.PROD) {
+      // ダッシュボードページのプリロード
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = '/dashboard';
+      document.head.appendChild(link);
+      
+      // クリーンアップ
+      return () => {
+        if (document.head.contains(link)) {
+          document.head.removeChild(link);
+        }
+      };
+    }
+    
+    // 本番環境以外では何も返さない
+    return undefined;
   }, []);
 
   // Magic Link
@@ -37,6 +58,7 @@ export function Login() {
       if (error) throw new Error(error);
       alert('ログインリンクを送信しました。メールをご確認ください。');
     } catch (err: unknown) {
+      console.warn('Magic link error:', err);
       setError((err as Error).message || 'ログインリンクの送信に失敗しました。メールアドレスを確認してください。');
     } finally {
       setIsLoading(false);
@@ -48,30 +70,44 @@ export function Login() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    
     try {
-      safeSetItem('lastUsedEmail', email);
-      // パスワードログイン
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: email,
+        password: password,
       });
-      if (error) throw new Error(error.message);
-      // 2FAが必要か判定
-      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aalData?.nextLevel === 'aal2' && aalData?.nextLevel !== aalData?.currentLevel) {
-        // 2FAチャレンジ画面へ遷移
-        navigate('/two-factor-verify');
-        return;
-      }
-      // 通常ログイン成功時
+
+      if (error) throw error;
+
+      safeSetItem('lastUsedEmail', email);
+      
+      // ログイン成功時のリダイレクト
       navigate('/dashboard');
     } catch (err: unknown) {
-      console.error('Login error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'ログインに失敗しました';
-      setError(errorMessage);
+      console.warn('Password login error:', err);
+      setError((err as Error).message || 'ログインに失敗しました。メールアドレスとパスワードを確認してください。');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // ストレージクリア機能
+  const handleClearStorage = () => {
+    if (confirm('ローカルストレージをクリアしますか？これによりログイン問題が解決される場合があります。')) {
+      const success = clearAllStorageForLoginIssues();
+      if (success) {
+        alert('ストレージをクリアしました。ページを再読み込みしてください。');
+        window.location.reload();
+      } else {
+        alert('ストレージのクリアに失敗しました。');
+      }
+    }
+  };
+
+  // 診断機能
+  const handleDiagnose = () => {
+    diagnoseLoginIssues();
+    alert('診断結果をコンソールに出力しました。F12を押してコンソールを確認してください。');
   };
 
   return (
@@ -223,6 +259,60 @@ export function Login() {
             </div>
           </form>
         )}
+        
+        {/* ログインに問題がある場合 */}
+        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <button
+            type="button"
+            onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+            className="flex items-center justify-between w-full text-left"
+          >
+            <span className="text-sm font-medium text-yellow-800">
+              ログインに問題がある場合
+            </span>
+            <ArrowRight className={`w-4 h-4 text-yellow-600 transition-transform ${showAdvancedOptions ? 'rotate-90' : ''}`} />
+          </button>
+          
+          {showAdvancedOptions && (
+            <div className="mt-4 space-y-3">
+              <p className="text-sm text-yellow-700">
+                本番環境でログインに問題が発生する場合は、以下の操作をお試しください。
+              </p>
+              
+              <div className="space-y-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleDiagnose}
+                  className="w-full text-left bg-white hover:bg-gray-50"
+                >
+                  <AlertTriangle className="w-4 h-4 mr-2" />
+                  ログイン問題の診断
+                </Button>
+                
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleClearStorage}
+                  className="w-full text-left bg-white hover:bg-gray-50"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  ストレージをクリア
+                </Button>
+              </div>
+              
+              <div className="mt-3 p-3 bg-white rounded border text-xs text-gray-600">
+                <p className="font-medium mb-1">推奨手順:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>「ログイン問題の診断」を実行</li>
+                  <li>「ストレージをクリア」を実行</li>
+                  <li>ブラウザを再起動</li>
+                  <li>シークレットモードで動作確認</li>
+                </ol>
+              </div>
+            </div>
+          )}
+        </div>
       </Card>
     </div>
   );
