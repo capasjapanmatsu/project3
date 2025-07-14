@@ -12,11 +12,13 @@ import {
   Download,
   DollarSign,
   Calendar,
-  ShoppingBag
+  ShoppingBag,
+  Settings
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { NewsManagement } from '../components/admin/NewsManagement';
+import AdminMaintenanceManagement from '../components/admin/AdminMaintenanceManagement';
 import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 
@@ -51,7 +53,7 @@ interface AdminStatsResponse {
 export function AdminDashboard() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'parks' | 'vaccines' | 'users'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'parks' | 'vaccines' | 'users' | 'maintenance'>('overview');
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalParks: 0,
@@ -353,6 +355,17 @@ export function AdminDashboard() {
           <Users className="w-4 h-4" />
           <span>ユーザー管理</span>
         </button>
+        <button
+          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${
+            activeTab === 'maintenance'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+          onClick={() => setActiveTab('maintenance')}
+        >
+          <Settings className="w-4 h-4" />
+          <span>メンテナンス</span>
+        </button>
       </div>
 
       {/* 概要タブ */}
@@ -470,7 +483,14 @@ export function AdminDashboard() {
             </Link>
             で行えます。
           </p>
-              </Card>
+        </Card>
+      )}
+
+      {activeTab === 'maintenance' && (
+        <AdminMaintenanceManagement
+          onError={setProcessingError}
+          onSuccess={setProcessingSuccess}
+        />
       )}
     </div>
   );

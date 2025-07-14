@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getDeploymentStatus } from '../utils/deploymentStatus';
 import Button from './Button';
 import { AlertTriangle, Loader, ExternalLink } from 'lucide-react';
@@ -21,13 +21,9 @@ export function DeploymentStatusChecker({ id, onStatusChange, className = '' }: 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (id) {
-      checkStatus();
-    }
-  }, [id]);
-
-  const checkStatus = async () => {
+  const checkStatus = useCallback(async () => {
+    if (!id) return;
+    
     try {
       setLoading(true);
       setError(null);
@@ -44,7 +40,13 @@ export function DeploymentStatusChecker({ id, onStatusChange, className = '' }: 
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, onStatusChange]);
+
+  useEffect(() => {
+    if (id) {
+      void checkStatus();
+    }
+  }, [id, checkStatus]);
 
   const getStatusColor = (statusText: string) => {
     switch (statusText) {
@@ -94,7 +96,7 @@ export function DeploymentStatusChecker({ id, onStatusChange, className = '' }: 
       <div className={`flex items-center space-x-2 ${className}`}>
         <AlertTriangle className="w-4 h-4 text-red-600" />
         <span className="text-sm text-red-600">{error}</span>
-        <Button size="sm" variant="secondary" onClick={checkStatus}>
+        <Button size="sm" variant="secondary" onClick={() => void checkStatus()}>
           再試行
         </Button>
       </div>
@@ -104,7 +106,7 @@ export function DeploymentStatusChecker({ id, onStatusChange, className = '' }: 
   if (!status) {
     return (
       <div className={`flex items-center space-x-2 ${className}`}>
-        <Button size="sm" onClick={checkStatus}>
+        <Button size="sm" onClick={() => void checkStatus()}>
           ステータスを確認
         </Button>
       </div>
@@ -135,7 +137,7 @@ export function DeploymentStatusChecker({ id, onStatusChange, className = '' }: 
         </div>
       )}
       
-      <Button size="sm" variant="secondary" onClick={checkStatus}>
+      <Button size="sm" variant="secondary" onClick={() => void checkStatus()}>
         更新
       </Button>
     </div>

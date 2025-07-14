@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import { AuthProvider } from './context/AuthContext';
+import { MaintenanceProvider } from './context/MaintenanceContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 import { isStorageAvailable } from './utils/safeStorage';
@@ -40,7 +41,9 @@ ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <ErrorBoundary>
       <AuthProvider>
-        <App />
+        <MaintenanceProvider>
+          <App />
+        </MaintenanceProvider>
       </AuthProvider>
     </ErrorBoundary>
   </React.StrictMode>,

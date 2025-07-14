@@ -231,7 +231,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
               キャンセル
             </Button>
             <Button
-              onClick={() => handleImageApproval(false)}
+              onClick={() => void handleImageApproval(false)}
               isLoading={approval.isProcessing}
               className="bg-red-600 hover:bg-red-700"
             >
@@ -239,7 +239,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
               却下
             </Button>
             <Button
-              onClick={() => handleImageApproval(true)}
+              onClick={() => void handleImageApproval(true)}
               isLoading={approval.isProcessing}
               className="bg-green-600 hover:bg-green-700"
             >
@@ -331,7 +331,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                   variant="secondary" 
                   onClick={() => {
                     console.log('🔄 Manual refresh triggered for park:', selectedPark.id);
-                    parkImages.fetchParkImages(selectedPark.id);
+                    void parkImages.fetchParkImages(selectedPark.id);
                   }}
                 >
                   画像再取得
@@ -380,7 +380,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                 <p className="text-gray-500 text-sm">{parkImages.error}</p>
                 <Button 
                   variant="secondary" 
-                  onClick={() => parkImages.fetchParkImages(selectedPark.id)}
+                  onClick={() => void parkImages.fetchParkImages(selectedPark.id)}
                   className="mt-4"
                 >
                   再読み込み
@@ -395,7 +395,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                   variant="secondary" 
                   onClick={() => {
                     console.log('🔄 Manual refresh triggered for park:', selectedPark.id);
-                    parkImages.fetchParkImages(selectedPark.id);
+                    void parkImages.fetchParkImages(selectedPark.id);
                   }}
                   className="mt-4"
                 >
@@ -488,7 +488,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
           
           <div className="flex justify-end space-x-3">
             <Button
-              onClick={() => handleParkApproval(selectedPark.id, false)}
+              onClick={() => void handleParkApproval(selectedPark.id, false)}
               isLoading={approval.isProcessing}
               className="bg-red-600 hover:bg-red-700"
             >
@@ -496,7 +496,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
               却下
             </Button>
             <Button
-              onClick={() => handleParkApproval(selectedPark.id, true)}
+              onClick={() => void handleParkApproval(selectedPark.id, true)}
               isLoading={approval.isProcessing}
               className="bg-green-600 hover:bg-green-700"
             >
@@ -580,7 +580,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                     詳細を見る
                   </Button>
                   <Button
-                    onClick={() => handleParkApproval(park.id, true)}
+                    onClick={() => void handleParkApproval(park.id, true)}
                     className="bg-green-600 hover:bg-green-700"
                     disabled={approval.isProcessing}
                   >
@@ -588,7 +588,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                     承認
                   </Button>
                   <Button
-                    onClick={() => handleParkApproval(park.id, false)}
+                    onClick={() => void handleParkApproval(park.id, false)}
                     className="bg-red-600 hover:bg-red-700"
                     disabled={approval.isProcessing}
                   >

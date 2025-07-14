@@ -60,7 +60,7 @@ export function SubscriptionButton({
   return (
     <div>
       <Button 
-        onClick={handleSubscribe}
+        onClick={() => void handleSubscribe()}
         isLoading={loading}
         variant="primary"
         size={size}

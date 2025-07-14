@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Heart, Navigation, AlertCircle, ChevronDown } from 'lucide-react';
+import { MapPin, Navigation, AlertCircle, ChevronDown } from 'lucide-react';
 import Card from './Card';
 import Button from './Button';
 import { supabase } from '../utils/supabase';
@@ -36,12 +36,12 @@ export function NearbyDogs() {
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
-    getCurrentLocation();
+    void getCurrentLocation();
   }, []);
 
   useEffect(() => {
     if (userLocation) {
-      fetchNearbyDogs();
+      void fetchNearbyDogs();
     }
   }, [userLocation, user]);
 
@@ -121,32 +121,34 @@ export function NearbyDogs() {
       }
 
       // 最近の位置情報を使用（ここでは東京駅周辺のランダムな位置を生成）
-      const dogsWithDistance = await Promise.all(
-        dogsData.map(async (dog) => {
-          // 東京駅周辺のランダムな位置を生成
-          const baseLatitude = 35.6812;
-          const baseLongitude = 139.7671;
-          const maxDistance = 0.3; // 約30km範囲
+      const dogsWithDistance = dogsData.map((dog) => {
+        // 東京駅周辺のランダムな位置を生成
+        const baseLatitude = 35.6812;
+        const baseLongitude = 139.7671;
+        const maxDistance = 0.3; // 約30km範囲
 
-          const randomLat = baseLatitude + (Math.random() - 0.5) * maxDistance;
-          const randomLng = baseLongitude + (Math.random() - 0.5) * maxDistance;
+        const randomLat = baseLatitude + (Math.random() - 0.5) * maxDistance;
+        const randomLng = baseLongitude + (Math.random() - 0.5) * maxDistance;
 
-          // 実際の距離を計算
-          const distance = calculateDistance(
-            userLocation.latitude,
-            userLocation.longitude,
-            randomLat,
-            randomLng
-          );
+        // 実際の距離を計算
+        const distance = calculateDistance(
+          userLocation.latitude,
+          userLocation.longitude,
+          randomLat,
+          randomLng
+        );
 
-                     return {
-             ...dog,
-             owner_name: (dog as any).profiles?.name || 'Unknown',
-             distance: distance,
-             last_seen_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(), // 1週間以内のランダムな時間
-           } as NearbyDog;
-        })
-      );
+        const dogData = dog as typeof dog & {
+          profiles?: { name?: string } | null;
+        };
+        
+        return {
+          ...dog,
+          owner_name: dogData.profiles?.name || 'Unknown',
+          distance: distance,
+          last_seen_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(), // 1週間以内のランダムな時間
+        } as NearbyDog;
+      });
 
       // 距離でソート（近い順）
       const sortedDogs = dogsWithDistance

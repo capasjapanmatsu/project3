@@ -39,8 +39,8 @@ export function NewsManagement() {
 
   // 新着情報の取得
   useEffect(() => {
-    fetchNews();
-    checkUserProfile();
+    void fetchNews();
+    void checkUserProfile();
   }, []);
 
   // ユーザープロファイルをチェック

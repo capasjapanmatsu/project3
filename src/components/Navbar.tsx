@@ -42,7 +42,7 @@ export const Navbar = memo(function Navbar() {
         setUserName(data.name);
       } else {
         // Use metadata or email if profile name is not available
-        const metaName = user.user_metadata?.name as string | undefined || user.email?.split('@')[0];
+        const metaName = (user.user_metadata?.name as string) || user.email?.split('@')[0];
         
         if (metaName) {
           setUserName(metaName);
@@ -72,7 +72,7 @@ export const Navbar = memo(function Navbar() {
     } catch (error) {
       console.error('Error in fetchUserName:', error);
       // Use fallback name instead of failing
-      setUserName(user.user_metadata?.name || user.email?.split('@')[0] || 'ユーザー');
+      setUserName((user.user_metadata?.name as string) || user.email?.split('@')[0] || 'ユーザー');
     }
   }, [user]);
   
@@ -112,7 +112,7 @@ export const Navbar = memo(function Navbar() {
         console.error('Error fetching cart items:', error);
         return; // Don't update count on error
       }
-      const totalCount = data?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+      const totalCount = data?.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0) || 0;
       setCartItemCount(totalCount);
     } catch (error) {
       console.error('Error fetching cart items:', error);

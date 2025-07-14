@@ -257,7 +257,7 @@ export const AdminVaccineApproval: React.FC<AdminVaccineApprovalProps> = ({
                   キャンセル
                 </Button>
                 <Button
-                  onClick={handleExpiryUpdate}
+                  onClick={() => void handleExpiryUpdate()}
                   isLoading={approval.isProcessing}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
@@ -421,7 +421,7 @@ export const AdminVaccineApproval: React.FC<AdminVaccineApprovalProps> = ({
           
           <div className="flex justify-end space-x-3">
             <Button
-              onClick={() => handleVaccineApproval(selectedVaccine.id, false)}
+              onClick={() => void handleVaccineApproval(selectedVaccine.id, false)}
               isLoading={approval.isProcessing}
               className="bg-red-600 hover:bg-red-700"
             >
@@ -429,7 +429,7 @@ export const AdminVaccineApproval: React.FC<AdminVaccineApprovalProps> = ({
               却下
             </Button>
             <Button
-              onClick={() => handleVaccineApproval(selectedVaccine.id, true)}
+              onClick={() => void handleVaccineApproval(selectedVaccine.id, true)}
               isLoading={approval.isProcessing}
               className="bg-green-600 hover:bg-green-700"
             >
@@ -556,7 +556,7 @@ export const AdminVaccineApproval: React.FC<AdminVaccineApprovalProps> = ({
                     </Button>
                     <Button
                       size="sm"
-                      onClick={() => handleVaccineApproval(vaccine.id, true)}
+                      onClick={() => void handleVaccineApproval(vaccine.id, true)}
                       className="bg-green-600 hover:bg-green-700"
                       disabled={approval.isProcessing}
                     >
@@ -567,7 +567,7 @@ export const AdminVaccineApproval: React.FC<AdminVaccineApprovalProps> = ({
                       size="sm"
                       onClick={() => {
                         setSelectedVaccine(vaccine);
-                        handleVaccineApproval(vaccine.id, false);
+                        void handleVaccineApproval(vaccine.id, false);
                       }}
                       className="bg-red-600 hover:bg-red-700"
                       disabled={approval.isProcessing}

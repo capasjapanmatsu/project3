@@ -42,6 +42,28 @@ interface MaintenanceSchedule {
   created_at: string;
 }
 
+// タイムゾーン変換ユーティリティ関数
+const convertLocalDateTimeToUTC = (localDateTime: string): string | null => {
+  if (!localDateTime) return null;
+  
+  // datetime-localの値をローカルタイムゾーンのDateオブジェクトとして作成
+  const localDate = new Date(localDateTime);
+  
+  // UTCのISO文字列として返す
+  return localDate.toISOString();
+};
+
+const convertUTCToLocalDateTime = (utcDateTime: string): string => {
+  if (!utcDateTime) return '';
+  
+  // UTCの日時をローカルタイムゾーンに変換
+  const utcDate = new Date(utcDateTime);
+  
+  // datetime-local入力フィールド用の形式（YYYY-MM-DDTHH:mm）に変換
+  const localDateTime = new Date(utcDate.getTime() - utcDate.getTimezoneOffset() * 60000);
+  return localDateTime.toISOString().slice(0, 16);
+};
+
 export function ParkManagement() {
   const { parkId } = useParams();
   const { user } = useAuth();
@@ -260,8 +282,8 @@ export function ParkManagement() {
           park_id: parkId,
           title: maintenanceForm.title,
           description: maintenanceForm.description,
-          start_date: maintenanceForm.start_date,
-          end_date: maintenanceForm.end_date,
+          start_date: convertLocalDateTimeToUTC(maintenanceForm.start_date),
+          end_date: convertLocalDateTimeToUTC(maintenanceForm.end_date),
           is_emergency: maintenanceForm.is_emergency,
           notify_users: maintenanceForm.notify_users,
           created_by: user.id
@@ -429,6 +451,18 @@ export function ParkManagement() {
       const dog = dogs.find(d => d.id === dogId);
       return dog ? `${dog.name}${getDogHonorific(dog.gender)}` : '';
     }).filter(name => name).join('、');
+  };
+
+  const formatMaintenanceDate = (dateString: string | null) => {
+    if (!dateString) return '未設定';
+    return new Date(dateString).toLocaleString('ja-JP', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Tokyo'
+    });
   };
 
   if (isLoading) {
@@ -1290,7 +1324,7 @@ export function ParkManagement() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        開始日時 *
+                        開始日時 * (日本時間)
                       </label>
                       <input
                         type="datetime-local"
@@ -1299,11 +1333,12 @@ export function ParkManagement() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         required
                       />
+                      <p className="text-xs text-gray-500 mt-1">日本時間で入力してください</p>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        終了日時 *
+                        終了日時 * (日本時間)
                       </label>
                       <input
                         type="datetime-local"
@@ -1312,6 +1347,7 @@ export function ParkManagement() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         required
                       />
+                      <p className="text-xs text-gray-500 mt-1">日本時間で入力してください</p>
                     </div>
                   </div>
 
@@ -1404,11 +1440,11 @@ export function ParkManagement() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
                             <div>
                               <span className="font-medium">開始:</span>{' '}
-                              {new Date(maintenance.start_date).toLocaleString('ja-JP')}
+                              {formatMaintenanceDate(maintenance.start_date)}
                             </div>
                             <div>
                               <span className="font-medium">終了:</span>{' '}
-                              {new Date(maintenance.end_date).toLocaleString('ja-JP')}
+                              {formatMaintenanceDate(maintenance.end_date)}
                             </div>
                           </div>
                         </div>

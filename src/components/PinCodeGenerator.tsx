@@ -57,7 +57,7 @@ export function PinCodeGenerator({
         return null;
       }
 
-      return data;
+      return data as Reservation;
     } catch (err) {
       console.error('Error fetching reservation:', err);
       return null;
@@ -158,11 +158,11 @@ export function PinCodeGenerator({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json() as { error?: string };
         throw new Error(errorData.error || 'PINコードの生成に失敗しました');
       }
 
-      const { pin: newPin, expires_at } = await response.json();
+      const { pin: newPin, expires_at } = await response.json() as { pin: string; expires_at: string };
       
       setPin(newPin);
       setExpiresAt(new Date(expires_at));
@@ -177,18 +177,20 @@ export function PinCodeGenerator({
       }, 3000);
     } catch (err) {
       console.error('Error generating PIN:', err);
+      const errorMessage = err instanceof Error ? err.message : 'PINコードの生成に失敗しました';
+      
       // 決済が必要な場合の特別なハンドリング
-      if ((err as Error).message && (err as Error).message.startsWith('PAYMENT_REQUIRED:')) {
-        const message = (err as Error).message.replace('PAYMENT_REQUIRED:', '').trim();
+      if (errorMessage.startsWith('PAYMENT_REQUIRED:')) {
+        const message = errorMessage.replace('PAYMENT_REQUIRED:', '').trim();
         setPaymentMessage(message);
         setShowPaymentRequired(true);
         setError(null);
       } else {
-        setError((err as Error).message || 'PINコードの生成に失敗しました');
+        setError(errorMessage);
         setShowPaymentRequired(false);
       }
       // エラーコールバック
-      if (onError) onError((err as Error).message || 'PINコードの生成に失敗しました');
+      if (onError) onError(errorMessage);
     } finally {
       setIsGenerating(false);
     }
@@ -197,9 +199,11 @@ export function PinCodeGenerator({
   const copyPin = () => {
     if (!pin) return;
     
-    navigator.clipboard.writeText(pin).then(() => {
+    void navigator.clipboard.writeText(pin).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      // Clipboard write failed, but we don't need to show error for this
     });
   };
 

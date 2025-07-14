@@ -112,9 +112,9 @@ export function DoorLockButton({
     
     try {
       // PINコードを生成するエンドポイントを呼び出す
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (!session?.access_token) {
+      if (sessionError || !session?.access_token) {
         throw new Error('認証が必要です');
       }
 
@@ -150,11 +150,11 @@ export function DoorLockButton({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json() as { error?: string };
         throw new Error(errorData.error || 'PINコードの生成に失敗しました');
       }
 
-      const { pin } = await response.json();
+      const { pin } = await response.json() as { pin: string };
       
       // PINコードを表示
       alert(`PINコード: ${pin}\n\nこのPINコードをスマートロックのキーパッドに入力してください。`);
