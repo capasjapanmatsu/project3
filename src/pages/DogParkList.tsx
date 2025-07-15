@@ -129,11 +129,12 @@ export function DogParkList() {
 
         if (error) {
           console.error('Error fetching dog parks:', error);
-          setError(error.message || 'データ取得エラー');
+          setError(`データ取得エラー: ${error.message || 'Unknown error'}`);
           throw error;
         }
         
         console.log('Fetched parks:', data);
+        console.log('Number of parks:', data?.length || 0);
         
         // 現在地からの距離でソート
         if (userLocation && data) {
@@ -146,7 +147,8 @@ export function DogParkList() {
         
         setParks(data || []);
         if (!data || data.length === 0) {
-          setError('データがありません（APIレスポンス: ' + JSON.stringify(data) + '）');
+          setError('表示できるドッグランがありません。データベースの内容を確認してください。');
+          console.log('No parks found in database');
         }
 
         // 本日の施設貸し切り予約を取得（今後の予約）
@@ -160,7 +162,9 @@ export function DogParkList() {
 
         if (rentalsError) {
           console.error('Error fetching facility rentals:', rentalsError);
-          throw rentalsError;
+          // 予約情報の取得エラーは致命的ではないので、ログのみ
+        } else {
+          console.log('Fetched rentals:', rentalsData);
         }
         
         // パークIDごとに予約をグループ化
@@ -188,6 +192,7 @@ export function DogParkList() {
           console.error('Error fetching maintenance info:', maintenanceError);
           // メンテナンス情報の取得エラーは致命的ではないので、エラーログのみ
         } else {
+          console.log('Fetched maintenance:', maintenanceData);
           const maintenanceByParkId: Record<string, MaintenanceInfo> = {};
           (maintenanceData || []).forEach(maintenance => {
             // 現在進行中のメンテナンスまたは最も近い今後のメンテナンスを優先
@@ -215,7 +220,7 @@ export function DogParkList() {
         }
       } catch (error) {
         console.error('Error fetching dog parks:', error);
-        setError((error as Error).message || 'データ取得エラー');
+        setError(`データ取得エラー: ${(error as Error).message || 'Unknown error'}`);
       } finally {
         setIsLoading(false);
       }
@@ -527,7 +532,53 @@ export function DogParkList() {
   if (isLoading && !timedOut) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">ドッグラン情報を読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">ドッグラン一覧</h1>
+        </div>
+        
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <div className="flex items-center mb-4">
+            <AlertTriangle className="w-6 h-6 text-red-500 mr-2" />
+            <h2 className="text-lg font-semibold text-red-800">エラーが発生しました</h2>
+          </div>
+          <p className="text-red-700 mb-4">{error}</p>
+          
+          <div className="space-y-2 text-sm text-red-600">
+            <p><strong>考えられる原因:</strong></p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>データベースの接続エラー</li>
+              <li>ドッグランデータが登録されていない</li>
+              <li>RLS（Row Level Security）の設定問題</li>
+              <li>ネットワーク接続の問題</li>
+            </ul>
+          </div>
+          
+          <div className="mt-4 flex space-x-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium"
+            >
+              再読み込み
+            </button>
+            <button
+              onClick={() => {setError(null); setIsLoading(true);}}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium"
+            >
+              再試行
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -615,8 +666,35 @@ export function DogParkList() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {parks.map((park) => {
+      {parks.length === 0 ? (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <div className="text-center">
+            <MapPin className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-yellow-800 mb-2">ドッグランが見つかりません</h3>
+            <p className="text-yellow-700 mb-4">現在表示できるドッグランがありません。</p>
+            
+            <div className="space-y-2 text-sm text-yellow-600">
+              <p><strong>考えられる原因:</strong></p>
+              <ul className="list-disc pl-5 space-y-1 text-left inline-block">
+                <li>データベースにドッグランデータが登録されていない</li>
+                <li>承認済み（status='approved'）のドッグランがない</li>
+                <li>RLS（Row Level Security）の設定により表示されない</li>
+              </ul>
+            </div>
+            
+            <div className="mt-4">
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium"
+              >
+                再読み込み
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {parks.map((park) => {
           const status = getDetailedOccupancyStatus(park.current_occupancy, park.max_capacity);
           const trend = getOccupancyTrend(park.id);
           const distance = userLocation
