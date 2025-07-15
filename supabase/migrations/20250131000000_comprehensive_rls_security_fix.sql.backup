@@ -1,0 +1,565 @@
+/*
+  # Comprehensive RLS Security Fix for All Tables
+  
+  This migration addresses ALL security advisor warnings by ensuring:
+  - Row Level Security is enabled on all public tables
+  - Proper policies are enforced for data access
+  - Admin and user access controls are correctly configured
+  - Public access is properly limited where appropriate
+  
+  Security Advisor Issues Fixed:
+  - news_announcements: RLS enabled with public read, admin write
+  - profiles: RLS enabled with user-specific access
+  - vaccine_certifications: RLS enabled with owner-specific access
+  - contact_messages: RLS enabled with admin access only
+  - subscriptions: RLS enabled with user-specific access
+  - stripe_subscriptions: RLS enabled with user-specific access
+  - stripe_orders: RLS enabled with user-specific access
+  - orders: RLS enabled with user-specific access
+  - dog_park_reviews: RLS enabled with appropriate access
+  - All other public tables: RLS security enforced
+*/
+
+-- =====================================================
+-- 1. NEWS ANNOUNCEMENTS - Public read, admin write
+-- =====================================================
+
+-- Check if table exists before applying RLS
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'news_announcements' AND table_schema = 'public') THEN
+    -- Ensure RLS is enabled
+    ALTER TABLE news_announcements ENABLE ROW LEVEL SECURITY;
+
+    -- Drop existing policies to avoid conflicts
+    DROP POLICY IF EXISTS "Public can view news announcements" ON news_announcements;
+    DROP POLICY IF EXISTS "Admins can manage news announcements" ON news_announcements;
+
+    -- Create comprehensive policies
+    CREATE POLICY "news_announcements_public_read"
+      ON news_announcements FOR SELECT
+      TO public
+      USING (true);
+
+    CREATE POLICY "news_announcements_admin_all"
+      ON news_announcements FOR ALL
+      TO authenticated
+      USING (
+        EXISTS (
+          SELECT 1 FROM profiles 
+          WHERE profiles.id = auth.uid() 
+          AND profiles.user_type = 'admin'
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM profiles 
+          WHERE profiles.id = auth.uid() 
+          AND profiles.user_type = 'admin'
+        )
+      );
+  END IF;
+END $$;
+    EXISTS (
+      SELECT 1 FROM profiles 
+      WHERE profiles.id = auth.uid() 
+      AND profiles.user_type = 'admin'
+    )
+  );
+
+-- =====================================================
+-- 2. PROFILES - User-specific access
+-- =====================================================
+
+-- Ensure RLS is enabled
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies
+DROP POLICY IF EXISTS "profiles_select_policy" ON profiles;
+DROP POLICY IF EXISTS "profiles_insert_policy" ON profiles;
+DROP POLICY IF EXISTS "profiles_update_policy" ON profiles;
+
+-- Create comprehensive policies
+CREATE POLICY "profiles_select_own"
+  ON profiles FOR SELECT
+  TO authenticated
+  USING (id = auth.uid());
+
+CREATE POLICY "profiles_insert_own"
+  ON profiles FOR INSERT
+  TO authenticated
+  WITH CHECK (id = auth.uid());
+
+CREATE POLICY "profiles_update_own"
+  ON profiles FOR UPDATE
+  TO authenticated
+  USING (id = auth.uid())
+  WITH CHECK (id = auth.uid());
+
+-- Admin can view all profiles
+CREATE POLICY "profiles_admin_select_all"
+  ON profiles FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles p
+      WHERE p.id = auth.uid() 
+      AND p.user_type = 'admin'
+    )
+  );
+
+-- =====================================================
+-- 3. VACCINE CERTIFICATIONS - Owner-specific access
+-- =====================================================
+
+-- Ensure RLS is enabled
+ALTER TABLE vaccine_certifications ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies
+DROP POLICY IF EXISTS "Vaccine certs: Users can view their dogs' certifications" ON vaccine_certifications;
+DROP POLICY IF EXISTS "Vaccine certs: Users can insert certifications for their dogs" ON vaccine_certifications;
+DROP POLICY IF EXISTS "Vaccine certs: Users can update certifications for their dogs" ON vaccine_certifications;
+
+-- Create comprehensive policies
+CREATE POLICY "vaccine_certs_owner_select"
+  ON vaccine_certifications FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM dogs 
+      WHERE dogs.id = vaccine_certifications.dog_id 
+      AND dogs.owner_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "vaccine_certs_owner_insert"
+  ON vaccine_certifications FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM dogs 
+      WHERE dogs.id = vaccine_certifications.dog_id 
+      AND dogs.owner_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "vaccine_certs_owner_update"
+  ON vaccine_certifications FOR UPDATE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM dogs 
+      WHERE dogs.id = vaccine_certifications.dog_id 
+      AND dogs.owner_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM dogs 
+      WHERE dogs.id = vaccine_certifications.dog_id 
+      AND dogs.owner_id = auth.uid()
+    )
+  );
+
+-- Admin can view and approve all vaccine certifications
+CREATE POLICY "vaccine_certs_admin_all"
+  ON vaccine_certifications FOR ALL
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles 
+      WHERE profiles.id = auth.uid() 
+      AND profiles.user_type = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM profiles 
+      WHERE profiles.id = auth.uid() 
+      AND profiles.user_type = 'admin'
+    )
+  );
+
+-- =====================================================
+-- 4. CONTACT MESSAGES - Admin access only
+-- =====================================================
+
+-- Check if contact_messages table exists and enable RLS
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'contact_messages') THEN
+    ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
+    
+    -- Drop existing policies
+    DROP POLICY IF EXISTS "contact_messages_admin_only" ON contact_messages;
+    
+    -- Only admins can view and manage contact messages
+    CREATE POLICY "contact_messages_admin_all"
+      ON contact_messages FOR ALL
+      TO authenticated
+      USING (
+        EXISTS (
+          SELECT 1 FROM profiles 
+          WHERE profiles.id = auth.uid() 
+          AND profiles.user_type = 'admin'
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM profiles 
+          WHERE profiles.id = auth.uid() 
+          AND profiles.user_type = 'admin'
+        )
+      );
+    
+    -- Allow public to insert contact messages
+    CREATE POLICY "contact_messages_public_insert"
+      ON contact_messages FOR INSERT
+      TO public
+      WITH CHECK (true);
+  END IF;
+END $$;
+
+-- =====================================================
+-- 5. SUBSCRIPTIONS - User-specific access
+-- =====================================================
+
+-- Check if subscriptions table exists and enable RLS
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'subscriptions') THEN
+    ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+    
+    -- Drop existing policies
+    DROP POLICY IF EXISTS "subscriptions_user_access" ON subscriptions;
+    
+    -- Users can only access their own subscriptions
+    CREATE POLICY "subscriptions_owner_access"
+      ON subscriptions FOR ALL
+      TO authenticated
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+    
+    -- Admin can view all subscriptions
+    CREATE POLICY "subscriptions_admin_all"
+      ON subscriptions FOR ALL
+      TO authenticated
+      USING (
+        EXISTS (
+          SELECT 1 FROM profiles 
+          WHERE profiles.id = auth.uid() 
+          AND profiles.user_type = 'admin'
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM profiles 
+          WHERE profiles.id = auth.uid() 
+          AND profiles.user_type = 'admin'
+        )
+      );
+  END IF;
+END $$;
+
+-- =====================================================
+-- 6. STRIPE SUBSCRIPTIONS - User-specific access
+-- =====================================================
+
+-- Check if stripe_subscriptions table exists and enable RLS
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'stripe_subscriptions') THEN
+    ALTER TABLE stripe_subscriptions ENABLE ROW LEVEL SECURITY;
+    
+    -- Drop existing policies
+    DROP POLICY IF EXISTS "stripe_subscriptions_user_access" ON stripe_subscriptions;
+    
+    -- Users can only access their own stripe subscriptions
+    CREATE POLICY "stripe_subscriptions_owner_access"
+      ON stripe_subscriptions FOR ALL
+      TO authenticated
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+    
+    -- Admin can view all stripe subscriptions
+    CREATE POLICY "stripe_subscriptions_admin_all"
+      ON stripe_subscriptions FOR ALL
+      TO authenticated
+      USING (
+        EXISTS (
+          SELECT 1 FROM profiles 
+          WHERE profiles.id = auth.uid() 
+          AND profiles.user_type = 'admin'
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM profiles 
+          WHERE profiles.id = auth.uid() 
+          AND profiles.user_type = 'admin'
+        )
+      );
+  END IF;
+END $$;
+
+-- =====================================================
+-- 7. STRIPE ORDERS - User-specific access
+-- =====================================================
+
+-- Check if stripe_orders table exists and enable RLS
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'stripe_orders') THEN
+    ALTER TABLE stripe_orders ENABLE ROW LEVEL SECURITY;
+    
+    -- Drop existing policies
+    DROP POLICY IF EXISTS "stripe_orders_user_access" ON stripe_orders;
+    
+    -- Users can only access their own stripe orders
+    CREATE POLICY "stripe_orders_owner_access"
+      ON stripe_orders FOR ALL
+      TO authenticated
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+    
+    -- Admin can view all stripe orders
+    CREATE POLICY "stripe_orders_admin_all"
+      ON stripe_orders FOR ALL
+      TO authenticated
+      USING (
+        EXISTS (
+          SELECT 1 FROM profiles 
+          WHERE profiles.id = auth.uid() 
+          AND profiles.user_type = 'admin'
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM profiles 
+          WHERE profiles.id = auth.uid() 
+          AND profiles.user_type = 'admin'
+        )
+      );
+  END IF;
+END $$;
+
+-- =====================================================
+-- 8. ORDERS - User-specific access
+-- =====================================================
+
+-- Check if orders table exists and enable RLS
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'orders') THEN
+    ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+    
+    -- Drop existing policies
+    DROP POLICY IF EXISTS "orders_user_access" ON orders;
+    
+    -- Users can only access their own orders
+    CREATE POLICY "orders_owner_access"
+      ON orders FOR ALL
+      TO authenticated
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+    
+    -- Admin can view all orders
+    CREATE POLICY "orders_admin_all"
+      ON orders FOR ALL
+      TO authenticated
+      USING (
+        EXISTS (
+          SELECT 1 FROM profiles 
+          WHERE profiles.id = auth.uid() 
+          AND profiles.user_type = 'admin'
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM profiles 
+          WHERE profiles.id = auth.uid() 
+          AND profiles.user_type = 'admin'
+        )
+      );
+  END IF;
+END $$;
+
+-- =====================================================
+-- 9. DOG PARK REVIEWS - Public read, owner write
+-- =====================================================
+
+-- Check if dog_park_reviews table exists and enable RLS
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'dog_park_reviews') THEN
+    ALTER TABLE dog_park_reviews ENABLE ROW LEVEL SECURITY;
+    
+    -- Drop existing policies
+    DROP POLICY IF EXISTS "dog_park_reviews_public_read" ON dog_park_reviews;
+    DROP POLICY IF EXISTS "dog_park_reviews_owner_write" ON dog_park_reviews;
+    
+    -- Public can read reviews
+    CREATE POLICY "dog_park_reviews_public_read"
+      ON dog_park_reviews FOR SELECT
+      TO public
+      USING (true);
+    
+    -- Users can create reviews
+    CREATE POLICY "dog_park_reviews_user_insert"
+      ON dog_park_reviews FOR INSERT
+      TO authenticated
+      WITH CHECK (user_id = auth.uid());
+    
+    -- Users can update/delete their own reviews
+    CREATE POLICY "dog_park_reviews_owner_modify"
+      ON dog_park_reviews FOR UPDATE
+      TO authenticated
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+    
+    CREATE POLICY "dog_park_reviews_owner_delete"
+      ON dog_park_reviews FOR DELETE
+      TO authenticated
+      USING (user_id = auth.uid());
+    
+    -- Admin can manage all reviews
+    CREATE POLICY "dog_park_reviews_admin_all"
+      ON dog_park_reviews FOR ALL
+      TO authenticated
+      USING (
+        EXISTS (
+          SELECT 1 FROM profiles 
+          WHERE profiles.id = auth.uid() 
+          AND profiles.user_type = 'admin'
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM profiles 
+          WHERE profiles.id = auth.uid() 
+          AND profiles.user_type = 'admin'
+        )
+      );
+  END IF;
+END $$;
+
+-- =====================================================
+-- 10. ADDITIONAL TABLES - Enable RLS on all remaining tables
+-- =====================================================
+
+-- Enable RLS on dogs table (should already be enabled, but ensuring)
+ALTER TABLE dogs ENABLE ROW LEVEL SECURITY;
+
+-- Enable RLS on reservations table if exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'reservations') THEN
+    ALTER TABLE reservations ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
+
+-- Enable RLS on any other public tables that don't have it
+DO $$
+DECLARE
+  table_record RECORD;
+BEGIN
+  FOR table_record IN (
+    SELECT tablename 
+    FROM pg_tables 
+    WHERE schemaname = 'public' 
+    AND tablename NOT IN ('spatial_ref_sys') -- Exclude PostGIS system tables
+  ) LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', table_record.tablename);
+  END LOOP;
+END $$;
+
+-- =====================================================
+-- 11. GRANTS AND PERMISSIONS
+-- =====================================================
+
+-- Ensure proper grants for authenticated users
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+
+-- Ensure proper grants for anon users (limited)
+GRANT USAGE ON SCHEMA public TO anon;
+GRANT SELECT ON news_announcements TO anon;
+GRANT SELECT ON dog_park_reviews TO anon;
+GRANT INSERT ON contact_messages TO anon;
+
+-- =====================================================
+-- 12. VERIFICATION AND LOGGING
+-- =====================================================
+
+-- Log all tables and their RLS status
+DO $$
+DECLARE
+  table_record RECORD;
+  rls_status TEXT;
+BEGIN
+  RAISE NOTICE '=== RLS STATUS AFTER COMPREHENSIVE FIX ===';
+  
+  FOR table_record IN (
+    SELECT schemaname, tablename 
+    FROM pg_tables 
+    WHERE schemaname = 'public' 
+    ORDER BY tablename
+  ) LOOP
+    SELECT CASE WHEN rowsecurity THEN 'ENABLED' ELSE 'DISABLED' END
+    INTO rls_status
+    FROM pg_class c
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE n.nspname = table_record.schemaname 
+    AND c.relname = table_record.tablename;
+    
+    RAISE NOTICE 'Table: % - RLS: %', table_record.tablename, rls_status;
+  END LOOP;
+  
+  -- Count policies per table
+  RAISE NOTICE '=== POLICY COUNTS ===';
+  FOR table_record IN (
+    SELECT tablename, COUNT(*) as policy_count
+    FROM pg_policies 
+    WHERE schemaname = 'public'
+    GROUP BY tablename
+    ORDER BY tablename
+  ) LOOP
+    RAISE NOTICE 'Table: % - Policies: %', table_record.tablename, table_record.policy_count;
+  END LOOP;
+END $$;
+
+-- Success message
+SELECT 'Comprehensive RLS security fix completed - all Security Advisor warnings should be resolved' as status;
+
+-- Create a function to check RLS status for monitoring
+CREATE OR REPLACE FUNCTION check_rls_status()
+RETURNS TABLE(
+  table_name TEXT,
+  rls_enabled BOOLEAN,
+  policy_count INTEGER
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    c.relname::TEXT,
+    c.rowsecurity,
+    COALESCE(p.policy_count, 0)::INTEGER
+  FROM pg_class c
+  JOIN pg_namespace n ON c.relnamespace = n.oid
+  LEFT JOIN (
+    SELECT tablename, COUNT(*)::INTEGER as policy_count
+    FROM pg_policies 
+    WHERE schemaname = 'public'
+    GROUP BY tablename
+  ) p ON c.relname = p.tablename
+  WHERE n.nspname = 'public' 
+  AND c.relkind = 'r'
+  ORDER BY c.relname;
+END;
+$$;
+
+COMMENT ON FUNCTION check_rls_status() IS 'Check RLS status and policy count for all tables';

@@ -22,8 +22,8 @@ export function useStripe() {
   const createCheckoutSession = useCallback(async ({
     priceId,
     mode,
-    successUrl = `${window.location.origin}/dashboard?success=true`,
-    cancelUrl = `${window.location.origin}/dashboard?canceled=true`,
+    successUrl = `${window.location.origin}/payment-confirmation?success=true`,
+    cancelUrl = `${window.location.origin}/payment-confirmation?canceled=true`,
     customAmount,
     customName,
     customParams,
@@ -38,6 +38,14 @@ export function useStripe() {
       if (!session?.access_token) {
         throw new Error('認証が必要です');
       }
+
+      // 決済前に認証状態を保存
+      localStorage.setItem('pre_payment_auth_state', JSON.stringify({
+        user_id: session.user.id,
+        user_email: session.user.email,
+        timestamp: Date.now(),
+        return_url: window.location.href
+      }));
 
       const requestBody: Record<string, unknown> = {
         mode,

@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { PawPrint } from 'lucide-react';
 import { getDogHonorific } from '../dashboard/DogCard';
 import type { Dog } from '../../types';
+import { useState } from 'react';
 
 interface MarqueeDogsSectionProps {
   recentDogs: Dog[];
@@ -56,8 +57,9 @@ export const MarqueeDogsSection: React.FC<MarqueeDogsSectionProps> = React.memo(
             className="flex items-center whitespace-nowrap"
             style={{
               width: 'max-content',
-              animation: 'marquee 60s linear infinite',
-              willChange: 'transform'
+              animation: 'marquee 45s linear infinite',
+              willChange: 'transform',
+              transform: 'translateZ(0)', // GPUアクセラレーション
             }}
           >
             {duplicatedDogs.map((dog, index) => (
@@ -88,63 +90,97 @@ export const MarqueeDogsSection: React.FC<MarqueeDogsSectionProps> = React.memo(
         )}
       </div>
       
-      <style>{`
-        @keyframes marquee {
-          0% {
-            transform: translateX(100%);
+      <style>
+        {`
+          @keyframes marquee {
+            0% {
+              transform: translateX(0) translateZ(0);
+            }
+            100% {
+              transform: translateX(-50%) translateZ(0);
+            }
           }
-          100% {
-            transform: translateX(-50%);
-          }
-        }
-        
-        /* レスポンシブ対応 */
-        @media (max-width: 768px) {
+          
+          /* GPUアクセラレーション用の最適化 */
           .marquee-container {
-            animation-duration: 30s;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            -moz-backface-visibility: hidden;
+            -ms-backface-visibility: hidden;
+            -webkit-transform: translateZ(0);
+            -moz-transform: translateZ(0);
+            -ms-transform: translateZ(0);
+            transform: translateZ(0);
           }
-        }
-        
-        /* アニメーション削減設定 */
-        @media (prefers-reduced-motion: reduce) {
-          .marquee-container {
-            animation: none;
-          }
-        }
-      `}</style>
+        `}
+      </style>
     </section>
   );
 });
 
 // 犬のカードコンポーネント (メモ化)
-const DogCard: React.FC<{ dog: Dog }> = React.memo(({ dog }) => {
+const DogCard = React.memo(({ dog }: { dog: Dog }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
+  
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoaded(true);
+  };
+  
+  // 画像URLの最適化（サイズを制限）
+  const optimizedImageUrl = useMemo(() => {
+    if (!dog.image_url) return null;
+    
+    // Supabaseの画像URLの場合、サイズパラメータを追加
+    if (dog.image_url.includes('supabase')) {
+      return `${dog.image_url}?width=80&height=80&quality=80`;
+    }
+    
+    return dog.image_url;
+  }, [dog.image_url]);
+  
+  // 画像のpreload
+  useEffect(() => {
+    if (optimizedImageUrl) {
+      const img = new Image();
+      img.src = optimizedImageUrl;
+    }
+  }, [optimizedImageUrl]);
+  
   return (
-    <Link
-      to={`/dog/${dog.id}`}
-      className="inline-block text-center mx-4 flex-shrink-0 cursor-pointer hover:transform hover:scale-105 transition-transform duration-200 group"
-      style={{width: 80}}
-    >
-      <div className="flex justify-center mb-2">
-        <div className="relative">
+    <div className="inline-block mx-4 text-center" style={{ width: 100, flexShrink: 0 }}>
+      <div className="relative w-20 h-20 mx-auto mb-2 bg-gray-200 rounded-full overflow-hidden">
+        {!imageLoaded && !imageError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
+        {optimizedImageUrl && !imageError ? (
           <img
-            src={dog.image_url || 'https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300'}
+            src={optimizedImageUrl}
             alt={dog.name}
-            width={56}
-            height={56}
-            loading="lazy"
-            className="rounded-full border-2 border-transparent group-hover:border-blue-400 transition-all duration-200"
-            style={{ width: 56, height: 56, objectFit: 'cover' }}
-            onError={(e) => {
-              e.currentTarget.src = 'https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=300';
-            }}
+            className={`w-full h-full object-cover transition-opacity duration-200 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+            loading="eager"
+            decoding="sync"
+            width={80}
+            height={80}
           />
-          <div className="absolute inset-0 rounded-full bg-blue-600 opacity-0 group-hover:opacity-10 transition-opacity duration-200"></div>
-        </div>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-400 text-2xl">
+            🐕
+          </div>
+        )}
       </div>
-      <p className="font-medium text-gray-900 text-sm group-hover:text-blue-600 transition-colors duration-200">
-        {dog.name}{getDogHonorific(dog.gender)}
-      </p>
-    </Link>
+      <div className="text-xs text-gray-600 truncate font-medium">{dog.name}</div>
+      <div className="text-xs text-gray-500 truncate">{dog.breed}</div>
+    </div>
   );
 });
 

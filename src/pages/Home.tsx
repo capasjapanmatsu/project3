@@ -61,8 +61,8 @@ export function Home() {
     };
   }, []);
 
-  // キャッシュ関数 (5分間キャッシュ)
-  const cacheTimeout = 5 * 60 * 1000; // 5分
+  // キャッシュ関数 (10分間キャッシュに延長)
+  const cacheTimeout = 10 * 60 * 1000; // 10分
   const cache = useMemo(() => new Map<string, { data: any; timestamp: number }>(), []);
   
   const getCachedData = useCallback((key: string) => {
@@ -70,12 +70,43 @@ export function Home() {
     if (cached && Date.now() - cached.timestamp < cacheTimeout) {
       return cached.data;
     }
+    // 期限切れのキャッシュを削除
+    if (cached) {
+      cache.delete(key);
+    }
     return null;
   }, [cache, cacheTimeout]);
-  
+
   const setCachedData = useCallback((key: string, data: any) => {
     cache.set(key, { data, timestamp: Date.now() });
+    // ローカルストレージにも保存（セッション間でキャッシュを維持）
+    try {
+      localStorage.setItem(`dogpark_cache_${key}`, JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      console.warn('Failed to save cache to localStorage:', error);
+    }
   }, [cache]);
+
+  // 初期化時にローカルストレージからキャッシュを復元
+  useEffect(() => {
+    try {
+      const cachedDogs = localStorage.getItem('dogpark_cache_recentDogs');
+      if (cachedDogs) {
+        const parsed = JSON.parse(cachedDogs);
+        if (Date.now() - parsed.timestamp < cacheTimeout) {
+          cache.set('recentDogs', parsed);
+          setRecentDogs(parsed.data);
+          setIsLoading(false);
+          console.log('✅ ローカルストレージからキャッシュを復元:', parsed.data.length, '匹');
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to restore cache from localStorage:', error);
+    }
+  }, [cache, cacheTimeout]);
 
   const fetchRecentDogs = useCallback(async () => {
     try {
@@ -86,44 +117,43 @@ export function Home() {
       if (cachedData) {
         console.log('✅ キャッシュから最近仲間入りしたワンちゃんを取得:', cachedData.length, '匹');
         setRecentDogs(cachedData);
+        setIsLoading(false);
         return cachedData;
       }
       
       setIsLoading(true);
       setNetworkError(null);
 
-      const connectionTest = await testSupabaseConnection();
-      if (!connectionTest) {
-        throw new Error('データベース接続に失敗しました');
-      }
-
-      // 必要なフィールドのみを取得してパフォーマンスを向上
+      // データベース接続テストを省略して高速化
+      console.log('🔍 データベースから直接取得...');
+      
+      // 最小限のフィールドのみを取得してパフォーマンスを向上
       const { data, error } = await supabase
         .from('dogs')
         .select('id, owner_id, name, breed, birth_date, gender, image_url, created_at')
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(8);
       
-      if (error) throw error;
+      if (error) {
+        console.warn('❌ Database error:', error);
+        // エラー時は空配列を返してアプリを継続
+        setRecentDogs([]);
+        setIsLoading(false);
+        return [];
+      }
       
       console.log('✅ 最近仲間入りしたワンちゃん取得成功:', data?.length || 0, '匹');
       const dogs = data || [];
       setRecentDogs(dogs);
       setCachedData('recentDogs', dogs);
+      setIsLoading(false);
       return dogs;
     } catch (err) {
       console.warn('❌ Error fetching recent dogs:', err);
-      const errorMessage = err instanceof Error ? err.message : '接続エラーが発生しました';
-      
-      if (errorMessage.includes('NetworkError') || errorMessage.includes('Failed to fetch')) {
-        setNetworkError('サーバーとの接続に問題があります。\nしばらく待ってから再度お試しください。');
-      } else {
-        setNetworkError(`データの取得に失敗しました。\nエラー詳細: ${errorMessage}`);
-      }
-      return [];
-    } finally {
+      // エラー時でもアプリを継続
+      setRecentDogs([]);
       setIsLoading(false);
-      console.log('🐕 最近仲間入りしたワンちゃん取得処理完了');
+      return [];
     }
   }, [getCachedData, setCachedData]);
 
@@ -170,31 +200,60 @@ export function Home() {
     }
   }, [getCachedData, setCachedData]);
 
-  // 並列でデータ取得を実行
+  // 並列でデータ取得を実行（最適化版）
   const fetchAllData = useCallback(async () => {
-    console.log('🚀 データ取得を並列で開始...');
+    console.log('🚀 高速データ取得を開始...');
     const startTime = Date.now();
     
     try {
-      // 並列でデータ取得を実行
-      const [dogs, news] = await Promise.all([
+      // 並列実行とタイムアウト設定
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout')), 8000);
+      });
+      
+      const dataPromises = Promise.all([
         fetchRecentDogs(),
         fetchNews()
       ]);
       
+      const [dogs, news] = await Promise.race([dataPromises, timeoutPromise]) as [any[], any[]];
+      
       const endTime = Date.now();
-      console.log(`✅ 並列データ取得完了: ${endTime - startTime}ms`);
+      console.log(`✅ 高速データ取得完了: ${endTime - startTime}ms`);
       
       return { dogs, news };
     } catch (error) {
-      console.error('❌ 並列データ取得エラー:', error);
-      return { dogs: [], news: [] };
+      console.error('❌ データ取得エラー:', error);
+      
+      // エラー時でも部分的に取得できたデータを使用
+      const fallbackData = { dogs: [], news: [] };
+      
+      // 個別にデータを取得を試みる
+      try {
+        const dogs = await fetchRecentDogs();
+        fallbackData.dogs = dogs;
+      } catch (dogError) {
+        console.warn('犬データの取得に失敗:', dogError);
+      }
+      
+      try {
+        const news = await fetchNews();
+        fallbackData.news = news;
+      } catch (newsError) {
+        console.warn('ニュースデータの取得に失敗:', newsError);
+      }
+      
+      return fallbackData;
     }
   }, [fetchRecentDogs, fetchNews]);
 
+  // 初期化時の効率的なデータ取得
   useEffect(() => {
-    void fetchAllData();
-  }, [fetchAllData]);
+    // キャッシュからデータが復元されていない場合のみ取得
+    if (recentDogs.length === 0 && news.length === 0) {
+      void fetchAllData();
+    }
+  }, [fetchAllData, recentDogs.length, news.length]);
 
   const handleRetryConnection = useCallback(async () => {
     // キャッシュをクリアして再取得

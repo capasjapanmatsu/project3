@@ -76,7 +76,7 @@ export function Subscription() {
     await createCheckoutSession({
       priceId: subscriptionProduct.priceId,
       mode: 'subscription',
-      successUrl: `${window.location.origin}/subscription?success=true`,
+      successUrl: `${window.location.origin}/payment-confirmation?success=true&type=subscription`,
       cancelUrl: `${window.location.origin}/subscription?canceled=true`,
     });
   };
@@ -103,7 +103,10 @@ export function Subscription() {
       }
 
       setShowConfirmCancel(false);
-      window.location.reload();
+      
+      // リロードの代わりにページ遷移
+      alert('サブスクリプションをキャンセルしました。');
+      navigate('/dashboard');
     } catch (error) {
       console.error('Error canceling subscription:', error);
       alert((error as Error).message || 'サブスクリプションのキャンセルに失敗しました');
@@ -135,17 +138,17 @@ export function Subscription() {
       }
 
       setShowConfirmPause(false);
-      setPauseSuccess('サブスクリプションを一時停止しました。翌月から請求が停止されます。');
+      setPauseSuccess('サブスクリプションを一時停止しました。次回請求はスキップされます。');
       
       // 3秒後に成功メッセージを消す
       setTimeout(() => {
         setPauseSuccess('');
       }, 5000);
       
-      // リロードして最新の状態を取得
+      // リロードの代わりにダッシュボードに遷移
       setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+        navigate('/dashboard');
+      }, 2000);
     } catch (error) {
       console.error('Error pausing subscription:', error);
       setPauseError((error as Error).message || 'サブスクリプションの一時停止に失敗しました');
@@ -186,10 +189,10 @@ export function Subscription() {
         setResumeSuccess('');
       }, 5000);
       
-      // リロードして最新の状態を取得
+      // リロードの代わりにダッシュボードに遷移
       setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+        navigate('/dashboard');
+      }, 2000);
     } catch (error) {
       console.error('Error resuming subscription:', error);
       setResumeError((error as Error).message || 'サブスクリプションの再開に失敗しました');

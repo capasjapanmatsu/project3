@@ -370,8 +370,8 @@ export function ParkReservation() {
         await createCheckoutSession({
           priceId: dayPassProduct.priceId,
           mode: 'payment',
-          successUrl: `${window.location.origin}/payment-confirmation?success=true&order_number=${orderNumber}`,
-          cancelUrl: `${window.location.origin}/parks/${parkId}/reserve`,
+          successUrl: `${window.location.origin}/payment-confirmation?success=true&type=day_pass&order_number=${orderNumber}`,
+          cancelUrl: `${window.location.origin}/parks/${parkId}/reserve?canceled=true`,
           customParams: {
             reservation_data: JSON.stringify(reservationData),
             order_number: orderNumber
@@ -392,8 +392,8 @@ export function ParkReservation() {
         await createCheckoutSession({
           priceId: subscriptionProduct.priceId,
           mode: 'subscription',
-          successUrl: `${window.location.origin}/access-control`,
-          cancelUrl: `${window.location.origin}/parks/${parkId}/reserve`,
+          successUrl: `${window.location.origin}/payment-confirmation?success=true&type=subscription`,
+          cancelUrl: `${window.location.origin}/parks/${parkId}/reserve?canceled=true`,
         });
         return;
       }

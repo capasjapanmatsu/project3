@@ -74,12 +74,28 @@ const PWAImplementationGuide = lazy(() => import('./pages/PWAImplementationGuide
 const PWADocumentation = lazy(() => import('./pages/PWADocumentation'));
 
 // Loading component for Suspense fallback
-const LoadingSpinner = () => (
-  <div className="flex flex-col justify-center items-center h-screen bg-gray-50">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2" />
-    <p className="text-gray-600 text-sm">読み込み中...</p>
-  </div>
-);
+// 決済後のローディング表示を改善したLoadingSpinnerコンポーネント
+const LoadingSpinner = ({ message = 'ロード中...' }: { message?: string }) => {
+  const isPaymentFlow = window.location.pathname.includes('/payment') || 
+                       window.location.pathname.includes('/checkout') ||
+                       window.location.pathname.includes('/subscription') ||
+                       window.location.search.includes('success=true') ||
+                       window.location.search.includes('canceled=true');
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600 mb-2">{message}</p>
+        {isPaymentFlow && (
+          <p className="text-sm text-gray-500">
+            決済後の処理を行っています...
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // Optimized loading component with faster rendering
 const FastLoadingSpinner = () => (
@@ -182,7 +198,7 @@ function App() {
   return (
     <>
       <Layout>
-        <Suspense fallback={<LoadingSpinner />}>
+        <Suspense fallback={<LoadingSpinner message="ページを読み込み中..." />}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />

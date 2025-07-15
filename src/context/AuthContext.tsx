@@ -114,12 +114,71 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         console.log('🔐 Auth initialization started...');
         
-        // タイムアウト時間を大幅に延長（開発: 30秒, 本番: 20秒）
-        const timeoutDuration = import.meta.env.PROD ? 20000 : 30000;
+        // 決済処理中かどうかを確認
+        const isPaymentFlow = window.location.pathname.includes('/payment') || 
+                             window.location.pathname.includes('/checkout') ||
+                             window.location.pathname.includes('/subscription') ||
+                             window.location.search.includes('success=true') ||
+                             window.location.search.includes('canceled=true');
+        
+        // 決済処理中の場合は非常に短いタイムアウト時間を設定
+        const timeoutDuration = isPaymentFlow ? 3000 : (import.meta.env.PROD ? 10000 : 15000);
         
         timeoutId = setTimeout(() => {
           if (isMounted) {
-            console.warn(`⏱️ Auth initialization timeout after ${timeoutDuration}ms, falling back to logged out state`);
+            console.warn(`⏱️ Auth initialization timeout after ${timeoutDuration}ms`);
+            
+            // 決済フロー中の場合は、認証状態復元を試みる
+            const prePaymentAuthState = localStorage.getItem('pre_payment_auth_state');
+            if (isPaymentFlow && prePaymentAuthState) {
+              try {
+                const authState = JSON.parse(prePaymentAuthState);
+                console.log('🔄 Restoring auth state from pre-payment data');
+                
+                // 一時的な認証状態を設定
+                setUser({
+                  id: authState.user_id,
+                  email: authState.user_email,
+                  user_metadata: {},
+                  aud: 'authenticated',
+                  role: 'authenticated',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                  app_metadata: {}
+                } as any);
+                setIsAuthenticated(true);
+                setLoading(false);
+                
+                // 即座にセッション確認を試みる（バックグラウンドで）
+                const checkSession = async () => {
+                  try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session && session.user && isMounted) {
+                      setSession(session);
+                      setUser(session.user);
+                      setIsAuthenticated(true);
+                      console.log('✅ Session recovered successfully');
+                      
+                      // プロファイルを取得
+                      const profile = await fetchUserProfile(session.user.id, session.user.email);
+                      if (isMounted) {
+                        setUserProfile(profile);
+                        setIsAdmin(checkAdminStatus(session.user, profile));
+                      }
+                    }
+                  } catch (error) {
+                    console.warn('Session recovery failed:', error);
+                  }
+                };
+                
+                // 即座に実行
+                checkSession();
+                
+                return;
+              } catch (e) {
+                console.error('Failed to restore auth state:', e);
+              }
+            }
             
             setSession(null);
             setUser(null);
@@ -149,7 +208,74 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         console.log('🔍 Getting session from Supabase...');
-        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        // 決済後のリダイレクトの場合、最適化されたリトライ機構を追加
+        let session = null;
+        let error = null;
+        let retryCount = 0;
+        const maxRetries = isPaymentFlow ? 3 : 1;
+        
+        while (retryCount < maxRetries && !session) {
+          const result = await supabase.auth.getSession();
+          session = result.data.session;
+          error = result.error;
+          
+          if (!session && retryCount < maxRetries - 1) {
+            console.log(`🔄 Session not found, retrying... (${retryCount + 1}/${maxRetries})`);
+            // 決済フロー中はさらに短い間隔でリトライ
+            await new Promise(resolve => setTimeout(resolve, isPaymentFlow ? 200 : 500));
+          }
+          retryCount++;
+        }
+        
+        // 決済フロー中でセッションが見つからない場合は、認証状態復元を試みる
+        if (!session && isPaymentFlow) {
+          const prePaymentAuthState = localStorage.getItem('pre_payment_auth_state');
+          if (prePaymentAuthState) {
+            try {
+              const authState = JSON.parse(prePaymentAuthState);
+              console.log('🔄 Using pre-payment auth state as fallback');
+              
+              // 一時的な認証状態を設定
+              setUser({
+                id: authState.user_id,
+                email: authState.user_email,
+                user_metadata: {},
+                aud: 'authenticated',
+                role: 'authenticated',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                app_metadata: {}
+              } as any);
+              setIsAuthenticated(true);
+              setLoading(false);
+              
+              // バックグラウンドでセッション確認を継続
+              setTimeout(async () => {
+                try {
+                  const { data: { session: bgSession } } = await supabase.auth.getSession();
+                  if (bgSession && bgSession.user && isMounted) {
+                    setSession(bgSession);
+                    setUser(bgSession.user);
+                    console.log('✅ Background session recovery successful');
+                    
+                    const profile = await fetchUserProfile(bgSession.user.id, bgSession.user.email);
+                    if (isMounted) {
+                      setUserProfile(profile);
+                      setIsAdmin(checkAdminStatus(bgSession.user, profile));
+                    }
+                  }
+                } catch (bgError) {
+                  console.warn('Background session recovery failed:', bgError);
+                }
+              }, 1000);
+              
+              return;
+            } catch (e) {
+              console.error('Failed to use pre-payment auth state:', e);
+            }
+          }
+        }
         
         // タイムアウトをクリア
         if (timeoutId) clearTimeout(timeoutId);

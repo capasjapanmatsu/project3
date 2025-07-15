@@ -32,7 +32,39 @@ export function Cart() {
     if (user) {
       fetchCartData();
     }
-  }, [user]);
+    
+    // 決済キャンセル後のリダイレクト処理
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('canceled') === 'true') {
+      setError('決済がキャンセルされました。カートから商品を確認できます。');
+      
+      // URLパラメータをクリア
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // 決済前の認証状態を確認
+      const prePaymentAuthState = localStorage.getItem('pre_payment_auth_state');
+      if (prePaymentAuthState) {
+        try {
+          const authState = JSON.parse(prePaymentAuthState);
+          console.log('🛒 Cart: Pre-payment auth state found:', authState);
+          
+          // 認証状態を確認
+          if (!user || user.id !== authState.user_id) {
+            console.warn('⚠️ Cart: Authentication state mismatch after payment cancellation');
+            setError('セッションが切断されました。再度ログインしてください。');
+            setTimeout(() => {
+              navigate('/login');
+            }, 3000);
+          }
+          
+          // 認証状態情報をクリア
+          localStorage.removeItem('pre_payment_auth_state');
+        } catch (error) {
+          console.error('Failed to parse pre-payment auth state:', error);
+        }
+      }
+    }
+  }, [user, navigate]);
 
   const fetchCartData = async () => {
     try {

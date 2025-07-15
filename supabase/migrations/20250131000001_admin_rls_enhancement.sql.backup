@@ -1,0 +1,349 @@
+/*
+  # Admin RLS Policy Enhancement
+  
+  This migration enhances admin access policies to ensure:
+  - Admins can manage all data across the platform
+  - Super admin capabilities are properly implemented
+  - Emergency access controls are in place
+  - Audit trail for admin actions
+*/
+
+-- =====================================================
+-- 1. ENHANCED ADMIN POLICIES FOR ALL TABLES
+-- =====================================================
+
+-- Function to check if user is admin
+CREATE OR REPLACE FUNCTION auth.is_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = auth.uid() 
+    AND user_type = 'admin'
+  );
+END;
+$$;
+
+-- Function to check if user is super admin
+CREATE OR REPLACE FUNCTION auth.is_super_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM profiles 
+    WHERE id = auth.uid() 
+    AND user_type = 'admin'
+    AND email IN ('admin@dogpark.com', 'superadmin@dogpark.com')
+  );
+END;
+$$;
+
+-- =====================================================
+-- 2. ADMIN OVERRIDE POLICIES
+-- =====================================================
+
+-- Admin can override all dogs table restrictions
+CREATE POLICY "dogs_admin_override"
+  ON dogs FOR ALL
+  TO authenticated
+  USING (auth.is_admin())
+  WITH CHECK (auth.is_admin());
+
+-- Admin can override all vaccine certifications restrictions
+CREATE POLICY "vaccine_certs_admin_override"
+  ON vaccine_certifications FOR ALL
+  TO authenticated
+  USING (auth.is_admin())
+  WITH CHECK (auth.is_admin());
+
+-- Admin can override all reservations restrictions
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'reservations') THEN
+    DROP POLICY IF EXISTS "reservations_admin_override" ON reservations;
+    CREATE POLICY "reservations_admin_override"
+      ON reservations FOR ALL
+      TO authenticated
+      USING (auth.is_admin())
+      WITH CHECK (auth.is_admin());
+  END IF;
+END $$;
+
+-- =====================================================
+-- 3. EMERGENCY ACCESS CONTROLS
+-- =====================================================
+
+-- Create emergency access table for auditing
+CREATE TABLE IF NOT EXISTS emergency_admin_access (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  admin_id UUID REFERENCES profiles(id),
+  action TEXT NOT NULL,
+  table_name TEXT NOT NULL,
+  record_id TEXT,
+  reason TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS on emergency access table
+ALTER TABLE emergency_admin_access ENABLE ROW LEVEL SECURITY;
+
+-- Only super admins can view emergency access logs
+CREATE POLICY "emergency_access_super_admin_only"
+  ON emergency_admin_access FOR ALL
+  TO authenticated
+  USING (auth.is_super_admin())
+  WITH CHECK (auth.is_super_admin());
+
+-- =====================================================
+-- 4. ADMIN AUDIT FUNCTIONS
+-- =====================================================
+
+-- Function to log admin actions
+CREATE OR REPLACE FUNCTION log_admin_action(
+  p_action TEXT,
+  p_table_name TEXT,
+  p_record_id TEXT DEFAULT NULL,
+  p_reason TEXT DEFAULT NULL
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF auth.is_admin() THEN
+    INSERT INTO emergency_admin_access (admin_id, action, table_name, record_id, reason)
+    VALUES (auth.uid(), p_action, p_table_name, p_record_id, p_reason);
+  END IF;
+END;
+$$;
+
+-- Function to get admin stats
+CREATE OR REPLACE FUNCTION get_admin_dashboard_stats()
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  stats JSON;
+BEGIN
+  -- Only admins can access this
+  IF NOT auth.is_admin() THEN
+    RETURN '{"error": "Access denied"}'::JSON;
+  END IF;
+  
+  SELECT json_build_object(
+    'total_users', (SELECT COUNT(*) FROM profiles),
+    'total_dogs', (SELECT COUNT(*) FROM dogs),
+    'pending_vaccines', (
+      SELECT COUNT(*) 
+      FROM vaccine_certifications 
+      WHERE status = 'pending'
+    ),
+    'active_reservations', (
+      SELECT COUNT(*) 
+      FROM reservations 
+      WHERE status = 'confirmed' 
+      AND reservation_date >= CURRENT_DATE
+    ),
+    'total_reviews', (
+      SELECT COUNT(*) 
+      FROM dog_park_reviews
+    ),
+    'recent_admin_actions', (
+      SELECT COUNT(*) 
+      FROM emergency_admin_access 
+      WHERE created_at >= NOW() - INTERVAL '24 hours'
+    )
+  ) INTO stats;
+  
+  RETURN stats;
+END;
+$$;
+
+-- =====================================================
+-- 5. SECURITY ENHANCED ADMIN FUNCTIONS
+-- =====================================================
+
+-- Function to safely update user profile (admin only)
+CREATE OR REPLACE FUNCTION admin_update_user_profile(
+  target_user_id UUID,
+  updates JSON
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  update_result BOOLEAN := FALSE;
+BEGIN
+  -- Only admins can use this function
+  IF NOT auth.is_admin() THEN
+    RAISE EXCEPTION 'Access denied: Admin privileges required';
+  END IF;
+  
+  -- Log the action
+  PERFORM log_admin_action(
+    'UPDATE_USER_PROFILE', 
+    'profiles', 
+    target_user_id::TEXT, 
+    'Admin profile update via function'
+  );
+  
+  -- Perform the update (simplified example)
+  UPDATE profiles 
+  SET 
+    username = COALESCE((updates->>'username')::TEXT, username),
+    email = COALESCE((updates->>'email')::TEXT, email),
+    updated_at = NOW()
+  WHERE id = target_user_id;
+  
+  GET DIAGNOSTICS update_result = FOUND;
+  RETURN update_result;
+END;
+$$;
+
+-- Function to safely approve vaccine certification (admin only)
+CREATE OR REPLACE FUNCTION admin_approve_vaccine_cert(
+  cert_id UUID,
+  approval_status TEXT DEFAULT 'approved'
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  update_result BOOLEAN := FALSE;
+BEGIN
+  -- Only admins can use this function
+  IF NOT auth.is_admin() THEN
+    RAISE EXCEPTION 'Access denied: Admin privileges required';
+  END IF;
+  
+  -- Validate status
+  IF approval_status NOT IN ('approved', 'rejected', 'pending') THEN
+    RAISE EXCEPTION 'Invalid status: %', approval_status;
+  END IF;
+  
+  -- Log the action
+  PERFORM log_admin_action(
+    'APPROVE_VACCINE_CERT', 
+    'vaccine_certifications', 
+    cert_id::TEXT, 
+    format('Status changed to: %', approval_status)
+  );
+  
+  -- Update the certification
+  UPDATE vaccine_certifications 
+  SET 
+    status = approval_status,
+    approved_by = auth.uid(),
+    approved_at = CASE WHEN approval_status = 'approved' THEN NOW() ELSE NULL END,
+    updated_at = NOW()
+  WHERE id = cert_id;
+  
+  GET DIAGNOSTICS update_result = FOUND;
+  RETURN update_result;
+END;
+$$;
+
+-- =====================================================
+-- 6. ADMIN BYPASS POLICIES FOR CRITICAL OPERATIONS
+-- =====================================================
+
+-- Emergency policy for profiles (super admin can modify any profile)
+CREATE POLICY "profiles_super_admin_emergency"
+  ON profiles FOR ALL
+  TO authenticated
+  USING (auth.is_super_admin())
+  WITH CHECK (auth.is_super_admin());
+
+-- Emergency policy for all tables (super admin access)
+DO $$
+DECLARE
+  table_record RECORD;
+BEGIN
+  FOR table_record IN (
+    SELECT tablename 
+    FROM pg_tables 
+    WHERE schemaname = 'public'
+    AND tablename NOT IN ('spatial_ref_sys', 'emergency_admin_access')
+  ) LOOP
+    BEGIN
+      EXECUTE format(
+        'CREATE POLICY "%s_super_admin_emergency" ON %I FOR ALL TO authenticated USING (auth.is_super_admin()) WITH CHECK (auth.is_super_admin())',
+        table_record.tablename,
+        table_record.tablename
+      );
+    EXCEPTION
+      WHEN duplicate_object THEN
+        -- Policy already exists, skip
+        NULL;
+    END;
+  END LOOP;
+END $$;
+
+-- =====================================================
+-- 7. ADMIN ROLE VERIFICATION AND SETUP
+-- =====================================================
+
+-- Function to set user as admin (super admin only)
+CREATE OR REPLACE FUNCTION set_user_admin(
+  target_user_id UUID,
+  admin_type TEXT DEFAULT 'admin'
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Only super admins can promote users to admin
+  IF NOT auth.is_super_admin() THEN
+    RAISE EXCEPTION 'Access denied: Super admin privileges required';
+  END IF;
+  
+  -- Log the action
+  PERFORM log_admin_action(
+    'SET_USER_ADMIN', 
+    'profiles', 
+    target_user_id::TEXT, 
+    format('User promoted to: %', admin_type)
+  );
+  
+  -- Update user type
+  UPDATE profiles 
+  SET 
+    user_type = admin_type,
+    updated_at = NOW()
+  WHERE id = target_user_id;
+  
+  RETURN FOUND;
+END;
+$$;
+
+-- Grant proper permissions
+GRANT EXECUTE ON FUNCTION auth.is_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION auth.is_super_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION get_admin_dashboard_stats() TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_update_user_profile(UUID, JSON) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_approve_vaccine_cert(UUID, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION set_user_admin(UUID, TEXT) TO authenticated;
+
+-- =====================================================
+-- 8. VERIFICATION
+-- =====================================================
+
+-- Log completion
+DO $$
+BEGIN
+  RAISE NOTICE '=== ADMIN RLS ENHANCEMENT COMPLETED ===';
+  RAISE NOTICE 'Admin functions created successfully';
+  RAISE NOTICE 'Emergency access controls enabled';
+  RAISE NOTICE 'Super admin policies implemented';
+END $$;
+
+SELECT 'Admin RLS policy enhancement completed successfully' as status;
