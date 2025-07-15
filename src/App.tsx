@@ -77,6 +77,7 @@ const PWADocumentation = lazy(() => import('./pages/PWADocumentation'));
 const PWATestingSuite = lazy(() => import('./pages/PWATestingSuite'));
 const PWALighthouseAudit = lazy(() => import('./pages/PWALighthouseAudit'));
 const PWADeploymentGuide = lazy(() => import('./pages/PWADeploymentGuide'));
+const FacilityRegistration = lazy(() => import('./pages/FacilityRegistration').then(module => ({ default: module.FacilityRegistration })));
 
 // Loading component for Suspense fallback
 // 決済後のローディング表示を改善したLoadingSpinnerコンポーネント
@@ -228,6 +229,7 @@ function App() {
             <Route path="/dog-info/parasite" element={<DogInfoParasite />} />
             <Route path="/dog-info/snack" element={<DogInfoSnack />} />
             <Route path="/dog-info/show" element={<DogInfoShow />} />
+            <Route path="/facility-registration" element={<ProtectedRoute><FacilityRegistration /></ProtectedRoute>} />
             
             {/* Auth callback route */}
             <Route path="/auth/callback" element={<AuthCallback />} />

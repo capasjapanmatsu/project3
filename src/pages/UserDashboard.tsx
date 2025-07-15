@@ -536,7 +536,7 @@ export function UserDashboard() {
         {/* Quick Actions Section */}
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">クイックアクション</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Link to="/parks" className="group">
               <div className="p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
                 <MapPin className="w-8 h-8 text-blue-600 mb-2" />
@@ -566,6 +566,33 @@ export function UserDashboard() {
                 <Bell className="w-8 h-8 text-orange-600 mb-2" />
                 <h3 className="font-medium text-orange-900">新着情報</h3>
                 <p className="text-sm text-orange-700">最新のお知らせ</p>
+              </div>
+            </Link>
+            
+            {/* 新規追加：ドッグランオーナー募集 */}
+            <Link to="/park-registration" className="group">
+              <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg hover:from-yellow-100 hover:to-orange-100 transition-colors border-2 border-orange-200">
+                <Building className="w-8 h-8 text-orange-600 mb-2" />
+                <h3 className="font-medium text-orange-900">ドッグランオーナー募集</h3>
+                <p className="text-sm text-orange-700">あなたのドッグランを登録</p>
+                <div className="mt-2 text-xs text-orange-600 font-medium">
+                  🎯 収益化のチャンス！
+                </div>
+              </div>
+            </Link>
+            
+            {/* 新規追加：ペット関連施設登録 */}
+            <Link to="/facility-registration" className="group">
+              <div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg hover:from-teal-100 hover:to-cyan-100 transition-colors border-2 border-teal-200">
+                <div className="flex items-center mb-2">
+                  <Heart className="w-6 h-6 text-teal-600 mr-2" />
+                  <ShoppingBag className="w-6 h-6 text-teal-600" />
+                </div>
+                <h3 className="font-medium text-teal-900">ペット関連施設登録</h3>
+                <p className="text-sm text-teal-700">店舗・宿泊施設・サロンなど</p>
+                <div className="mt-2 text-xs text-teal-600 font-medium">
+                  🎉 今なら無料掲載！
+                </div>
               </div>
             </Link>
           </div>

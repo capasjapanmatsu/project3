@@ -138,7 +138,7 @@ export function FacilityRegistration() {
       case 2:
         return true; // 営業時間は任意
       case 3:
-        return !!formData.payment_method;
+        return true; // 支払い方法は任意
       default:
         return true;
     }
@@ -290,7 +290,7 @@ export function FacilityRegistration() {
         <div className="flex justify-between text-sm text-gray-600">
           <span>基本情報</span>
           <span>営業時間</span>
-          <span>支払い方法</span>
+          <span>掲載について</span>
         </div>
       </div>
 
@@ -462,78 +462,32 @@ export function FacilityRegistration() {
           <Card className="mb-6">
             <div className="p-6">
               <h2 className="text-xl font-semibold mb-4 flex items-center">
-                <CreditCard className="w-6 h-6 mr-2" />
-                支払い方法
+                <CheckCircle className="w-6 h-6 mr-2 text-green-600" />
+                掲載について
               </h2>
               
-              {selectedCategory && !selectedCategory.is_free && (
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center mb-2">
-                    <Info className="w-5 h-5 text-blue-500 mr-2" />
-                    <span className="font-medium text-blue-800">掲載料金</span>
-                  </div>
-                  <p className="text-blue-700">
-                    {selectedCategory.name_ja}の掲載料金は月額 
-                    <strong className="text-lg"> ¥{selectedCategory.monthly_fee.toLocaleString()}</strong>（税込）です。
-                  </p>
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center mb-2">
+                  <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                  <span className="font-medium text-green-800">無料掲載キャンペーン実施中！</span>
                 </div>
-              )}
+                <p className="text-green-700">
+                  現在、すべてのペット関連施設が<strong className="text-lg">無料</strong>で掲載できます。
+                </p>
+                <p className="text-sm text-green-600 mt-2">
+                  申し込み後、審査を経て掲載開始となります。
+                </p>
+              </div>
 
-              {selectedCategory && selectedCategory.is_free && (
-                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center mb-2">
-                    <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                    <span className="font-medium text-green-800">無料掲載</span>
-                  </div>
-                  <p className="text-green-700">
-                    {selectedCategory.name_ja}は無料で掲載できます。
-                  </p>
-                </div>
-              )}
-
-              {selectedCategory && !selectedCategory.is_free && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
-                      <input
-                        type="radio"
-                        name="payment_method"
-                        value={PAYMENT_METHODS.CREDIT_CARD}
-                        checked={formData.payment_method === PAYMENT_METHODS.CREDIT_CARD}
-                        onChange={(e) => handleInputChange('payment_method', e.target.value)}
-                        className="mr-3"
-                      />
-                      <CreditCard className="w-5 h-5 text-blue-500 mr-3" />
-                      <div>
-                        <div className="font-medium">クレジットカード決済</div>
-                        <div className="text-sm text-gray-600">
-                          毎月自動で決済されます（推奨）
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-                  
-                  <div>
-                    <label className="flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
-                      <input
-                        type="radio"
-                        name="payment_method"
-                        value={PAYMENT_METHODS.BANK_TRANSFER}
-                        checked={formData.payment_method === PAYMENT_METHODS.BANK_TRANSFER}
-                        onChange={(e) => handleInputChange('payment_method', e.target.value)}
-                        className="mr-3"
-                      />
-                      <Banknote className="w-5 h-5 text-green-500 mr-3" />
-                      <div>
-                        <div className="font-medium">銀行振込</div>
-                        <div className="text-sm text-gray-600">
-                          毎月請求書をお送りします（月末までにお支払い）
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-              )}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h3 className="font-medium text-blue-800 mb-2">掲載までの流れ</h3>
+                <ol className="list-decimal list-inside space-y-1 text-sm text-blue-700">
+                  <li>申し込み情報の送信</li>
+                  <li>運営による審査（1-3営業日）</li>
+                  <li>審査通過後、地図に掲載開始</li>
+                  <li>利用者からの検索・閲覧が可能に</li>
+                </ol>
+              </div>
             </div>
           </Card>
         )}
