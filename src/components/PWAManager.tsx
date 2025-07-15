@@ -215,26 +215,6 @@ const PWAManager: React.FC = () => {
     <>
       {/* PWA状態インジケーター */}
       <div className="fixed bottom-4 right-4 z-50 space-y-2">
-        {/* オンライン/オフライン状態 */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-full shadow-lg ${
-            pwaStatus.isOnline 
-              ? 'bg-green-500 text-white' 
-              : 'bg-red-500 text-white'
-          }`}
-        >
-          {pwaStatus.isOnline ? (
-            <Wifi className="w-4 h-4" />
-          ) : (
-            <WifiOff className="w-4 h-4" />
-          )}
-          <span className="text-sm font-medium">
-            {pwaStatus.isOnline ? 'オンライン' : 'オフライン'}
-          </span>
-        </motion.div>
-
         {/* PWAインストール状態 */}
         {pwaStatus.isInstalled && (
           <motion.div

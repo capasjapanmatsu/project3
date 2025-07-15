@@ -296,6 +296,35 @@ export function Home() {
             </SlideUp>
           </section>
 
+          {/* 新着情報セクション */}
+          <section 
+            id="news-section"
+            aria-labelledby="news-heading"
+            className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
+            tabIndex={-1}
+          >
+            <AnimatedElement
+              animation="slideUp"
+              duration={animationDuration}
+              delay={staggerDelay * 1}
+              respectReducedMotion={true}
+              fallbackAnimation="fadeIn"
+            >
+              <h2 
+                id="news-heading" 
+                className="sr-only"
+              >
+                新着情報とお知らせ
+              </h2>
+              <NewsSection 
+                isOffline={isOffline}
+                onRetryConnection={handleRetryConnection}
+                news={news}
+                isLoading={isNewsLoading}
+              />
+            </AnimatedElement>
+          </section>
+
           {/* 最近登録された犬のマーキー */}
           <section 
             aria-label="最近登録された愛犬たち"
@@ -305,7 +334,7 @@ export function Home() {
             <AnimatedElement
               animation="slideUp"
               duration={animationDuration}
-              delay={staggerDelay * 1}
+              delay={staggerDelay * 2}
               respectReducedMotion={true}
               fallbackAnimation="fadeIn"
             >
@@ -328,7 +357,7 @@ export function Home() {
               <AnimatedElement
                 animation="slideUp"
                 duration={animationDuration}
-                delay={staggerDelay * 2}
+                delay={staggerDelay * 3}
                 respectReducedMotion={true}
                 fallbackAnimation="fadeIn"
               >
@@ -339,35 +368,6 @@ export function Home() {
                   アプリの主な機能
                 </h2>
                 <FeaturesSection isLoggedIn={isLoggedIn} />
-              </AnimatedElement>
-            </section>
-
-            {/* 新着情報セクション */}
-            <section 
-              id="news-section"
-              aria-labelledby="news-heading"
-              className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
-              tabIndex={-1}
-            >
-              <AnimatedElement
-                animation="slideUp"
-                duration={animationDuration}
-                delay={staggerDelay * 3}
-                respectReducedMotion={true}
-                fallbackAnimation="fadeIn"
-              >
-                <h2 
-                  id="news-heading" 
-                  className="sr-only"
-                >
-                  新着情報とお知らせ
-                </h2>
-                <NewsSection 
-                  isOffline={isOffline}
-                  onRetryConnection={handleRetryConnection}
-                  news={news}
-                  isLoading={isNewsLoading}
-                />
               </AnimatedElement>
             </section>
 

@@ -30,7 +30,7 @@ import { handleVaccineUploadFixed } from '../utils/vaccineUploadFixed';
 import type { Dog, DogPark, Profile, Reservation, Notification, NewsAnnouncement } from '../types';
 
 export function UserDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -452,13 +452,13 @@ export function UserDashboard() {
           </p>
         </div>
         <div className="flex items-center space-x-4">
-                     {profile?.user_type === 'owner' && (
+                     {isAdmin && (
              <a
-               href="/owner-dashboard"
-               className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-medium inline-flex items-center"
+               href="/admin"
+               className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium inline-flex items-center"
              >
                <Crown className="w-4 h-4 mr-2" />
-               オーナー画面
+               管理者画面
              </a>
            )}
         </div>

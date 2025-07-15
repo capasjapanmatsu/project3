@@ -166,10 +166,13 @@ export function DogParkList() {
         // パークIDごとに予約をグループ化
         const rentalsByParkId: Record<string, Reservation[]> = {};
         (rentalsData || []).forEach(rental => {
-          if (!rentalsByParkId[rental.park_id]) {
-            rentalsByParkId[rental.park_id] = [];
+          if (rental && rental.park_id) {
+            const parkId = rental.park_id;
+            if (!rentalsByParkId[parkId]) {
+              rentalsByParkId[parkId] = [];
+            }
+            rentalsByParkId[parkId].push(rental);
           }
-          rentalsByParkId[rental.park_id].push(rental);
         });
         
         setFacilityRentals(rentalsByParkId);
@@ -646,7 +649,7 @@ export function DogParkList() {
             <Card key={park.id} className="overflow-hidden">
               {/* Park Image */}
               {park.image_url && (
-                <div className="relative h-48 mb-4 -m-6 mb-4">
+                <div className="relative h-56 mb-4 -m-6 mb-4">
                   <img
                     src={park.image_url}
                     alt={park.name}
@@ -657,16 +660,18 @@ export function DogParkList() {
                       e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
                     }}
                   />
-                  <div className="absolute top-3 right-3">
-                    <span className={`px-2 py-1 rounded-full text-sm font-medium ${status.color}`}>
+                  
+                  {/* 混雑状況 - 画像下側中央に配置 */}
+                  <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2">
+                    <span className={`px-3 py-1.5 rounded-full text-sm font-semibold shadow-lg ${status.color}`}>
                       {status.text}
                     </span>
                   </div>
                   
                   {/* メンテナンス情報の表示 */}
                   {maintenanceStatus && maintenance && (
-                    <div className="absolute top-3 left-3">
-                      <span className={`px-2 py-1 rounded-full text-sm font-medium text-white ${
+                    <div className="absolute top-2 left-2">
+                      <span className={`px-3 py-1.5 rounded-full text-sm font-semibold text-white shadow-lg ${
                         maintenanceStatus === 'active' 
                           ? (maintenance.is_emergency ? 'bg-red-600' : 'bg-orange-600')
                           : 'bg-blue-600'
@@ -681,8 +686,8 @@ export function DogParkList() {
                   
                   {/* 本日貸し切りありの表示 */}
                   {!maintenanceStatus && hasRentalsToday && (
-                    <div className="absolute top-3 left-3">
-                      <span className="px-2 py-1 rounded-full text-sm font-medium bg-orange-500 text-white">
+                    <div className="absolute top-2 left-2">
+                      <span className="px-3 py-1.5 rounded-full text-sm font-semibold bg-orange-500 text-white shadow-lg">
                         本日貸し切りあり
                       </span>
                     </div>

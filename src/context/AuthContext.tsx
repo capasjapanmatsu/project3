@@ -19,6 +19,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   signInWithMagicLink: (email: string) => Promise<{ success: boolean; error?: string }>;
+  signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   verify2FA: (code: string) => Promise<{ success: boolean; error?: string }>;
   setIsTrustedDevice: (trusted: boolean) => void;
   isAdmin: boolean;
@@ -32,6 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   logout: async () => { await Promise.resolve(); },
   isAuthenticated: false,
   signInWithMagicLink: async () => { await Promise.resolve(); return { success: false }; },
+  signInWithPassword: async () => { await Promise.resolve(); return { success: false }; },
   verify2FA: async () => { await Promise.resolve(); return { success: false }; },
   setIsTrustedDevice: () => {},
   isAdmin: false,
@@ -405,6 +407,37 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const signInWithPassword = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        console.error('Password sign in error:', error);
+        return { success: false, error: `ログインに失敗しました: ${error.message}` };
+      }
+      
+      if (data.user) {
+        // ログイン成功時にメールアドレスを保存（開発環境のみ）
+        if (import.meta.env.DEV) {
+          localStorage.setItem('lastUsedEmail', email);
+        }
+        
+        // ログイン状態を維持するためのセッション情報をローカルストレージに保存
+        localStorage.setItem('sb-auth-user', JSON.stringify(data.user));
+        
+        return { success: true };
+      }
+      
+      return { success: false, error: 'ログインに失敗しました' };
+    } catch (error) {
+      console.error('Password sign in error:', error);
+      return { success: false, error: `ログインに失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
+  }, []);
+
   const verify2FA = useCallback(async (code: string): Promise<{ success: boolean; error?: string }> => {
     try {
       if (!user) {
@@ -471,6 +504,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
       logout,
       isAuthenticated,
       signInWithMagicLink,
+      signInWithPassword,
       verify2FA,
       setIsTrustedDevice,
       isAdmin,
