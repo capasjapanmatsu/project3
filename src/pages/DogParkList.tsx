@@ -695,236 +695,151 @@ export function DogParkList() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {parks.map((park) => {
-          const status = getDetailedOccupancyStatus(park.current_occupancy, park.max_capacity);
-          const trend = getOccupancyTrend(park.id);
-          const distance = userLocation
-            ? calculateDistance(userLocation.lat, userLocation.lng, Number(park.latitude), Number(park.longitude))
-            : null;
-          
-          // 施設貸し切り情報
-          const rentalTimes = getParkRentals(park.id);
-          const hasRentalsToday = rentalTimes && rentalTimes.length > 0;
-          
-          // メンテナンス情報
-          const maintenance = maintenanceInfo[park.id];
-          const isUnderMaintenance = maintenance !== undefined;
-          
-          // メンテナンス状態を判定
-          let maintenanceStatus = null;
-          if (maintenance) {
-            const now = new Date();
-            const startDate = new Date(maintenance.start_date);
-            const endDate = new Date(maintenance.end_date);
+            const status = getDetailedOccupancyStatus(park.current_occupancy, park.max_capacity);
+            const trend = getOccupancyTrend(park.id);
+            const distance = userLocation
+              ? calculateDistance(userLocation.lat, userLocation.lng, Number(park.latitude), Number(park.longitude))
+              : null;
             
-            if (now >= startDate && now < endDate) {
-              maintenanceStatus = 'active'; // 現在メンテナンス中
-            } else if (now < startDate) {
-              maintenanceStatus = 'scheduled'; // 今後のメンテナンス予定
-            }
-          }
-          
-          return (
-            <Card key={park.id} className="overflow-hidden">
-              {/* Park Image */}
-              {park.image_url && (
-                <div className="relative h-56 mb-4 -m-6 mb-4">
-                  <img
-                    src={park.image_url}
-                    alt={park.name}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                    onError={(e) => {
-                      // フォールバック画像を設定
-                      e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
-                    }}
-                  />
-                  
-                  {/* 混雑状況 - 画像下側中央に配置 */}
-                  <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2">
-                    <span className={`px-3 py-1.5 rounded-full text-sm font-semibold shadow-lg ${status.color}`}>
-                      {status.text}
-                    </span>
-                  </div>
-                  
-                  {/* メンテナンス情報の表示 */}
-                  {maintenanceStatus && maintenance && (
-                    <div className="absolute top-2 left-2">
-                      <span className={`px-3 py-1.5 rounded-full text-sm font-semibold text-white shadow-lg ${
-                        maintenanceStatus === 'active' 
-                          ? (maintenance.is_emergency ? 'bg-red-600' : 'bg-orange-600')
-                          : 'bg-blue-600'
-                      }`}>
-                        {maintenanceStatus === 'active' 
-                          ? (maintenance.is_emergency ? '緊急メンテナンス中' : 'メンテナンス中')
-                          : 'メンテナンス予定'
-                        }
-                      </span>
-                    </div>
-                  )}
-                  
-                  {/* 本日貸し切りありの表示 */}
-                  {!maintenanceStatus && hasRentalsToday && (
-                    <div className="absolute top-2 left-2">
-                      <span className="px-3 py-1.5 rounded-full text-sm font-semibold bg-orange-500 text-white shadow-lg">
-                        本日貸し切りあり
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
+            // 施設貸し切り情報
+            const rentalTimes = getParkRentals(park.id);
+            const hasRentalsToday = rentalTimes && rentalTimes.length > 0;
+            
+            // メンテナンス情報
+            const maintenance = maintenanceInfo[park.id];
+            const isUnderMaintenance = maintenance !== undefined;
+            
+            // メンテナンス状態を判定
+            let maintenanceStatus = null;
+            if (maintenance) {
+              const now = new Date();
+              const startDate = new Date(maintenance.start_date);
+              const endDate = new Date(maintenance.end_date);
               
-              <div className={park.image_url ? 'px-6 pb-6' : ''}>
-                <h3 className="text-lg font-semibold mb-2">{park.name}</h3>
-                
-                {/* ★評価表示 - 施設名の直下に配置 */}
-                <div className="flex items-center space-x-2 mb-3">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`w-4 h-4 ${
-                        star <= Math.round(park.average_rating)
-                          ? 'text-yellow-400 fill-current'
-                          : 'text-gray-300'
-                      }`}
+              if (now >= startDate && now < endDate) {
+                maintenanceStatus = 'active'; // 現在メンテナンス中
+              } else if (now < startDate) {
+                maintenanceStatus = 'scheduled'; // 今後のメンテナンス予定
+              }
+            }
+            
+            return (
+              <Card key={park.id} className="overflow-hidden">
+                {/* Park Image */}
+                {park.image_url && (
+                  <div className="relative h-56 mb-4 -m-6 mb-4">
+                    <img
+                      src={park.image_url}
+                      alt={park.name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        // フォールバック画像を設定
+                        e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
+                      }}
                     />
-                  ))}
-                  <span className="text-sm font-medium text-gray-900">
-                    {park.average_rating.toFixed(1)}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    ({park.review_count}件)
-                  </span>
-                </div>
-                
-                <p className="text-gray-600 mb-4 line-clamp-2">{park.description}</p>
-                
-                {/* リアルタイム混雑状況の詳細表示 */}
-                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2">
-                      <Users className="w-4 h-4 text-gray-600" />
-                      <span className="text-sm font-medium text-gray-900">現在の混雑状況</span>
-                      {trend !== 'stable' && (
-                        <div className="flex items-center space-x-1">
-                          {trend === 'increasing' ? (
-                            <TrendingUp className="w-3 h-3 text-red-500" />
-                          ) : (
-                            <TrendingDown className="w-3 h-3 text-green-500" />
-                          )}
-                          <span className="text-xs text-gray-500">
-                            {trend === 'increasing' ? '増加中' : '減少中'}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-center">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center justify-center space-x-1 ${
-                        status.color
-                      }`}>
-                        <span>{status.emoji}</span>
-                        <span>{status.text}</span>
+                    
+                    {/* 混雑状況 - 画像下側中央に配置 */}
+                    <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2">
+                      <span className={`px-3 py-1.5 rounded-full text-sm font-semibold shadow-lg ${status.color}`}>
+                        {status.text}
                       </span>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {status.description}
-                      </p>
                     </div>
-                  </div>
-                  
-                  {/* プログレスバー */}
-                  <div className="mb-2">
-                    <div className="flex justify-between text-xs text-gray-600 mb-1">
-                      <span>{park.current_occupancy}人</span>
-                      <span>{Math.round((park.current_occupancy / park.max_capacity) * 100)}%</span>
-                      <span>{park.max_capacity}人</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full transition-all duration-300 ${status.barColor}`}
-                        style={{ width: `${(park.current_occupancy / park.max_capacity) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                  
-                  <p className="text-xs text-gray-600">{status.description}</p>
-                </div>
-                
-                <div className="space-y-3">
-                  <div className="flex items-center text-gray-600">
-                    <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
-                    <span className="text-sm truncate">{park.address}</span>
-                  </div>
-                  {distance !== null && (
-                    <p className="text-xs text-gray-500">
-                      現在地から約{Math.round(distance * 10) / 10}km
-                    </p>
-                  )}
-                  
-                  {/* メンテナンス情報の詳細表示 */}
-                  {maintenanceStatus && maintenance && (
-                    <div className={`p-3 rounded-lg ${
-                      maintenanceStatus === 'active'
-                        ? (maintenance.is_emergency ? 'bg-red-50' : 'bg-orange-50')
-                        : 'bg-blue-50'
-                    }`}>
-                      <div className="flex items-center space-x-2 mb-1">
-                        <AlertTriangle className={`w-4 h-4 ${
-                          maintenanceStatus === 'active'
-                            ? (maintenance.is_emergency ? 'text-red-600' : 'text-orange-600')
-                            : 'text-blue-600'
-                        }`} />
-                        <span className={`text-sm font-medium ${
-                          maintenanceStatus === 'active'
-                            ? (maintenance.is_emergency ? 'text-red-800' : 'text-orange-800')
-                            : 'text-blue-800'
+                    
+                    {/* メンテナンス情報の表示 */}
+                    {maintenanceStatus && maintenance && (
+                      <div className="absolute top-2 left-2">
+                        <span className={`px-3 py-1.5 rounded-full text-sm font-semibold text-white shadow-lg ${
+                          maintenanceStatus === 'active' 
+                            ? (maintenance.is_emergency ? 'bg-red-600' : 'bg-orange-600')
+                            : 'bg-blue-600'
                         }`}>
-                          {maintenanceStatus === 'active'
+                          {maintenanceStatus === 'active' 
                             ? (maintenance.is_emergency ? '緊急メンテナンス中' : 'メンテナンス中')
                             : 'メンテナンス予定'
                           }
                         </span>
                       </div>
-                      <p className={`text-sm font-medium ${
-                        maintenanceStatus === 'active'
-                          ? (maintenance.is_emergency ? 'text-red-700' : 'text-orange-700')
-                          : 'text-blue-700'
-                      } mb-1`}>
-                        {maintenance.title}
-                      </p>
+                    )}
+                    
+                    {/* 本日貸し切りありの表示 */}
+                    {!maintenanceStatus && hasRentalsToday && (
+                      <div className="absolute top-2 left-2">
+                        <span className="px-3 py-1.5 rounded-full text-sm font-semibold bg-orange-500 text-white shadow-lg">
+                          本日貸し切りあり
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                <div className={park.image_url ? 'px-6 pb-6' : ''}>
+                  <h3 className="text-lg font-semibold mb-2">{park.name}</h3>
+                  
+                  {/* 距離表示 */}
+                  {distance && (
+                    <div className="flex items-center text-sm text-gray-600 mb-2">
+                      <MapPin className="w-4 h-4 mr-1" />
+                      <span>{distance.toFixed(1)}km</span>
+                    </div>
+                  )}
+                  
+                  {/* 混雑状況トレンド */}
+                  {trend && (
+                    <div className="flex items-center text-sm mb-3">
+                      {trend === 'increasing' ? (
+                        <TrendingUp className="w-4 h-4 mr-1 text-orange-500" />
+                      ) : trend === 'decreasing' ? (
+                        <TrendingDown className="w-4 h-4 mr-1 text-green-500" />
+                      ) : null}
+                      <span className="text-gray-600">
+                        {trend === 'increasing' ? '混雑傾向' : 
+                         trend === 'decreasing' ? '空いてきています' : ''}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* 現在の利用者数（リアルタイム） */}
+                  <div className="flex items-center justify-between text-sm mb-3">
+                    <div className="flex items-center">
+                      <Users className="w-4 h-4 mr-1 text-blue-600" />
+                      <span className="text-gray-600">現在の利用者数</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className={`font-semibold ${
+                        (park.current_occupancy / park.max_capacity) > 0.8 ? 'text-red-600' :
+                        (park.current_occupancy / park.max_capacity) > 0.6 ? 'text-orange-600' :
+                        'text-green-600'
+                      }`}>
+                        {park.current_occupancy}/{park.max_capacity}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* メンテナンス情報の詳細表示 */}
+                  {maintenanceStatus && maintenance && (
+                    <div className="bg-red-50 p-3 rounded-lg mb-3">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <AlertTriangle className="w-4 h-4 text-red-600" />
+                        <span className="text-sm font-medium text-red-800">{maintenance.title}</span>
+                      </div>
                       {maintenance.description && (
-                        <p className={`text-xs ${
-                          maintenanceStatus === 'active'
-                            ? (maintenance.is_emergency ? 'text-red-600' : 'text-orange-600')
-                            : 'text-blue-600'
-                        } mb-2`}>
-                          {maintenance.description}
-                        </p>
+                        <p className="text-sm text-red-700 mb-2">{maintenance.description}</p>
                       )}
-                      <div className="space-y-1">
-                        <div className={`flex items-center text-xs ${
-                          maintenanceStatus === 'active'
-                            ? (maintenance.is_emergency ? 'text-red-700' : 'text-orange-700')
-                            : 'text-blue-700'
-                        }`}>
-                          <Clock className="w-3 h-3 mr-1 flex-shrink-0" />
+                      <div className="text-xs text-red-600">
+                        <div className="flex items-center space-x-1">
+                          <Clock className="w-3 h-3" />
                           <span>
                             {new Date(maintenance.start_date).toLocaleDateString('ja-JP', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}
-                            {' '}
-                            {new Date(maintenance.start_date).toLocaleTimeString('ja-JP', {
+                              month: 'short',
+                              day: 'numeric',
                               hour: '2-digit',
                               minute: '2-digit'
                             })}
                             〜
                             {new Date(maintenance.end_date).toLocaleDateString('ja-JP', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}
-                            {' '}
-                            {new Date(maintenance.end_date).toLocaleTimeString('ja-JP', {
+                              month: 'short',
+                              day: 'numeric',
                               hour: '2-digit',
                               minute: '2-digit'
                             })}
@@ -1059,11 +974,11 @@ export function DogParkList() {
                     )}
                   </div>
                 </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
