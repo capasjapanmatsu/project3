@@ -1,5 +1,6 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   ExternalLink, 
@@ -8,6 +9,10 @@ import {
   CheckCircle, 
   Download,
   Code,
+  Monitor,
+  Globe,
+  BookOpen,
+  TestTube,
   Smartphone,
   Zap
 } from 'lucide-react';
@@ -134,6 +139,87 @@ const PWADocumentation: React.FC = () => {
                 </div>
               </motion.div>
             ))}
+          </div>
+        </motion.div>
+
+        {/* PWA管理ツール */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8"
+        >
+          <h2 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
+            <Settings className="w-6 h-6 mr-2" />
+            PWA管理ツール
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Link 
+              to="/pwa-setup-guide" 
+              className="flex items-center p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+            >
+              <Download className="w-5 h-5 text-blue-600 mr-3" />
+              <div>
+                <div className="font-medium text-gray-900">セットアップガイド</div>
+                <div className="text-sm text-gray-600">PWA導入手順</div>
+              </div>
+            </Link>
+            
+            <Link 
+              to="/pwa-implementation-guide" 
+              className="flex items-center p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+            >
+              <Code className="w-5 h-5 text-blue-600 mr-3" />
+              <div>
+                <div className="font-medium text-gray-900">実装ガイド</div>
+                <div className="text-sm text-gray-600">技術的な実装詳細</div>
+              </div>
+            </Link>
+            
+            <Link 
+              to="/pwa-testing-suite" 
+              className="flex items-center p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+            >
+              <TestTube className="w-5 h-5 text-blue-600 mr-3" />
+              <div>
+                <div className="font-medium text-gray-900">テストスイート</div>
+                <div className="text-sm text-gray-600">PWA機能のテスト</div>
+              </div>
+            </Link>
+            
+            <Link 
+              to="/pwa-lighthouse-audit" 
+              className="flex items-center p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+            >
+              <Monitor className="w-5 h-5 text-blue-600 mr-3" />
+              <div>
+                <div className="font-medium text-gray-900">Lighthouse監査</div>
+                <div className="text-sm text-gray-600">パフォーマンス分析</div>
+              </div>
+            </Link>
+            
+            <Link 
+              to="/pwa-deployment-guide" 
+              className="flex items-center p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+            >
+              <Globe className="w-5 h-5 text-blue-600 mr-3" />
+              <div>
+                <div className="font-medium text-gray-900">デプロイガイド</div>
+                <div className="text-sm text-gray-600">本番環境への配信</div>
+              </div>
+            </Link>
+            
+            <Link 
+              to="/pwa-documentation" 
+              className="flex items-center p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+            >
+              <BookOpen className="w-5 h-5 text-blue-600 mr-3" />
+              <div>
+                <div className="font-medium text-gray-900">ドキュメント</div>
+                <div className="text-sm text-gray-600">総合マニュアル</div>
+              </div>
+            </Link>
           </div>
         </motion.div>
 

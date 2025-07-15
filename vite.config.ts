@@ -10,13 +10,7 @@ export default defineConfig({
     react({
       // React Fast Refresh はデフォルトで有効
       babel: {
-        plugins: [
-          // 本番環境ではプロップタイプを削除
-          ...(process.env.NODE_ENV === 'production' ? [
-            'babel-plugin-transform-remove-console',
-            'babel-plugin-transform-remove-debugger'
-          ] : []),
-        ],
+        plugins: [],
       },
     }),
     viteCompression({
@@ -94,10 +88,6 @@ export default defineConfig({
           ui: ['lucide-react'],
           // Stripe関連
           stripe: ['@stripe/stripe-js'],
-          // フォーム関連
-          form: ['react-hook-form'],
-          // 日付関連
-          date: ['date-fns'],
         },
         // ファイル名のハッシュ化
         entryFileNames: 'assets/[name].[hash].js',
@@ -105,28 +95,23 @@ export default defineConfig({
         assetFileNames: 'assets/[name].[hash].[ext]',
       },
     },
-    chunkSizeWarningLimit: 600, // 1000から600に削減
-    // 並列ビルド
+    chunkSizeWarningLimit: 600,
     target: 'es2015',
-    // CSS の分離
     cssCodeSplit: true,
-    // PWA対応の追加設定
     assetsDir: 'assets',
     copyPublicDir: true,
   },
   server: {
     port: 3000,
     open: true,
-    // 開発サーバーの最適化
     hmr: {
       overlay: false,
     },
     headers: {
-      // Service Worker用のヘッダー
       'Service-Worker-Allowed': '/',
     },
   },
-  // 開発環境でのホットリロード最適化
+  // 開発環境での最適化
   optimizeDeps: {
     include: [
       '@supabase/supabase-js',
@@ -140,15 +125,13 @@ export default defineConfig({
   },
   // プレビュー設定
   preview: {
-    port: 3000,
+    port: 3001,
     host: true,
     headers: {
-      // PWA用セキュリティヘッダー
       'Cross-Origin-Embedder-Policy': 'require-corp',
       'Cross-Origin-Opener-Policy': 'same-origin',
     },
   },
-  // PWA用追加設定は上記のserver設定に統合済み
   // SSR 最適化
   ssr: {
     noExternal: ['react', 'react-dom'],

@@ -1,9 +1,0 @@
-{
-  "name": "ドッグパークJP",
-  "short_name": "ドッグパークJP",
-  "description": "愛犬とのお散歩をもっと楽しく。全国のドッグランを簡単に検索・予約できるサービスです。",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#3B82F6"
-}
