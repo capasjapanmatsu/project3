@@ -8,6 +8,8 @@ import { safeGetItem, safeSetItem } from '../utils/safeStorage';
 import { clearAllStorageForLoginIssues, diagnoseLoginIssues } from '../utils/debugStorage';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabase';
+import { logger } from '../utils/logger';
+import { notify } from '../utils/notification';
 
 export function Login() {
   const { signInWithMagicLink } = useAuth();
@@ -48,18 +50,18 @@ export function Login() {
   }, []);
 
   // Magic Link
-  const handleMagicLink = async (e: React.FormEvent) => {
+  const handleMagicLinkLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    
     try {
+      await signInWithMagicLink(email);
       safeSetItem('lastUsedEmail', email);
-      const { error } = await signInWithMagicLink(email);
-      if (error) throw new Error(error);
-      alert('ログインリンクを送信しました。メールをご確認ください。');
-    } catch (err: unknown) {
-      console.warn('Magic link error:', err);
-      setError((err as Error).message || 'ログインリンクの送信に失敗しました。メールアドレスを確認してください。');
+      notify.success('ログインリンクを送信しました。メールをご確認ください。');
+    } catch (error) {
+      logger.error('❌ Magic link error:', error);
+      setError(error instanceof Error ? error.message : 'メールの送信に失敗しました。もう一度お試しください。');
     } finally {
       setIsLoading(false);
     }
@@ -72,7 +74,7 @@ export function Login() {
     setError('');
     
     try {
-      console.log('🔐 Starting password login for:', email);
+      logger.info('🔐 Starting password login for:', email);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email,
@@ -80,25 +82,25 @@ export function Login() {
       });
 
       if (error) {
-        console.error('❌ Login error:', error);
+        logger.error('❌ Login error:', error);
         throw error;
       }
 
       if (data.user) {
-        console.log('✅ Login successful for:', data.user.email);
+        logger.info('✅ Login successful for:', data.user.email);
         safeSetItem('lastUsedEmail', email);
         
         // 短い遅延を追加してセッション確立を待つ
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // ログイン成功時のリダイレクト
-        console.log('🚀 Redirecting to dashboard...');
+        logger.info('🚀 Redirecting to dashboard...');
         navigate('/dashboard');
       } else {
         throw new Error('ログインに成功しましたが、ユーザー情報を取得できませんでした。');
       }
     } catch (err: unknown) {
-      console.warn('❌ Password login error:', err);
+      logger.warn('❌ Password login error:', err);
       
       const errorMessage = err instanceof Error ? err.message : 'ログインに失敗しました。';
       
@@ -122,10 +124,10 @@ export function Login() {
     if (confirm('ローカルストレージをクリアしますか？これによりログイン問題が解決される場合があります。')) {
       const success = clearAllStorageForLoginIssues();
       if (success) {
-        alert('ストレージをクリアしました。ページを再読み込みしてください。');
+        notify.success('ストレージをクリアしました。ページを再読み込みしてください。');
         window.location.reload();
       } else {
-        alert('ストレージのクリアに失敗しました。');
+        notify.error('ストレージのクリアに失敗しました。');
       }
     }
   };
@@ -133,7 +135,7 @@ export function Login() {
   // 診断機能
   const handleDiagnose = () => {
     diagnoseLoginIssues();
-    alert('診断結果をコンソールに出力しました。F12を押してコンソールを確認してください。');
+    notify.info('診断結果をコンソールに出力しました。F12を押してコンソールを確認してください。');
   };
 
   return (
@@ -175,7 +177,7 @@ export function Login() {
           </Button>
         </div>
         {!isPasswordLogin ? (
-          <form onSubmit={(e) => void handleMagicLink(e)} className="p-6">
+          <form onSubmit={(e) => void handleMagicLinkLogin(e)} className="p-6">
             <div className="text-center mb-6">
               <Mail className="w-12 h-12 text-blue-600 mx-auto mb-4" />
               <h2 className="text-xl font-semibold mb-2">Magic Linkでログイン</h2>

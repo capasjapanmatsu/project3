@@ -20,6 +20,8 @@ import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import type { Product, CartItem } from '../types';
+import { logger } from '../utils/logger';
+import { notify } from '../utils/notification';
 
 interface ProductImage {
   id: string;
@@ -107,13 +109,13 @@ export function ProductDetail() {
   };
 
   const addToCart = async () => {
-    if (!user || !product) {
+    if (!user) {
       navigate('/login');
       return;
     }
 
     try {
-      const existingItem = cartItems.find(item => item.product_id === product.id);
+      const existingItem = cartItems.find(item => item.product_id === product?.id);
 
       if (existingItem) {
         const { error } = await supabase
@@ -137,10 +139,10 @@ export function ProductDetail() {
       await fetchProductData();
       
       // カートに追加完了のフィードバック
-      alert('カートに追加しました！');
+      notify.success('カートに追加しました！');
     } catch (error) {
-      console.error('Error adding to cart:', error);
-      alert('カートへの追加に失敗しました。');
+      logger.error('Error adding to cart:', error);
+      notify.error('カートへの追加に失敗しました。');
     }
   };
 

@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import PWAManager from './components/PWAManager';
+import NotificationContainer from './components/NotificationContainer';
 import useAuth from './context/AuthContext';
 import DogInfo from './pages/DogInfo';
 import DogInfoFoods from './pages/DogInfoFoods';
@@ -281,6 +282,9 @@ function App() {
       
       {/* PWA管理機能 */}
       <PWAManager />
+      
+      {/* 通知システム */}
+      <NotificationContainer />
     </>
   );
 }

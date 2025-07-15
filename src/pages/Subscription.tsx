@@ -24,6 +24,8 @@ import { useStripe } from '../hooks/useStripe';
 import { useSubscription } from '../hooks/useSubscription';
 import { products } from '../stripe-config';
 import { supabase } from '../utils/supabase';
+import { logger } from '../utils/logger';
+import { notify } from '../utils/notification';
 export function Subscription() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -105,11 +107,11 @@ export function Subscription() {
       setShowConfirmCancel(false);
       
       // リロードの代わりにページ遷移
-      alert('サブスクリプションをキャンセルしました。');
+      notify.success('サブスクリプションをキャンセルしました。');
       navigate('/dashboard');
     } catch (error) {
-      console.error('Error canceling subscription:', error);
-      alert((error as Error).message || 'サブスクリプションのキャンセルに失敗しました');
+      logger.error('Error canceling subscription:', error);
+      notify.error((error as Error).message || 'サブスクリプションのキャンセルに失敗しました');
     }
   };
 
@@ -150,7 +152,7 @@ export function Subscription() {
         navigate('/dashboard');
       }, 2000);
     } catch (error) {
-      console.error('Error pausing subscription:', error);
+      logger.error('Error pausing subscription:', error);
       setPauseError((error as Error).message || 'サブスクリプションの一時停止に失敗しました');
     } finally {
       setIsPauseLoading(false);
@@ -194,7 +196,7 @@ export function Subscription() {
         navigate('/dashboard');
       }, 2000);
     } catch (error) {
-      console.error('Error resuming subscription:', error);
+      logger.error('Error resuming subscription:', error);
       setResumeError((error as Error).message || 'サブスクリプションの再開に失敗しました');
     } finally {
       setIsResumeLoading(false);

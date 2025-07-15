@@ -13,6 +13,7 @@ import type { Dog } from '../types';
 import SkipNavigation from '../components/accessibility/SkipNavigation';
 import AnimatedElement, { FadeIn, SlideUp } from '../components/accessibility/AnimatedElement';
 import { useResponsive } from '../hooks/useResponsive';
+import { logger, performanceLogger } from '../utils/logger';
 
 export function Home() {
   const { user } = useAuth();
@@ -100,7 +101,7 @@ export function Home() {
           cache.set('recentDogs', parsed);
           setRecentDogs(parsed.data);
           setIsLoading(false);
-          console.log('✅ ローカルストレージからキャッシュを復元:', parsed.data.length, '匹');
+          logger.info('✅ ローカルストレージからキャッシュを復元:', parsed.data.length, '匹');
         }
       }
     } catch (error) {
@@ -110,12 +111,12 @@ export function Home() {
 
   const fetchRecentDogs = useCallback(async () => {
     try {
-      console.log('🐕 最近仲間入りしたワンちゃんを取得中...');
+      logger.info('🐕 最近仲間入りしたワンちゃんを取得中...');
       
       // キャッシュから取得を試行
       const cachedData = getCachedData('recentDogs');
       if (cachedData) {
-        console.log('✅ キャッシュから最近仲間入りしたワンちゃんを取得:', cachedData.length, '匹');
+        logger.info('✅ キャッシュから最近仲間入りしたワンちゃんを取得:', cachedData.length, '匹');
         setRecentDogs(cachedData);
         setIsLoading(false);
         return cachedData;
@@ -125,7 +126,7 @@ export function Home() {
       setNetworkError(null);
 
       // データベース接続テストを省略して高速化
-      console.log('🔍 データベースから直接取得...');
+      logger.info('🔍 データベースから直接取得...');
       
       // 最小限のフィールドのみを取得してパフォーマンスを向上
       const { data, error } = await supabase
@@ -135,21 +136,21 @@ export function Home() {
         .limit(8);
       
       if (error) {
-        console.warn('❌ Database error:', error);
+        logger.warn('❌ Database error:', error);
         // エラー時は空配列を返してアプリを継続
         setRecentDogs([]);
         setIsLoading(false);
         return [];
       }
       
-      console.log('✅ 最近仲間入りしたワンちゃん取得成功:', data?.length || 0, '匹');
+      logger.info('✅ 最近仲間入りしたワンちゃん取得成功:', data?.length || 0, '匹');
       const dogs = data || [];
       setRecentDogs(dogs);
       setCachedData('recentDogs', dogs);
       setIsLoading(false);
       return dogs;
     } catch (err) {
-      console.warn('❌ Error fetching recent dogs:', err);
+      logger.warn('❌ Error fetching recent dogs:', err);
       // エラー時でもアプリを継続
       setRecentDogs([]);
       setIsLoading(false);
@@ -159,12 +160,12 @@ export function Home() {
 
   const fetchNews = useCallback(async () => {
     try {
-      console.log('📰 新着情報を取得中...');
+      logger.info('📰 新着情報を取得中...');
       
       // キャッシュから取得を試行
       const cachedData = getCachedData('news');
       if (cachedData) {
-        console.log('✅ キャッシュから新着情報を取得:', cachedData.length, '件');
+        logger.info('✅ キャッシュから新着情報を取得:', cachedData.length, '件');
         setNews(cachedData);
         return cachedData;
       }
@@ -178,31 +179,31 @@ export function Home() {
         .limit(5);
 
       if (error) {
-        console.error('❌ 新着情報取得エラー:', error);
+        logger.error('❌ 新着情報取得エラー:', error);
         // エラーがあっても空配列を設定して処理を続行
         setNews([]);
         return [];
       }
 
-      console.log('✅ 新着情報取得成功:', data?.length || 0, '件');
+      logger.info('✅ 新着情報取得成功:', data?.length || 0, '件');
       const newsData = data || [];
       setNews(newsData);
       setCachedData('news', newsData);
       return newsData;
     } catch (err) {
-      console.error('❌ 新着情報取得例外:', err);
+      logger.error('❌ 新着情報取得例外:', err);
       // エラーが発生しても空配列を設定
       setNews([]);
       return [];
     } finally {
       setIsNewsLoading(false);
-      console.log('📰 新着情報取得処理完了');
+      logger.info('📰 新着情報取得処理完了');
     }
   }, [getCachedData, setCachedData]);
 
   // 並列でデータ取得を実行（最適化版）
   const fetchAllData = useCallback(async () => {
-    console.log('🚀 高速データ取得を開始...');
+    logger.info('🚀 高速データ取得を開始...');
     const startTime = Date.now();
     
     try {
@@ -219,11 +220,11 @@ export function Home() {
       const [dogs, news] = await Promise.race([dataPromises, timeoutPromise]) as [any[], any[]];
       
       const endTime = Date.now();
-      console.log(`✅ 高速データ取得完了: ${endTime - startTime}ms`);
+      logger.info(`✅ 高速データ取得完了: ${endTime - startTime}ms`);
       
       return { dogs, news };
     } catch (error) {
-      console.error('❌ データ取得エラー:', error);
+      logger.error('❌ データ取得エラー:', error);
       
       // エラー時でも部分的に取得できたデータを使用
       const fallbackData = { dogs: [], news: [] };
@@ -233,14 +234,14 @@ export function Home() {
         const dogs = await fetchRecentDogs();
         fallbackData.dogs = dogs;
       } catch (dogError) {
-        console.warn('犬データの取得に失敗:', dogError);
+        logger.warn('犬データの取得に失敗:', dogError);
       }
       
       try {
         const news = await fetchNews();
         fallbackData.news = news;
       } catch (newsError) {
-        console.warn('ニュースデータの取得に失敗:', newsError);
+        logger.warn('ニュースデータの取得に失敗:', newsError);
       }
       
       return fallbackData;

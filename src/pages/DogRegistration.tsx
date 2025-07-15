@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Input from '../components/Input';
 import Select from '../components/Select';
@@ -10,6 +10,8 @@ import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 import { validateVaccineFile } from '../utils/vaccineUpload';
 import { handleVaccineUploadFixed } from '../utils/vaccineUploadFixed';
+import { logger } from '../utils/logger';
+import { notify } from '../utils/notification';
 
 
 export function DogRegistration() {
@@ -98,7 +100,7 @@ export function DogRegistration() {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      console.log('Selected file:', file.name, file.size, file.type);
+      logger.info('Selected file:', file.name, file.size, file.type);
       
       // ファイルサイズチェック（10MB以下）
       if (file.size > 10 * 1024 * 1024) {
@@ -118,7 +120,7 @@ export function DogRegistration() {
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagePreview(e.target?.result as string);
-        console.log('Image preview created');
+        logger.info('Image preview created');
       };
       reader.readAsDataURL(file);
       setError('');
@@ -137,8 +139,8 @@ export function DogRegistration() {
     setError('');
 
     try {
-      console.log('=== DOG REGISTRATION START ===');
-      console.log('Starting dog registration for user:', user?.id);
+      logger.info('=== DOG REGISTRATION START ===');
+      logger.info('Starting dog registration for user:', user?.id);
 
       // 生年月日の妥当性チェック
       if (!isValidBirthDate()) {
@@ -179,7 +181,7 @@ export function DogRegistration() {
         return;
       }
       
-      console.log('Original gender:', formData.gender, 'Normalized gender:', normalizedGender);
+      logger.info('Original gender:', formData.gender, 'Normalized gender:', normalizedGender);
       
       // プロフィールが存在するかチェック
       const { data: profile, error: profileError } = await supabase
@@ -188,16 +190,16 @@ export function DogRegistration() {
         .eq('id', user?.id)
         .maybeSingle();
 
-      console.log('Profile check result:', profile, profileError);
+      logger.info('Profile check result:', profile, profileError);
 
       if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Profile error:', profileError);
+        logger.error('Profile error:', profileError);
         throw profileError;
       }
 
       // プロフィールが存在しない場合は作成（upsertを使用）
       if (!profile) {
-        console.log('Creating profile for dog registration using upsert');
+        logger.info('Creating profile for dog registration using upsert');
         const defaultName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'ユーザー';
         
         const { data: newProfile, error: createProfileError } = await supabase
@@ -214,16 +216,16 @@ export function DogRegistration() {
           .single();
 
         if (createProfileError) {
-          console.error('Profile upsert error:', createProfileError);
+          logger.error('Profile upsert error:', createProfileError);
           throw createProfileError;
         }
-        console.log('Profile upserted successfully:', newProfile);
+        logger.info('Profile upserted successfully:', newProfile);
       } else {
-        console.log('Profile exists:', profile);
+        logger.info('Profile exists:', profile);
       }
 
       // 犬の情報を登録
-      console.log('Registering dog with data:', { 
+      logger.info('Registering dog with data:', { 
         name: formData.name,
         breed: formData.breed,
         birth_date: birthDate,
@@ -242,8 +244,8 @@ export function DogRegistration() {
       ]).select().single();
 
       if (dogError) {
-        console.error('🚨 Dog registration error:', dogError);
-        console.error('🚨 Error details:', {
+        logger.error('🚨 Dog registration error:', dogError);
+        logger.error('🚨 Error details:', {
           message: dogError.message,
           code: dogError.code,
           details: dogError.details,
@@ -252,13 +254,13 @@ export function DogRegistration() {
         throw dogError;
       }
 
-      console.log('✅ Dog registered successfully:', dog);
-      console.log('✅ Dog ID generated:', dog.id);
+      logger.info('✅ Dog registered successfully:', dog);
+      logger.info('✅ Dog ID generated:', dog.id);
 
       // 犬の画像をアップロード
       let imageUrl = null;
       if (imageFile) {
-        console.log('Uploading dog image...');
+        logger.info('Uploading dog image...');
         
         try {
           // ファイル名を生成（タイムスタンプ付きで重複を避ける）
@@ -266,10 +268,10 @@ export function DogRegistration() {
           const timestamp = Date.now();
           const fileName = `${dog.id}/profile_${timestamp}.${fileExt}`;
           
-          console.log('Uploading to path:', fileName);
+          logger.info('Uploading to path:', fileName);
           
           // Supabaseストレージにアップロード（Content-Type明示）
-          console.log('🔧 Uploading dog image with Content-Type:', imageFile.type);
+          logger.info('🔧 Uploading dog image with Content-Type:', imageFile.type);
           
           const { error: uploadError } = await supabase.storage
             .from('dog-images')
@@ -280,11 +282,11 @@ export function DogRegistration() {
             });
 
           if (uploadError) {
-            console.error('Image upload error:', uploadError);
+            logger.error('Image upload error:', uploadError);
             throw new Error(`画像のアップロードに失敗しました: ${uploadError.message}`);
           }
 
-          console.log('Upload successful');
+          logger.info('Upload successful');
 
           // 公開URLを取得
           const { data: { publicUrl } } = supabase.storage
@@ -292,7 +294,7 @@ export function DogRegistration() {
             .getPublicUrl(fileName);
           
           imageUrl = publicUrl;
-          console.log('Public URL generated:', imageUrl);
+          logger.info('Public URL generated:', imageUrl);
 
           // 犬の情報に画像URLを更新
           const { error: updateError } = await supabase
@@ -301,13 +303,13 @@ export function DogRegistration() {
             .eq('id', dog.id);
 
           if (updateError) {
-            console.error('Error updating dog image URL:', updateError);
+            logger.error('Error updating dog image URL:', updateError);
             throw new Error('画像URLの更新に失敗しました');
           }
 
-          console.log('Dog image URL updated successfully');
+          logger.info('Dog image URL updated successfully');
         } catch (imageError) {
-          console.error('Image processing error:', imageError);
+          logger.error('Image processing error:', imageError);
           // 画像エラーは警告として扱い、登録は続行
           setError('画像のアップロードに失敗しましたが、ワンちゃんの登録は完了しました。後でマイページから画像を追加できます。');
         }
@@ -315,7 +317,7 @@ export function DogRegistration() {
 
       // ワクチン証明書の画像をアップロード（新しいユーティリティを使用）
       if (formData.rabiesVaccineImage && formData.comboVaccineImage) {
-        console.log('🧪 Starting vaccine certificates upload using utility...');
+        logger.info('🧪 Starting vaccine certificates upload using utility...');
         
         const uploadResult = await handleVaccineUploadFixed(
           dog.id,
@@ -326,18 +328,18 @@ export function DogRegistration() {
         );
 
         if (!uploadResult.success) {
-          console.error('Vaccine upload failed:', uploadResult.error);
+          logger.error('Vaccine upload failed:', uploadResult.error);
           setError(`ワクチン証明書のアップロードに失敗しました: ${uploadResult.error}`);
           // エラーの場合でも登録は続行し、後でマイページから追加可能
         } else {
-          console.log('✅ Vaccine certificates uploaded successfully');
+          logger.info('✅ Vaccine certificates uploaded successfully');
         }
       }
 
-      console.log('Dog registration completed successfully');
+      logger.info('Dog registration completed successfully');
       
       // 成功メッセージを表示
-      alert('ワンちゃんの登録が完了しました！');
+      notify.success('ワンちゃんの登録が完了しました！');
       
       // フォームをリセット
       setFormData({
@@ -356,7 +358,7 @@ export function DogRegistration() {
       setImagePreview(null);
       
     } catch (err) {
-      console.error('Registration error:', err);
+      logger.error('Registration error:', err);
       setError('ワンちゃんの登録に失敗しました。もう一度お試しください。');
     } finally {
       setIsLoading(false);
