@@ -14,7 +14,9 @@ import {
   Calendar,
   ShoppingBag,
   Settings,
-  Bell
+  Bell,
+  Building,
+  Badge
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -27,6 +29,7 @@ interface AdminStats {
   totalParks: number;
   pendingParks: number;
   pendingVaccines: number;
+  pendingFacilities: number;
   totalReservations: number;
   monthlyRevenue: number;
   lastMonthRevenue: number;
@@ -41,6 +44,7 @@ interface AdminStatsResponse {
   total_parks: number;
   pending_parks: number;
   pending_vaccines: number;
+  pending_facilities: number;
   total_reservations: number;
   monthly_revenue: number;
   last_month_revenue: number;
@@ -59,6 +63,7 @@ export function AdminDashboard() {
     totalParks: 0,
     pendingParks: 0,
     pendingVaccines: 0,
+    pendingFacilities: 0,
     totalReservations: 0,
     monthlyRevenue: 0,
     lastMonthRevenue: 0,
@@ -94,11 +99,20 @@ export function AdminDashboard() {
       
       const typedStatsData = statsData as AdminStatsResponse | null;
       
+      // ペット関連施設の申請待ち数を取得
+      const { data: pendingFacilitiesData, error: pendingFacilitiesError } = await supabase
+        .from('pet_facilities')
+        .select('id', { count: 'exact' })
+        .eq('status', 'pending');
+      
+      const pendingFacilitiesCount = pendingFacilitiesData?.length || 0;
+      
       setStats({
         totalUsers: typedStatsData?.total_users || 0,
         totalParks: typedStatsData?.total_parks || 0,
         pendingParks: typedStatsData?.pending_parks || 0,
         pendingVaccines: typedStatsData?.pending_vaccines || 0,
+        pendingFacilities: pendingFacilitiesCount,
         totalReservations: typedStatsData?.total_reservations || 0,
         monthlyRevenue: typedStatsData?.monthly_revenue || 0,
         lastMonthRevenue: typedStatsData?.last_month_revenue || 0,
@@ -215,18 +229,18 @@ export function AdminDashboard() {
       </div>
 
       {/* 緊急対応が必要な項目 */}
-      {(stats.pendingParks > 0 || stats.pendingVaccines > 0) && (
+      {(stats.pendingParks > 0 || stats.pendingVaccines > 0 || stats.pendingFacilities > 0) && (
         <Card className="p-6 bg-red-50 border-red-200">
           <div className="flex items-center space-x-3 mb-4">
             <AlertTriangle className="w-6 h-6 text-red-600" />
             <h2 className="text-lg font-semibold text-red-900">緊急対応が必要</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {stats.pendingParks > 0 && (
               <div className="bg-white p-4 rounded-lg border border-red-200">
                 <p className="font-medium text-red-900">ドッグラン承認待ち</p>
                 <p className="text-2xl font-bold text-red-600">{stats.pendingParks}件</p>
-                <Link to="/admin/management">
+                <Link to="/admin/park-approval">
                   <Button size="sm" className="mt-2">
                     確認する
                   </Button>
@@ -237,7 +251,18 @@ export function AdminDashboard() {
               <div className="bg-white p-4 rounded-lg border border-red-200">
                 <p className="font-medium text-red-900">ワクチン証明書承認待ち</p>
                 <p className="text-2xl font-bold text-red-600">{stats.pendingVaccines}件</p>
-                <Link to="/admin/management">
+                <Link to="/admin/vaccine-approval">
+                  <Button size="sm" className="mt-2">
+                    確認する
+                  </Button>
+                </Link>
+              </div>
+            )}
+            {stats.pendingFacilities > 0 && (
+              <div className="bg-white p-4 rounded-lg border border-red-200">
+                <p className="font-medium text-red-900">ペット関連施設承認待ち</p>
+                <p className="text-2xl font-bold text-red-600">{stats.pendingFacilities}件</p>
+                <Link to="/admin/facility-approval">
                   <Button size="sm" className="mt-2">
                     確認する
                   </Button>
@@ -250,17 +275,67 @@ export function AdminDashboard() {
 
       {/* 管理メニュー */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Link to="/admin/management">
+        <Link to="/admin/vaccines">
           <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
             <div className="flex items-center space-x-3">
               <div className="bg-blue-100 p-3 rounded-full">
-                <FileCheck className="w-6 h-6 text-blue-600" />
+                <Badge className="w-6 h-6 text-blue-600" />
               </div>
-              <div>
-                <h3 className="font-semibold">ワクチン証明書・ドッグラン管理</h3>
+              <div className="flex-1">
+                <h3 className="font-semibold">ワクチン証明書管理</h3>
                 <p className="text-sm text-gray-600">
-                  ワクチン証明書の承認・ドッグランの審査管理
+                  ワクチン証明書の承認・管理
                 </p>
+                {stats.pendingVaccines > 0 && (
+                  <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    <span className="w-2 h-2 bg-red-500 rounded-full mr-1"></span>
+                    {stats.pendingVaccines}件の承認待ち
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        </Link>
+
+        <Link to="/admin/parks">
+          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
+            <div className="flex items-center space-x-3">
+              <div className="bg-green-100 p-3 rounded-full">
+                <MapPin className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold">ドッグラン管理</h3>
+                <p className="text-sm text-gray-600">
+                  ドッグランの審査・管理
+                </p>
+                {stats.pendingParks > 0 && (
+                  <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    <span className="w-2 h-2 bg-red-500 rounded-full mr-1"></span>
+                    {stats.pendingParks}件の承認待ち
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        </Link>
+
+        <Link to="/admin/facility-approval">
+          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
+            <div className="flex items-center space-x-3">
+              <div className="bg-indigo-100 p-3 rounded-full">
+                <Building className="w-6 h-6 text-indigo-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold">ペット関連施設承認</h3>
+                <p className="text-sm text-gray-600">
+                  ペット関連施設の掲載申請承認・管理
+                </p>
+                {stats.pendingFacilities > 0 && (
+                  <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    <span className="w-2 h-2 bg-red-500 rounded-full mr-1"></span>
+                    {stats.pendingFacilities}件の承認待ち
+                  </div>
+                )}
               </div>
             </div>
           </Card>
@@ -368,11 +443,27 @@ export function AdminDashboard() {
           }`}
           onClick={() => setActiveTab('vaccines')}
         >
-          <FileCheck className="w-4 h-4" />
+          <Badge className="w-4 h-4" />
           <span>ワクチン承認</span>
           {stats.pendingVaccines > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
               {stats.pendingVaccines}
+            </span>
+          )}
+        </button>
+        <button
+          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${
+            activeTab === 'facilities'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+          onClick={() => setActiveTab('facilities')}
+        >
+          <Building className="w-4 h-4" />
+          <span>施設承認</span>
+          {stats.pendingFacilities > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              {stats.pendingFacilities}
             </span>
           )}
         </button>
@@ -446,6 +537,12 @@ export function AdminDashboard() {
                       {stats.pendingVaccines}件
                     </span>
                   </div>
+                  <div className="flex justify-between">
+                    <span>ペット関連施設:</span>
+                    <span className={`font-medium ${stats.pendingFacilities > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      {stats.pendingFacilities}件
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -493,12 +590,24 @@ export function AdminDashboard() {
           <h3 className="text-lg font-semibold mb-4">ドッグラン管理</h3>
           <p className="text-gray-600">
             詳細なドッグラン管理は 
-            <Link to="/admin/management" className="text-blue-600 hover:text-blue-800 mx-1">
-              管理ページ
+            <Link to="/admin/parks" className="text-blue-600 hover:text-blue-800 mx-1">
+              ドッグラン管理ページ
             </Link>
             で行えます。
           </p>
-            </Card>
+          {stats.pendingParks > 0 && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700">
+                <strong>{stats.pendingParks}件</strong>のドッグラン承認待ちがあります。
+              </p>
+              <Link to="/admin/parks">
+                <Button size="sm" className="mt-2">
+                  今すぐ確認する
+                </Button>
+              </Link>
+            </div>
+          )}
+        </Card>
       )}
 
       {activeTab === 'vaccines' && (
@@ -506,12 +615,49 @@ export function AdminDashboard() {
           <h3 className="text-lg font-semibold mb-4">ワクチン証明書管理</h3>
           <p className="text-gray-600">
             詳細なワクチン証明書管理は 
-            <Link to="/admin/management" className="text-blue-600 hover:text-blue-800 mx-1">
-              管理ページ
+            <Link to="/admin/vaccines" className="text-blue-600 hover:text-blue-800 mx-1">
+              ワクチン証明書管理ページ
             </Link>
             で行えます。
           </p>
-            </Card>
+          {stats.pendingVaccines > 0 && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700">
+                <strong>{stats.pendingVaccines}件</strong>のワクチン証明書承認待ちがあります。
+              </p>
+              <Link to="/admin/vaccines">
+                <Button size="sm" className="mt-2">
+                  今すぐ確認する
+                </Button>
+              </Link>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {activeTab === 'facilities' && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">ペット関連施設承認管理</h3>
+          <p className="text-gray-600">
+            詳細なペット関連施設の承認管理は 
+            <Link to="/admin/facility-approval" className="text-blue-600 hover:text-blue-800 mx-1">
+              施設承認ページ
+            </Link>
+            で行えます。
+          </p>
+          {stats.pendingFacilities > 0 && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700">
+                <strong>{stats.pendingFacilities}件</strong>の施設承認待ちがあります。
+              </p>
+              <Link to="/admin/facility-approval">
+                <Button size="sm" className="mt-2">
+                  今すぐ確認する
+                </Button>
+              </Link>
+            </div>
+          )}
+        </Card>
       )}
 
       {activeTab === 'users' && (
@@ -519,8 +665,8 @@ export function AdminDashboard() {
           <h3 className="text-lg font-semibold mb-4">ユーザー管理</h3>
           <p className="text-gray-600">
             詳細なユーザー管理は 
-            <Link to="/admin/management" className="text-blue-600 hover:text-blue-800 mx-1">
-              管理ページ
+            <Link to="/admin/users" className="text-blue-600 hover:text-blue-800 mx-1">
+              ユーザー管理ページ
             </Link>
             で行えます。
           </p>

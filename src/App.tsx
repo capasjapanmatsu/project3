@@ -44,6 +44,8 @@ const AdminParkManagement = lazy(() => import('./pages/AdminParkManagement').the
 const AdminReservationManagement = lazy(() => import('./pages/AdminReservationManagement').then(module => ({ default: module.AdminReservationManagement })));
 const AdminSalesManagement = lazy(() => import('./pages/AdminSalesManagement').then(module => ({ default: module.AdminSalesManagement })));
 const AdminNewsManagement = lazy(() => import('./pages/AdminNewsManagement').then(module => ({ default: module.AdminNewsManagement })));
+const AdminVaccineApproval = lazy(() => import('./pages/AdminVaccineApproval'));
+const AdminParkApproval = lazy(() => import('./pages/AdminParkApproval'));
 const AdminTasks = lazy(() => import('./pages/AdminTasks').then(module => ({ default: module.AdminTasks })));
 const AdminRevenueReport = lazy(() => import('./pages/AdminRevenueReport').then(module => ({ default: module.AdminRevenueReport })));
 const AccessControl = lazy(() => import('./pages/AccessControl').then(module => ({ default: module.AccessControl })));
@@ -77,7 +79,8 @@ const PWADocumentation = lazy(() => import('./pages/PWADocumentation'));
 const PWATestingSuite = lazy(() => import('./pages/PWATestingSuite'));
 const PWALighthouseAudit = lazy(() => import('./pages/PWALighthouseAudit'));
 const PWADeploymentGuide = lazy(() => import('./pages/PWADeploymentGuide'));
-const FacilityRegistration = lazy(() => import('./pages/FacilityRegistration').then(module => ({ default: module.FacilityRegistration })));
+const FacilityRegistration = lazy(() => import('./pages/FacilityRegistration'));
+const AdminFacilityApproval = lazy(() => import('./pages/AdminFacilityApproval'));
 
 // Loading component for Suspense fallback
 // 決済後のローディング表示を改善したLoadingSpinnerコンポーネント
@@ -230,6 +233,9 @@ function App() {
             <Route path="/dog-info/snack" element={<DogInfoSnack />} />
             <Route path="/dog-info/show" element={<DogInfoShow />} />
             <Route path="/facility-registration" element={<ProtectedRoute><FacilityRegistration /></ProtectedRoute>} />
+            <Route path="/admin/facility-approval" element={<ProtectedRoute><AdminFacilityApproval /></ProtectedRoute>} />
+            <Route path="/admin/vaccine-approval" element={<ProtectedRoute><AdminVaccineApproval /></ProtectedRoute>} />
+            <Route path="/admin/park-approval" element={<ProtectedRoute><AdminParkApproval /></ProtectedRoute>} />
             
             {/* Auth callback route */}
             <Route path="/auth/callback" element={<AuthCallback />} />
@@ -257,6 +263,8 @@ function App() {
             <Route path="/admin/shop" element={<ProtectedRoute><AdminShopManagement /></ProtectedRoute>} />
             <Route path="/admin/revenue" element={<ProtectedRoute><AdminRevenueReport /></ProtectedRoute>} />
             <Route path="/admin/news" element={<ProtectedRoute><AdminNewsManagement /></ProtectedRoute>} />
+            <Route path="/admin/vaccine-approval" element={<ProtectedRoute><AdminVaccineApproval /></ProtectedRoute>} />
+            <Route path="/admin/park-approval" element={<ProtectedRoute><AdminParkApproval /></ProtectedRoute>} />
             <Route path="/access-control" element={<ProtectedRoute><AccessControl /></ProtectedRoute>} />
             <Route path="/payment-setup" element={<ProtectedRoute><PaymentSetup /></ProtectedRoute>} />
             <Route path="/owner-payment-system" element={<ProtectedRoute><OwnerPaymentSystem /></ProtectedRoute>} />

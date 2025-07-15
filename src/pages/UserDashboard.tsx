@@ -570,7 +570,7 @@ export function UserDashboard() {
             </Link>
             
             {/* 新規追加：ドッグランオーナー募集 */}
-            <Link to="/park-registration" className="group">
+            <Link to="/park-registration-agreement" className="group">
               <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg hover:from-yellow-100 hover:to-orange-100 transition-colors border-2 border-orange-200">
                 <Building className="w-8 h-8 text-orange-600 mb-2" />
                 <h3 className="font-medium text-orange-900">ドッグランオーナー募集</h3>

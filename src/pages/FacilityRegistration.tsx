@@ -7,141 +7,163 @@ import {
   Globe, 
   Clock, 
   Upload,
-  CreditCard,
-  Banknote,
+  Image,
+  X,
   CheckCircle,
   AlertCircle,
   Info
 } from 'lucide-react';
 import Button from '../components/Button';
 import Input from '../components/Input';
-import Select from '../components/Select';
 import Card from '../components/Card';
 import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
-import { 
-  FacilityCategory, 
-  FacilityRegistrationForm, 
-  FACILITY_CATEGORY_LABELS,
-  PAYMENT_METHODS,
-  PAYMENT_METHOD_LABELS,
-  DAYS_OF_WEEK 
-} from '../types/facilities';
 
-export function FacilityRegistration() {
+// 画像処理ユーティリティ
+const processFacilityImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new (window as any).Image();
+    
+    img.onload = () => {
+      // 最大サイズ設定
+      const maxWidth = 800;
+      const maxHeight = 600;
+      
+      let { width, height } = img;
+      
+      // アスペクト比を維持しながらリサイズ
+      if (width > height) {
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = (width * maxHeight) / height;
+          height = maxHeight;
+        }
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      
+      // 画像を描画
+      ctx?.drawImage(img, 0, 0, width, height);
+      
+      // 圧縮してBase64として返す
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      resolve(dataUrl);
+    };
+    
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+};
+
+interface FacilityForm {
+  name: string;
+  category_id: string;
+  address: string;
+  phone: string;
+  website: string;
+  description: string;
+  images: string[];
+}
+
+const FACILITY_CATEGORIES = [
+  { id: 'pet_hotel', name: 'ペットホテル', monthly_fee: 5000, is_free: true },
+  { id: 'pet_salon', name: 'ペットサロン', monthly_fee: 3000, is_free: true },
+  { id: 'veterinary', name: '動物病院', monthly_fee: 8000, is_free: true },
+  { id: 'pet_cafe', name: 'ペットカフェ', monthly_fee: 4000, is_free: true },
+  { id: 'pet_restaurant', name: 'ペット同伴レストラン', monthly_fee: 6000, is_free: true },
+  { id: 'pet_shop', name: 'ペットショップ', monthly_fee: 7000, is_free: true },
+  { id: 'pet_accommodation', name: 'ペット同伴宿泊', monthly_fee: 10000, is_free: true }
+];
+
+export default function FacilityRegistration() {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   
-  const [categories, setCategories] = useState<FacilityCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string>('');
-  const [currentStep, setCurrentStep] = useState(1);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   
-  const [formData, setFormData] = useState<FacilityRegistrationForm>({
+  const [formData, setFormData] = useState<FacilityForm>({
     name: '',
     category_id: '',
     address: '',
     phone: '',
     website: '',
     description: '',
-    payment_method: PAYMENT_METHODS.CREDIT_CARD,
-    hours: {
-      0: { is_closed: true },
-      1: { is_closed: false, open_time: '09:00', close_time: '18:00' },
-      2: { is_closed: false, open_time: '09:00', close_time: '18:00' },
-      3: { is_closed: false, open_time: '09:00', close_time: '18:00' },
-      4: { is_closed: false, open_time: '09:00', close_time: '18:00' },
-      5: { is_closed: false, open_time: '09:00', close_time: '18:00' },
-      6: { is_closed: false, open_time: '09:00', close_time: '18:00' },
-    },
-    images: [],
+    images: []
   });
 
+  // 認証チェック
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
-      return;
     }
-    
-    fetchCategories();
   }, [isAuthenticated, navigate]);
 
-  const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('facility_categories')
-        .select('*')
-        .neq('name', 'dog_park')
-        .order('name');
-
-      if (error) throw error;
-      setCategories(data || []);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      setError('カテゴリの取得に失敗しました');
-    }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleInputChange = (field: keyof FacilityRegistrationForm, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleHourChange = (dayIndex: number, field: 'open_time' | 'close_time', value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      hours: {
-        ...prev.hours,
-        [dayIndex]: {
-          ...prev.hours[dayIndex],
-          [field]: value
-        }
-      }
-    }));
-  };
-
-  const handleDayToggle = (dayIndex: number, isClosed: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      hours: {
-        ...prev.hours,
-        [dayIndex]: {
-          ...prev.hours[dayIndex],
-          is_closed: isClosed
-        }
-      }
-    }));
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setFormData(prev => ({
-      ...prev,
-      images: [...prev.images, ...files]
-    }));
+    
+    if (files.length === 0) return;
+    if (imageFiles.length + files.length > 5) {
+      setError('画像は最大5枚までアップロードできます');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // 各ファイルのサイズをチェック
+      const oversizedFiles = files.filter(file => file.size > 10 * 1024 * 1024); // 10MB
+      if (oversizedFiles.length > 0) {
+        setError('画像ファイルのサイズは10MB以下にしてください');
+        setIsLoading(false);
+        return;
+      }
+
+      // 画像処理
+      const processedImages = await Promise.all(
+        files.map(file => processFacilityImage(file))
+      );
+
+      // 新しいファイルを追加
+      const newFiles = files.slice(0, 5 - imageFiles.length);
+      
+      setImageFiles(prev => [...prev, ...newFiles]);
+      setImagePreviews(prev => [...prev, ...processedImages]);
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, ...processedImages]
+      }));
+
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '画像の処理に失敗しました');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const removeImage = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
     setFormData(prev => ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index)
     }));
-  };
-
-  const validateStep = (step: number): boolean => {
-    switch (step) {
-      case 1:
-        return !!(formData.name && formData.category_id && formData.address);
-      case 2:
-        return true; // 営業時間は任意
-      case 3:
-        return true; // 支払い方法は任意
-      default:
-        return true;
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -152,148 +174,94 @@ export function FacilityRegistration() {
       return;
     }
 
+    if (!formData.name || !formData.category_id || !formData.address) {
+      setError('必須項目を入力してください');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
     try {
-      // 1. 施設情報を保存
+      const facilityData = {
+        owner_id: user.id,
+        name: formData.name,
+        category_id: formData.category_id,
+        address: formData.address,
+        phone: formData.phone,
+        website: formData.website,
+        description: formData.description,
+        status: 'pending',
+        created_at: new Date().toISOString()
+      };
+
+      console.log('Submitting facility data:', facilityData);
+
+      // 1. 施設情報をDBに保存
       const { data: facility, error: facilityError } = await supabase
         .from('pet_facilities')
-        .insert({
-          owner_id: user.id,
-          category_id: formData.category_id,
-          name: formData.name,
-          address: formData.address,
-          phone: formData.phone,
-          website: formData.website,
-          description: formData.description,
-          status: 'pending',
-          payment_status: 'unpaid',
-          next_payment_due: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 30日後
-        })
+        .insert(facilityData)
         .select()
         .single();
 
-      if (facilityError) throw facilityError;
+      if (facilityError) {
+        console.error('Facility insertion error:', facilityError);
+        throw facilityError;
+      }
 
-      // 2. 営業時間を保存
-      for (const [dayIndex, hourData] of Object.entries(formData.hours)) {
-        if (!hourData.is_closed) {
-          await supabase
-            .from('facility_hours')
-            .insert({
-              facility_id: facility.id,
-              day_of_week: parseInt(dayIndex),
-              open_time: hourData.open_time,
-              close_time: hourData.close_time,
-              is_closed: false
-            });
-        } else {
-          await supabase
-            .from('facility_hours')
-            .insert({
-              facility_id: facility.id,
-              day_of_week: parseInt(dayIndex),
-              is_closed: true
-            });
+      // 2. 画像をDBに保存
+      if (formData.images.length > 0 && facility) {
+        const imageInserts = formData.images.map((imageData, index) => ({
+          facility_id: facility.id,
+          image_data: imageData,
+          is_primary: index === 0,
+          created_at: new Date().toISOString()
+        }));
+
+        const { error: imageError } = await supabase
+          .from('facility_images')
+          .insert(imageInserts);
+
+        if (imageError) {
+          console.error('Image insertion error:', imageError);
+          console.warn('画像の保存に失敗しましたが、施設登録は完了しました');
         }
       }
 
-      // 3. サブスクリプション情報を保存
-      const selectedCategory = categories.find(cat => cat.id === formData.category_id);
-      if (selectedCategory && !selectedCategory.is_free) {
-        await supabase
-          .from('facility_subscriptions')
-          .insert({
-            facility_id: facility.id,
-            payment_method: formData.payment_method,
-            amount: selectedCategory.monthly_fee,
-            status: 'active',
-            current_period_start: new Date().toISOString().split('T')[0],
-            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-          });
-      }
-
-      // 4. 画像をアップロード（簡略化版）
-      if (formData.images.length > 0) {
-        for (const image of formData.images) {
-          const fileName = `facility_${facility.id}_${Date.now()}_${image.name}`;
-          const { error: uploadError } = await supabase.storage
-            .from('facility-images')
-            .upload(fileName, image);
-
-          if (!uploadError) {
-            const { data: urlData } = supabase.storage
-              .from('facility-images')
-              .getPublicUrl(fileName);
-
-            await supabase
-              .from('facility_images')
-              .insert({
-                facility_id: facility.id,
-                image_url: urlData.publicUrl,
-                is_primary: formData.images.indexOf(image) === 0
-              });
-          }
-        }
-      }
-
-      setSuccessMessage('施設の掲載申し込みが完了しました！審査完了後、掲載を開始いたします。');
+      setSuccessMessage('施設の掲載申請が完了しました！管理者の承認後、地図に掲載されます。');
       
-      // 支払い方法に応じてリダイレクト
-      if (formData.payment_method === PAYMENT_METHODS.CREDIT_CARD && selectedCategory && !selectedCategory.is_free) {
-        // Stripe決済ページにリダイレクト
-        navigate(`/facility-payment/${facility.id}`);
-      } else {
-        // 完了ページにリダイレクト
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 2000);
-      }
+      // 2秒後にダッシュボードに戻る
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
+
     } catch (error) {
-      console.error('Error submitting facility:', error);
-      setError('申し込みの送信に失敗しました');
+      console.error('Submission error:', error);
+      setError(error instanceof Error ? error.message : '申請に失敗しました');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const selectedCategory = categories.find(cat => cat.id === formData.category_id);
+  const getCategoryName = (categoryId: string): string => {
+    const category = FACILITY_CATEGORIES.find(cat => cat.id === categoryId);
+    return category ? category.name : categoryId;
+  };
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
+    <div className="max-w-4xl mx-auto p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">施設掲載申し込み</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">ペット関連施設登録</h1>
         <p className="text-gray-600">
-          ペット関連施設の掲載申し込みを行います。審査完了後、地図に表示されます。
+          ペット関連施設の掲載申請を行います。管理者の承認後、地図に表示されます。
         </p>
       </div>
 
-      {/* ステップインジケーター */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          {[1, 2, 3].map((step) => (
-            <div key={step} className="flex items-center">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                step <= currentStep ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-              }`}>
-                {step}
-              </div>
-              {step < 3 && (
-                <div className={`w-20 h-1 mx-2 ${
-                  step < currentStep ? 'bg-blue-600' : 'bg-gray-200'
-                }`} />
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="flex justify-between text-sm text-gray-600">
-          <span>基本情報</span>
-          <span>営業時間</span>
-          <span>掲載について</span>
-        </div>
-      </div>
-
+      {/* エラーメッセージ */}
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex items-center">
@@ -303,6 +271,7 @@ export function FacilityRegistration() {
         </div>
       )}
 
+      {/* 成功メッセージ */}
       {successMessage && (
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
           <div className="flex items-center">
@@ -312,213 +281,186 @@ export function FacilityRegistration() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit}>
-        {/* Step 1: 基本情報 */}
-        {currentStep === 1 && (
-          <Card className="mb-6">
-            <div className="p-6">
-              <h2 className="text-xl font-semibold mb-4 flex items-center">
-                <Building className="w-6 h-6 mr-2" />
-                基本情報
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    施設名（屋号） *
-                  </label>
-                  <Input
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    placeholder="例：ペットカフェ わんわん"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    施設カテゴリ *
-                  </label>
-                  <Select
-                    value={formData.category_id}
-                    onChange={(e) => handleInputChange('category_id', e.target.value)}
-                    required
-                  >
-                    <option value="">選択してください</option>
-                    {categories.map(category => (
-                      <option key={category.id} value={category.id}>
-                        {category.name_ja}
-                        {!category.is_free && ` (月額 ¥${category.monthly_fee.toLocaleString()})`}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    住所 *
-                  </label>
-                  <Input
-                    value={formData.address}
-                    onChange={(e) => handleInputChange('address', e.target.value)}
-                    placeholder="例：東京都渋谷区〇〇1-2-3"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    電話番号
-                  </label>
-                  <Input
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    placeholder="例：03-1234-5678"
-                    type="tel"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    ホームページ
-                  </label>
-                  <Input
-                    value={formData.website}
-                    onChange={(e) => handleInputChange('website', e.target.value)}
-                    placeholder="例：https://example.com"
-                    type="url"
-                  />
-                </div>
-                
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    店舗・サービス紹介
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => handleInputChange('description', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    rows={4}
-                    placeholder="お店やサービスの特徴、ペット同伴時の注意事項などを記載してください"
-                  />
-                </div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* 基本情報 */}
+        <Card>
+          <div className="p-6">
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <Building className="w-6 h-6 mr-2" />
+              基本情報
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  施設名 <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  label="施設名"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  placeholder="施設名を入力してください"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  施設カテゴリ <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="category_id"
+                  value={formData.category_id}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">カテゴリを選択してください</option>
+                  {FACILITY_CATEGORIES.map(category => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  住所 <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  label="住所"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  placeholder="住所を入力してください"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  電話番号
+                </label>
+                <Input
+                  label="電話番号"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  placeholder="電話番号を入力してください"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ウェブサイト
+                </label>
+                <Input
+                  label="ウェブサイト"
+                  name="website"
+                  value={formData.website}
+                  onChange={handleInputChange}
+                  placeholder="https://example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  施設の説明
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  rows={4}
+                  placeholder="施設の特徴やサービス内容を入力してください"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
               </div>
             </div>
-          </Card>
-        )}
+          </div>
+        </Card>
 
-        {/* Step 2: 営業時間 */}
-        {currentStep === 2 && (
-          <Card className="mb-6">
-            <div className="p-6">
-              <h2 className="text-xl font-semibold mb-4 flex items-center">
-                <Clock className="w-6 h-6 mr-2" />
-                営業時間
-              </h2>
-              
-              <div className="space-y-4">
-                {DAYS_OF_WEEK.map((day, index) => (
-                  <div key={index} className="flex items-center space-x-4">
-                    <div className="w-16 text-sm font-medium text-gray-700">
-                      {day}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <label className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={formData.hours[index].is_closed}
-                          onChange={(e) => handleDayToggle(index, e.target.checked)}
-                          className="mr-2"
-                        />
-                        <span className="text-sm text-gray-600">定休日</span>
-                      </label>
-                    </div>
-                    {!formData.hours[index].is_closed && (
-                      <div className="flex items-center space-x-2">
-                        <Input
-                          type="time"
-                          value={formData.hours[index].open_time || '09:00'}
-                          onChange={(e) => handleHourChange(index, 'open_time', e.target.value)}
-                          className="w-24"
-                        />
-                        <span className="text-gray-500">〜</span>
-                        <Input
-                          type="time"
-                          value={formData.hours[index].close_time || '18:00'}
-                          onChange={(e) => handleHourChange(index, 'close_time', e.target.value)}
-                          className="w-24"
-                        />
+        {/* 画像アップロード */}
+        <Card className="mb-6">
+          <div className="p-6">
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <Image className="w-6 h-6 mr-2" />
+              施設画像 (最大5枚)
+            </h2>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                画像をアップロード
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageUpload}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={isLoading || imageFiles.length >= 5}
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                JPG, PNG, GIF対応。1ファイル10MB以下。画像は自動的にリサイズ・圧縮されます。
+              </p>
+            </div>
+
+            {/* 画像プレビュー */}
+            {imagePreviews.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {imagePreviews.map((preview, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={preview}
+                      alt={`施設画像 ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    {index === 0 && (
+                      <div className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                        メイン
                       </div>
                     )}
                   </div>
                 ))}
               </div>
-            </div>
-          </Card>
-        )}
+            )}
+          </div>
+        </Card>
 
-        {/* Step 3: 支払い方法 */}
-        {currentStep === 3 && (
-          <Card className="mb-6">
-            <div className="p-6">
-              <h2 className="text-xl font-semibold mb-4 flex items-center">
-                <CheckCircle className="w-6 h-6 mr-2 text-green-600" />
-                掲載について
-              </h2>
-              
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center mb-2">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                  <span className="font-medium text-green-800">無料掲載キャンペーン実施中！</span>
-                </div>
-                <p className="text-green-700">
-                  現在、すべてのペット関連施設が<strong className="text-lg">無料</strong>で掲載できます。
-                </p>
-                <p className="text-sm text-green-600 mt-2">
-                  申し込み後、審査を経て掲載開始となります。
-                </p>
+        {/* 無料掲載キャンペーン */}
+        <Card className="mb-6">
+          <div className="p-6">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center mb-2">
+                <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                <span className="font-medium text-green-800">無料掲載キャンペーン実施中！</span>
               </div>
-
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h3 className="font-medium text-blue-800 mb-2">掲載までの流れ</h3>
-                <ol className="list-decimal list-inside space-y-1 text-sm text-blue-700">
-                  <li>申し込み情報の送信</li>
-                  <li>運営による審査（1-3営業日）</li>
-                  <li>審査通過後、地図に掲載開始</li>
-                  <li>利用者からの検索・閲覧が可能に</li>
-                </ol>
-              </div>
+              <p className="text-green-700">
+                現在、すべてのペット関連施設が<strong className="text-lg">無料</strong>で掲載できます。
+              </p>
+              <p className="text-sm text-green-600 mt-2">
+                申請後、管理者の承認を経て掲載開始となります。
+              </p>
             </div>
-          </Card>
-        )}
+          </div>
+        </Card>
 
-        {/* ナビゲーションボタン */}
-        <div className="flex justify-between">
+        <div className="flex justify-end">
           <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-            disabled={currentStep === 1}
+            type="submit"
+            disabled={isLoading}
           >
-            前へ
+            {isLoading ? '申請中...' : '申請を送信する'}
           </Button>
-          
-          {currentStep < 3 ? (
-            <Button
-              type="button"
-              onClick={() => setCurrentStep(currentStep + 1)}
-              disabled={!validateStep(currentStep)}
-            >
-              次へ
-            </Button>
-          ) : (
-            <Button
-              type="submit"
-              disabled={isLoading || !validateStep(currentStep)}
-            >
-              {isLoading ? '申し込み中...' : '申し込みを完了する'}
-            </Button>
-          )}
         </div>
       </form>
     </div>
