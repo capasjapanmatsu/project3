@@ -7,8 +7,6 @@ import {
   Shield, 
   History, 
   Download,
-  WifiOff,
-  Wifi,
   Settings
 } from 'lucide-react';
 import useAuth from '../context/AuthContext';
@@ -36,7 +34,6 @@ export const Navbar = memo(function Navbar() {
   
   // PWA関連の状態
   const [canInstallPWA, setCanInstallPWA] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isPWAMode, setIsPWAMode] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
 
@@ -63,20 +60,12 @@ export const Navbar = memo(function Navbar() {
       setIsPWAMode(true);
     };
     
-    // オンライン状態の監視
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
     
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
@@ -249,21 +238,6 @@ export const Navbar = memo(function Navbar() {
                       </span>
                     )}
                   </Link>
-                  
-                  {/* ネットワーク状態表示 */}
-                  <div className="flex items-center">
-                    {isOnline ? (
-                      <Wifi 
-                        className="h-4 w-4 text-green-600" 
-                        aria-label="オンライン"
-                      />
-                    ) : (
-                      <WifiOff 
-                        className="h-4 w-4 text-red-600" 
-                        aria-label="オフライン"
-                      />
-                    )}
-                  </div>
                   
                   {/* PWAインストールボタン */}
                   {canInstallPWA && !isPWAMode && (
