@@ -1,14 +1,14 @@
+import { AlertTriangle, RefreshCw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { AlertTriangle, Trash2, RefreshCw } from 'lucide-react';
+import type { DogPark } from '../../types';
+import { supabase } from '../../utils/supabase';
 import Button from '../Button';
 import Card from '../Card';
-import { supabase } from '../../utils/supabase';
-import type { DogPark } from '../../types';
 
 interface RejectedParksManagerProps {
   rejectedParks: DogPark[];
   onUpdateRejectedParks: (parks: DogPark[]) => void;
-  onResubmit: () => void;
+  onResubmit: (parkData: DogPark) => void;
   onError: (error: string) => void;
 }
 
@@ -75,7 +75,7 @@ export default function RejectedParksManager({
                       <Button 
                         size="sm" 
                         variant="secondary"
-                        onClick={onResubmit}
+                        onClick={() => onResubmit(park)}
                       >
                         <RefreshCw className="w-4 h-4 mr-1" />
                         再申請

@@ -25,6 +25,7 @@ import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 import type { FriendRequest, Friendship, Notification, Message, Dog, DogEncounter } from '../types';
 import { NearbyDogs } from '../components/NearbyDogs';
+import { log, safeSupabaseQuery, parallelSupabaseQueries } from '../utils/helpers';
 
 export function Community() {
   const { user } = useAuth();
@@ -95,149 +96,117 @@ export function Community() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      await Promise.all([
-        fetchFriendRequests(),
-        fetchFriends(),
-        fetchNotifications(),
-        fetchMessages(),
-        fetchDogEncounters(),
-        fetchUserDogs(),
-        fetchBlacklistedDogs()
-      ]);
+      log('info', 'コミュニティデータ取得開始');
+      
+      const results = await parallelSupabaseQueries({
+        friendRequests: () => safeSupabaseQuery(() =>
+          supabase
+            .from('friend_requests')
+            .select(`
+              *,
+              requester:profiles!friend_requests_requester_id_fkey(*)
+            `)
+            .eq('requested_id', user?.id)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+        ),
+        friends: () => safeSupabaseQuery(() =>
+          supabase.rpc('get_friends_with_dogs', { p_user_id: user?.id })
+        ),
+        notifications: () => safeSupabaseQuery(() =>
+          supabase
+            .from('notifications')
+            .select('*')
+            .eq('user_id', user?.id)
+            .order('created_at', { ascending: false })
+            .limit(20)
+        ),
+        messages: () => safeSupabaseQuery(() =>
+          supabase
+            .from('messages')
+            .select(`
+              *,
+              sender:profiles!messages_sender_id_fkey(*),
+              receiver:profiles!messages_receiver_id_fkey(*)
+            `)
+            .or(`sender_id.eq.${user?.id},receiver_id.eq.${user?.id}`)
+            .order('created_at', { ascending: false })
+            .limit(50)
+        ),
+        dogEncounters: () => safeSupabaseQuery(() =>
+          supabase
+            .from('dog_encounters')
+            .select(`
+              *,
+              encountered_dog:dogs!dog_encounters_encountered_dog_id_fkey(
+                *,
+                owner:profiles!dogs_owner_id_fkey(*)
+              )
+            `)
+            .eq('user_id', user?.id)
+            .order('encounter_date', { ascending: false })
+            .limit(10)
+        ),
+        userDogs: () => safeSupabaseQuery(() =>
+          supabase
+            .from('dogs')
+            .select('*')
+            .eq('owner_id', user?.id)
+        ),
+        blacklistedDogs: () => safeSupabaseQuery(() =>
+          supabase
+            .from('dog_blacklist')
+            .select(`
+              *,
+              blacklisted_dog:dogs!dog_blacklist_dog_id_fkey(
+                *,
+                owner:profiles!dogs_owner_id_fkey(*)
+              )
+            `)
+            .eq('user_id', user?.id)
+            .order('created_at', { ascending: false })
+        )
+      });
+
+      // 結果を設定
+      setFriendRequests(results.friendRequests || []);
+      setFriends(results.friends || []);
+      setNotifications(results.notifications || []);
+      setMessages(results.messages || []);
+      setDogEncounters(results.dogEncounters || []);
+      setUserDogs(results.userDogs || []);
+      setBlacklistedDogs(results.blacklistedDogs || []);
+      
+      log('info', 'コミュニティデータ取得完了');
     } catch (error) {
-      console.error('Error fetching data:', error);
+      log('error', 'コミュニティデータ取得エラー', { error });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fetchFriendRequests = async () => {
-    const { data, error } = await supabase
-      .from('friend_requests')
-      .select(`
-        *,
-        requester:profiles!friend_requests_requester_id_fkey(*)
-      `)
-      .eq('requested_id', user?.id)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    setFriendRequests(data || []);
-  };
-
-  const fetchFriends = async () => {
-    const { data, error } = await supabase
-      .rpc('get_friends_with_dogs', {
-        p_user_id: user?.id
-      });
-    
-    if (error) throw error;
-    setFriends(data || []);
-  };
-
-  const fetchNotifications = async () => {
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user?.id)
-      .order('created_at', { ascending: false })
-      .limit(20);
-    
-    if (error) throw error;
-    setNotifications(data || []);
-    
-    // 未読の通知を読み込み済みにする
-    const unreadNotifications = data?.filter(notification => !notification.read) || [];
-    if (unreadNotifications.length > 0) {
-      await supabase
-        .from('notifications')
-        .update({ read: true })
-        .in('id', unreadNotifications.map(n => n.id));
-    }
-  };
-
-  const fetchMessages = async () => {
-    const { data, error } = await supabase
-      .from('latest_messages')
-      .select(`
-        *,
-        sender:profiles!messages_sender_id_fkey(*)
-      `)
-      .or(`sender_id.eq.${user?.id},receiver_id.eq.${user?.id}`)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    setMessages(data || []);
-  };
-
-  const fetchDogEncounters = async () => {
-    const { data, error } = await supabase
-      .from('dog_encounters')
-      .select(`
-        *,
-        dog1:dogs!dog_encounters_dog1_id_fkey(*),
-        dog2:dogs!dog_encounters_dog2_id_fkey(*),
-        park:dog_parks(*)
-      `)
-      .order('encounter_date', { ascending: false })
-      .limit(10);
-    
-    if (error) throw error;
-    setDogEncounters(data || []);
-  };
-
-  const fetchUserDogs = async () => {
-    const { data, error } = await supabase
-      .from('dogs')
-      .select('*')
-      .eq('owner_id', user?.id);
-    
-    if (error) throw error;
-    setUserDogs(data || []);
-  };
-
-  const fetchBlacklistedDogs = async () => {
-    const { data, error } = await supabase
-      .from('dog_blacklist')
-      .select(`
-        *,
-        blacklisted_dog:dogs!dog_blacklist_dog_id_fkey(
-          *,
-          owner:profiles!dogs_owner_id_fkey(*)
-        )
-      `)
-      .eq('user_id', user?.id)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    setBlacklistedDogs(data || []);
-  };
 
   const handleFriendRequest = async (requestId: string, accept: boolean) => {
     try {
-      const { error } = await supabase
-        .from('friend_requests')
-        .update({
-          status: accept ? 'accepted' : 'rejected',
-          responded_at: new Date().toISOString()
-        })
-        .eq('id', requestId);
+      const result = await safeSupabaseQuery(() =>
+        supabase
+          .from('friend_requests')
+          .update({
+            status: accept ? 'accepted' : 'rejected',
+            responded_at: new Date().toISOString()
+          })
+          .eq('id', requestId)
+      );
       
-      if (error) throw error;
+      if (result.error) throw result.error;
       
-      // 友達リクエスト一覧を更新
-      await fetchFriendRequests();
-      
-      // 友達一覧を更新（承認した場合）
-      if (accept) {
-        await fetchFriends();
-      }
+      // データを再取得
+      await fetchData();
       
       setSuccess(accept ? '友達リクエストを承認しました' : '友達リクエストを拒否しました');
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      console.error('Error handling friend request:', error);
+      log('error', 'Error handling friend request', { error, requestId, accept });
       setError('リクエストの処理に失敗しました');
       setTimeout(() => setError(''), 3000);
     }
@@ -250,24 +219,26 @@ export function Community() {
     setIsSendingMessage(true);
     
     try {
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          sender_id: user?.id,
-          receiver_id: selectedFriend.friend_id,
-          content: messageText.trim(),
-          read: false
-        });
+      const result = await safeSupabaseQuery(() =>
+        supabase
+          .from('messages')
+          .insert({
+            sender_id: user?.id,
+            receiver_id: selectedFriend.friend_id,
+            content: messageText.trim(),
+            read: false
+          })
+      );
       
-      if (error) throw error;
+      if (result.error) throw result.error;
       
       // メッセージ一覧を更新
-      await fetchMessages();
+      await fetchData();
       
       // 入力フィールドをクリア
       setMessageText('');
     } catch (error) {
-      console.error('Error sending message:', error);
+      log('error', 'Error sending message', { error, friendId: selectedFriend?.friend_id });
       setError('メッセージの送信に失敗しました');
       setTimeout(() => setError(''), 3000);
     } finally {
@@ -277,12 +248,14 @@ export function Community() {
 
   const markNotificationAsRead = async (notificationId: string) => {
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', notificationId);
+      const result = await safeSupabaseQuery(() =>
+        supabase
+          .from('notifications')
+          .update({ read: true })
+          .eq('id', notificationId)
+      );
       
-      if (error) throw error;
+      if (result.error) throw result.error;
       
       // 通知一覧を更新
       setNotifications(prev => 
@@ -293,7 +266,7 @@ export function Community() {
         )
       );
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      log('error', 'Error marking notification as read', { error, notificationId });
     }
   };
 
@@ -333,20 +306,22 @@ export function Community() {
 
     const sendFriendRequest = async (targetUserId: string, dogName: string) => {
     try {
-      const { error } = await supabase
-        .from('friend_requests')
-        .insert({
-          requester_id: user?.id,
-          requested_id: targetUserId,
-          message: `ドッグランでお会いした際は、よろしくお願いします！`
-        });
+      const result = await safeSupabaseQuery(() =>
+        supabase
+          .from('friend_requests')
+          .insert({
+            requester_id: user?.id,
+            requested_id: targetUserId,
+            message: `ドッグランでお会いした際は、よろしくお願いします！`
+          })
+      );
 
-      if (error) throw error;
+      if (result.error) throw result.error;
 
       setSuccess('友達申請を送信しました');
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      console.error('Error sending friend request:', error);
+      log('error', 'Error sending friend request', { error, targetUserId, dogName });
       setError('友達申請の送信に失敗しました');
       setTimeout(() => setError(''), 3000);
     }
@@ -354,22 +329,24 @@ export function Community() {
 
   const addToBlacklist = async (dogId: string, reason: string) => {
     try {
-      const { error } = await supabase
-        .from('dog_blacklist')
-        .insert({
-          user_id: user?.id,
-          dog_id: dogId,
-          reason: reason,
-          notify_when_nearby: true
-        });
+      const result = await safeSupabaseQuery(() =>
+        supabase
+          .from('dog_blacklist')
+          .insert({
+            user_id: user?.id,
+            dog_id: dogId,
+            reason: reason,
+            notify_when_nearby: true
+          })
+      );
       
-      if (error) throw error;
+      if (result.error) throw result.error;
       
-      await fetchBlacklistedDogs();
+      await fetchData();
       setSuccess('ブラックリストに追加しました');
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      console.error('Error adding to blacklist:', error);
+      log('error', 'Error adding to blacklist', { error, dogId, reason });
       setError('ブラックリストへの追加に失敗しました');
       setTimeout(() => setError(''), 3000);
     }
@@ -377,18 +354,20 @@ export function Community() {
 
   const removeFromBlacklist = async (blacklistId: string) => {
     try {
-      const { error } = await supabase
-        .from('dog_blacklist')
-        .delete()
-        .eq('id', blacklistId);
+      const result = await safeSupabaseQuery(() =>
+        supabase
+          .from('dog_blacklist')
+          .delete()
+          .eq('id', blacklistId)
+      );
       
-      if (error) throw error;
+      if (result.error) throw result.error;
       
-      await fetchBlacklistedDogs();
+      await fetchData();
       setSuccess('ブラックリストから削除しました');
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      console.error('Error removing from blacklist:', error);
+      log('error', 'Error removing from blacklist', { error, blacklistId });
       setError('ブラックリストからの削除に失敗しました');
       setTimeout(() => setError(''), 3000);
     }

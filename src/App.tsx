@@ -1,19 +1,18 @@
 import { Suspense, lazy, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
-import PWAManager from './components/PWAManager';
 import NotificationContainer from './components/NotificationContainer';
-import ErrorBoundary from './components/ErrorBoundary';
+import PWAManager from './components/PWAManager';
 import useAuth from './context/AuthContext';
 import DogInfo from './pages/DogInfo';
-import DogInfoFoods from './pages/DogInfoFoods';
-import DogInfoVaccine from './pages/DogInfoVaccine';
 import DogInfoBreeds from './pages/DogInfoBreeds';
+import DogInfoFoods from './pages/DogInfoFoods';
 import DogInfoParasite from './pages/DogInfoParasite';
-import DogInfoSnack from './pages/DogInfoSnack';
 import DogInfoShow from './pages/DogInfoShow';
-import ResetPassword from './pages/ResetPassword';
+import DogInfoSnack from './pages/DogInfoSnack';
+import DogInfoVaccine from './pages/DogInfoVaccine';
 import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 
 // Lazy load pages for better performance
@@ -45,7 +44,6 @@ const AdminReservationManagement = lazy(() => import('./pages/AdminReservationMa
 const AdminSalesManagement = lazy(() => import('./pages/AdminSalesManagement').then(module => ({ default: module.AdminSalesManagement })));
 const AdminNewsManagement = lazy(() => import('./pages/AdminNewsManagement').then(module => ({ default: module.AdminNewsManagement })));
 const AdminVaccineApproval = lazy(() => import('./pages/AdminVaccineApproval'));
-const AdminParkApproval = lazy(() => import('./pages/AdminParkApproval'));
 const AdminTasks = lazy(() => import('./pages/AdminTasks').then(module => ({ default: module.AdminTasks })));
 const AdminRevenueReport = lazy(() => import('./pages/AdminRevenueReport').then(module => ({ default: module.AdminRevenueReport })));
 const AccessControl = lazy(() => import('./pages/AccessControl').then(module => ({ default: module.AccessControl })));
@@ -235,7 +233,6 @@ function App() {
             <Route path="/facility-registration" element={<ProtectedRoute><FacilityRegistration /></ProtectedRoute>} />
             <Route path="/admin/facility-approval" element={<ProtectedRoute><AdminFacilityApproval /></ProtectedRoute>} />
             <Route path="/admin/vaccine-approval" element={<ProtectedRoute><AdminVaccineApproval /></ProtectedRoute>} />
-            <Route path="/admin/park-approval" element={<ProtectedRoute><AdminParkApproval /></ProtectedRoute>} />
             
             {/* Auth callback route */}
             <Route path="/auth/callback" element={<AuthCallback />} />
@@ -264,7 +261,6 @@ function App() {
             <Route path="/admin/revenue" element={<ProtectedRoute><AdminRevenueReport /></ProtectedRoute>} />
             <Route path="/admin/news" element={<ProtectedRoute><AdminNewsManagement /></ProtectedRoute>} />
             <Route path="/admin/vaccine-approval" element={<ProtectedRoute><AdminVaccineApproval /></ProtectedRoute>} />
-            <Route path="/admin/park-approval" element={<ProtectedRoute><AdminParkApproval /></ProtectedRoute>} />
             <Route path="/access-control" element={<ProtectedRoute><AccessControl /></ProtectedRoute>} />
             <Route path="/payment-setup" element={<ProtectedRoute><PaymentSetup /></ProtectedRoute>} />
             <Route path="/owner-payment-system" element={<ProtectedRoute><OwnerPaymentSystem /></ProtectedRoute>} />

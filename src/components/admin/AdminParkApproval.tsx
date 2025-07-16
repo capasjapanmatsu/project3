@@ -1,17 +1,43 @@
-import React, { useState } from 'react';
-import { MapPin, CheckCircle, X, Eye, ArrowLeft, Building, ZoomIn, Loader } from 'lucide-react';
-import Card from '../Card';
-import Button from '../Button';
-import { PendingPark, FacilityImage } from '../../types/admin';
+import {
+    AlertTriangle,
+    ArrowLeft,
+    Building,
+    CheckCircle,
+    Eye,
+    FileText,
+    Loader,
+    MapPin,
+    Shield,
+    User,
+    X,
+    ZoomIn
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { useAdminApproval } from '../../hooks/useAdminApproval';
 import { useParkImages } from '../../hooks/useAdminData';
+import { FacilityImage, PendingPark } from '../../types/admin';
 import { supabase } from '../../utils/supabase';
+import Button from '../Button';
+import Card from '../Card';
 
 interface AdminParkApprovalProps {
   pendingParks: PendingPark[];
   isLoading: boolean;
   onApprovalComplete: (message: string) => void;
   onError: (error: string) => void;
+}
+
+interface OwnerIdentityData {
+  id: string;
+  owner_name: string;
+  postal_code: string;
+  address: string;
+  phone_number: string;
+  email: string;
+  identity_document_url: string;
+  identity_document_filename: string;
+  identity_status: string;
+  identity_created_at: string;
 }
 
 export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
@@ -25,12 +51,119 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
   const [selectedImage, setSelectedImage] = useState<FacilityImage | null>(null);
   const [imageReviewMode, setImageReviewMode] = useState(false);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const [ownerIdentityData, setOwnerIdentityData] = useState<OwnerIdentityData | null>(null);
+  const [identityImageError, setIdentityImageError] = useState<string | null>(null);
+  const [identityImageLoading, setIdentityImageLoading] = useState(false);
 
   const approval = useAdminApproval();
   const parkImages = useParkImages(selectedPark?.id || null);
 
+  // 本人確認書類データを取得
+  useEffect(() => {
+    if (selectedPark?.owner_id) {
+      fetchOwnerIdentityData(selectedPark.owner_id);
+    }
+  }, [selectedPark]);
+
+  const fetchOwnerIdentityData = async (ownerId: string) => {
+    try {
+      setIdentityImageLoading(true);
+      setIdentityImageError(null);
+      console.log('🔍 本人確認書類データを取得中:', ownerId);
+
+      // プロフィール情報を取得
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('name, postal_code, address, phone_number, email')
+        .eq('id', ownerId)
+        .single();
+
+      if (profileError) {
+        console.error('❌ プロフィール取得エラー:', profileError);
+        setIdentityImageError('プロフィール情報の取得に失敗しました');
+        return;
+      }
+
+      // 本人確認書類情報を取得（user_idを使用）
+      const { data: identityData, error: identityError } = await supabase
+        .from('owner_verifications')
+        .select('*')
+        .eq('user_id', ownerId) // owner_idではなくuser_idを使用
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (identityError) {
+        console.error('❌ 本人確認書類取得エラー:', identityError);
+        setIdentityImageError('本人確認書類の取得に失敗しました');
+        return;
+      }
+
+      console.log('✅ プロフィール情報:', profileData);
+      console.log('✅ 本人確認書類:', identityData);
+
+      if (identityData && identityData.length > 0) {
+        const identity = identityData[0];
+        // verification_dataからdocument_urlを取得
+        const documentUrl = identity.verification_data?.document_url || identity.verification_id;
+        const documentFilename = identity.verification_data?.file_name || 'identity_document';
+        
+        setOwnerIdentityData({
+          id: identity.id,
+          owner_name: profileData.name || '',
+          postal_code: profileData.postal_code || '',
+          address: profileData.address || '',
+          phone_number: profileData.phone_number || '',
+          email: profileData.email || '',
+          identity_document_url: documentUrl,
+          identity_document_filename: documentFilename,
+          identity_status: identity.status || '',
+          identity_created_at: identity.created_at || ''
+        });
+      } else {
+        // 本人確認書類がない場合でも、プロフィール情報は表示
+        setOwnerIdentityData({
+          id: '',
+          owner_name: profileData.name || '',
+          postal_code: profileData.postal_code || '',
+          address: profileData.address || '',
+          phone_number: profileData.phone_number || '',
+          email: profileData.email || '',
+          identity_document_url: '',
+          identity_document_filename: '',
+          identity_status: '',
+          identity_created_at: ''
+        });
+      }
+    } catch (error) {
+      console.error('❌ 本人確認書類データ取得エラー:', error);
+      setIdentityImageError(`データの取得に失敗しました: ${error}`);
+    } finally {
+      setIdentityImageLoading(false);
+    }
+  };
+
+  const getImageFromStorage = async (url: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('vaccine-certs')
+        .download(url);
+      
+      if (error) {
+        console.error('画像取得エラー:', error);
+        return null;
+      }
+      
+      return URL.createObjectURL(data);
+    } catch (error) {
+      console.error('画像取得例外:', error);
+      return null;
+    }
+  };
+
   const handleParkApproval = async (parkId: string, approved: boolean) => {
     try {
+      console.log(`${approved ? '✅' : '❌'} ドッグラン${approved ? '承認' : '却下'}中:`, parkId);
+      
       // 承認の場合は全画像が承認されているかチェック
       if (approved) {
         const pendingImages = parkImages.parkImages.filter(img => 
@@ -52,6 +185,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
         onError(result.message);
       }
     } catch (error) {
+      console.error('❌ ドッグラン承認/却下エラー:', error);
       onError(`処理中にエラーが発生しました: ${(error as Error).message}`);
     }
   };
@@ -78,6 +212,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
         onError(result.message);
       }
     } catch (error) {
+      console.error('❌ 画像承認エラー:', error);
       onError(`処理中にエラーが発生しました: ${(error as Error).message}`);
     }
   };
@@ -252,6 +387,123 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
     );
   }
 
+  // 画像審査モード
+  if (imageReviewMode && selectedImage) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">画像審査</h2>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setImageReviewMode(false);
+              setSelectedImage(null);
+              setRejectionNote('');
+            }}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            戻る
+          </Button>
+        </div>
+
+        <Card className="p-6">
+          <div className="mb-6">
+            <h3 className="font-semibold mb-2">画像タイプ: {getImageTypeLabel(selectedImage.image_type)}</h3>
+            <div className="relative w-full h-96 bg-gray-100 rounded-lg overflow-hidden group">
+              <img
+                src={selectedImage.image_url}
+                alt={getImageTypeLabel(selectedImage.image_type)}
+                className="w-full h-full object-contain cursor-pointer"
+                onClick={() => setEnlargedImage(selectedImage.image_url)}
+                onError={(e) => {
+                  e.currentTarget.src = 'https://via.placeholder.com/800x600?text=Image+Not+Available';
+                }}
+              />
+              
+              {/* 拡大アイコン */}
+              <div 
+                className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center cursor-pointer"
+                onClick={() => setEnlargedImage(selectedImage.image_url)}
+              >
+                <ZoomIn className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+              </div>
+              
+              {/* クリックで拡大のヒント */}
+              <div className="absolute bottom-4 right-4">
+                <span className="px-2 py-1 bg-white bg-opacity-90 text-gray-800 text-xs rounded border shadow-sm">
+                  クリックで拡大
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          {/* 却下理由入力フォーム */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              却下理由（却下する場合のみ入力）
+            </label>
+            <textarea
+              value={rejectionNote}
+              onChange={(e) => setRejectionNote(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={4}
+              placeholder="例: 画像が不鮮明です。より明るく鮮明な画像を再アップロードしてください。"
+            />
+          </div>
+          
+          {/* 承認/却下ボタン */}
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setImageReviewMode(false);
+                setSelectedImage(null);
+                setRejectionNote('');
+              }}
+            >
+              キャンセル
+            </Button>
+            <Button
+              onClick={() => void handleImageApproval(false)}
+              isLoading={approval.isProcessing}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              <X className="w-4 h-4 mr-2" />
+              却下
+            </Button>
+            <Button
+              onClick={() => void handleImageApproval(true)}
+              isLoading={approval.isProcessing}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              承認
+            </Button>
+          </div>
+        </Card>
+
+        {/* 拡大画像表示モーダル */}
+        {enlargedImage && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div className="relative max-w-4xl max-h-full p-4">
+              <img
+                src={enlargedImage.startsWith('http') ? enlargedImage : `${supabase.storage.from('vaccine-certs').getPublicUrl(enlargedImage).data.publicUrl}`}
+                alt="拡大画像"
+                className="max-w-full max-h-full object-contain"
+              />
+              <Button
+                onClick={() => setEnlargedImage(null)}
+                className="absolute top-2 right-2 bg-white text-black hover:bg-gray-100"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // 詳細表示モード
   if (selectedPark) {
     return (
@@ -272,7 +524,10 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
 
         {/* 施設の基本情報 */}
         <Card className="p-6">
-          <h3 className="font-semibold mb-4">施設情報</h3>
+          <h3 className="font-semibold mb-4 flex items-center">
+            <Building className="w-5 h-5 mr-2" />
+            施設情報
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-gray-600">施設名</p>
@@ -291,6 +546,133 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
               <p className="font-medium">{new Date(selectedPark.created_at).toLocaleDateString('ja-JP')}</p>
             </div>
           </div>
+        </Card>
+
+        {/* 本人確認書類と登録情報 */}
+        <Card className="p-6">
+          <h3 className="font-semibold mb-4 flex items-center">
+            <Shield className="w-5 h-5 mr-2" />
+            本人確認書類・登録情報
+          </h3>
+          
+          {identityImageLoading ? (
+            <div className="flex justify-center items-center h-32">
+              <Loader className="w-8 h-8 animate-spin text-blue-600" />
+              <span className="ml-2 text-gray-600">データを読み込み中...</span>
+            </div>
+          ) : identityImageError ? (
+            <div className="text-center py-8">
+              <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <p className="text-red-600 mb-2">{identityImageError}</p>
+              <Button 
+                variant="secondary" 
+                onClick={() => selectedPark && fetchOwnerIdentityData(selectedPark.owner_id)}
+              >
+                再読み込み
+              </Button>
+            </div>
+          ) : ownerIdentityData ? (
+            <div className="space-y-6">
+              
+              {/* 登録住所情報（照合用） */}
+              <div>
+                <h4 className="font-medium mb-3 flex items-center">
+                  <User className="w-4 h-4 mr-2" />
+                  登録住所情報（照合用）
+                </h4>
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-600">氏名</p>
+                      <p className="font-medium text-blue-900">{ownerIdentityData.owner_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">郵便番号</p>
+                      <p className="font-medium text-blue-900">{ownerIdentityData.postal_code}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">住所</p>
+                      <p className="font-medium text-blue-900">{ownerIdentityData.address}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">電話番号</p>
+                      <p className="font-medium text-blue-900">{ownerIdentityData.phone_number}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 本人確認書類 */}
+              {ownerIdentityData.identity_document_url ? (
+                <div>
+                  <h4 className="font-medium mb-3 flex items-center">
+                    <FileText className="w-4 h-4 mr-2" />
+                    本人確認書類
+                  </h4>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
+                      <div>
+                        <p className="text-gray-600">ファイル名</p>
+                        <p className="font-medium">{ownerIdentityData.identity_document_filename}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">アップロード日</p>
+                        <p className="font-medium">
+                          {new Date(ownerIdentityData.identity_created_at).toLocaleDateString('ja-JP')}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-700 mb-2">本人確認書類画像</p>
+                      <div className="relative inline-block">
+                        <img
+                          src={`${supabase.storage.from('vaccine-certs').getPublicUrl(ownerIdentityData.identity_document_url).data.publicUrl}`}
+                          alt="本人確認書類"
+                          className="max-w-full h-auto max-h-96 rounded-lg border shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                          onClick={() => setEnlargedImage(ownerIdentityData.identity_document_url)}
+                        />
+                        <div className="absolute bottom-2 right-2">
+                          <span className="px-2 py-1 bg-white bg-opacity-90 text-gray-800 text-xs rounded border shadow-sm">
+                            クリックで拡大
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 照合チェック用メッセージ */}
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <div className="flex items-start">
+                        <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-yellow-800">照合チェック</p>
+                          <p className="text-sm text-yellow-700">
+                            本人確認書類に記載された住所・氏名と、上記の登録情報が一致するかご確認ください。
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <AlertTriangle className="w-5 h-5 text-red-600 mr-2" />
+                    <div>
+                      <p className="text-sm font-medium text-red-800">本人確認書類未提出</p>
+                      <p className="text-sm text-red-700">
+                        このオーナーは本人確認書類を提出していません。
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-600">データを読み込み中...</p>
+            </div>
+          )}
         </Card>
 
         {/* 画像一覧 */}
@@ -505,6 +887,25 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
             </Button>
           </div>
         </Card>
+
+        {/* 拡大画像表示モーダル */}
+        {enlargedImage && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div className="relative max-w-4xl max-h-full p-4">
+              <img
+                src={enlargedImage.startsWith('http') ? enlargedImage : `${supabase.storage.from('vaccine-certs').getPublicUrl(enlargedImage).data.publicUrl}`}
+                alt="拡大画像"
+                className="max-w-full max-h-full object-contain"
+              />
+              <Button
+                onClick={() => setEnlargedImage(null)}
+                className="absolute top-2 right-2 bg-white text-black hover:bg-gray-100"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>オフライン - ドッグパークJP</title>
+    <meta name="theme-color" content="#3B82F6" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        text-align: center;
+        padding: 20px;
+      }
+      
+      .offline-container {
+        max-width: 500px;
+        width: 100%;
+        padding: 40px 30px;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 25px 45px rgba(0, 0, 0, 0.1);
+      }
+      
+      .icon {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        display: block;
+      }
+      
+      h1 {
+        font-size: 2rem;
+        margin-bottom: 15px;
+        font-weight: 600;
+      }
+      
+      p {
+        font-size: 1.1rem;
+        line-height: 1.6;
+        margin-bottom: 30px;
+        opacity: 0.9;
+      }
+      
+      .features {
+        text-align: left;
+        margin: 30px 0;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      
+      .features h2 {
+        font-size: 1.2rem;
+        margin-bottom: 15px;
+        text-align: center;
+      }
+      
+      .features ul {
+        list-style: none;
+        padding: 0;
+      }
+      
+      .features li {
+        padding: 8px 0;
+        padding-left: 25px;
+        position: relative;
+        font-size: 0.95rem;
+      }
+      
+      .features li::before {
+        content: '🐕';
+        position: absolute;
+        left: 0;
+        top: 8px;
+      }
+      
+      .retry-btn {
+        background: linear-gradient(45deg, #3B82F6, #1D4ED8);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 50px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        text-decoration: none;
+        display: inline-block;
+        margin: 10px;
+      }
+      
+      .retry-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+      }
+      
+      .offline-status {
+        margin-top: 20px;
+        padding: 10px;
+        background: rgba(239, 68, 68, 0.2);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 10px;
+        font-size: 0.9rem;
+      }
+      
+      .online-status {
+        background: rgba(34, 197, 94, 0.2);
+        border-color: rgba(34, 197, 94, 0.3);
+      }
+      
+      @media (max-width: 480px) {
+        .offline-container {
+          padding: 30px 20px;
+        }
+        
+        h1 {
+          font-size: 1.5rem;
+        }
+        
+        .icon {
+          font-size: 3rem;
+        }
+      }
+      
+      .pulse {
+        animation: pulse 2s infinite;
+      }
+      
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="offline-container">
+      <div class="icon pulse">🐕‍🦺</div>
+      <h1>オフラインモード</h1>
+      <p>
+        インターネット接続が利用できません。<br>
+        ドッグパークJPは一部機能をオフラインでもご利用いただけます。
+      </p>
+      
+      <div class="features">
+        <h2>オフラインで利用可能な機能</h2>
+        <ul>
+          <li>お気に入りのドッグパーク情報の閲覧</li>
+          <li>キャッシュされた検索結果の確認</li>
+          <li>愛犬のプロフィール閲覧</li>
+          <li>利用ガイドとヘルプの確認</li>
+        </ul>
+      </div>
+      
+      <button class="retry-btn" onclick="location.reload()">
+        🔄 再接続を試す
+      </button>
+      
+      <a href="/" class="retry-btn">
+        🏠 ホームに戻る
+      </a>
+      
+      <div id="connectionStatus" class="offline-status">
+        📶 接続状態: オフライン
+      </div>
+    </div>
+
+    <script>
+      // 接続状態の監視
+      function updateConnectionStatus() {
+        const statusElement = document.getElementById('connectionStatus');
+        
+        if (navigator.onLine) {
+          statusElement.textContent = '📶 接続状態: オンライン';
+          statusElement.className = 'online-status';
+          
+          // オンラインに復帰したら自動的にリロード
+          setTimeout(() => {
+            location.reload();
+          }, 1000);
+        } else {
+          statusElement.textContent = '📶 接続状態: オフライン';
+          statusElement.className = 'offline-status';
+        }
+      }
+      
+      // 接続状態の変化を監視
+      window.addEventListener('online', updateConnectionStatus);
+      window.addEventListener('offline', updateConnectionStatus);
+      
+      // 初期状態を設定
+      updateConnectionStatus();
+      
+      // 定期的に接続をチェック
+      setInterval(() => {
+        updateConnectionStatus();
+      }, 5000);
+      
+      // Service Worker からのメッセージを受信
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data.type === 'CACHE_UPDATED') {
+            console.log('キャッシュが更新されました');
+          }
+        });
+      }
+      
+      // プリロードされたリソースへのアクセスを試行
+      document.addEventListener('DOMContentLoaded', () => {
+        // キャッシュされたリソースの確認
+        if ('caches' in window) {
+          caches.keys().then(cacheNames => {
+            console.log('利用可能なキャッシュ:', cacheNames);
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

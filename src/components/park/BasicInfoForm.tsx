@@ -1,5 +1,5 @@
+import { AlertTriangle, Building, CheckCircle, DollarSign } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, DollarSign, Building } from 'lucide-react';
 import Button from '../Button';
 import Card from '../Card';
 import Input from '../Input';
@@ -48,10 +48,10 @@ export default function BasicInfoForm({
       <div className="mb-6">
         <div className="flex items-center space-x-2 mb-4">
           <CheckCircle className="w-6 h-6 text-green-600" />
-          <span className="text-green-800 font-medium">第一審査通過・本人確認完了</span>
+          <span className="text-green-800 font-medium">第一審査・本人確認完了</span>
         </div>
         <h1 className="text-2xl font-bold mb-2">ドッグラン登録 - 詳細情報入力</h1>
-        <p className="text-gray-600">第一審査を通過し、本人確認が完了しました。詳細な施設情報を入力してください。</p>
+        <p className="text-gray-600">第一審査・本人確認が完了しました。詳細な施設情報を入力してください。</p>
       </div>
 
       {/* 審査状況表示 */}
@@ -61,7 +61,7 @@ export default function BasicInfoForm({
             <CheckCircle className="w-6 h-6 text-green-600" />
             <div>
               <h3 className="font-semibold text-green-900">第一審査・本人確認完了</h3>
-              <p className="text-sm text-green-800">基本条件をクリアしました</p>
+              <p className="text-sm text-green-800">基本条件と本人確認をクリアしました</p>
             </div>
           </div>
           <div className="text-right text-sm text-green-700">
@@ -70,88 +70,76 @@ export default function BasicInfoForm({
         </div>
       </Card>
 
-      <Card>
-        <form onSubmit={onSubmit}>
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
-              {error}
-            </div>
-          )}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 rounded-lg">
+          <div className="flex items-start space-x-2">
+            <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        </div>
+      )}
 
-          <Input
-            label="施設名 *"
-            value={formData.name}
-            onChange={(e) => updateFormData({ name: e.target.value })}
-            required
-          />
-          
+      <Card className="p-6">
+        <form onSubmit={onSubmit} className="space-y-6">
+          <div className="mb-4">
+            <Input
+              label="ドッグラン名 *"
+              value={formData.name}
+              onChange={(e) => updateFormData({ name: e.target.value })}
+              placeholder="例: 渋谷中央ドッグラン"
+              required
+            />
+          </div>
+
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              説明 *
+              説明
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => updateFormData({ description: e.target.value })}
+              placeholder="ドッグランの特徴や魅力をご紹介ください"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={4}
+              rows={3}
+            />
+          </div>
+
+          <div className="mb-4">
+            <Input
+              label="住所 *"
+              value={formData.address}
+              onChange={(e) => updateFormData({ address: e.target.value })}
+              placeholder="例: 東京都渋谷区道玄坂1-1-1"
               required
             />
           </div>
-          
-          <Input
-            label="住所 *"
-            value={formData.address}
-            onChange={(e) => updateFormData({ address: e.target.value })}
-            required
-          />
-          
-          {/* 料金情報（固定） */}
-          <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-            <h3 className="font-semibold text-blue-900 mb-2 flex items-center">
-              <DollarSign className="w-5 h-5 mr-2" />
-              料金情報（全国統一）
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
-              <div>
-                <p className="font-medium">通常利用料金</p>
-                <p>¥800/日（固定）</p>
-              </div>
-              <div>
-                <p className="font-medium">施設貸し切り料金</p>
-                <p>¥4,400/時間（固定）</p>
-              </div>
-              <div>
-                <p className="font-medium">サブスクリプション</p>
-                <p>¥3,800/月（全国共通）</p>
-              </div>
-            </div>
-            <p className="text-xs text-blue-600 mt-2">
-              ※ 料金はシステムで自動設定されます。オーナー様の取り分は売上の80%です。
+
+          <div className="mb-4">
+            <Input
+              label="最大収容頭数 *"
+              type="number"
+              min="1"
+              value={formData.maxCapacity}
+              onChange={(e) => updateFormData({ maxCapacity: e.target.value })}
+              placeholder="例: 15"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              同時に利用できる犬の最大頭数を入力してください
             </p>
           </div>
-          
-          <Input
-            label="最大収容人数 *"
-            type="number"
-            min="1"
-            value={formData.maxCapacity}
-            onChange={(e) => updateFormData({ maxCapacity: e.target.value })}
-            required
-          />
-          
-          {/* Dog Size Areas */}
+
+          {/* 犬のサイズ対応 */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              対応犬種サイズ
+              対応犬種 *
             </label>
             <div className="space-y-2">
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
                   checked={formData.largeDogArea}
-                  onChange={(e) => updateFormData({
-                    largeDogArea: e.target.checked,
-                  })}
+                  onChange={(e) => updateFormData({ largeDogArea: e.target.checked })}
                   className="rounded text-blue-600"
                 />
                 <span>大型犬エリア</span>
@@ -160,9 +148,7 @@ export default function BasicInfoForm({
                 <input
                   type="checkbox"
                   checked={formData.smallDogArea}
-                  onChange={(e) => updateFormData({
-                    smallDogArea: e.target.checked,
-                  })}
+                  onChange={(e) => updateFormData({ smallDogArea: e.target.checked })}
                   className="rounded text-blue-600"
                 />
                 <span>小型犬エリア</span>
@@ -170,42 +156,31 @@ export default function BasicInfoForm({
             </div>
           </div>
 
-          {/* Private Booths */}
+          {/* 貸し切りブース */}
           <div className="mb-4">
-            <label className="flex items-center space-x-2 mb-3">
+            <label className="flex items-center space-x-2 mb-2">
               <input
                 type="checkbox"
                 checked={formData.privateBooths}
-                onChange={(e) => updateFormData({
-                  privateBooths: e.target.checked,
-                  privateBoothCount: e.target.checked ? formData.privateBoothCount : '0',
-                })}
+                onChange={(e) => updateFormData({ privateBooths: e.target.checked })}
                 className="rounded text-blue-600"
               />
-              <span className="text-sm font-medium text-gray-700">プライベートブースあり</span>
+              <span className="text-sm font-medium text-gray-700">貸し切りブース</span>
             </label>
-            
             {formData.privateBooths && (
               <div className="ml-6">
                 <Input
-                  label="ブース数"
+                  label="貸し切りブース数"
                   type="number"
                   min="1"
                   value={formData.privateBoothCount}
                   onChange={(e) => updateFormData({ privateBoothCount: e.target.value })}
+                  placeholder="例: 2"
                 />
-                <div className="mt-2 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    <span className="font-medium">プライベートブース料金:</span> サブスク使い放題・1日券でも利用可能（追加料金なし）
-                  </p>
-                  <p className="text-xs text-blue-600 mt-1">
-                    ※ 料金はシステムで自動設定されます
-                  </p>
-                </div>
               </div>
             )}
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               設備・サービス（第一審査で選択した内容を確認・修正できます）
@@ -250,7 +225,7 @@ export default function BasicInfoForm({
             />
           </div>
 
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          <Card className="bg-blue-50 border-blue-200">
             <div className="flex items-start space-x-2">
               <Building className="w-5 h-5 text-blue-600 mt-0.5" />
               <div className="text-sm text-blue-800">
@@ -263,7 +238,7 @@ export default function BasicInfoForm({
                 </ul>
               </div>
             </div>
-          </div>
+          </Card>
 
           <div className="mt-4 flex justify-between items-center">
             <Link to="/owner-payment-system" className="text-blue-600 hover:text-blue-800 flex items-center">

@@ -1,28 +1,27 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { 
-  Shield, 
-  Users, 
-  MapPin, 
-  FileCheck, 
-  AlertTriangle, 
-  CheckCircle, 
-  BarChart4, 
-  TrendingUp,
-  Download,
-  DollarSign,
-  Calendar,
-  ShoppingBag,
-  Settings,
-  Bell,
-  Building,
-  Badge
+import {
+    AlertTriangle,
+    Badge,
+    BarChart4,
+    Bell,
+    Building,
+    Calendar,
+    CheckCircle,
+    DollarSign,
+    Download,
+    MapPin,
+    Settings,
+    Shield,
+    ShoppingBag,
+    TrendingUp,
+    Users
 } from 'lucide-react';
-import Card from '../components/Card';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import Card from '../components/Card';
 import AdminMaintenanceManagement from '../components/admin/AdminMaintenanceManagement';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
 
 interface AdminStats {
   totalUsers: number;
@@ -240,7 +239,7 @@ export function AdminDashboard() {
               <div className="bg-white p-4 rounded-lg border border-red-200">
                 <p className="font-medium text-red-900">ドッグラン承認待ち</p>
                 <p className="text-2xl font-bold text-red-600">{stats.pendingParks}件</p>
-                <Link to="/admin/park-approval">
+                <Link to="/admin/parks">
                   <Button size="sm" className="mt-2">
                     確認する
                   </Button>
@@ -275,7 +274,7 @@ export function AdminDashboard() {
 
       {/* 管理メニュー */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Link to="/admin/vaccines">
+        <Link to="/admin/vaccine-approval">
           <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
             <div className="flex items-center space-x-3">
               <div className="bg-blue-100 p-3 rounded-full">
@@ -615,7 +614,7 @@ export function AdminDashboard() {
           <h3 className="text-lg font-semibold mb-4">ワクチン証明書管理</h3>
           <p className="text-gray-600">
             詳細なワクチン証明書管理は 
-            <Link to="/admin/vaccines" className="text-blue-600 hover:text-blue-800 mx-1">
+            <Link to="/admin/vaccine-approval" className="text-blue-600 hover:text-blue-800 mx-1">
               ワクチン証明書管理ページ
             </Link>
             で行えます。
@@ -625,7 +624,7 @@ export function AdminDashboard() {
               <p className="text-red-700">
                 <strong>{stats.pendingVaccines}件</strong>のワクチン証明書承認待ちがあります。
               </p>
-              <Link to="/admin/vaccines">
+              <Link to="/admin/vaccine-approval">
                 <Button size="sm" className="mt-2">
                   今すぐ確認する
                 </Button>

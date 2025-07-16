@@ -1,8 +1,8 @@
+import { AlertTriangle, Shield } from 'lucide-react';
 import { useState } from 'react';
-import { Shield, AlertTriangle } from 'lucide-react';
+import { supabase } from '../../utils/supabase';
 import Button from '../Button';
 import Card from '../Card';
-import { supabase } from '../../utils/supabase';
 
 interface IdentityVerificationFormProps {
   onBack: () => void;
@@ -42,32 +42,66 @@ export default function IdentityVerificationForm({
     onError('');
 
     try {
+      console.log('🔍 Identity upload starting...');
+      console.log('📁 User ID:', user.id);
+      console.log('📄 File details:', {
+        name: identityFile.name,
+        type: identityFile.type,
+        size: identityFile.size,
+        lastModified: identityFile.lastModified
+      });
+
       // ファイル名例: userId_タイムスタンプ_元ファイル名
-      const fileName = `${user.id}_${Date.now()}_${identityFile.name}`;
+      const fileName = `identity_${user.id}_${Date.now()}_${identityFile.name}`;
+      console.log('📁 Upload file name:', fileName);
+      
+      // vaccine-certsバケットを使用（管理者画面と統一）
+      console.log('🚀 Starting storage upload...');
       const { data, error: uploadError } = await supabase.storage
-        .from('identity-documents')
+        .from('vaccine-certs')
         .upload(fileName, identityFile, { upsert: true });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('❌ Storage upload error:', uploadError);
+        throw new Error(`ファイルアップロードに失敗しました: ${uploadError.message}`);
+      }
 
-      // パスをDBに保存
+      console.log('✅ Storage upload success:', data);
+
+      // owner_verificationsテーブルに正しい構造で保存
+      console.log('💾 Starting database save...');
+      const dbData = {
+        user_id: user.id,
+        verification_id: data.path, // ファイルパスをverification_idとして使用
+        status: 'pending', // 管理者画面で期待されるステータス
+        verification_data: {
+          document_url: data.path,
+          uploaded_at: new Date().toISOString(),
+          file_name: identityFile.name,
+          file_size: identityFile.size,
+          file_type: identityFile.type
+        }
+      };
+      
+      console.log('📊 Database data:', dbData);
+
       const { error: dbError } = await supabase
         .from('owner_verifications')
-        .upsert(
-          { 
-            user_id: user.id, 
-            document_url: data.path, 
-            status: 'uploaded', 
-            created_at: new Date().toISOString() 
-          }, 
-          { onConflict: 'user_id' }
-        );
+        .upsert(dbData, { onConflict: 'user_id' });
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('❌ Database save error:', dbError);
+        throw new Error(`データベース保存に失敗しました: ${dbError.message}`);
+      }
+
+      console.log('✅ Database save success');
+      console.log('🎉 Identity upload completed successfully');
 
       onNext(); // 次のステップへ
     } catch (err) {
-      onError(err instanceof Error ? err.message : 'アップロードに失敗しました。');
+      console.error('❌ Identity upload failed:', err);
+      const errorMessage = err instanceof Error ? err.message : 'アップロードに失敗しました。';
+      onError(errorMessage);
     } finally {
       setIsUploading(false);
     }
@@ -85,7 +119,6 @@ export default function IdentityVerificationForm({
             <div className="text-sm text-blue-800 space-y-1">
               <p>安全なプラットフォーム運営のため、ドッグランオーナーには本人確認が必要です。</p>
               <p>運転免許証、マイナンバーカード、パスポートなどの本人確認書類の画像をアップロードしてください。</p>
-              <p>アップロードされた書類は管理者が手動で確認します。</p>
             </div>
           </div>
         </div>
@@ -100,7 +133,7 @@ export default function IdentityVerificationForm({
         </div>
       )}
 
-      <Card className="p-6">
+      <Card>
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             本人確認書類のアップロード *

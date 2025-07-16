@@ -1,9 +1,9 @@
 // 管理者データ取得のカスタムフック
 
-import { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase';
-import { PendingPark, PendingVaccine, FacilityImage } from '../types/admin';
+import { useEffect, useState } from 'react';
+import { FacilityImage, PendingPark, PendingVaccine } from '../types/admin';
 import { ensureVaccineBucketIsPublic } from '../utils/storageUtils';
+import { supabase } from '../utils/supabase';
 
 export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
   const [pendingParks, setPendingParks] = useState<PendingPark[]>([]);
@@ -14,7 +14,9 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
 
   const fetchParks = async () => {
     try {
-      // Get parks that have passed first stage or are in second stage review
+      console.log('🔍 Fetching pending parks...');
+      
+      // Get parks that need approval (pending, first_stage_passed, second_stage_review)
       const { data: parksData, error: parksError } = await supabase
         .from('dog_parks')
         .select(`
@@ -25,14 +27,21 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
           created_at,
           owner_id
         `)
-        .in('status', ['first_stage_passed', 'second_stage_review'])
+        .in('status', ['pending', 'first_stage_passed', 'second_stage_review'])
         .order('created_at', { ascending: false });
       
-      if (parksError) throw parksError;
+      if (parksError) {
+        console.error('❌ Parks fetch error:', parksError);
+        throw parksError;
+      }
+      
       if (!parksData || parksData.length === 0) {
+        console.log('ℹ️ No pending parks found');
         setPendingParks([]);
         return;
       }
+
+      console.log(`✅ Found ${parksData.length} pending parks`);
 
       // Extract IDs for parallel queries
       const ownerIds = [...new Set(parksData.map(park => park.owner_id))];
@@ -45,92 +54,158 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
           ? supabase.from('profiles').select('id, name').in('id', ownerIds)
           : Promise.resolve({ data: [], error: null }),
         
-        // Get review stages
+        // Get review stages (if table exists)
         parkIds.length > 0
           ? supabase.from('dog_park_review_stages').select('park_id, second_stage_submitted_at').in('park_id', parkIds)
           : Promise.resolve({ data: [], error: null }),
         
-        // Get facility images stats
+        // Get facility images
         parkIds.length > 0
           ? supabase.from('dog_park_facility_images').select('park_id, is_approved').in('park_id', parkIds)
           : Promise.resolve({ data: [], error: null })
       ]);
 
-      // Process results safely
-      const ownersData = ownersResponse.status === 'fulfilled' && !ownersResponse.value.error 
-        ? ownersResponse.value.data || [] 
-        : [];
-      
-      const reviewStagesData = reviewStagesResponse.status === 'fulfilled' && !reviewStagesResponse.value.error
-        ? reviewStagesResponse.value.data || []
-        : [];
-      
-      const imagesData = imagesResponse.status === 'fulfilled' && !imagesResponse.value.error
-        ? imagesResponse.value.data || []
-        : [];
+      // Process owners data
+      const ownersData = ownersResponse.status === 'fulfilled' ? ownersResponse.value.data || [] : [];
+      const ownersMap = new Map(ownersData.map(owner => [owner.id, owner]));
 
-      // Log any errors but continue processing
-      if (ownersResponse.status === 'rejected' || (ownersResponse.status === 'fulfilled' && ownersResponse.value.error)) {
-        console.warn('Error fetching owners:', ownersResponse.status === 'rejected' ? ownersResponse.reason : ownersResponse.value.error);
-      }
-      if (reviewStagesResponse.status === 'rejected' || (reviewStagesResponse.status === 'fulfilled' && reviewStagesResponse.value.error)) {
-        console.warn('Error fetching review stages:', reviewStagesResponse.status === 'rejected' ? reviewStagesResponse.reason : reviewStagesResponse.value.error);
-      }
-      if (imagesResponse.status === 'rejected' || (imagesResponse.status === 'fulfilled' && imagesResponse.value.error)) {
-        console.warn('Error fetching image stats:', imagesResponse.status === 'rejected' ? imagesResponse.reason : imagesResponse.value.error);
-      }
+      // Process review stages data (handle if table doesn't exist)
+      const reviewStagesData = reviewStagesResponse.status === 'fulfilled' ? reviewStagesResponse.value.data || [] : [];
+      const reviewStagesMap = new Map(reviewStagesData.map(stage => [stage.park_id, stage]));
+
+      // Process images data (handle if table doesn't exist)
+      const imagesData = imagesResponse.status === 'fulfilled' ? imagesResponse.value.data || [] : [];
+      const imagesMap = new Map();
       
-      // Combine the data
-      const combinedData = parksData?.map((park: any) => {
-        const reviewStage = reviewStagesData.find(stage => stage.park_id === park.id);
-        const parkImages = imagesData.filter(img => img.park_id === park.id);
-        
-        return {
-          ...park,
-          owner_name: ownersData.find(owner => owner.id === park.owner_id)?.name || 'Unknown',
-          second_stage_submitted_at: reviewStage?.second_stage_submitted_at || null,
-          total_images: parkImages.length,
-          pending_images: parkImages.filter(img => img.is_approved === null).length,
-          approved_images: parkImages.filter(img => img.is_approved === true).length,
-          rejected_images: parkImages.filter(img => img.is_approved === false).length
-        };
-      }) || [];
-      
-      // Show all parks that are in first_stage_passed or second_stage_review
-      // For first_stage_passed, only show if they have submitted second stage
-      const filteredData = combinedData.filter(park => {
-        if (park.status === 'second_stage_review') {
-          return true; // Always show parks in second stage review
+      // Group images by park_id
+      imagesData.forEach(image => {
+        if (!imagesMap.has(image.park_id)) {
+          imagesMap.set(image.park_id, []);
         }
-        if (park.status === 'first_stage_passed') {
-          return park.second_stage_submitted_at !== null; // Only show if they've submitted
-        }
-        return false;
+        imagesMap.get(image.park_id).push(image);
       });
+
+             // Transform data to PendingPark format
+       const transformedParks: PendingPark[] = parksData.map(park => {
+         const owner = ownersMap.get(park.owner_id);
+         const reviewStage = reviewStagesMap.get(park.id);
+         const parkImages = imagesMap.get(park.id) || [];
+         
+         // Calculate image statistics
+         const totalImages = parkImages.length;
+         const approvedImages = parkImages.filter((img: any) => img.is_approved === true).length;
+         const rejectedImages = parkImages.filter((img: any) => img.is_approved === false).length;
+         const pendingImages = parkImages.filter((img: any) => img.is_approved === null).length;
+
+         return {
+           id: park.id,
+           name: park.name,
+           address: park.address,
+           status: park.status,
+           created_at: park.created_at,
+           owner_id: park.owner_id,
+           owner_name: owner?.name || 'Unknown Owner',
+           second_stage_submitted_at: reviewStage?.second_stage_submitted_at || null,
+           total_images: totalImages,
+           approved_images: approvedImages,
+           rejected_images: rejectedImages,
+           pending_images: pendingImages
+         };
+       });
+
+      console.log(`✅ Transformed ${transformedParks.length} parks with image data`);
+      setPendingParks(transformedParks);
       
-      setPendingParks(filteredData);
     } catch (error) {
-      console.warn('Parks fetch error:', error);
-      throw error;
+      console.error('❌ Error fetching parks:', error);
+      setError(`ドッグラン申請データの取得に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   const fetchVaccines = async () => {
     try {
+      console.log('🔍 Fetching pending vaccines...');
+      
+      // Ensure vaccine bucket is public
+      await ensureVaccineBucketIsPublic();
+      
       const { data: vaccinesData, error: vaccinesError } = await supabase
         .from('vaccine_certifications')
         .select(`
-          *,
-          dog:dogs(*, owner:profiles(*))
+          id,
+          dog_id,
+          rabies_vaccine_image,
+          combo_vaccine_image,
+          rabies_expiry_date,
+          combo_expiry_date,
+          status,
+          created_at,
+          dog:dogs (
+            id,
+            name,
+            breed,
+            gender,
+            birth_date,
+            owner:profiles (
+              id,
+              name
+            )
+          )
         `)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
       
-      if (vaccinesError) throw vaccinesError;
-      setPendingVaccines(vaccinesData || []);
+      if (vaccinesError) {
+        console.error('❌ Vaccines fetch error:', vaccinesError);
+        throw vaccinesError;
+      }
+      
+      if (!vaccinesData || vaccinesData.length === 0) {
+        console.log('ℹ️ No pending vaccines found');
+        setPendingVaccines([]);
+        return;
+      }
+
+      console.log(`✅ Found ${vaccinesData.length} pending vaccines`);
+
+      // Transform data to PendingVaccine format
+      const transformedVaccines: PendingVaccine[] = vaccinesData.map(vaccine => {
+        const dog = Array.isArray(vaccine.dog) ? vaccine.dog[0] : vaccine.dog;
+        const owner = dog ? (Array.isArray(dog.owner) ? dog.owner[0] : dog.owner) : null;
+        
+        if (!dog || !owner) {
+          console.warn('❌ Invalid vaccine data:', vaccine);
+          return null;
+        }
+        
+        return {
+          id: vaccine.id,
+          dog_id: vaccine.dog_id,
+          rabies_vaccine_image: vaccine.rabies_vaccine_image,
+          combo_vaccine_image: vaccine.combo_vaccine_image,
+          rabies_expiry_date: vaccine.rabies_expiry_date,
+          combo_expiry_date: vaccine.combo_expiry_date,
+          status: vaccine.status,
+          created_at: vaccine.created_at,
+          dog: {
+            id: dog.id,
+            name: dog.name,
+            breed: dog.breed,
+            gender: dog.gender,
+            birth_date: dog.birth_date,
+            owner: {
+              id: owner.id,
+              name: owner.name
+            }
+          }
+        };
+      }).filter(vaccine => vaccine !== null) as PendingVaccine[];
+
+      setPendingVaccines(transformedVaccines);
+      
     } catch (error) {
-      console.warn('Vaccines fetch error:', error);
-      throw error;
+      console.error('❌ Error fetching vaccines:', error);
+      setError(`ワクチン証明書データの取得に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -138,36 +213,23 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
     try {
       setIsLoading(true);
       setError('');
-      setSuccess('');
-      
-      // バケットをパブリックに設定
-      await ensureVaccineBucketIsPublic();
       
       if (activeTab === 'parks') {
         await fetchParks();
-      } else {
+      } else if (activeTab === 'vaccines') {
         await fetchVaccines();
       }
     } catch (error) {
-      setError((error as Error).message || 'エラーが発生しました');
+      console.error('❌ Error in fetchData:', error);
+      setError(`データの取得に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const clearMessages = () => {
-    setError('');
-    setSuccess('');
-  };
-
-  const showSuccess = (message: string) => {
-    setSuccess(message);
-    setTimeout(() => setSuccess(''), 3000);
-  };
-
-  const showError = (message: string) => {
-    setError(message);
-  };
+  useEffect(() => {
+    fetchData();
+  }, [activeTab]);
 
   return {
     pendingParks,
@@ -175,18 +237,13 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
     isLoading,
     error,
     success,
-    fetchData,
-    clearMessages,
-    showSuccess,
-    showError,
-    setPendingParks,
-    setPendingVaccines
+    refetch: fetchData
   };
 };
 
+// 画像データ取得のカスタムフック
 export const useParkImages = (parkId: string | null) => {
   const [parkImages, setParkImages] = useState<FacilityImage[]>([]);
-  const [allImagesApproved, setAllImagesApproved] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -195,70 +252,40 @@ export const useParkImages = (parkId: string | null) => {
       setIsLoading(true);
       setError('');
       
-      const { data, error } = await supabase
+      console.log(`🔍 Fetching images for park: ${id}`);
+      
+      const { data: imagesData, error: imagesError } = await supabase
         .from('dog_park_facility_images')
         .select('*')
         .eq('park_id', id)
         .order('created_at', { ascending: false });
       
-      if (error) {
-        console.warn('Error fetching park images:', error);
-        throw error;
+      if (imagesError) {
+        console.error('❌ Images fetch error:', imagesError);
+        throw imagesError;
       }
       
-      // プロセス画像データ - 必要に応じてURLを生成
-      const processedImages = data?.map(img => {
-        let imageUrl = img.image_url;
-        
-        // URLがnullまたは空の場合の処理
-        if (!imageUrl) {
-          return {
-            ...img,
-            image_url: 'https://via.placeholder.com/400x300?text=No+Image+URL'
-          };
-        }
-        
-        // もしimage_urlが相対パスの場合、フルURLを生成
-        if (!imageUrl.startsWith('http')) {
-          // dog-park-imagesバケットを使用
-          imageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/dog-park-images/${imageUrl}`;
-        }
-        
-        return {
-          ...img,
-          image_url: imageUrl
-        };
-      }) || [];
+      console.log(`✅ Found ${imagesData?.length || 0} images for park ${id}`);
+      setParkImages(imagesData || []);
       
-      setParkImages(processedImages);
-      
-      // すべての画像が承認されているかチェック
-      const allApproved = processedImages.length > 0 && processedImages.every(img => img.is_approved === true);
-      setAllImagesApproved(allApproved);
     } catch (error) {
-      console.warn('Error in fetchParkImages:', error);
-      setError((error as Error).message || '施設画像の取得に失敗しました');
+      console.error('❌ Error fetching park images:', error);
+      setError(`画像データの取得に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // parkIdが変更されたときに画像を取得
   useEffect(() => {
     if (parkId) {
       fetchParkImages(parkId);
-    } else {
-      setParkImages([]);
-      setAllImagesApproved(false);
     }
   }, [parkId]);
 
   return {
     parkImages,
-    allImagesApproved,
     isLoading,
     error,
-    fetchParkImages,
-    setParkImages
+    fetchParkImages
   };
 }; 

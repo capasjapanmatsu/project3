@@ -1,33 +1,33 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { 
-  User, 
-  ArrowLeft, 
-  Save, 
-  AlertTriangle, 
-  CheckCircle,
-  MapPin,
-  Phone,
-  Mail,
-  Home,
-  Lock,
-  Trash2,
-  Key,
-  X,
-  History,
-  CreditCard,
-  Package,
-  ShoppingBag,
-  Loader,
-  Shield,
-  Smartphone
+import {
+    AlertTriangle,
+    ArrowLeft,
+    CheckCircle,
+    CreditCard,
+    History,
+    Home,
+    Key,
+    Loader,
+    Lock,
+    Mail,
+    MapPin,
+    Package,
+    Phone,
+    Save,
+    Shield,
+    ShoppingBag,
+    Smartphone,
+    Trash2,
+    User,
+    X
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
-import { lookupPostalCode, formatAddress } from '../utils/postalCodeLookup';
+import { formatAddress, lookupPostalCode } from '../utils/postalCodeLookup';
+import { supabase } from '../utils/supabase';
 
 
 export function ProfileSettings() {
@@ -38,6 +38,13 @@ export function ProfileSettings() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [formData, setFormData] = useState({
+    name: '',
+    postal_code: '',
+    address: '',
+    phone_number: '',
+    email: '',
+  });
+  const [originalData, setOriginalData] = useState({
     name: '',
     postal_code: '',
     address: '',
@@ -83,13 +90,16 @@ export function ProfileSettings() {
       
       if (error) throw error;
       
-      setFormData({
+      const profileData = {
         name: data.name || '',
         postal_code: data.postal_code || '',
         address: data.address || '',
         phone_number: data.phone_number || '',
         email: user?.email || '',
-      });
+      };
+      
+      setFormData(profileData);
+      setOriginalData(profileData); // 元のデータを保存
     } catch (err) {
       console.error('Error fetching profile:', err);
       setError((err as Error).message || 'プロフィールの取得に失敗しました。');
@@ -221,6 +231,32 @@ export function ProfileSettings() {
         throw new Error('電話番号は正しい形式で入力してください（例：090-1234-5678）');
       }
 
+      // 住所変更の検出
+      const addressChanged = (
+        originalData.postal_code !== formData.postal_code ||
+        originalData.address !== formData.address
+      );
+
+      // 本人確認済みユーザーの住所変更チェック
+      let identityResetRequired = false;
+      if (addressChanged) {
+        const { data: ownerVerification, error: verificationError } = await supabase
+          .from('owner_verifications')
+          .select('id, status')
+          .eq('user_id', user?.id)
+          .eq('status', 'verified')
+          .single();
+
+        if (verificationError && verificationError.code !== 'PGRST116') {
+          // エラーが発生した場合はログに記録するが、処理は続行
+          console.error('Error checking owner verification:', verificationError);
+        }
+
+        if (ownerVerification) {
+          identityResetRequired = true;
+        }
+      }
+
       // プロフィール更新
       const { error: updateError } = await supabase
         .from('profiles')
@@ -234,6 +270,36 @@ export function ProfileSettings() {
 
       if (updateError) throw updateError;
 
+      // 本人確認ステータスの再設定
+      if (identityResetRequired) {
+        const { error: resetError } = await supabase
+          .from('owner_verifications')
+          .update({
+            status: 'pending',
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user?.id);
+
+        if (resetError) {
+          console.error('Error resetting identity verification:', resetError);
+        }
+
+        // 通知の作成
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert([{
+            user_id: user?.id,
+            type: 'identity_verification',
+            title: '住所変更により本人確認が必要です',
+            message: '住所を変更されたため、本人確認書類を再度提出する必要があります。ドッグラン施設の登録を継続される場合は、本人確認書類をアップロードしてください。',
+            data: { reason: 'address_change' }
+          }]);
+
+        if (notificationError) {
+          console.error('Error creating notification:', notificationError);
+        }
+      }
+
       // メールアドレス更新（変更があれば）
       if (user?.email !== formData.email) {
         const { error: emailError } = await supabase.auth.updateUser({
@@ -243,7 +309,15 @@ export function ProfileSettings() {
         if (emailError) throw emailError;
       }
 
-      setSuccess('プロフィールを更新しました');
+      // 元のデータを更新
+      setOriginalData(formData);
+
+      let successMessage = 'プロフィールを更新しました';
+      if (identityResetRequired) {
+        successMessage += '\n\n住所変更により本人確認が必要になりました。ドッグラン施設の登録を継続される場合は、本人確認書類を再度アップロードしてください。';
+      }
+
+      setSuccess(successMessage);
       
       // 3秒後に成功メッセージを消す
       setTimeout(() => {

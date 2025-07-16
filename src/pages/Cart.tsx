@@ -17,6 +17,7 @@ import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import type { CartItem } from '../types';
+import { log, safeSupabaseQuery } from '../utils/helpers';
 
 export function Cart() {
   const { user } = useAuth();
@@ -46,7 +47,7 @@ export function Cart() {
       if (prePaymentAuthState) {
         try {
           const authState = JSON.parse(prePaymentAuthState);
-          console.log('🛒 Cart: Pre-payment auth state found:', authState);
+          log('info', '🛒 Cart: Pre-payment auth state found', { authState });
           
           // 認証状態を確認
           if (!user || user.id !== authState.user_id) {
@@ -60,7 +61,7 @@ export function Cart() {
           // 認証状態情報をクリア
           localStorage.removeItem('pre_payment_auth_state');
         } catch (error) {
-          console.error('Failed to parse pre-payment auth state:', error);
+          log('error', 'Failed to parse pre-payment auth state', { error });
         }
       }
     }
@@ -90,45 +91,51 @@ export function Cart() {
     }
 
     try {
-      const { error } = await supabase
-        .from('cart_items')
-        .update({ quantity: newQuantity })
-        .eq('id', cartItemId);
+      const result = await safeSupabaseQuery(() =>
+        supabase
+          .from('cart_items')
+          .update({ quantity: newQuantity })
+          .eq('id', cartItemId)
+      );
 
-      if (error) throw error;
+      if (result.error) throw result.error;
       await fetchCartData();
     } catch (error) {
-      console.error('Error updating quantity:', error);
+      log('error', 'Error updating quantity', { error, cartItemId, newQuantity });
       setError('数量の更新に失敗しました。再度お試しください。');
     }
   };
 
   const removeItem = async (cartItemId: string) => {
     try {
-      const { error } = await supabase
-        .from('cart_items')
-        .delete()
-        .eq('id', cartItemId);
+      const result = await safeSupabaseQuery(() =>
+        supabase
+          .from('cart_items')
+          .delete()
+          .eq('id', cartItemId)
+      );
 
-      if (error) throw error;
+      if (result.error) throw result.error;
       await fetchCartData();
     } catch (error) {
-      console.error('Error removing item:', error);
+      log('error', 'Error removing item', { error, cartItemId });
       setError('商品の削除に失敗しました。再度お試しください。');
     }
   };
 
   const clearCart = async () => {
     try {
-      const { error } = await supabase
-        .from('cart_items')
-        .delete()
-        .eq('user_id', user?.id);
+      const result = await safeSupabaseQuery(() =>
+        supabase
+          .from('cart_items')
+          .delete()
+          .eq('user_id', user?.id)
+      );
 
-      if (error) throw error;
+      if (result.error) throw result.error;
       await fetchCartData();
     } catch (error) {
-      console.error('Error clearing cart:', error);
+      log('error', 'Error clearing cart', { error, userId: user?.id });
       setError('カートの削除に失敗しました。再度お試しください。');
     }
   };

@@ -7,6 +7,7 @@ import { DogCard, DogEditModal } from '../components/dashboard/DogCard';
 import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 import type { Dog } from '../types';
+import { log, safeSupabaseQuery } from '../utils/helpers';
 
 export function DogManagement() {
   const { user } = useAuth();
@@ -53,21 +54,23 @@ export function DogManagement() {
       setIsLoading(true);
       setError('');
       
-      const { data, error: fetchError } = await supabase
-        .from('dogs')
-        .select('*, vaccine_certifications(*)')
-        .eq('owner_id', user?.id)
-        .order('created_at', { ascending: false });
+      const result = await safeSupabaseQuery(() =>
+        supabase
+          .from('dogs')
+          .select('*, vaccine_certifications(*)')
+          .eq('owner_id', user?.id)
+          .order('created_at', { ascending: false })
+      );
 
-      if (fetchError) {
-        console.error('Error fetching dogs:', fetchError);
+      if (result.error) {
+        log('error', 'Error fetching dogs', { error: result.error, userId: user?.id });
         setError('ワンちゃんの情報を取得できませんでした。');
         return;
       }
 
-      setDogs(data || []);
+      setDogs(result.data || []);
     } catch (err) {
-      console.error('Error fetching dogs:', err);
+      log('error', 'Exception in fetchDogs', { error: err, userId: user?.id });
       setError('ワンちゃんの情報を取得できませんでした。');
     } finally {
       setIsLoading(false);
@@ -177,17 +180,19 @@ export function DogManagement() {
           // ストレージ削除エラーは警告として扱い、DB更新は続行
         }
       } catch (storageErr) {
-        console.warn('Warning: Error processing image deletion:', storageErr);
+        log('warn', 'Warning: Error processing image deletion', { error: storageErr });
       }
       
       // 2. データベースのimage_urlをnullに更新
-      const { error: dbError } = await supabase
-        .from('dogs')
-        .update({ image_url: null })
-        .eq('id', selectedDog.id);
+      const result = await safeSupabaseQuery(() =>
+        supabase
+          .from('dogs')
+          .update({ image_url: null })
+          .eq('id', selectedDog.id)
+      );
       
-      if (dbError) {
-        console.error('Error updating dog image_url:', dbError);
+      if (result.error) {
+        log('error', 'Error updating dog image_url', { error: result.error, dogId: selectedDog.id });
         setDogUpdateError('画像の削除に失敗しました。');
         return;
       }
@@ -200,7 +205,7 @@ export function DogManagement() {
       // 4. データを再取得
       await fetchDogs();
       
-      console.log('✅ Dog image removed successfully');
+      log('info', '✅ Dog image removed successfully', { dogId: selectedDog.id });
       setDogUpdateSuccess('画像を削除しました。');
       
       // 成功メッセージをクリア
@@ -209,7 +214,7 @@ export function DogManagement() {
       }, 3000);
       
     } catch (error) {
-      console.error('Error removing dog image:', error);
+      log('error', 'Error removing dog image', { error, dogId: selectedDog?.id });
       setDogUpdateError('画像の削除に失敗しました。');
     } finally {
       setIsUpdatingDog(false);
@@ -332,7 +337,7 @@ export function DogManagement() {
         
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('❌ Direct upload failed:', errorText);
+          log('error', '❌ Direct upload failed', { error: errorText });
           throw new Error(`直接アップロードに失敗しました: ${response.status} ${errorText}`);
         }
         
@@ -384,12 +389,12 @@ export function DogManagement() {
         console.log('📊 Upload results:', { rabiesUpload, comboUpload });
 
         if (!rabiesUpload.success || !comboUpload.success) {
-          console.error('🚨 === VACCINE UPLOAD ERROR DETAILS ===');
+          log('error', '🚨 === VACCINE UPLOAD ERROR DETAILS ===');
           if (!rabiesUpload.success) {
-            console.error('❌ Rabies upload error:', rabiesUpload.error);
+            log('error', '❌ Rabies upload error', { error: rabiesUpload.error });
           }
           if (!comboUpload.success) {
-            console.error('❌ Combo upload error:', comboUpload.error);
+            log('error', '❌ Combo upload error', { error: comboUpload.error });
           }
           
           const errorMessage = rabiesUpload.error || comboUpload.error || 'ワクチン証明書のアップロードに失敗しました。';
@@ -425,7 +430,7 @@ export function DogManagement() {
           ], { onConflict: 'dog_id' });
 
         if (certUpsertError) {
-          console.error('❌ Database save error:', certUpsertError);
+          log('error', '❌ Database save error', { error: certUpsertError });
           
           // サーバーエラーの場合、より適切なエラーメッセージを提供
           if (certUpsertError.message && certUpsertError.message.includes('520')) {
@@ -456,7 +461,7 @@ export function DogManagement() {
       }, 2000);
       
     } catch (error) {
-      console.error('Error updating dog:', error);
+      log('error', 'Error updating dog', { error, dogId: selectedDog?.id });
       
       // エラーの詳細情報を提供
       let errorMessage = 'ワンちゃん情報の更新に失敗しました';
@@ -491,7 +496,7 @@ export function DogManagement() {
         .eq('dog_id', dog.id);
       
       if (certError) {
-        console.error('Error deleting vaccine certifications:', certError);
+        log('warn', 'Error deleting vaccine certifications', { error: certError, dogId: dog.id });
         // ワクチン証明書の削除エラーは警告として扱い、犬の削除は続行
       }
       
@@ -543,7 +548,7 @@ export function DogManagement() {
         .eq('id', dog.id);
       
       if (dogError) {
-        console.error('Error deleting dog:', dogError);
+        log('error', 'Error deleting dog', { error: dogError, dogId: dog.id });
         throw dogError;
       }
       
@@ -564,7 +569,7 @@ export function DogManagement() {
       }, 3000);
       
     } catch (error) {
-      console.error('Error deleting dog:', error);
+      log('error', 'Error deleting dog', { error, dogId: dog?.id });
       const errorMessage = (error as Error).message || 'ワンちゃんの削除に失敗しました';
       setDogUpdateError(errorMessage);
     } finally {

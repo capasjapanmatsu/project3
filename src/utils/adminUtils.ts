@@ -1,207 +1,244 @@
+import { handleSupabaseError, log } from './helpers';
 import { supabase } from './supabase';
 
 export const checkAndSetAdminUser = async (email: string) => {
   try {
-    console.log('🔧 Checking admin user setup for:', email);
+    log('info', '🔧 Checking admin user setup for:', { email });
     
     // 現在のユーザーを取得
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError) {
-      console.error('❌ Error getting current user:', userError);
+      log('error', '❌ Error getting current user:', userError);
       return { success: false, error: userError.message };
     }
 
     if (!user) {
-      console.log('❌ No user found');
+      log('error', '❌ No user found');
       return { success: false, error: 'No user found' };
     }
 
-    console.log('👤 Current user:', {
+    log('info', '👤 Current user:', {
       id: user.id,
       email: user.email,
-      created_at: user.created_at
+      metadata: user.user_metadata
     });
 
-    // プロファイルテーブルの存在確認（emailカラムを使わない）
-    const { data: existingProfile, error: profileError } = await supabase
+    // 管理者権限を確認
+    const isAdmin = user.user_metadata?.admin === true;
+    log('info', '🔍 Admin status:', { isAdmin });
+
+    if (!isAdmin) {
+      log('error', '❌ User is not admin');
+      return { success: false, error: 'User is not admin' };
+    }
+
+    // プロフィールを取得
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .maybeSingle();
+      .single();
 
     if (profileError) {
-      console.error('❌ Error checking profile:', profileError);
+      log('error', '❌ Error getting profile:', profileError);
+      
+      // プロフィールが存在しない場合は作成
+      if (profileError.code === 'PGRST116') {
+        log('info', '📝 Creating admin profile...');
+        
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            name: user.user_metadata?.name || user.email?.split('@')[0] || 'Admin',
+            user_type: 'admin',
+            email: user.email,
+            postal_code: '',
+            address: '',
+            phone_number: '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          log('error', '❌ Error creating admin profile:', createError);
+          return { success: false, error: createError.message };
+        }
+
+        log('info', '✅ Admin profile created successfully:', newProfile);
+        return { 
+          success: true, 
+          profile: newProfile, 
+          message: 'Admin profile created successfully' 
+        };
+      }
+
       return { success: false, error: profileError.message };
     }
 
-    console.log('📋 Existing profile:', existingProfile);
-
-    // プロファイルが存在しない場合は作成
-    if (!existingProfile) {
-      console.log('🆕 Creating new profile for user');
+    // プロフィールのuser_typeを'admin'に更新
+    if (profile.user_type !== 'admin') {
+      log('info', '🔄 Updating user type to admin...');
       
-      // プロファイル作成（emailカラムを除く）
-      const profileData: Record<string, any> = {
-        id: user.id,
-        name: user.email?.split('@')[0] || 'Unknown',
-        user_type: user.email === 'capasjapan@gmail.com' ? 'admin' : 'user',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      const { error: insertError } = await supabase
+      const { data: updatedProfile, error: updateError } = await supabase
         .from('profiles')
-        .insert([profileData]);
-
-      if (insertError) {
-        console.error('❌ Error creating profile:', insertError);
-        return { success: false, error: insertError.message };
-      }
-
-      console.log('✅ Profile created successfully');
-      return { success: true, message: 'Profile created successfully' };
-    }
-
-    // 既存のプロファイルがある場合、管理者権限を確認・設定
-    if (user.email === 'capasjapan@gmail.com' && existingProfile.user_type !== 'admin') {
-      console.log('🔄 Updating user_type to admin');
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
+        .update({ 
           user_type: 'admin',
           updated_at: new Date().toISOString()
         })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select()
+        .single();
 
       if (updateError) {
-        console.error('❌ Error updating profile:', updateError);
+        log('error', '❌ Error updating profile to admin:', updateError);
         return { success: false, error: updateError.message };
       }
 
-      console.log('✅ User type updated to admin');
-      return { success: true, message: 'User type updated to admin' };
+      log('info', '✅ Profile updated to admin successfully:', updatedProfile);
+      return { 
+        success: true, 
+        profile: updatedProfile, 
+        message: 'Profile updated to admin successfully' 
+      };
     }
 
-    console.log('✅ Profile already exists and is correct');
-    return { success: true, message: 'Profile already exists and is correct' };
+    log('info', '✅ Admin user already set up correctly:', profile);
+    return { 
+      success: true, 
+      profile, 
+      message: 'Admin user already set up correctly' 
+    };
 
   } catch (error) {
-    console.error('❌ Exception in checkAndSetAdminUser:', error);
-    return { success: false, error: (error as Error).message };
+    log('error', '❌ Exception in checkAndSetAdminUser:', { error: handleSupabaseError(error) });
+    return { success: false, error: handleSupabaseError(error) };
   }
 };
 
 export const debugAuthState = async () => {
   try {
-    console.log('🔍 Starting auth state debug...');
+    log('info', '🔍 Debugging auth state...');
     
-    // セッション情報
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) {
-      console.error('❌ Session error:', sessionError);
-      return;
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError) {
+      log('error', '❌ Auth user error:', userError);
+      return { success: false, error: userError.message };
     }
 
-    console.log('📋 Session info:', {
-      hasSession: !!session,
-      userEmail: session?.user?.email,
-      userId: session?.user?.id,
-      expiresAt: session?.expires_at,
-      accessToken: session?.access_token ? 'Present' : 'Missing'
+    if (!user) {
+      log('error', '❌ No authenticated user');
+      return { success: false, error: 'No authenticated user' };
+    }
+
+    log('info', '👤 Auth user:', {
+      id: user.id,
+      email: user.email,
+      metadata: user.user_metadata,
+      created_at: user.created_at
     });
 
-    if (!session?.user) {
-      console.log('❌ No user in session');
-      return;
-    }
-
-    // プロファイル情報（emailカラムを使わない）
+    // プロフィールを取得
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', session.user.id)
-      .maybeSingle();
+      .eq('id', user.id)
+      .single();
 
     if (profileError) {
-      console.error('❌ Profile error:', profileError);
-    } else {
-      console.log('📋 Profile info:', profile);
+      log('error', '❌ Profile error:', profileError);
+      return { success: false, error: profileError.message };
     }
 
-    // テーブル構造の確認
-    const { data: tableInfo, error: tableError } = await supabase
-      .from('information_schema.columns')
-      .select('column_name, data_type, is_nullable')
-      .eq('table_name', 'profiles')
-      .order('ordinal_position');
+    log('info', '👤 Profile:', profile);
 
-    if (tableError) {
-      console.error('❌ Table info error:', tableError);
-    } else {
-      console.log('📋 Profiles table structure:', tableInfo);
-    }
+    // 管理者権限を確認
+    const isAdmin = user.user_metadata?.admin === true;
+    log('info', '🔍 Admin status (metadata):', { isAdmin });
+    log('info', '🔍 Admin status (profile):', { isProfileAdmin: profile?.user_type === 'admin' });
+
+    return {
+      success: true,
+      user,
+      profile,
+      isAdmin,
+      message: 'Auth state debug complete'
+    };
 
   } catch (error) {
-    console.error('❌ Exception in debugAuthState:', error);
+    log('error', '❌ Exception in debugAuthState:', { error: handleSupabaseError(error) });
+    return { success: false, error: handleSupabaseError(error) };
   }
 };
 
 export const testSupabaseConnection = async () => {
   try {
-    console.log('🔗 Testing Supabase connection...');
+    log('info', '🔍 Testing Supabase connection...');
     
-    // シンプルな接続テスト
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, user_type')
+      .select('count')
       .limit(1);
 
     if (error) {
-      console.error('❌ Connection test failed:', error);
+      log('error', '❌ Connection test failed:', error);
       return { success: false, error: error.message };
     }
 
-    console.log('✅ Connection test successful:', data);
-    return { success: true, data };
+    log('info', '✅ Connection test successful:', data);
+    return { success: true, data, message: 'Connection test successful' };
+
   } catch (error) {
-    console.error('❌ Exception in testSupabaseConnection:', error);
-    return { success: false, error: (error as Error).message };
+    log('error', '❌ Exception in testSupabaseConnection:', { error: handleSupabaseError(error) });
+    return { success: false, error: handleSupabaseError(error) };
   }
 };
 
 export const fixRLSPolicies = async () => {
   try {
-    console.log('🔧 Attempting to fix RLS policies...');
+    log('info', '🔧 Attempting to fix RLS policies...');
     
-    // Note: RLS無効化は管理者権限が必要なため、クライアントサイドからは実行できません
-    // 代わりに、直接プロファイルの更新を試みます
-    
-    return { success: false, error: 'RLS無効化はサーバーサイドで実行する必要があります' };
+    // RLS修正は実際のデータベースマイグレーションで行う
+    // ここでは確認のみ
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError) {
+      return { success: false, error: userError.message };
+    }
+
+    return { 
+      success: true, 
+      message: 'RLS policies should be fixed via database migrations' 
+    };
+
   } catch (error) {
-    console.error('❌ Exception in fixRLSPolicies:', error);
-    return { success: false, error: (error as Error).message };
+    log('error', '❌ Exception in fixRLSPolicies:', { error: handleSupabaseError(error) });
+    return { success: false, error: handleSupabaseError(error) };
   }
 };
 
-export const directUpdateUserType = async (userId: string) => {
+export const directUpdateUserType = async (userId: string, userType: 'user' | 'admin' | 'owner') => {
   try {
-    console.log('🔧 Attempting direct user type update for:', userId);
+    log('info', '🔧 Direct update user type:', { userId, userType });
     
-    // 直接プロファイルの更新を試みる
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
-      .update({ user_type: 'admin' })
-      .eq('id', userId);
+      .update({ user_type: userType })
+      .eq('id', userId)
+      .select()
+      .single();
 
     if (error) {
-      console.error('❌ Direct update failed:', error);
+      log('error', '❌ Direct update failed:', error);
       return { success: false, error: error.message };
     }
 
-    console.log('✅ Direct update successful');
-    return { success: true, message: 'User type updated successfully' };
+    log('info', '✅ Direct update successful:', data);
+    return { success: true, data, message: 'User type updated successfully' };
+
   } catch (error) {
-    console.error('❌ Exception in directUpdateUserType:', error);
-    return { success: false, error: (error as Error).message };
+    log('error', '❌ Exception in directUpdateUserType:', { error: handleSupabaseError(error) });
+    return { success: false, error: handleSupabaseError(error) };
   }
 }; 

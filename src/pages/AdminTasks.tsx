@@ -18,6 +18,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import { supabase } from '../utils/supabase';
 import type { DogPark, VaccineCertification, Dog, Profile } from '../types';
+import { log, safeSupabaseQuery } from '../utils/helpers';
 
 interface TaskStats {
   pendingVaccines: number;
@@ -98,7 +99,7 @@ export function AdminTasks() {
       });
 
     } catch (error) {
-      console.error('Error fetching task data:', error);
+      log('error', 'Error fetching task data', { error });
       setError('タスクデータの取得に失敗しました');
     } finally {
       setIsLoading(false);
@@ -144,7 +145,7 @@ export function AdminTasks() {
       await fetchTaskData();
 
     } catch (error) {
-      console.error('Error processing vaccine:', error);
+      log('error', 'Error processing vaccine', { error });
       setError('ワクチン証明書の処理に失敗しました');
     } finally {
       setIsProcessing(false);
@@ -197,7 +198,7 @@ export function AdminTasks() {
       await fetchTaskData();
 
     } catch (error) {
-      console.error('Error processing park:', error);
+      log('error', 'Error processing park', { error });
       setError('ドッグランの処理に失敗しました');
     } finally {
       setIsProcessing(false);

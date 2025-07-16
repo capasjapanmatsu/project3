@@ -1,0 +1,47 @@
+{
+  "files.watcherExclude": {
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/scripts": true,
+    "**/supabase": true,
+    "**/.vscode": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/*.log": true,
+    "**/.cache": true,
+    "**/coverage": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/scripts": true,
+    "**/supabase": true,
+    "**/.vscode": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/*.log": true,
+    "**/.cache": true,
+    "**/coverage": true,
+    "**/public/sw.js": true,
+    "**/public/manifest.json": true
+  },
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "typescript.suggest.autoImports": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+  "files.associations": {
+    "*.tsx": "typescriptreact",
+    "*.ts": "typescript"
+  },
+  "emmet.includeLanguages": {
+    "typescriptreact": "html"
+  },
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ]
+}

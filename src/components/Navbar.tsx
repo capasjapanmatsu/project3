@@ -14,6 +14,7 @@ import { useState, useEffect, useCallback, memo } from 'react';
 import { supabase } from '../utils/supabase';
 import { useSubscription } from '../hooks/useSubscription';
 import PWADebugPanel from './PWADebugPanel';
+import { log, safeSupabaseQuery } from '../utils/helpers';
 
 interface ProfileData {
   name?: string;
@@ -74,18 +75,20 @@ export const Navbar = memo(function Navbar() {
     if (!user) return;
     
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('name')
-        .eq('id', user.id)
-        .maybeSingle();
+      const result = await safeSupabaseQuery(() =>
+        supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', user.id)
+          .maybeSingle()
+      );
       
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
+      if (result.error && result.error.code !== 'PGRST116') {
+        log('error', 'Error fetching profile', { error: result.error, userId: user.id });
       }
       
-      if (data?.name) {
-        setUserName(data.name);
+      if (result.data?.name) {
+        setUserName(result.data.name);
       } else {
         const metaName = (user.user_metadata?.name as string) || user.email?.split('@')[0];
         if (metaName) {
@@ -93,7 +96,7 @@ export const Navbar = memo(function Navbar() {
         }
       }
     } catch (error) {
-      console.error('Error in fetchUserName:', error);
+      log('error', 'Exception in fetchUserName', { error, userId: user.id });
     }
   }, [user]);
 
@@ -101,15 +104,17 @@ export const Navbar = memo(function Navbar() {
     if (!user) return;
     
     try {
-      const { count } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('read', false);
+      const result = await safeSupabaseQuery(() =>
+        supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('read', false)
+      );
       
-      setUnreadNotifications(count || 0);
+      setUnreadNotifications(result.data || 0);
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      log('error', 'Error fetching notifications', { error, userId: user.id });
     }
   }, [user]);
 
@@ -117,14 +122,16 @@ export const Navbar = memo(function Navbar() {
     if (!user) return;
     
     try {
-      const { count } = await supabase
-        .from('cart_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
+      const result = await safeSupabaseQuery(() =>
+        supabase
+          .from('cart_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+      );
       
-      setCartItemCount(count || 0);
+      setCartItemCount(result.data || 0);
     } catch (error) {
-      console.error('Error fetching cart items:', error);
+      log('error', 'Error fetching cart items', { error, userId: user.id });
     }
   }, [user]);
 
@@ -146,7 +153,7 @@ export const Navbar = memo(function Navbar() {
       await logout();
       navigate('/');
     } catch (error) {
-      console.error('ログアウトエラー:', error);
+      log('error', 'ログアウトエラー', { error });
     }
   };
 
