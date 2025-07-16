@@ -11,7 +11,6 @@ import {
     SortAsc,
     SortDesc,
     Star,
-    TrendingUp,
     User,
     Users,
     X
@@ -25,6 +24,7 @@ import Input from '../components/Input';
 import Select from '../components/Select';
 import useAuth from '../context/AuthContext';
 import { useAdminData } from '../hooks/useAdminData';
+import { supabase } from '../utils/supabase';
 
 // Park data interface
 interface ParkData {
@@ -33,9 +33,11 @@ interface ParkData {
   description: string;
   address: string;
   price: number;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'first_stage_passed' | 'second_stage_review';
   owner_id: string;
   owner_name: string;
+  owner_email: string;
+  owner_phone?: string;
   created_at: string;
   max_capacity: number;
   large_dog_area: boolean;
@@ -49,9 +51,13 @@ interface ParkData {
     rest_area: boolean;
     water_station: boolean;
   };
-  monthly_revenue: number;
-  average_rating: number;
-  review_count: number;
+  monthly_revenue?: number;
+  average_rating?: number;
+  review_count?: number;
+  facility_details?: string;
+  business_license?: string;
+  identity_verification?: string;
+  private_booth_count?: number;
 }
 
 export function AdminParkManagement() {
@@ -64,7 +70,7 @@ export function AdminParkManagement() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'first_stage_passed' | 'second_stage_review'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'created_at' | 'monthly_revenue' | 'average_rating'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -110,64 +116,59 @@ export function AdminParkManagement() {
     
     try {
       console.log('📡 ドッグラン一覧を取得中...');
-      // このダミーデータを実際のSupabaseクエリに置き換える
-      const mockParks: ParkData[] = [
-        {
-          id: '1',
-          name: '渋谷ドッグパーク',
-          description: '都心のオアシス',
-          address: '東京都渋谷区',
-          price: 800,
-          status: 'approved',
-          owner_id: 'owner1',
-          owner_name: '田中太郎',
-          created_at: '2024-01-15T10:00:00Z',
-          max_capacity: 15,
-          large_dog_area: true,
-          small_dog_area: true,
-          private_booths: true,
-          facilities: {
-            parking: true,
-            shower: true,
-            restroom: true,
-            agility: false,
-            rest_area: true,
-            water_station: true
-          },
-          monthly_revenue: 45000,
-          average_rating: 4.5,
-          review_count: 23
-        },
-        {
-          id: '2',
-          name: '新宿セントラルドッグラン',
-          description: '広々とした空間',
-          address: '東京都新宿区',
-          price: 1200,
-          status: 'pending',
-          owner_id: 'owner2',
-          owner_name: '佐藤花子',
-          created_at: '2024-01-20T14:30:00Z',
-          max_capacity: 20,
-          large_dog_area: true,
-          small_dog_area: false,
-          private_booths: false,
-          facilities: {
-            parking: true,
-            shower: false,
-            restroom: true,
-            agility: true,
-            rest_area: false,
-            water_station: true
-          },
-          monthly_revenue: 32000,
-          average_rating: 4.2,
-          review_count: 18
-        }
-      ];
       
-      console.log('✅ ドッグラン一覧を取得しました:', mockParks.length, '件');
-      setParks(mockParks);
+      // 実際のSupabaseクエリでdog_parksテーブルからデータを取得
+      const { data: parksData, error: parksError } = await supabase
+        .from('dog_parks')
+        .select(`
+          *,
+          owner:profiles (
+            id,
+            name,
+            email,
+            phone_number
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (parksError) throw parksError;
+
+      // データを整形
+      const formattedParks: ParkData[] = (parksData || []).map((park: any) => ({
+        id: park.id,
+        name: park.name || '不明',
+        description: park.description || '',
+        address: park.address || '不明',
+        price: park.price || 0,
+        status: park.status || 'pending',
+        owner_id: park.owner_id,
+        owner_name: park.owner?.name || '不明',
+        owner_email: park.owner?.email || '不明',
+        owner_phone: park.owner?.phone_number || '',
+        created_at: park.created_at,
+        max_capacity: park.max_capacity || 0,
+        large_dog_area: park.large_dog_area || false,
+        small_dog_area: park.small_dog_area || false,
+        private_booths: park.private_booths || false,
+        facilities: park.facilities || {
+          parking: false,
+          shower: false,
+          restroom: false,
+          agility: false,
+          rest_area: false,
+          water_station: false
+        },
+        monthly_revenue: park.monthly_revenue || 0,
+        average_rating: park.average_rating || 0,
+        review_count: park.review_count || 0,
+        facility_details: park.facility_details || '',
+        business_license: park.business_license || '',
+        identity_verification: park.identity_verification || '',
+        private_booth_count: park.private_booth_count || 0
+      }));
+      
+      console.log('✅ ドッグラン一覧を取得しました:', formattedParks.length, '件');
+      setParks(formattedParks);
       
     } catch (err) {
       console.error('❌ ドッグラン一覧の取得に失敗しました:', err);
@@ -218,7 +219,34 @@ export function AdminParkManagement() {
     try {
       console.log('✅ ドッグランを承認中:', parkId);
       
-      // 実際のSupabaseクエリに置き換える
+      // 実際のSupabaseクエリでデータベースを更新
+      const { error: updateError } = await supabase
+        .from('dog_parks')
+        .update({ 
+          status: 'approved',
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', parkId);
+
+      if (updateError) throw updateError;
+
+      // 通知を送信
+      const park = parks.find(p => p.id === parkId);
+      if (park) {
+        const { error: notifyError } = await supabase
+          .from('notifications')
+          .insert([{
+            user_id: park.owner_id,
+            type: 'park_approval',
+            title: 'ドッグラン申請が承認されました',
+            message: `${park.name}の申請が承認されました。おめでとうございます！`,
+            data: { park_id: parkId }
+          }]);
+
+        if (notifyError) console.error('通知送信エラー:', notifyError);
+      }
+      
+      // ローカル状態を更新
       setParks(prev => prev.map(park => 
         park.id === parkId 
           ? { ...park, status: 'approved' as const }
@@ -237,7 +265,34 @@ export function AdminParkManagement() {
     try {
       console.log('❌ ドッグランを却下中:', parkId);
       
-      // 実際のSupabaseクエリに置き換える
+      // 実際のSupabaseクエリでデータベースを更新
+      const { error: updateError } = await supabase
+        .from('dog_parks')
+        .update({ 
+          status: 'rejected',
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', parkId);
+
+      if (updateError) throw updateError;
+
+      // 通知を送信
+      const park = parks.find(p => p.id === parkId);
+      if (park) {
+        const { error: notifyError } = await supabase
+          .from('notifications')
+          .insert([{
+            user_id: park.owner_id,
+            type: 'park_rejection',
+            title: 'ドッグラン申請について',
+            message: `${park.name}の申請が却下されました。詳細については管理者までお問い合わせください。`,
+            data: { park_id: parkId }
+          }]);
+
+        if (notifyError) console.error('通知送信エラー:', notifyError);
+      }
+      
+      // ローカル状態を更新
       setParks(prev => prev.map(park => 
         park.id === parkId 
           ? { ...park, status: 'rejected' as const }
@@ -250,6 +305,36 @@ export function AdminParkManagement() {
       console.error('❌ ドッグランの却下に失敗しました:', err);
       showError('ドッグランの却下に失敗しました');
     }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
+      case 'first_stage_passed': return 'bg-blue-100 text-blue-800';
+      case 'second_stage_review': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'approved': return '承認済み';
+      case 'pending': return '審査中';
+      case 'rejected': return '却下';
+      case 'first_stage_passed': return '1次審査通過';
+      case 'second_stage_review': return '2次審査中';
+      default: return '不明';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('ja-JP');
+  };
+
+  const formatPrice = (price: number) => {
+    return `¥${price.toLocaleString()}`;
   };
 
   // ロード中表示
@@ -274,7 +359,7 @@ export function AdminParkManagement() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">ドッグラン管理</h1>
-              <p className="text-gray-600">ドッグラン施設の詳細情報と本人確認書類の管理</p>
+              <p className="text-gray-600">ドッグラン施設の詳細情報と申請管理</p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500">総施設数: {parks.length}施設</p>
@@ -359,6 +444,8 @@ export function AdminParkManagement() {
                   options={[
                     { value: 'all', label: '全ステータス' },
                     { value: 'pending', label: '審査中' },
+                    { value: 'first_stage_passed', label: '1次審査通過' },
+                    { value: 'second_stage_review', label: '2次審査中' },
                     { value: 'approved', label: '承認済み' },
                     { value: 'rejected', label: '却下' }
                   ]}
@@ -390,92 +477,120 @@ export function AdminParkManagement() {
             </Card>
 
             {/* パーク一覧 */}
-            <div className="grid grid-cols-1 gap-6">
-              {filteredParks.map((park) => (
-                <Card key={park.id} className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <h3 className="text-lg font-semibold text-gray-900">{park.name}</h3>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          park.status === 'approved' ? 'bg-green-100 text-green-800' :
-                          park.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {park.status === 'approved' ? '承認済み' :
-                           park.status === 'pending' ? '審査中' : '却下'}
-                        </span>
+            {filteredParks.length === 0 ? (
+              <Card className="text-center py-12">
+                <Building className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">
+                  {searchTerm || filterStatus !== 'all' 
+                    ? '条件に一致するドッグランが見つかりません' 
+                    : 'ドッグランが登録されていません'}
+                </p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 gap-6">
+                {filteredParks.map((park) => (
+                  <Card key={park.id} className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <h3 className="text-lg font-semibold text-gray-900">{park.name}</h3>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(park.status)}`}>
+                            {getStatusLabel(park.status)}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <div className="flex items-center text-sm text-gray-600 mb-1">
+                              <MapPin className="w-4 h-4 mr-1" />
+                              {park.address}
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600 mb-1">
+                              <DollarSign className="w-4 h-4 mr-1" />
+                              {formatPrice(park.price)}
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Calendar className="w-4 h-4 mr-1" />
+                              {formatDate(park.created_at)}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <div className="flex items-center text-sm text-gray-600 mb-1">
+                              <User className="w-4 h-4 mr-1" />
+                              {park.owner_name}
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600 mb-1">
+                              <Users className="w-4 h-4 mr-1" />
+                              定員: {park.max_capacity}頭
+                            </div>
+                            {park.average_rating && park.average_rating > 0 && (
+                              <div className="flex items-center text-sm text-gray-600">
+                                <Star className="w-4 h-4 mr-1" />
+                                {park.average_rating.toFixed(1)} ({park.review_count || 0}件)
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {park.description && (
+                          <p className="text-sm text-gray-600 mb-3">{park.description}</p>
+                        )}
+                        
+                        <div className="flex flex-wrap gap-2">
+                          {park.large_dog_area && (
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">大型犬エリア</span>
+                          )}
+                          {park.small_dog_area && (
+                            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">小型犬エリア</span>
+                          )}
+                          {park.private_booths && (
+                            <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">個室あり</span>
+                          )}
+                          {park.facilities.parking && (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded">駐車場</span>
+                          )}
+                          {park.facilities.shower && (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded">シャワー</span>
+                          )}
+                        </div>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                        <div className="flex items-center text-sm text-gray-600">
-                          <MapPin className="w-4 h-4 mr-1" />
-                          {park.address}
-                        </div>
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Users className="w-4 h-4 mr-1" />
-                          定員: {park.max_capacity}頭
-                        </div>
-                        <div className="flex items-center text-sm text-gray-600">
-                          <DollarSign className="w-4 h-4 mr-1" />
-                          ¥{park.price.toLocaleString()}
-                        </div>
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Calendar className="w-4 h-4 mr-1" />
-                          {new Date(park.created_at).toLocaleDateString('ja-JP')}
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="flex items-center text-sm text-gray-600">
-                          <TrendingUp className="w-4 h-4 mr-1" />
-                          月間収益: ¥{park.monthly_revenue.toLocaleString()}
-                        </div>
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Star className="w-4 h-4 mr-1 text-yellow-400" />
-                          評価: {park.average_rating} ({park.review_count}件)
-                        </div>
-                        <div className="flex items-center text-sm text-gray-600">
-                          <User className="w-4 h-4 mr-1" />
-                          オーナー: {park.owner_name}
-                        </div>
+                      <div className="flex items-center space-x-2">
+                        <Link
+                          to={`/admin/parks/${park.id}`}
+                          className="flex items-center px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          詳細
+                        </Link>
+                        {park.status === 'pending' && (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleApprove(park.id)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Check className="w-4 h-4 mr-1" />
+                              承認
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleReject(park.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              却下
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Link
-                        to={`/admin/parks/${park.id}`}
-                        className="flex items-center px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"
-                      >
-                        <Eye className="w-4 h-4 mr-1" />
-                        詳細
-                      </Link>
-                      {park.status === 'pending' && (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() => handleApprove(park.id)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <Check className="w-4 h-4 mr-1" />
-                            承認
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => handleReject(park.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <X className="w-4 h-4 mr-1" />
-                            却下
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
