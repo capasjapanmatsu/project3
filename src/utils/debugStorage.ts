@@ -1,5 +1,6 @@
 // ストレージデバッグユーティリティ
 
+import { log } from './helpers';
 import { supabase } from './supabase';
 
 /**
@@ -7,17 +8,17 @@ import { supabase } from './supabase';
  */
 export const debugStorageBuckets = async () => {
   try {
-    console.log('🔍 Checking storage buckets...');
+    log('info', '🔍 Checking storage buckets...');
     
     // バケット一覧を取得
     const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
     
     if (bucketsError) {
-      console.error('❌ Error listing buckets:', bucketsError);
+      log('error', '❌ Error listing buckets:', { bucketsError });
       return { success: false, error: bucketsError };
     }
     
-    console.log('📦 Available buckets:', buckets);
+    log('info', '📦 Available buckets:', { buckets });
     
     // vaccine-certsバケットの詳細情報
     const vaccineBucket = buckets?.find(b => b.id === 'vaccine-certs');

@@ -1,33 +1,28 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  User, 
-  Crown,
-  Building,
-  LogOut,
-  Bell,
-  AlertTriangle,
-  CheckCircle,
-  MapPin,
-  Users,
-  ShoppingBag,
-  Heart
+import {
+    Bell,
+    Building,
+    CheckCircle,
+    Crown,
+    Heart,
+    MapPin,
+    ShoppingBag,
+    Users
 } from 'lucide-react';
-import Card from '../components/Card';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
-import { supabase } from '../utils/supabase';
-import useAuth from '../context/AuthContext';
-import { useSubscription } from '../hooks/useSubscription';
-import { SubscriptionButton } from '../components/SubscriptionButton';
+import Card from '../components/Card';
 import { DogManagementSection } from '../components/dashboard/DogManagementSection';
 import { NotificationSection } from '../components/dashboard/NotificationSection';
-import { StatsSection } from '../components/dashboard/StatsSection';
 import { ParkCard } from '../components/dashboard/ParkCard';
 import { ParkModal } from '../components/dashboard/ParkModal';
-import { ReservationCard } from '../components/dashboard/ReservationCard';
+import { StatsSection } from '../components/dashboard/StatsSection';
+import useAuth from '../context/AuthContext';
+import { useSubscription } from '../hooks/useSubscription';
+import type { Dog, DogPark, NewsAnnouncement, Notification, Profile, Reservation } from '../types';
+import { supabase } from '../utils/supabase';
 import { validateVaccineFile } from '../utils/vaccineUpload';
 import { handleVaccineUploadFixed } from '../utils/vaccineUploadFixed';
-import type { Dog, DogPark, Profile, Reservation, Notification, NewsAnnouncement } from '../types';
 
 export function UserDashboard() {
   const { user, logout, isAdmin } = useAuth();
@@ -566,6 +561,14 @@ export function UserDashboard() {
                 <Bell className="w-8 h-8 text-orange-600 mb-2" />
                 <h3 className="font-medium text-orange-900">新着情報</h3>
                 <p className="text-sm text-orange-700">最新のお知らせ</p>
+              </div>
+            </Link>
+            
+            <Link to="/liked-dogs" className="group">
+              <div className="p-4 bg-pink-50 rounded-lg hover:bg-pink-100 transition-colors">
+                <Heart className="w-8 h-8 text-pink-600 mb-2" />
+                <h3 className="font-medium text-pink-900">いいねしたワンちゃん</h3>
+                <p className="text-sm text-pink-700">お気に入りのワンちゃん</p>
               </div>
             </Link>
             

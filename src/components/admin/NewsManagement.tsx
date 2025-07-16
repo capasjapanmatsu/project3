@@ -1,22 +1,23 @@
-import { useEffect, useState } from 'react';
-import { 
-  Bell,
-  Edit,
-  Plus,
-  FileText,
-  Megaphone,
-  Tag,
-  X,
-  AlertTriangle,
-  CheckCircle
+import {
+    AlertTriangle,
+    Bell,
+    CheckCircle,
+    Edit,
+    FileText,
+    Megaphone,
+    Plus,
+    Tag,
+    X
 } from 'lucide-react';
-import Card from '../Card';
-import Button from '../Button';
-import Input from '../Input';
-import Select from '../Select';
-import { supabase } from '../../utils/supabase';
+import { useEffect, useState } from 'react';
 import useAuth from '../../context/AuthContext';
 import type { NewsAnnouncement } from '../../types';
+import { handleSupabaseError, log, safeSupabaseQuery } from '../../utils/helpers';
+import { supabase } from '../../utils/supabase';
+import Button from '../Button';
+import Card from '../Card';
+import Input from '../Input';
+import Select from '../Select';
 
 export function NewsManagement() {
   const { user } = useAuth();
@@ -72,51 +73,53 @@ export function NewsManagement() {
           .single();
         
         if (createError) {
-          console.error('Error creating admin profile:', createError);
+          log('error', 'Error creating admin profile:', { createError });
           setNewsError('管理者プロファイルの作成に失敗しました。');
         } else {
-          console.log('Admin profile created successfully:', newProfile);
+          log('info', 'Admin profile created successfully:', { newProfile });
           setNewsSuccess('管理者プロファイルを作成しました。');
           setTimeout(() => setNewsSuccess(''), 3000);
         }
       } else if (error) {
-        console.error('Error fetching user profile:', error);
+        log('error', 'Error fetching user profile:', { error });
         setNewsError('ユーザープロファイルの取得に失敗しました。');
       } else if (!profile || profile.user_type !== 'admin') {
         // 既存プロファイルを管理者に更新
-        console.log('Updating user to admin...');
+        log('info', 'Updating user to admin...');
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ user_type: 'admin' })
           .eq('id', user.id);
         
         if (updateError) {
-          console.error('Error updating user to admin:', updateError);
+          log('error', 'Error updating user to admin:', { updateError });
           setNewsError('管理者権限の設定に失敗しました。');
         } else {
-          console.log('User updated to admin successfully');
+          log('info', 'User updated to admin successfully');
           setNewsSuccess('管理者権限を設定しました。ページを手動でリロードしてください。');
           setTimeout(() => setNewsSuccess(''), 5000);
         }
       }
     } catch (error) {
-      console.error('Error checking user profile:', error);
+      log('error', 'Error checking user profile:', { error: handleSupabaseError(error) });
       setNewsError('ユーザープロファイルの確認に失敗しました。');
     }
   };
 
   const fetchNews = async () => {
     try {
-      const { data, error } = await supabase
-        .from('news_announcements')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const result = await safeSupabaseQuery(() =>
+        supabase
+          .from('news_announcements')
+          .select('*')
+          .order('created_at', { ascending: false })
+      );
       
-      if (error) throw error;
-      setNewsList(data || []);
+      if (result.error) throw result.error;
+      setNewsList(result.data || []);
       setNewsError('');
     } catch (error) {
-      console.error('Error fetching news:', error);
+      log('error', 'Error fetching news:', { error: handleSupabaseError(error) });
       setNewsError('新着情報の取得に失敗しました。');
     }
   };
@@ -186,15 +189,15 @@ export function NewsManagement() {
         setNewsSuccess('新着情報を更新しました。');
       } else {
         // 新規追加
-        console.log('Attempting to insert new announcement...');
+        log('info', 'Attempting to insert new announcement...');
         const { data: insertResult, error } = await supabase
           .from('news_announcements')
           .insert([insertData])
           .select();
 
-        console.log('Insert result:', insertResult);
+        log('info', 'Insert result:', { insertResult });
         if (error) {
-          console.error('Insert error details:', {
+          log('error', 'Insert error details:', {
             message: error.message,
             details: error.details,
             hint: error.hint,
@@ -226,8 +229,8 @@ export function NewsManagement() {
       }, 3000);
 
     } catch (error) {
-      console.error('=== エラー詳細 ===');
-      console.error('Error saving news:', error);
+      log('error', '=== エラー詳細 ===');
+      log('error', 'Error saving news:', { error: handleSupabaseError(error) });
       
       let errorMessage = '新着情報の保存に失敗しました。';
       
@@ -276,7 +279,7 @@ export function NewsManagement() {
       }, 3000);
 
     } catch (error) {
-      console.error('Error deleting news:', error);
+      log('error', 'Error deleting news:', { error: handleSupabaseError(error) });
       setNewsError('新着情報の削除に失敗しました。');
     } finally {
       setIsUpdatingNews(false);

@@ -1,20 +1,20 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { 
-  Shield, 
-  MapPin, 
-  FileCheck, 
-  AlertTriangle, 
-  CheckCircle, 
-  ArrowLeft
+import {
+    AlertTriangle,
+    ArrowLeft,
+    CheckCircle,
+    FileCheck,
+    MapPin,
+    Shield
 } from 'lucide-react';
-import Card from '../components/Card';
-import Button from '../components/Button';
-import useAuth from '../context/AuthContext';
-import { checkAndSetAdminUser, directUpdateUserType } from '../utils/adminUtils';
-import { useAdminData } from '../hooks/useAdminData';
-import { AdminVaccineApproval } from '../components/admin/AdminVaccineApproval';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { AdminParkApproval } from '../components/admin/AdminParkApproval';
+import { AdminVaccineApproval } from '../components/admin/AdminVaccineApproval';
+import Button from '../components/Button';
+import Card from '../components/Card';
+import useAuth from '../context/AuthContext';
+import { useAdminData } from '../hooks/useAdminData';
+import { checkAndSetAdminUser, directUpdateUserType } from '../utils/adminUtils';
 
 export function AdminManagement() {
   const { user, isAdmin, userProfile } = useAuth();
@@ -78,13 +78,13 @@ export function AdminManagement() {
     }
     
     console.log('✅ Admin access granted - fetching data');
-    adminData.fetchData();
+    adminData.refetch();
   }, [isAdmin, navigate, activeTab]);
 
   // 承認完了ハンドラー
   const handleApprovalComplete = async (message: string) => {
     showSuccess(message);
-    await adminData.fetchData(); // データを再取得
+    await adminData.refetch(); // データを再取得
   };
 
   // エラーハンドラー

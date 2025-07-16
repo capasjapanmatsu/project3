@@ -1,10 +1,28 @@
-import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import viteCompression from 'vite-plugin-compression';
 import { resolve } from 'path';
+import { defineConfig } from 'vite';
+import viteCompression from 'vite-plugin-compression';
+
+// Bundle analysis plugin - we'll add this conditionally
+let visualizerPlugin: any = null;
+if (process.env.ANALYZE) {
+  try {
+    // @ts-ignore
+    const { visualizer } = require('rollup-plugin-visualizer');
+    visualizerPlugin = visualizer({
+      filename: 'dist/stats.html',
+      open: true,
+      gzipSize: true,
+      brotliSize: true,
+      template: 'treemap',
+    });
+  } catch (e) {
+    console.warn('Bundle analyzer not available. Run: npm install rollup-plugin-visualizer');
+  }
+}
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   root: '.',
   plugins: [
     react({
@@ -23,6 +41,25 @@ export default defineConfig({
       ext: '.br',
       threshold: 1024,
     }),
+    // バンドル分析ツール（analyze modeでのみ有効）
+    ...(mode === 'analyze' ? [
+      (() => {
+        try {
+          // @ts-ignore
+          const { visualizer } = require('rollup-plugin-visualizer');
+          return visualizer({
+            filename: 'dist/stats.html',
+            open: true,
+            gzipSize: true,
+            brotliSize: true,
+            template: 'treemap', // 'sunburst', 'treemap', 'network'
+          });
+        } catch (e) {
+          console.warn('Bundle analyzer not available. Run: npm install rollup-plugin-visualizer');
+          return null;
+        }
+      })()
+    ].filter(Boolean) : []),
   ],
   resolve: {
     alias: {
@@ -136,4 +173,4 @@ export default defineConfig({
   ssr: {
     noExternal: ['react', 'react-dom'],
   },
-});
+}));

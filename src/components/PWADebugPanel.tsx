@@ -1,15 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Settings, 
-  Download, 
-  Trash2, 
-  RefreshCw, 
-  Wifi, 
-  WifiOff,
-  Monitor,
-  Smartphone,
-  X
+import {
+    Monitor,
+    RefreshCw,
+    Settings,
+    Trash2,
+    Wifi,
+    WifiOff,
+    X
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { log } from '../utils/helpers';
 
 interface PWADebugPanelProps {
   isOpen: boolean;
@@ -60,7 +59,7 @@ export const PWADebugPanel: React.FC<PWADebugPanelProps> = ({ isOpen, onClose })
       const names = await caches.keys();
       await Promise.all(names.map(name => caches.delete(name)));
       setCacheNames([]);
-      console.log('🗑️ 全キャッシュをクリアしました');
+      log('info', '🗑️ 全キャッシュをクリアしました');
       alert('全キャッシュをクリアしました');
     }
   };
@@ -69,7 +68,7 @@ export const PWADebugPanel: React.FC<PWADebugPanelProps> = ({ isOpen, onClose })
     if (swRegistration) {
       await swRegistration.unregister();
       setSWRegistration(null);
-      console.log('🗑️ Service Worker を登録解除しました');
+      log('info', '🗑️ Service Worker を登録解除しました');
       alert('Service Worker を登録解除しました');
     }
   };

@@ -84,8 +84,8 @@ export default function FirstStageForm({
             <h3 className="font-semibold text-blue-900 mb-2">新しい審査プロセスについて</h3>
             <div className="text-sm text-blue-800 space-y-1">
               <p><strong>第一審査・本人確認:</strong> 基本的な条件の確認と本人確認書類の審査</p>
-              <p><strong>第二審査:</strong> 詳細な施設情報と書類審査</p>
-              <p><strong>QRコード実証検査:</strong> 実際の施設での動作確認</p>
+              <p><strong>第二審査:</strong> 詳細な施設情報</p>
+              <p><strong>スマートロック実証検査:</strong> 実際の施設での動作確認</p>
               <p><strong>掲載・運営開始:</strong> 一般公開と予約受付開始</p>
             </div>
             <div className="mt-3 flex items-center">

@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
+import { ArrowLeft, PawPrint, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PawPrint, Plus, ArrowLeft } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { DogCard, DogEditModal } from '../components/dashboard/DogCard';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 import type { Dog } from '../types';
 import { log, safeSupabaseQuery } from '../utils/helpers';
+import { supabase } from '../utils/supabase';
 
 export function DogManagement() {
   const { user } = useAuth();
@@ -103,13 +103,13 @@ export function DogManagement() {
 
   const handleDogImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    console.log('🔍 File selected:', file ? {
+    log('info', '🔍 File selected:', file ? {
       name: file.name,
       type: file.type,
       size: file.size,
       lastModified: file.lastModified,
       isFileObject: file instanceof File
-    } : 'No file selected');
+    } : { message: 'No file selected' });
     
     if (file) {
       try {
@@ -139,7 +139,7 @@ export function DogManagement() {
         }
         
         setDogImageFile(file);
-        console.log('✅ Dog image file set successfully:', {
+        log('info', '✅ Dog image file set successfully:', {
           name: file.name,
           type: file.type,
           size: file.size

@@ -1,20 +1,21 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { 
-  PawPrint, 
-  LogOut, 
-  Bell, 
-  ShoppingCart, 
-  Shield, 
-  History, 
+import {
+  Bell,
   Download,
-  Settings
+  LogOut,
+  PawPrint,
+  Settings,
+  Shield,
+  ShoppingCart
 } from 'lucide-react';
+import { memo, useCallback, useEffect, useState, lazy, Suspense } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
-import { useState, useEffect, useCallback, memo } from 'react';
-import { supabase } from '../utils/supabase';
 import { useSubscription } from '../hooks/useSubscription';
-import PWADebugPanel from './PWADebugPanel';
 import { log, safeSupabaseQuery } from '../utils/helpers';
+import { supabase } from '../utils/supabase';
+
+// PWADebugPanelをレイジーロード
+const PWADebugPanel = lazy(() => import('./PWADebugPanel'));
 
 interface ProfileData {
   name?: string;
@@ -322,10 +323,12 @@ export const Navbar = memo(function Navbar() {
       </nav>
       
       {/* PWAデバッグパネル */}
-      <PWADebugPanel 
-        isOpen={showDebugPanel} 
-        onClose={() => setShowDebugPanel(false)} 
-      />
+      <Suspense fallback={<div>Loading debug panel...</div>}>
+        <PWADebugPanel 
+          isOpen={showDebugPanel} 
+          onClose={() => setShowDebugPanel(false)} 
+        />
+      </Suspense>
     </>
   );
 });

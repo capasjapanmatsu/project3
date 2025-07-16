@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { AlertTriangle, ExternalLink, Loader } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { getDeploymentStatus } from '../utils/deploymentStatus';
+import { log } from '../utils/helpers';
 import Button from './Button';
-import { AlertTriangle, Loader, ExternalLink } from 'lucide-react';
 
 interface DeploymentStatus {
   deploy_url?: string;
@@ -35,7 +36,7 @@ export function DeploymentStatusChecker({ id, onStatusChange, className = '' }: 
         onStatusChange(result);
       }
     } catch (err) {
-      console.error('Error checking deployment status:', err);
+      log('error', 'Error checking deployment status:', { error: err });
       setError((err as Error).message || 'デプロイステータスの取得に失敗しました');
     } finally {
       setLoading(false);

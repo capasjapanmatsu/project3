@@ -46,6 +46,21 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
   onApprovalComplete,
   onError
 }) => {
+  // デバッグ: 受け取っているparksデータを確認
+  console.log('🔍 AdminParkApproval received parks:', pendingParks);
+  pendingParks.forEach((park, index) => {
+    console.log(`🏞️ Park ${index + 1}:`, {
+      id: park.id,
+      name: park.name,
+      owner_id: park.owner_id,
+      owner_name: park.owner_name,
+      owner_address: park.owner_address,
+      owner_postal_code: park.owner_postal_code,
+      owner_phone_number: park.owner_phone_number,
+      owner_email: park.owner_email
+    });
+  });
+
   const [selectedPark, setSelectedPark] = useState<PendingPark | null>(null);
   const [rejectionNote, setRejectionNote] = useState('');
   const [selectedImage, setSelectedImage] = useState<FacilityImage | null>(null);
@@ -57,6 +72,47 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
 
   const approval = useAdminApproval();
   const parkImages = useParkImages(selectedPark?.id || null);
+
+  // デバッグ用：owner_verificationsテーブルのデータを確認
+  useEffect(() => {
+    const debugOwnerVerifications = async () => {
+      console.log('🔍 Debugging owner_verifications table...');
+      
+      try {
+        const { data, error } = await supabase
+          .from('owner_verifications')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('❌ Error fetching owner_verifications:', error);
+        } else {
+          console.log('✅ Owner verifications data:', data);
+          
+          // identity_から始まるファイルを検索
+          const identityFiles = data?.filter(item => 
+            item.verification_id && item.verification_id.includes('identity_')
+          );
+          
+          console.log('📄 Identity files found:', identityFiles);
+          
+          // verification_dataの中身も確認
+          data?.forEach(item => {
+            console.log(`🔍 Verification item ${item.id}:`, {
+              user_id: item.user_id,
+              verification_id: item.verification_id,
+              status: item.status,
+              verification_data: item.verification_data
+            });
+          });
+        }
+      } catch (error) {
+        console.error('❌ Debug query failed:', error);
+      }
+    };
+    
+    debugOwnerVerifications();
+  }, []);
 
   // 本人確認書類データを取得
   useEffect(() => {
@@ -80,57 +136,85 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
 
       if (profileError) {
         console.error('❌ プロフィール取得エラー:', profileError);
-        setIdentityImageError('プロフィール情報の取得に失敗しました');
+        setIdentityImageError(`プロフィール情報の取得に失敗しました: ${profileError.message}`);
         return;
       }
 
-      // 本人確認書類情報を取得（user_idを使用）
+      console.log('✅ プロフィール情報:', profileData);
+
+      // 本人確認書類情報を取得
       const { data: identityData, error: identityError } = await supabase
         .from('owner_verifications')
         .select('*')
-        .eq('user_id', ownerId) // owner_idではなくuser_idを使用
+        .eq('user_id', ownerId)
         .order('created_at', { ascending: false })
         .limit(1);
 
       if (identityError) {
         console.error('❌ 本人確認書類取得エラー:', identityError);
-        setIdentityImageError('本人確認書類の取得に失敗しました');
-        return;
+        // エラーがあってもプロフィール情報は表示する
+        console.log('⚠️ 本人確認書類がないため、プロフィール情報のみ表示');
       }
 
-      console.log('✅ プロフィール情報:', profileData);
-      console.log('✅ 本人確認書類:', identityData);
+      console.log('📊 本人確認書類データ:', identityData);
 
       if (identityData && identityData.length > 0) {
         const identity = identityData[0];
-        // verification_dataからdocument_urlを取得
-        const documentUrl = identity.verification_data?.document_url || identity.verification_id;
-        const documentFilename = identity.verification_data?.file_name || 'identity_document';
+        console.log('📋 本人確認書類詳細:', identity);
+        
+        // verification_dataの構造を確認
+        console.log('🔍 verification_data:', identity.verification_data);
+        
+        // 複数の方法でdocument_urlを取得
+        let documentUrl = '';
+        let documentFilename = '';
+        
+        if (identity.verification_data) {
+          // verification_dataがオブジェクトの場合
+          if (typeof identity.verification_data === 'object') {
+            documentUrl = identity.verification_data.document_url || identity.verification_data.file_path || '';
+            documentFilename = identity.verification_data.file_name || identity.verification_data.filename || '';
+          }
+        }
+        
+        // document_urlが見つからない場合はverification_idを使用
+        if (!documentUrl && identity.verification_id) {
+          documentUrl = identity.verification_id;
+        }
+        
+        // ファイル名が見つからない場合はデフォルト名を使用
+        if (!documentFilename) {
+          documentFilename = documentUrl.split('/').pop() || 'identity_document';
+        }
+        
+        console.log('📄 最終的な画像URL:', documentUrl);
+        console.log('📄 ファイル名:', documentFilename);
         
         setOwnerIdentityData({
           id: identity.id,
-          owner_name: profileData.name || '',
-          postal_code: profileData.postal_code || '',
-          address: profileData.address || '',
-          phone_number: profileData.phone_number || '',
-          email: profileData.email || '',
+          owner_name: profileData.name || '名前未登録',
+          postal_code: profileData.postal_code || '未登録',
+          address: profileData.address || '未登録',
+          phone_number: profileData.phone_number || '未登録',
+          email: profileData.email || '未登録',
           identity_document_url: documentUrl,
           identity_document_filename: documentFilename,
-          identity_status: identity.status || '',
-          identity_created_at: identity.created_at || ''
+          identity_status: identity.status || 'pending',
+          identity_created_at: identity.created_at || new Date().toISOString()
         });
       } else {
         // 本人確認書類がない場合でも、プロフィール情報は表示
+        console.log('📋 本人確認書類未提出のため、プロフィール情報のみ表示');
         setOwnerIdentityData({
           id: '',
-          owner_name: profileData.name || '',
-          postal_code: profileData.postal_code || '',
-          address: profileData.address || '',
-          phone_number: profileData.phone_number || '',
-          email: profileData.email || '',
+          owner_name: profileData.name || '名前未登録',
+          postal_code: profileData.postal_code || '未登録',
+          address: profileData.address || '未登録',
+          phone_number: profileData.phone_number || '未登録',
+          email: profileData.email || '未登録',
           identity_document_url: '',
           identity_document_filename: '',
-          identity_status: '',
+          identity_status: 'not_submitted',
           identity_created_at: ''
         });
       }
@@ -621,6 +705,16 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                           {new Date(ownerIdentityData.identity_created_at).toLocaleDateString('ja-JP')}
                         </p>
                       </div>
+                      <div>
+                        <p className="text-gray-600">審査状況</p>
+                        <p className={`font-medium ${
+                          ownerIdentityData.identity_status === 'verified' ? 'text-green-600' :
+                          ownerIdentityData.identity_status === 'failed' ? 'text-red-600' : 'text-yellow-600'
+                        }`}>
+                          {ownerIdentityData.identity_status === 'verified' ? '承認済み' :
+                           ownerIdentityData.identity_status === 'failed' ? '却下' : '審査待ち'}
+                        </p>
+                      </div>
                     </div>
                     
                     <div className="mb-4">
@@ -631,6 +725,10 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                           alt="本人確認書類"
                           className="max-w-full h-auto max-h-96 rounded-lg border shadow-sm cursor-pointer hover:shadow-md transition-shadow"
                           onClick={() => setEnlargedImage(ownerIdentityData.identity_document_url)}
+                          onError={(e) => {
+                            console.error('❌ 画像の読み込みに失敗:', ownerIdentityData.identity_document_url);
+                            e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
+                          }}
                         />
                         <div className="absolute bottom-2 right-2">
                           <span className="px-2 py-1 bg-white bg-opacity-90 text-gray-800 text-xs rounded border shadow-sm">
@@ -655,14 +753,25 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <AlertTriangle className="w-5 h-5 text-red-600 mr-2" />
-                    <div>
-                      <p className="text-sm font-medium text-red-800">本人確認書類未提出</p>
-                      <p className="text-sm text-red-700">
-                        このオーナーは本人確認書類を提出していません。
-                      </p>
+                <div>
+                  <h4 className="font-medium mb-3 flex items-center">
+                    <FileText className="w-4 h-4 mr-2" />
+                    本人確認書類
+                  </h4>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <AlertTriangle className="w-5 h-5 text-red-600 mr-2 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-red-800">
+                          {ownerIdentityData.identity_status === 'not_submitted' ? '本人確認書類が未提出です' : '本人確認書類の取得に失敗しました'}
+                        </p>
+                        <p className="text-sm text-red-700 mt-1">
+                          {ownerIdentityData.identity_status === 'not_submitted' 
+                            ? 'このドッグラン申請には本人確認書類が添付されていません。申請者に本人確認書類の提出を依頼してください。'
+                            : 'システムエラーまたは画像ファイルの問題が発生している可能性があります。'
+                          }
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -855,6 +964,73 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
         <Card className="p-6">
           <h3 className="font-semibold mb-4">審査結果</h3>
           
+          {/* 審査判断の支援情報 */}
+          <div className="mb-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-medium text-blue-900 mb-2">審査チェックリスト</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center">
+                  <span className={`w-4 h-4 rounded-full mr-2 ${
+                    ownerIdentityData?.owner_name && ownerIdentityData.owner_name !== '名前未登録' 
+                      ? 'bg-green-500' : 'bg-red-500'
+                  }`}></span>
+                  <span>登録氏名: {ownerIdentityData?.owner_name || '未登録'}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className={`w-4 h-4 rounded-full mr-2 ${
+                    ownerIdentityData?.address && ownerIdentityData.address !== '未登録' 
+                      ? 'bg-green-500' : 'bg-red-500'
+                  }`}></span>
+                  <span>登録住所: {ownerIdentityData?.address || '未登録'}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className={`w-4 h-4 rounded-full mr-2 ${
+                    ownerIdentityData?.phone_number && ownerIdentityData.phone_number !== '未登録' 
+                      ? 'bg-green-500' : 'bg-red-500'
+                  }`}></span>
+                  <span>電話番号: {ownerIdentityData?.phone_number || '未登録'}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className={`w-4 h-4 rounded-full mr-2 ${
+                    ownerIdentityData?.identity_document_url 
+                      ? 'bg-green-500' : 'bg-red-500'
+                  }`}></span>
+                  <span>本人確認書類: {ownerIdentityData?.identity_document_url ? '提出済み' : '未提出'}</span>
+                </div>
+                {ownerIdentityData?.identity_document_url && (
+                  <div className="flex items-center">
+                    <span className={`w-4 h-4 rounded-full mr-2 ${
+                      ownerIdentityData.identity_status === 'verified' ? 'bg-green-500' :
+                      ownerIdentityData.identity_status === 'failed' ? 'bg-red-500' : 'bg-yellow-500'
+                    }`}></span>
+                    <span>本人確認状況: {
+                      ownerIdentityData.identity_status === 'verified' ? '承認済み' :
+                      ownerIdentityData.identity_status === 'failed' ? '却下' : '審査待ち'
+                    }</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* 審査判断の推奨事項 */}
+          {(!ownerIdentityData?.identity_document_url || ownerIdentityData.identity_status === 'not_submitted') && (
+            <div className="mb-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">審査判断の推奨事項</p>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      本人確認書類が未提出のため、申請を承認する前に申請者に本人確認書類の提出を依頼することを推奨します。
+                      または、不備として一時的に却下し、必要書類の提出を求めてください。
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               却下理由（却下する場合のみ入力）
@@ -864,7 +1040,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
               onChange={(e) => setRejectionNote(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={4}
-              placeholder="例: 施設の安全性に問題があります。安全対策を講じてから再度申請してください。"
+              placeholder="例: 本人確認書類が未提出のため、身元確認ができません。本人確認書類（運転免許証、パスポート、マイナンバーカードなど）を提出してから再度申請してください。"
             />
           </div>
           
@@ -881,6 +1057,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
               onClick={() => void handleParkApproval(selectedPark.id, true)}
               isLoading={approval.isProcessing}
               className="bg-green-600 hover:bg-green-700"
+              disabled={!ownerIdentityData?.identity_document_url && ownerIdentityData?.identity_status === 'not_submitted'}
             >
               <CheckCircle className="w-4 h-4 mr-2" />
               承認
@@ -918,6 +1095,29 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
         審査待ちドッグラン
       </h2>
       
+      {/* デバッグ情報を追加 */}
+      <div className="bg-gray-100 p-4 rounded-lg">
+        <h3 className="font-medium mb-2">デバッグ情報</h3>
+        <div className="text-sm space-y-1">
+          <p>取得したパーク数: {pendingParks.length}</p>
+          {pendingParks.length > 0 && (
+            <div>
+              <p>最初のパークの情報:</p>
+              <pre className="bg-white p-2 rounded text-xs overflow-x-auto">
+                {JSON.stringify({
+                  name: pendingParks[0]?.name,
+                  owner_id: pendingParks[0]?.owner_id,
+                  identity_document_url: pendingParks[0]?.identity_document_url,
+                  identity_document_filename: pendingParks[0]?.identity_document_filename,
+                  identity_status: pendingParks[0]?.identity_status,
+                  identity_created_at: pendingParks[0]?.identity_created_at
+                }, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
+      </div>
+      
       {pendingParks.length === 0 ? (
         <Card className="text-center py-12">
           <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
@@ -925,81 +1125,210 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
         </Card>
       ) : (
         <div className="space-y-4">
-          {pendingParks.map((park) => (
-            <Card key={park.id} className="p-6 hover:shadow-lg transition-shadow">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <h3 className="text-lg font-semibold">{park.name}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      park.status === 'first_stage_passed' ? 'bg-blue-100 text-blue-800' :
-                      park.status === 'second_stage_review' ? 'bg-purple-100 text-purple-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {park.status === 'first_stage_passed' ? '第一審査通過' :
-                       park.status === 'second_stage_review' ? '第二審査中' :
-                       '審査待ち'}
-                    </span>
-                  </div>
-                  <p className="text-gray-600 mb-2">{park.address}</p>
-                  <div className="text-sm text-gray-500">
-                    <p>オーナー: {park.owner_name}</p>
-                    <p>申請日: {new Date(park.created_at).toLocaleDateString('ja-JP')}</p>
-                    {park.second_stage_submitted_at && (
-                      <p>第二審査申請日: {new Date(park.second_stage_submitted_at).toLocaleDateString('ja-JP')}</p>
+          {pendingParks.map((park) => {
+            // 各パークの詳細情報をログ出力
+            console.log(`🔍 Processing park: ${park.name}`);
+            console.log(`🔍 Owner ID: ${park.owner_id}`);
+            console.log(`🔍 Identity document URL: ${park.identity_document_url}`);
+            console.log(`🔍 Identity filename: ${park.identity_document_filename}`);
+            console.log(`🔍 Identity status: ${park.identity_status}`);
+            console.log(`🔍 Identity created at: ${park.identity_created_at}`);
+            
+            return (
+              <Card key={park.id} className="p-6 hover:shadow-lg transition-shadow">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <h3 className="text-lg font-semibold">{park.name}</h3>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        park.status === 'first_stage_passed' ? 'bg-blue-100 text-blue-800' :
+                        park.status === 'second_stage_review' ? 'bg-purple-100 text-purple-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {park.status === 'first_stage_passed' ? '第一審査通過' :
+                         park.status === 'second_stage_review' ? '第二審査中' :
+                         '審査待ち'}
+                      </span>
+                    </div>
+                    <p className="text-gray-600 mb-3">{park.address}</p>
+                    
+                    {/* デバッグ情報 */}
+                    <div className="bg-yellow-50 p-4 rounded-lg mb-3">
+                      <h4 className="font-medium text-yellow-800 mb-2">デバッグ情報</h4>
+                      <div className="text-sm text-yellow-700">
+                        <p>Owner ID: {park.owner_id}</p>
+                        <p>Owner Name: {park.owner_name}</p>
+                        <p>Owner Address: {park.owner_address || '未設定'}</p>
+                        <p>Owner Postal Code: {park.owner_postal_code || '未設定'}</p>
+                        <p>Owner Phone: {park.owner_phone_number || '未設定'}</p>
+                        <p>Owner Email: {park.owner_email || '未設定'}</p>
+                      </div>
+                    </div>
+
+                    {/* 申請者詳細情報 */}
+                    <div className="bg-gray-50 p-4 rounded-lg mb-3">
+                      <h4 className="font-medium text-gray-900 mb-2 flex items-center">
+                        <User className="w-4 h-4 mr-2" />
+                        申請者情報
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-gray-600">氏名</p>
+                          <p className="font-medium">{park.owner_name}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">電話番号</p>
+                          <p className="font-medium">{park.owner_phone_number || '未登録'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">郵便番号</p>
+                          <p className="font-medium">{park.owner_postal_code || '未登録'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">住所</p>
+                          <p className="font-medium">{park.owner_address || '未登録'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 本人確認書類 */}
+                    <div className="bg-blue-50 p-4 rounded-lg mb-3">
+                      <h4 className="font-medium text-blue-900 mb-2 flex items-center">
+                        <FileText className="w-4 h-4 mr-2" />
+                        本人確認書類
+                      </h4>
+                      <div className="text-xs text-gray-600 mb-2">
+                        デバッグ: URL={park.identity_document_url || 'なし'}, Status={park.identity_status}
+                      </div>
+                      {park.identity_document_url && park.identity_document_url !== '' ? (
+                        <div className="flex items-center space-x-4">
+                          <div className="relative">
+                            <img
+                              src={`${supabase.storage.from('vaccine-certs').getPublicUrl(park.identity_document_url).data.publicUrl}`}
+                              alt="本人確認書類"
+                              className="w-20 h-20 object-cover rounded border shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                              onClick={() => {
+                                console.log(`🔍 Clicked image: ${park.identity_document_url}`);
+                                setEnlargedImage(park.identity_document_url || null);
+                              }}
+                              onLoad={() => {
+                                console.log(`✅ Image loaded successfully: ${park.identity_document_url}`);
+                              }}
+                              onError={(e) => {
+                                console.error('❌ 画像の読み込みに失敗:', park.identity_document_url);
+                                console.error('❌ Full URL:', `${supabase.storage.from('vaccine-certs').getPublicUrl(park.identity_document_url || '').data.publicUrl}`);
+                                e.currentTarget.src = 'https://via.placeholder.com/80x80?text=No+Image';
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-opacity rounded flex items-center justify-center cursor-pointer">
+                              <Eye className="w-4 h-4 text-white opacity-0 hover:opacity-100 transition-opacity" />
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-sm">
+                              <p className="font-medium text-blue-900">{park.identity_document_filename}</p>
+                              <p className="text-blue-700">
+                                状況: {park.identity_status === 'verified' ? '承認済み' :
+                                      park.identity_status === 'failed' ? '却下' : '審査待ち'}
+                              </p>
+                              {park.identity_created_at && (
+                                <p className="text-blue-600">
+                                  提出日: {new Date(park.identity_created_at).toLocaleDateString('ja-JP')}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center text-red-600">
+                          <AlertTriangle className="w-4 h-4 mr-2" />
+                          <span className="text-sm">本人確認書類が未提出です</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="text-sm text-gray-500">
+                      <p>申請日: {new Date(park.created_at).toLocaleDateString('ja-JP')}</p>
+                      {park.second_stage_submitted_at && (
+                        <p>第二審査申請日: {new Date(park.second_stage_submitted_at).toLocaleDateString('ja-JP')}</p>
+                      )}
+                    </div>
+                    
+                    {/* 画像審査状況 */}
+                    {park.status === 'second_stage_review' && (
+                      <div className="mt-3 grid grid-cols-4 gap-2 text-sm">
+                        <div className="bg-blue-50 p-2 rounded text-center">
+                          <p className="font-medium text-blue-800">全画像</p>
+                          <p className="text-blue-600">{park.total_images}枚</p>
+                        </div>
+                        <div className="bg-yellow-50 p-2 rounded text-center">
+                          <p className="font-medium text-yellow-800">審査待ち</p>
+                          <p className="text-yellow-600">{park.pending_images}枚</p>
+                        </div>
+                        <div className="bg-green-50 p-2 rounded text-center">
+                          <p className="font-medium text-green-800">承認済み</p>
+                          <p className="text-green-600">{park.approved_images}枚</p>
+                        </div>
+                        <div className="bg-red-50 p-2 rounded text-center">
+                          <p className="font-medium text-red-800">却下</p>
+                          <p className="text-red-600">{park.rejected_images}枚</p>
+                        </div>
+                      </div>
                     )}
                   </div>
                   
-                  {/* 画像審査状況 */}
-                  {park.status === 'second_stage_review' && (
-                    <div className="mt-3 grid grid-cols-4 gap-2 text-sm">
-                      <div className="bg-blue-50 p-2 rounded text-center">
-                        <p className="font-medium text-blue-800">全画像</p>
-                        <p className="text-blue-600">{park.total_images}枚</p>
-                      </div>
-                      <div className="bg-yellow-50 p-2 rounded text-center">
-                        <p className="font-medium text-yellow-800">審査待ち</p>
-                        <p className="text-yellow-600">{park.pending_images}枚</p>
-                      </div>
-                      <div className="bg-green-50 p-2 rounded text-center">
-                        <p className="font-medium text-green-800">承認済み</p>
-                        <p className="text-green-600">{park.approved_images}枚</p>
-                      </div>
-                      <div className="bg-red-50 p-2 rounded text-center">
-                        <p className="font-medium text-red-800">却下</p>
-                        <p className="text-red-600">{park.rejected_images}枚</p>
-                      </div>
-                    </div>
-                  )}
+                  <div className="flex flex-col space-y-2">
+                    <Button
+                      onClick={() => setSelectedPark(park)}
+                      variant="secondary"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      詳細を見る
+                    </Button>
+                    <Button
+                      onClick={() => void handleParkApproval(park.id, true)}
+                      className="bg-green-600 hover:bg-green-700"
+                      disabled={approval.isProcessing}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      承認
+                    </Button>
+                    <Button
+                      onClick={() => void handleParkApproval(park.id, false)}
+                      className="bg-red-600 hover:bg-red-700"
+                      disabled={approval.isProcessing}
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      却下
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex flex-col space-y-2">
-                  <Button
-                    onClick={() => setSelectedPark(park)}
-                    variant="secondary"
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    詳細を見る
-                  </Button>
-                  <Button
-                    onClick={() => void handleParkApproval(park.id, true)}
-                    className="bg-green-600 hover:bg-green-700"
-                    disabled={approval.isProcessing}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    承認
-                  </Button>
-                  <Button
-                    onClick={() => void handleParkApproval(park.id, false)}
-                    className="bg-red-600 hover:bg-red-700"
-                    disabled={approval.isProcessing}
-                  >
-                    <X className="w-4 h-4 mr-1" />
-                    却下
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+      
+      {/* 拡大画像表示モーダル（一覧表示用） */}
+      {enlargedImage && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="relative max-w-4xl max-h-full p-4">
+            <img
+              src={enlargedImage.startsWith('http') ? enlargedImage : `${supabase.storage.from('vaccine-certs').getPublicUrl(enlargedImage).data.publicUrl}`}
+              alt="拡大画像"
+              className="max-w-full max-h-full object-contain"
+              onError={(e) => {
+                console.error('❌ 拡大画像の読み込みに失敗:', enlargedImage);
+                e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
+              }}
+            />
+            <Button
+              onClick={() => setEnlargedImage(null)}
+              className="absolute top-2 right-2 bg-white text-black hover:bg-gray-100"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       )}
     </div>

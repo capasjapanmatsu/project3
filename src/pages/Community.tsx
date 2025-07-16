@@ -1,31 +1,31 @@
+import {
+    AlertTriangle,
+    Bell,
+    Calendar,
+    CheckCircle,
+    ChevronRight,
+    Filter,
+    Heart,
+    Key,
+    MapPin,
+    MessageSquare,
+    PawPrint,
+    Send,
+    Share,
+    UserCheck,
+    UserPlus,
+    Users,
+    X
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Users, 
-  UserPlus, 
-  UserCheck, 
-  Bell, 
-  MessageSquare, 
-  PawPrint, 
-  CheckCircle, 
-  X, 
-  AlertTriangle,
-  Calendar,
-  MapPin,
-  Heart,
-  Send,
-  ChevronRight,
-  Filter,
-  Key,
-  Share
-} from 'lucide-react';
-import Card from '../components/Card';
 import Button from '../components/Button';
-import { supabase } from '../utils/supabase';
-import useAuth from '../context/AuthContext';
-import type { FriendRequest, Friendship, Notification, Message, Dog, DogEncounter } from '../types';
+import Card from '../components/Card';
 import { NearbyDogs } from '../components/NearbyDogs';
-import { log, safeSupabaseQuery, parallelSupabaseQueries } from '../utils/helpers';
+import useAuth from '../context/AuthContext';
+import type { Dog, DogEncounter, FriendRequest, Friendship, Message, Notification } from '../types';
+import { log, parallelSupabaseQueries, safeSupabaseQuery } from '../utils/helpers';
+import { supabase } from '../utils/supabase';
 
 export function Community() {
   const { user } = useAuth();

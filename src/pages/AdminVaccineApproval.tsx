@@ -3,12 +3,11 @@ import {
     CheckCircle,
     Dog,
     Eye,
-    FileCheck,
+    FileText,
     Mail,
     MapPin,
     Phone,
     User,
-    XCircle,
     ZoomIn
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -44,12 +43,14 @@ export default function AdminVaccineApproval() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [applications, setApplications] = useState<VaccineApplication[]>([]);
+  const [pendingApplications, setPendingApplications] = useState<VaccineApplication[]>([]);
+  const [approvedApplications, setApprovedApplications] = useState<VaccineApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [success, setSuccess] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
   const [selectedApplication, setSelectedApplication] = useState<VaccineApplication | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
@@ -60,6 +61,33 @@ export default function AdminVaccineApproval() {
     }
     fetchApplications();
   }, [isAdmin, navigate]);
+
+  useEffect(() => {
+    if (applications.length > 0) {
+      separateApplications();
+    }
+  }, [applications]);
+
+  // メッセージ管理
+  const showSuccess = (message: string) => {
+    setSuccess(message);
+    setError('');
+    setTimeout(() => setSuccess(''), 5000);
+  };
+
+  const showError = (message: string) => {
+    setError(message);
+    setSuccess('');
+    setTimeout(() => setError(''), 8000);
+  };
+
+  const separateApplications = () => {
+    const pending = applications.filter(app => app.status === 'pending');
+    const approved = applications.filter(app => app.status === 'approved');
+    
+    setPendingApplications(pending);
+    setApprovedApplications(approved);
+  };
 
   const fetchApplications = async () => {
     try {
@@ -99,146 +127,95 @@ export default function AdminVaccineApproval() {
         dog_breed: item.dog?.breed || '不明',
         dog_gender: item.dog?.gender || '不明',
         dog_birth_date: item.dog?.birth_date || '',
-        owner_id: item.dog?.owner?.id || '',
+        owner_id: item.owner_id,
         owner_name: item.dog?.owner?.name || '不明',
         owner_email: item.dog?.owner?.email || '不明',
         owner_phone: item.dog?.owner?.phone_number || '',
         owner_address: item.dog?.owner?.address || '',
         owner_postal_code: item.dog?.owner?.postal_code || '',
-        rabies_vaccine_image: item.rabies_vaccine_image,
-        combo_vaccine_image: item.combo_vaccine_image,
-        rabies_expiry_date: item.rabies_expiry_date,
-        combo_expiry_date: item.combo_expiry_date,
-        status: item.status,
+        rabies_vaccine_image: item.rabies_vaccine_image || '',
+        combo_vaccine_image: item.combo_vaccine_image || '',
+        rabies_expiry_date: item.rabies_expiry_date || '',
+        combo_expiry_date: item.combo_expiry_date || '',
+        status: item.status || 'pending',
         created_at: item.created_at,
-        admin_notes: item.admin_notes
+        admin_notes: item.admin_notes || ''
       }));
 
+      console.log('✅ ワクチン証明書申請を取得しました:', formattedApplications.length, '件');
       setApplications(formattedApplications);
+      
     } catch (error) {
-      console.error('Error fetching applications:', error);
-      setError('ワクチン証明書データの取得に失敗しました');
+      console.error('❌ ワクチン証明書申請の取得に失敗しました:', error);
+      showError('ワクチン証明書申請の取得に失敗しました。');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleApprove = async (applicationId: string) => {
+    const confirmApprove = window.confirm('このワクチン証明書申請を承認してもよろしいですか？');
+    if (!confirmApprove) return;
+
     try {
       setActionLoading(true);
       setError('');
+      setSuccess('');
 
       // データベースを更新
       const { error: updateError } = await supabase
         .from('vaccine_certifications')
         .update({ 
           status: 'approved',
-          reviewed_at: new Date().toISOString()
+          approved_at: new Date().toISOString()
         })
         .eq('id', applicationId);
 
       if (updateError) throw updateError;
 
-      // 通知を送信
+      // 承認されたアプリケーションの情報を取得
       const application = applications.find(app => app.id === applicationId);
       if (application) {
-        const { error: notifyError } = await supabase
+        // 通知を送信
+        await supabase
           .from('notifications')
-          .insert([{
-            user_id: application.owner_id,
-            type: 'vaccine_approval',
-            title: 'ワクチン証明書が承認されました',
-            message: `${application.dog_name}のワクチン証明書が承認されました。ドッグランのご利用が可能になりました。`,
-            data: { vaccine_id: applicationId, dog_id: application.dog_id }
-          }]);
-
-        if (notifyError) console.error('通知送信エラー:', notifyError);
+          .insert([
+            {
+              user_id: application.owner_id,
+              title: 'ワクチン証明書承認',
+              message: `${application.dog_name}ちゃんのワクチン証明書が承認されました。`,
+              type: 'vaccine_approved',
+              created_at: new Date().toISOString(),
+              read: false
+            }
+          ]);
       }
 
-      // ローカル状態を更新
-      setApplications(prev => prev.map(app => 
-        app.id === applicationId 
-          ? { ...app, status: 'approved' as const }
-          : app
-      ));
+      showSuccess('ワクチン証明書を承認しました。');
+      
+      // 承認後にリストを更新
+      setApplications(prevApps => 
+        prevApps.map(app => 
+          app.id === applicationId 
+            ? { ...app, status: 'approved' as const }
+            : app
+        )
+      );
 
-      setShowModal(false);
-      setSelectedApplication(null);
     } catch (error) {
-      console.error('Error approving application:', error);
-      setError('ワクチン証明書の承認に失敗しました');
+      console.error('❌ 承認エラー:', error);
+      showError('承認処理に失敗しました。');
     } finally {
       setActionLoading(false);
     }
   };
-
-  const handleReject = async (applicationId: string) => {
-    if (!rejectionReason.trim()) {
-      setError('却下理由を入力してください');
-      return;
-    }
-
-    try {
-      setActionLoading(true);
-      setError('');
-
-      // データベースを更新
-      const { error: updateError } = await supabase
-        .from('vaccine_certifications')
-        .update({ 
-          status: 'rejected',
-          admin_notes: rejectionReason,
-          reviewed_at: new Date().toISOString()
-        })
-        .eq('id', applicationId);
-
-      if (updateError) throw updateError;
-
-      // 通知を送信
-      const application = applications.find(app => app.id === applicationId);
-      if (application) {
-        const { error: notifyError } = await supabase
-          .from('notifications')
-          .insert([{
-            user_id: application.owner_id,
-            type: 'vaccine_rejection',
-            title: 'ワクチン証明書について',
-            message: `${application.dog_name}のワクチン証明書の確認が必要です。理由: ${rejectionReason}`,
-            data: { vaccine_id: applicationId, dog_id: application.dog_id }
-          }]);
-
-        if (notifyError) console.error('通知送信エラー:', notifyError);
-      }
-
-      // ローカル状態を更新
-      setApplications(prev => prev.map(app => 
-        app.id === applicationId 
-          ? { ...app, status: 'rejected' as const, admin_notes: rejectionReason }
-          : app
-      ));
-
-      setShowModal(false);
-      setSelectedApplication(null);
-      setRejectionReason('');
-    } catch (error) {
-      console.error('Error rejecting application:', error);
-      setError('ワクチン証明書の却下に失敗しました');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const filteredApplications = applications.filter(app => {
-    if (filter === 'all') return true;
-    return app.status === filter;
-  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'text-yellow-600 bg-yellow-50';
-      case 'approved': return 'text-green-600 bg-green-50';
-      case 'rejected': return 'text-red-600 bg-red-50';
-      default: return 'text-gray-600 bg-gray-50';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -283,355 +260,395 @@ export default function AdminVaccineApproval() {
     );
   }
 
-  return (
-    <div className="max-w-7xl mx-auto p-4">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">ワクチン証明書 承認管理</h1>
-        <p className="text-gray-600">
-          登録されたワクチン証明書の承認・却下を管理します。
-        </p>
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">データを読み込み中...</p>
+        </div>
       </div>
+    );
+  }
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <div className="flex items-center">
-            <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
-            <span className="text-red-700">{error}</span>
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* ヘッダー */}
+        <div className="bg-white shadow rounded-lg mb-8">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h1 className="text-2xl font-bold text-gray-900">ワクチン証明書 承認管理</h1>
+            <p className="text-gray-600">登録されたワクチン証明書の承認・却下を管理します。</p>
+          </div>
+          
+          {/* エラー・成功メッセージ */}
+          {error && (
+            <div className="px-6 py-4 bg-red-50 border-l-4 border-red-400">
+              <div className="flex">
+                <AlertTriangle className="h-5 w-5 text-red-400 mr-2" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          )}
+          
+          {success && (
+            <div className="px-6 py-4 bg-green-50 border-l-4 border-green-400">
+              <div className="flex">
+                <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
+                <p className="text-sm text-green-700">{success}</p>
+              </div>
+            </div>
+          )}
+          
+          {/* タブナビゲーション */}
+          <div className="px-6">
+            <nav className="flex space-x-8" aria-label="Tabs">
+              <button
+                onClick={() => setActiveTab('pending')}
+                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'pending'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <FileText className="w-5 h-5 inline mr-2" />
+                承認待ち
+                <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                  {pendingApplications.length}
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('approved')}
+                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'approved'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Dog className="w-5 h-5 inline mr-2" />
+                登録中のワンちゃん
+                <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  {approvedApplications.length}
+                </span>
+              </button>
+            </nav>
           </div>
         </div>
-      )}
 
-      {/* フィルター */}
-      <div className="mb-6">
-        <div className="flex space-x-4">
-          {[
-            { key: 'all', label: 'すべて', count: applications.length },
-            { key: 'pending', label: '承認待ち', count: applications.filter(app => app.status === 'pending').length },
-            { key: 'approved', label: '承認済み', count: applications.filter(app => app.status === 'approved').length },
-            { key: 'rejected', label: '却下', count: applications.filter(app => app.status === 'rejected').length }
-          ].map(({ key, label, count }) => (
-            <button
-              key={key}
-              onClick={() => setFilter(key as any)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                filter === key
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              {label} ({count})
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 申請一覧 */}
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-        </div>
-      ) : filteredApplications.length === 0 ? (
-        <Card className="text-center py-12">
-          <FileCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">
-            {filter === 'all' 
-              ? 'ワクチン証明書申請がありません' 
-              : `${getStatusLabel(filter)}のワクチン証明書申請がありません`}
-          </p>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {filteredApplications.map((app) => (
-            <Card key={app.id} className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <Dog className="w-5 h-5 text-blue-600" />
-                    <h3 className="text-lg font-semibold text-gray-900">{app.dog_name}</h3>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(app.status)}`}>
-                      {getStatusLabel(app.status)}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">ワンちゃん情報</h4>
-                      <div className="space-y-1 text-sm text-gray-600">
-                        <div>犬種: {app.dog_breed}</div>
-                        <div>性別: {app.dog_gender}</div>
-                        <div>年齢: {getAge(app.dog_birth_date)}</div>
+        {/* コンテンツ */}
+        {activeTab === 'pending' && (
+          <div className="space-y-6">
+            {/* 承認待ち申請一覧 */}
+            {pendingApplications.length === 0 ? (
+              <Card className="text-center py-12">
+                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">承認待ちのワクチン証明書申請がありません</p>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {pendingApplications.map((app) => (
+                  <Card key={app.id} className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <Dog className="w-5 h-5 text-blue-600" />
+                          <h3 className="text-lg font-semibold text-gray-900">{app.dog_name}</h3>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(app.status)}`}>
+                            {getStatusLabel(app.status)}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-2">ワンちゃん情報</h4>
+                            <div className="space-y-1 text-sm text-gray-600">
+                              <div>犬種: {app.dog_breed}</div>
+                              <div>性別: {app.dog_gender}</div>
+                              <div>年齢: {getAge(app.dog_birth_date)}</div>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-2">飼い主情報</h4>
+                            <div className="space-y-1 text-sm text-gray-600">
+                              <div className="flex items-center">
+                                <User className="w-4 h-4 mr-1" />
+                                {app.owner_name}
+                              </div>
+                              <div className="flex items-center">
+                                <Mail className="w-4 h-4 mr-1" />
+                                {app.owner_email}
+                              </div>
+                              {app.owner_phone && (
+                                <div className="flex items-center">
+                                  <Phone className="w-4 h-4 mr-1" />
+                                  {app.owner_phone}
+                                </div>
+                              )}
+                              {app.owner_address && (
+                                <div className="flex items-center">
+                                  <MapPin className="w-4 h-4 mr-1" />
+                                  〒{app.owner_postal_code} {app.owner_address}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="text-sm text-gray-500">
+                          申請日: {formatDate(app.created_at)}
+                        </div>
+                      </div>
+                      
+                      <div className="flex space-x-2 ml-4">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            setSelectedApplication(app);
+                            setShowModal(true);
+                          }}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          詳細
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleApprove(app.id)}
+                          className="bg-green-600 hover:bg-green-700"
+                          disabled={actionLoading}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          承認
+                        </Button>
                       </div>
                     </div>
-                    
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">飼い主情報</h4>
-                      <div className="space-y-1 text-sm text-gray-600">
-                        <div className="flex items-center">
-                          <User className="w-4 h-4 mr-1" />
-                          {app.owner_name}
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'approved' && (
+          <div className="space-y-6">
+            {/* 承認済み申請一覧 */}
+            {approvedApplications.length === 0 ? (
+              <Card className="text-center py-12">
+                <Dog className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">承認済みのワクチン証明書がありません</p>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {approvedApplications.map((app) => (
+                  <Card key={app.id} className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <Dog className="w-5 h-5 text-green-600" />
+                          <h3 className="text-lg font-semibold text-gray-900">{app.dog_name}</h3>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(app.status)}`}>
+                            {getStatusLabel(app.status)}
+                          </span>
                         </div>
-                        <div className="flex items-center">
-                          <Mail className="w-4 h-4 mr-1" />
-                          {app.owner_email}
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-2">ワンちゃん情報</h4>
+                            <div className="space-y-1 text-sm text-gray-600">
+                              <div>犬種: {app.dog_breed}</div>
+                              <div>性別: {app.dog_gender}</div>
+                              <div>年齢: {getAge(app.dog_birth_date)}</div>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-2">飼い主情報</h4>
+                            <div className="space-y-1 text-sm text-gray-600">
+                              <div className="flex items-center">
+                                <User className="w-4 h-4 mr-1" />
+                                {app.owner_name}
+                              </div>
+                              <div className="flex items-center">
+                                <Mail className="w-4 h-4 mr-1" />
+                                {app.owner_email}
+                              </div>
+                              {app.owner_phone && (
+                                <div className="flex items-center">
+                                  <Phone className="w-4 h-4 mr-1" />
+                                  {app.owner_phone}
+                                </div>
+                              )}
+                              {app.owner_address && (
+                                <div className="flex items-center">
+                                  <MapPin className="w-4 h-4 mr-1" />
+                                  〒{app.owner_postal_code} {app.owner_address}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        {app.owner_phone && (
-                          <div className="flex items-center">
-                            <Phone className="w-4 h-4 mr-1" />
-                            {app.owner_phone}
-                          </div>
-                        )}
-                        {app.owner_address && (
-                          <div className="flex items-center">
-                            <MapPin className="w-4 h-4 mr-1" />
-                            〒{app.owner_postal_code} {app.owner_address}
-                          </div>
-                        )}
+                        
+                        <div className="text-sm text-gray-500">
+                          申請日: {formatDate(app.created_at)}
+                        </div>
                       </div>
+                      
+                      <div className="flex space-x-2 ml-4">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            setSelectedApplication(app);
+                            setShowModal(true);
+                          }}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          詳細
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 詳細モーダル */}
+        {showModal && selectedApplication && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold">ワクチン証明書詳細</h2>
+                  <button
+                    onClick={() => {
+                      setShowModal(false);
+                      setSelectedApplication(null);
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-3">ワンちゃん情報</h3>
+                    <div className="space-y-2 text-sm">
+                      <div><strong>名前:</strong> {selectedApplication.dog_name}</div>
+                      <div><strong>犬種:</strong> {selectedApplication.dog_breed}</div>
+                      <div><strong>性別:</strong> {selectedApplication.dog_gender}</div>
+                      <div><strong>年齢:</strong> {getAge(selectedApplication.dog_birth_date)}</div>
                     </div>
                   </div>
                   
-                  <div className="text-sm text-gray-500">
-                    申請日: {formatDate(app.created_at)}
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-3">飼い主情報</h3>
+                    <div className="space-y-2 text-sm">
+                      <div><strong>名前:</strong> {selectedApplication.owner_name}</div>
+                      <div><strong>メール:</strong> {selectedApplication.owner_email}</div>
+                      {selectedApplication.owner_phone && (
+                        <div><strong>電話:</strong> {selectedApplication.owner_phone}</div>
+                      )}
+                      {selectedApplication.owner_address && (
+                        <div><strong>住所:</strong> 〒{selectedApplication.owner_postal_code} {selectedApplication.owner_address}</div>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
-                <div className="flex space-x-2 ml-4">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      setSelectedApplication(app);
-                      setShowModal(true);
-                    }}
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    詳細
-                  </Button>
-                  {app.status === 'pending' && (
-                    <>
-                      <Button
-                        size="sm"
-                        onClick={() => handleApprove(app.id)}
-                        className="bg-green-600 hover:bg-green-700"
-                        disabled={actionLoading}
-                      >
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                        承認
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setSelectedApplication(app);
-                          setShowModal(true);
-                        }}
-                        className="bg-red-600 hover:bg-red-700"
-                        disabled={actionLoading}
-                      >
-                        <XCircle className="w-4 h-4 mr-1" />
-                        却下
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* 詳細モーダル */}
-      {showModal && selectedApplication && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">ワクチン証明書詳細</h2>
-                <button
-                  onClick={() => {
-                    setShowModal(false);
-                    setSelectedApplication(null);
-                    setRejectionReason('');
-                    setError('');
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <XCircle className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                {/* ワンちゃん情報 */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-4 flex items-center">
-                    <Dog className="w-5 h-5 mr-2" />
-                    ワンちゃん情報
-                  </h3>
-                  <div className="space-y-2 text-sm">
-                    <div><strong>名前:</strong> {selectedApplication.dog_name}</div>
-                    <div><strong>犬種:</strong> {selectedApplication.dog_breed}</div>
-                    <div><strong>性別:</strong> {selectedApplication.dog_gender}</div>
-                    <div><strong>年齢:</strong> {getAge(selectedApplication.dog_birth_date)}</div>
-                    <div><strong>生年月日:</strong> {selectedApplication.dog_birth_date ? formatDate(selectedApplication.dog_birth_date) : '不明'}</div>
-                  </div>
-                </div>
-
-                {/* 飼い主情報 */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-4 flex items-center">
-                    <User className="w-5 h-5 mr-2" />
-                    飼い主情報
-                  </h3>
-                  <div className="space-y-2 text-sm">
-                    <div><strong>名前:</strong> {selectedApplication.owner_name}</div>
-                    <div><strong>メールアドレス:</strong> {selectedApplication.owner_email}</div>
-                    {selectedApplication.owner_phone && (
-                      <div><strong>電話番号:</strong> {selectedApplication.owner_phone}</div>
+                <div className="mt-6">
+                  <h3 className="font-semibold text-gray-900 mb-3">ワクチン証明書画像</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedApplication.rabies_vaccine_image && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">
+                          狂犬病ワクチン
+                          {selectedApplication.rabies_expiry_date && (
+                            <span className="text-xs text-gray-500 ml-2">
+                              (有効期限: {formatDate(selectedApplication.rabies_expiry_date)})
+                            </span>
+                          )}
+                        </h4>
+                        <div className="relative">
+                          <img
+                            src={selectedApplication.rabies_vaccine_image}
+                            alt="狂犬病ワクチン証明書"
+                            className="w-full h-48 object-cover rounded-lg border cursor-pointer"
+                            onClick={() => setEnlargedImage(selectedApplication.rabies_vaccine_image!)}
+                          />
+                          <div className="absolute top-2 right-2">
+                            <button
+                              onClick={() => setEnlargedImage(selectedApplication.rabies_vaccine_image!)}
+                              className="bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-70"
+                            >
+                              <ZoomIn className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     )}
-                    {selectedApplication.owner_address && (
-                      <div><strong>住所:</strong> 〒{selectedApplication.owner_postal_code} {selectedApplication.owner_address}</div>
+                    
+                    {selectedApplication.combo_vaccine_image && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">
+                          混合ワクチン
+                          {selectedApplication.combo_expiry_date && (
+                            <span className="text-xs text-gray-500 ml-2">
+                              (有効期限: {formatDate(selectedApplication.combo_expiry_date)})
+                            </span>
+                          )}
+                        </h4>
+                        <div className="relative">
+                          <img
+                            src={selectedApplication.combo_vaccine_image}
+                            alt="混合ワクチン証明書"
+                            className="w-full h-48 object-cover rounded-lg border cursor-pointer"
+                            onClick={() => setEnlargedImage(selectedApplication.combo_vaccine_image!)}
+                          />
+                          <div className="absolute top-2 right-2">
+                            <button
+                              onClick={() => setEnlargedImage(selectedApplication.combo_vaccine_image!)}
+                              className="bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-70"
+                            >
+                              <ZoomIn className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
-              </div>
-
-              {/* ワクチン証明書画像 */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-4">ワクチン証明書</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {selectedApplication.rabies_vaccine_image && (
-                    <div>
-                      <h4 className="font-medium mb-2">狂犬病ワクチン</h4>
-                      <div className="relative">
-                        <img
-                          src={selectedApplication.rabies_vaccine_image}
-                          alt="狂犬病ワクチン証明書"
-                          className="w-full h-48 object-cover rounded-lg border cursor-pointer hover:opacity-80"
-                          onClick={() => setEnlargedImage(selectedApplication.rabies_vaccine_image!)}
-                        />
-                        <button
-                          onClick={() => setEnlargedImage(selectedApplication.rabies_vaccine_image!)}
-                          className="absolute top-2 right-2 bg-white bg-opacity-80 p-1 rounded-full hover:bg-opacity-100"
-                        >
-                          <ZoomIn className="w-4 h-4" />
-                        </button>
-                      </div>
-                      {selectedApplication.rabies_expiry_date && (
-                        <p className="text-sm text-gray-600 mt-2">
-                          有効期限: {formatDate(selectedApplication.rabies_expiry_date)}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  
-                  {selectedApplication.combo_vaccine_image && (
-                    <div>
-                      <h4 className="font-medium mb-2">混合ワクチン</h4>
-                      <div className="relative">
-                        <img
-                          src={selectedApplication.combo_vaccine_image}
-                          alt="混合ワクチン証明書"
-                          className="w-full h-48 object-cover rounded-lg border cursor-pointer hover:opacity-80"
-                          onClick={() => setEnlargedImage(selectedApplication.combo_vaccine_image!)}
-                        />
-                        <button
-                          onClick={() => setEnlargedImage(selectedApplication.combo_vaccine_image!)}
-                          className="absolute top-2 right-2 bg-white bg-opacity-80 p-1 rounded-full hover:bg-opacity-100"
-                        >
-                          <ZoomIn className="w-4 h-4" />
-                        </button>
-                      </div>
-                      {selectedApplication.combo_expiry_date && (
-                        <p className="text-sm text-gray-600 mt-2">
-                          有効期限: {formatDate(selectedApplication.combo_expiry_date)}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                
+                <div className="mt-6 text-sm text-gray-500">
+                  申請日: {formatDate(selectedApplication.created_at)}
                 </div>
-              </div>
-
-              {/* 却下理由入力（承認待ちの場合のみ） */}
-              {selectedApplication.status === 'pending' && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    却下理由（却下する場合のみ入力）
-                  </label>
-                  <textarea
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={3}
-                    placeholder="却下理由を入力してください"
-                  />
-                </div>
-              )}
-
-              {/* 管理者メモ（既に却下済みの場合） */}
-              {selectedApplication.status === 'rejected' && selectedApplication.admin_notes && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    却下理由
-                  </label>
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm text-red-800">{selectedApplication.admin_notes}</p>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end space-x-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setShowModal(false);
-                    setSelectedApplication(null);
-                    setRejectionReason('');
-                    setError('');
-                  }}
-                >
-                  閉じる
-                </Button>
-                {selectedApplication.status === 'pending' && (
-                  <>
-                    <Button
-                      onClick={() => handleReject(selectedApplication.id)}
-                      className="bg-red-600 hover:bg-red-700"
-                      disabled={actionLoading}
-                    >
-                      却下
-                    </Button>
-                    <Button
-                      onClick={() => handleApprove(selectedApplication.id)}
-                      className="bg-green-600 hover:bg-green-700"
-                      disabled={actionLoading}
-                    >
-                      承認
-                    </Button>
-                  </>
-                )}
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* 画像拡大モーダル */}
-      {enlargedImage && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50">
-          <div className="relative max-w-4xl max-h-full">
-            <button
-              onClick={() => setEnlargedImage(null)}
-              className="absolute top-4 right-4 text-white hover:text-gray-300"
-            >
-              <XCircle className="w-8 h-8" />
-            </button>
-            <img
-              src={enlargedImage}
-              alt="拡大画像"
-              className="max-w-full max-h-full object-contain"
-            />
+        {/* 画像拡大モーダル */}
+        {enlargedImage && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+            <div className="relative max-w-4xl max-h-full">
+              <button
+                onClick={() => setEnlargedImage(null)}
+                className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70"
+              >
+                ×
+              </button>
+              <img
+                src={enlargedImage}
+                alt="拡大画像"
+                className="max-w-full max-h-full object-contain"
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 } 

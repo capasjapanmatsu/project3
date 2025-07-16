@@ -13,6 +13,16 @@ export interface PendingPark {
   pending_images: number;
   approved_images: number;
   rejected_images: number;
+  // 申請者の詳細情報
+  owner_postal_code?: string;
+  owner_address?: string;
+  owner_phone_number?: string;
+  owner_email?: string;
+  // 本人確認書類情報
+  identity_document_url?: string;
+  identity_document_filename?: string;
+  identity_status?: string;
+  identity_created_at?: string;
 }
 
 export interface PendingVaccine {

@@ -1,19 +1,17 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import AnimatedElement, { FadeIn, SlideUp } from '../components/accessibility/AnimatedElement';
+import { FeaturesSection } from '../components/home/FeaturesSection';
 import { HeroSection } from '../components/home/HeroSection';
-import { NetworkErrorBanner } from '../components/home/NetworkErrorBanner';
 import { MarqueeDogsSection } from '../components/home/MarqueeDogsSection';
+import { NetworkErrorBanner } from '../components/home/NetworkErrorBanner';
 import { NewsSection } from '../components/home/NewsSection';
 import { OwnerRecruitmentBanner } from '../components/home/OwnerRecruitmentBanner';
-import { FeaturesSection } from '../components/home/FeaturesSection';
 import { UsageRulesSection } from '../components/home/UsageRulesSection';
 import useAuth from '../context/AuthContext';
-import { supabase } from '../utils/supabase';
-import { testSupabaseConnection } from '../utils/supabase';
-import type { Dog } from '../types';
-import SkipNavigation from '../components/accessibility/SkipNavigation';
-import AnimatedElement, { FadeIn, SlideUp } from '../components/accessibility/AnimatedElement';
 import { useResponsive } from '../hooks/useResponsive';
-import { logger, performanceLogger } from '../utils/logger';
+import type { Dog } from '../types';
+import { logger } from '../utils/logger';
+import { supabase } from '../utils/supabase';
 
 export function Home() {
   const { user } = useAuth();
@@ -26,15 +24,6 @@ export function Home() {
   
   // レスポンシブフック
   const { isMobile, isTablet, prefersReducedMotion } = useResponsive();
-
-  // スキップリンクをメモ化
-  const skipLinks = useMemo(() => [
-    { href: '#main-content', label: 'メインコンテンツにスキップ' },
-    { href: '#hero-section', label: 'ヒーローセクションにスキップ' },
-    { href: '#features-section', label: '機能紹介にスキップ' },
-    { href: '#news-section', label: '新着情報にスキップ' },
-    { href: '#usage-rules', label: '利用方法・料金にスキップ' },
-  ], []);
 
   // ネットワーク状態の監視
   useEffect(() => {
@@ -271,8 +260,6 @@ export function Home() {
 
   return (
     <>
-      <SkipNavigation links={skipLinks} />
-      
       <div className="min-h-screen bg-gray-50" role="main">
         {/* ネットワークエラーバナー */}
         <FadeIn duration="fast">

@@ -1,23 +1,23 @@
+import {
+    AlertTriangle,
+    ArrowRight,
+    CreditCard,
+    Crown,
+    Minus,
+    Plus,
+    ShoppingCart,
+    Trash2,
+    Truck
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { 
-  ShoppingCart, 
-  Plus, 
-  Minus, 
-  Trash2, 
-  ArrowRight,
-  Crown,
-  Truck,
-  CreditCard,
-  AlertTriangle
-} from 'lucide-react';
-import Card from '../components/Card';
 import Button from '../components/Button';
-import { supabase } from '../utils/supabase';
+import Card from '../components/Card';
 import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import type { CartItem } from '../types';
 import { log, safeSupabaseQuery } from '../utils/helpers';
+import { supabase } from '../utils/supabase';
 
 export function Cart() {
   const { user } = useAuth();

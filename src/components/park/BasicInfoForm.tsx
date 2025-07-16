@@ -1,5 +1,7 @@
 import { AlertTriangle, Building, CheckCircle, DollarSign } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { supabase } from '../../utils/supabase';
 import Button from '../Button';
 import Card from '../Card';
 import Input from '../Input';
@@ -39,19 +41,69 @@ export default function BasicInfoForm({
   error,
   isLoading,
 }: BasicInfoFormProps) {
+  const [nameError, setNameError] = useState<string>('');
+  const [isCheckingName, setIsCheckingName] = useState(false);
+
   const updateFormData = (updates: Partial<BasicInfoFormData>) => {
     onFormDataChange(updates);
   };
+
+  // ドッグラン名の重複チェック
+  const checkDuplicateName = async (name: string) => {
+    if (!name.trim()) {
+      setNameError('');
+      return;
+    }
+
+    setIsCheckingName(true);
+    try {
+      const { data, error } = await supabase
+        .from('dog_parks')
+        .select('id, name')
+        .eq('name', name.trim())
+        .limit(1);
+
+      if (error) {
+        console.error('名前重複チェックエラー:', error);
+        setNameError('');
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setNameError('このドッグラン名は既に使用されています。別の名前を選択してください。');
+      } else {
+        setNameError('');
+      }
+    } catch (error) {
+      console.error('名前重複チェックエラー:', error);
+      setNameError('');
+    } finally {
+      setIsCheckingName(false);
+    }
+  };
+
+  // ドッグラン名が変更されたら重複チェック
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.name.trim()) {
+        checkDuplicateName(formData.name);
+      } else {
+        setNameError('');
+      }
+    }, 500); // 500ms後に実行（デバウンス）
+
+    return () => clearTimeout(timer);
+  }, [formData.name]);
 
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
         <div className="flex items-center space-x-2 mb-4">
           <CheckCircle className="w-6 h-6 text-green-600" />
-          <span className="text-green-800 font-medium">第一審査・本人確認完了</span>
+          <span className="text-green-800 font-medium">第一次審査/本人確認申請中</span>
         </div>
         <h1 className="text-2xl font-bold mb-2">ドッグラン登録 - 詳細情報入力</h1>
-        <p className="text-gray-600">第一審査・本人確認が完了しました。詳細な施設情報を入力してください。</p>
+        <p className="text-gray-600">第一次審査/本人確認申請中です。詳細な施設情報を入力してください。</p>
       </div>
 
       {/* 審査状況表示 */}
@@ -60,8 +112,8 @@ export default function BasicInfoForm({
           <div className="flex items-center space-x-3">
             <CheckCircle className="w-6 h-6 text-green-600" />
             <div>
-              <h3 className="font-semibold text-green-900">第一審査・本人確認完了</h3>
-              <p className="text-sm text-green-800">基本条件と本人確認をクリアしました</p>
+              <h3 className="font-semibold text-green-900">第一次審査/本人確認申請中</h3>
+              <p className="text-sm text-green-800">基本条件と本人確認を申請中です</p>
             </div>
           </div>
           <div className="text-right text-sm text-green-700">
@@ -89,6 +141,15 @@ export default function BasicInfoForm({
               placeholder="例: 渋谷中央ドッグラン"
               required
             />
+            {isCheckingName && (
+              <p className="text-xs text-blue-600 mt-1">名前の重複を確認中...</p>
+            )}
+            {nameError && (
+              <p className="text-xs text-red-600 mt-1 flex items-start space-x-1">
+                <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                <span>{nameError}</span>
+              </p>
+            )}
           </div>
 
           <div className="mb-4">
@@ -248,11 +309,20 @@ export default function BasicInfoForm({
             <Button 
               type="submit" 
               isLoading={isLoading}
+              disabled={isLoading || !!nameError || isCheckingName}
               className="bg-blue-600 hover:bg-blue-700"
             >
               第二審査に申し込む
             </Button>
           </div>
+          {nameError && (
+            <div className="mt-2 p-3 bg-red-50 rounded-lg">
+              <p className="text-sm text-red-800 flex items-start space-x-2">
+                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <span>ドッグラン名に問題があります。名前を変更してから再度お試しください。</span>
+              </p>
+            </div>
+          )}
         </form>
       </Card>
     </div>

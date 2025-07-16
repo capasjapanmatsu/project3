@@ -1,5 +1,5 @@
+import { log } from './helpers';
 import { supabase } from './supabase';
-import { log, handleSupabaseError } from './helpers';
 
 // Supabaseの接続テスト
 export const testSupabaseConnection = async () => {

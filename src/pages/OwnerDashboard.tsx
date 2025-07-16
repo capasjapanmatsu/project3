@@ -1,11 +1,11 @@
+import { AlertTriangle, BarChart4, CheckCircle, ChevronRight, Clock, DollarSign, Eye, FileText, MapPin, PlusCircle, QrCode, RefreshCw, Star, Trash2, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PlusCircle, MapPin, Clock, AlertTriangle, CheckCircle, FileText, QrCode, Eye, Star, DollarSign, TrendingUp, BarChart4, Users, ChevronRight, Trash2, RefreshCw } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 import type { DogPark } from '../types';
+import { supabase } from '../utils/supabase';
 
 export function OwnerDashboard() {
   const { user } = useAuth();
@@ -70,15 +70,31 @@ export function OwnerDashboard() {
   };
 
   useEffect(() => {
+    console.log('🚀 OwnerDashboard初期化開始');
+    
     if (!user) {
+      console.log('❌ ユーザーが未認証、ログインページに移動');
       navigate('/login');
       return;
     }
     
+    console.log('✅ ユーザー認証済み:', user.id);
+    
     const loadData = async () => {
-      setIsLoading(true);
-      await fetchParks();
-      setIsLoading(false);
+      try {
+        console.log('📡 データ取得開始');
+        setIsLoading(true);
+        setError('');
+        
+        await fetchParks();
+        
+        console.log('✅ データ取得完了');
+      } catch (error) {
+        console.error('❌ 初期データ取得エラー:', error);
+        setError('データの取得に失敗しました。ページを再読み込みしてください。');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadData();

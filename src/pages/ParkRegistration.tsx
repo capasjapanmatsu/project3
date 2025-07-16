@@ -346,17 +346,24 @@ export function ParkRegistration() {
 
   const handleBasicInfoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🚀 フォーム送信開始');
     setIsLoading(true);
+    clearError();
 
     try {
       await executeWithErrorHandling(async () => {
+        console.log('📡 ユーザー認証確認中...');
         // Get the current user
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
         if (userError || !user) {
+          console.error('❌ ユーザー認証エラー:', userError);
           throw new Error('ユーザー認証に失敗しました。再度ログインしてください。');
         }
 
+        console.log('✅ ユーザー認証成功:', user.id);
+
+        console.log('📝 プロフィール更新中...');
         // プロフィールのuser_typeを'owner'に更新
         const { error: profileError } = await supabase
           .from('profiles')
@@ -364,32 +371,50 @@ export function ParkRegistration() {
           .eq('id', user.id);
 
         if (profileError) {
-          console.error('Error updating profile:', profileError);
+          console.error('❌ プロフィール更新エラー:', profileError);
           throw new Error('プロフィールの更新に失敗しました。');
         }
 
-        const { error } = await supabase.from('dog_parks').insert([
-          {
-            owner_id: user.id, // Add the owner_id field to satisfy RLS policy
-            name: formData.name,
-            description: formData.description,
-            address: formData.address,
-            price: 800, // 固定料金
-            max_capacity: parseInt(formData.maxCapacity, 10),
-            large_dog_area: formData.largeDogArea,
-            small_dog_area: formData.smallDogArea,
-            private_booths: formData.privateBooths,
-            private_booth_count: parseInt(formData.privateBoothCount, 10),
-            private_booth_price: 0, // 追加料金なし（サブスク・1日券に含まれる）
-            facilities: formData.facilities,
-            facility_details: formData.facilityDetails,
-            status: 'pending', // 第一審査・本人確認待ち状態
-          },
-        ]);
+        console.log('✅ プロフィール更新成功');
 
-        if (error) throw error;
-        navigate('/owner-dashboard');
+        console.log('🏢 ドッグラン情報登録中...');
+        const parkData = {
+          owner_id: user.id,
+          name: formData.name,
+          description: formData.description,
+          address: formData.address,
+          price: 800,
+          max_capacity: parseInt(formData.maxCapacity, 10),
+          large_dog_area: formData.largeDogArea,
+          small_dog_area: formData.smallDogArea,
+          private_booths: formData.privateBooths,
+          private_booth_count: parseInt(formData.privateBoothCount, 10),
+          private_booth_price: 0,
+          facilities: formData.facilities,
+          facility_details: formData.facilityDetails,
+          status: 'pending',
+        };
+
+        console.log('📋 登録データ:', parkData);
+
+        const { error: insertError } = await supabase.from('dog_parks').insert([parkData]);
+
+        if (insertError) {
+          console.error('❌ ドッグラン登録エラー:', insertError);
+          throw insertError;
+        }
+
+        console.log('✅ ドッグラン登録成功');
+        console.log('🔄 オーナーダッシュボードに移動中...');
+        
+        // 少し待機してから画面遷移
+        setTimeout(() => {
+          navigate('/owner-dashboard');
+        }, 100);
       });
+    } catch (error) {
+      console.error('❌ 全体エラー:', error);
+      handleError(error instanceof Error ? error : new Error('不明なエラーが発生しました。'));
     } finally {
       setIsLoading(false);
     }

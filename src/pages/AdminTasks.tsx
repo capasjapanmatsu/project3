@@ -1,24 +1,22 @@
+import {
+    AlertTriangle,
+    ArrowLeft,
+    Building,
+    CheckCircle,
+    Clock,
+    Eye,
+    FileCheck,
+    MessageSquare,
+    Shield,
+    X
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { 
-  Shield, 
-  AlertTriangle, 
-  CheckCircle, 
-  X, 
-  Eye, 
-  FileCheck, 
-  Building,
-  MessageSquare,
-  ArrowLeft,
-  Clock,
-  Users,
-  Calendar
-} from 'lucide-react';
-import Card from '../components/Card';
 import Button from '../components/Button';
+import Card from '../components/Card';
+import type { Dog, DogPark, Profile, VaccineCertification } from '../types';
+import { log } from '../utils/helpers';
 import { supabase } from '../utils/supabase';
-import type { DogPark, VaccineCertification, Dog, Profile } from '../types';
-import { log, safeSupabaseQuery } from '../utils/helpers';
 
 interface TaskStats {
   pendingVaccines: number;
