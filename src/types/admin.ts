@@ -23,6 +23,29 @@ export interface PendingPark {
   identity_document_filename?: string;
   identity_status?: string;
   identity_created_at?: string;
+  // 追加のパークデータ
+  description?: string;
+  price?: number;
+  max_capacity?: number;
+  large_dog_area?: boolean;
+  small_dog_area?: boolean;
+  private_booths?: boolean;
+  private_booth_count?: number;
+  facilities?: {
+    parking: boolean;
+    shower: boolean;
+    restroom: boolean;
+    agility: boolean;
+    rest_area: boolean;
+    water_station: boolean;
+  };
+  facility_details?: string;
+  image_url?: string;
+  cover_image_url?: string;
+  average_rating?: number;
+  review_count?: number;
+  // 設備画像の詳細データ
+  facility_images?: FacilityImage[];
 }
 
 export interface PendingVaccine {

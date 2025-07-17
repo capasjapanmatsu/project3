@@ -5,9 +5,11 @@ import {
     Check,
     CheckCircle,
     Clock,
+    FileText,
     Globe,
     MapPin,
     Phone,
+    User,
     XCircle
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -35,6 +37,14 @@ interface PetFacility {
   created_at: string;
   owner_id: string;
   images: FacilityImage[];
+  // 本人確認書類の情報を追加
+  identity_document_url?: string;
+  identity_document_filename?: string;
+  // オーナー情報
+  owner_name?: string;
+  owner_address?: string;
+  owner_phone?: string;
+  owner_email?: string;
 }
 
 const CATEGORY_LABELS: { [key: string]: string } = {
@@ -93,10 +103,18 @@ export default function AdminFacilityApproval() {
       setIsLoading(true);
       setError('');
 
-      // 施設データを取得
+      // 施設データとプロフィール情報を取得
       const { data: facilitiesData, error: facilitiesError } = await supabase
         .from('pet_facilities')
-        .select('*')
+        .select(`
+          *,
+          profiles:owner_id (
+            name,
+            address,
+            phone_number,
+            email
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (facilitiesError) {
@@ -115,10 +133,24 @@ export default function AdminFacilityApproval() {
 
           if (imagesError) {
             console.error('Images fetch error:', imagesError);
-            return { ...facility, images: [] };
+            return { 
+              ...facility, 
+              images: [],
+              owner_name: facility.profiles?.name || 'Unknown',
+              owner_address: facility.profiles?.address || '住所未登録',
+              owner_phone: facility.profiles?.phone_number || '',
+              owner_email: facility.profiles?.email || ''
+            };
           }
 
-          return { ...facility, images: images || [] };
+          return { 
+            ...facility, 
+            images: images || [],
+            owner_name: facility.profiles?.name || 'Unknown',
+            owner_address: facility.profiles?.address || '住所未登録',
+            owner_phone: facility.profiles?.phone_number || '',
+            owner_email: facility.profiles?.email || ''
+          };
         })
       );
 
@@ -495,41 +527,112 @@ export default function AdminFacilityApproval() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div>
                     <h3 className="text-lg font-semibold mb-3">基本情報</h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center">
-                        <MapPin className="w-5 h-5 text-gray-500 mr-3" />
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm text-gray-600">
+                        <MapPin className="w-4 h-4 mr-2" />
                         <span>{selectedFacility.address}</span>
                       </div>
                       {selectedFacility.phone && (
-                        <div className="flex items-center">
-                          <Phone className="w-5 h-5 text-gray-500 mr-3" />
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Phone className="w-4 h-4 mr-2" />
                           <span>{selectedFacility.phone}</span>
                         </div>
                       )}
                       {selectedFacility.website && (
-                        <div className="flex items-center">
-                          <Globe className="w-5 h-5 text-gray-500 mr-3" />
-                          <a
-                            href={selectedFacility.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800"
-                          >
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Globe className="w-4 h-4 mr-2" />
+                          <a href={selectedFacility.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
                             {selectedFacility.website}
                           </a>
                         </div>
                       )}
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        <span>{new Date(selectedFacility.created_at).toLocaleDateString('ja-JP')}</span>
+                      </div>
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-semibold mb-3">ステータス</h3>
-                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedFacility.status)}`}>
-                      {selectedFacility.status === 'pending' && <Clock className="w-4 h-4 mr-2" />}
-                      {selectedFacility.status === 'approved' && <CheckCircle className="w-4 h-4 mr-2" />}
-                      {selectedFacility.status === 'rejected' && <XCircle className="w-4 h-4 mr-2" />}
-                      {getStatusLabel(selectedFacility.status)}
+                    <h3 className="text-lg font-semibold mb-3">オーナー情報</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm text-gray-600">
+                        <User className="w-4 h-4 mr-2" />
+                        <span>{selectedFacility.owner_name}</span>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <MapPin className="w-4 h-4 mr-2" />
+                        <span>{selectedFacility.owner_address}</span>
+                      </div>
+                      {selectedFacility.owner_phone && (
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Phone className="w-4 h-4 mr-2" />
+                          <span>{selectedFacility.owner_phone}</span>
+                        </div>
+                      )}
+                      {selectedFacility.owner_email && (
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Globe className="w-4 h-4 mr-2" />
+                          <span>{selectedFacility.owner_email}</span>
+                        </div>
+                      )}
                     </div>
+                  </div>
+                </div>
+
+                {/* 本人確認書類セクション */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center">
+                    <FileText className="w-5 h-5 mr-2" />
+                    本人確認書類
+                  </h3>
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    {selectedFacility.identity_document_url && selectedFacility.identity_document_url !== '' ? (
+                      <div className="flex items-start space-x-4">
+                        <div className="relative">
+                          <img
+                            src={`${supabase.storage.from('vaccine-certs').getPublicUrl(selectedFacility.identity_document_url || '').data.publicUrl}`}
+                            alt="本人確認書類"
+                            className="w-48 h-32 object-cover rounded border shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                            onClick={() => {
+                              window.open(`${supabase.storage.from('vaccine-certs').getPublicUrl(selectedFacility.identity_document_url || '').data.publicUrl}`, '_blank');
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <div className="mb-2">
+                            <span className="text-sm font-medium text-gray-700">ファイル名:</span>
+                            <span className="text-sm text-gray-600 ml-2">{selectedFacility.identity_document_filename || 'identity_document'}</span>
+                          </div>
+                          <div className="mb-2">
+                            <span className="text-sm font-medium text-gray-700">登録者情報:</span>
+                            <div className="text-sm text-gray-600 ml-2">
+                              <p>氏名: {selectedFacility.owner_name}</p>
+                              <p>住所: {selectedFacility.owner_address}</p>
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-2">
+                            クリックして拡大表示
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <FileText className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-600">本人確認書類が提出されていません</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ステータス */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3">ステータス</h3>
+                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedFacility.status)}`}>
+                    {selectedFacility.status === 'pending' && <Clock className="w-4 h-4 mr-2" />}
+                    {selectedFacility.status === 'approved' && <CheckCircle className="w-4 h-4 mr-2" />}
+                    {selectedFacility.status === 'rejected' && <XCircle className="w-4 h-4 mr-2" />}
+                    {getStatusLabel(selectedFacility.status)}
                   </div>
                 </div>
 

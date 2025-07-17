@@ -1,23 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Building, 
-  MapPin, 
-  Phone, 
-  Globe, 
-  Clock, 
-  Upload,
-  Image,
-  X,
-  CheckCircle,
-  AlertCircle,
-  Info
+import {
+    AlertCircle,
+    Building,
+    CheckCircle,
+    FileText,
+    Image,
+    Info,
+    X
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
-import Input from '../components/Input';
 import Card from '../components/Card';
-import { supabase } from '../utils/supabase';
+import Input from '../components/Input';
 import useAuth from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
 
 // 画像処理ユーティリティ
 const processFacilityImage = (file: File): Promise<string> => {
@@ -70,6 +66,7 @@ interface FacilityForm {
   website: string;
   description: string;
   images: string[];
+  identityDocument: File | null; // 本人確認書類を追加
 }
 
 const FACILITY_CATEGORIES = [
@@ -91,6 +88,7 @@ export default function FacilityRegistration() {
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [identityDocumentPreview, setIdentityDocumentPreview] = useState<string>(''); // 本人確認書類プレビュー
   
   const [formData, setFormData] = useState<FacilityForm>({
     name: '',
@@ -99,7 +97,8 @@ export default function FacilityRegistration() {
     phone: '',
     website: '',
     description: '',
-    images: []
+    images: [],
+    identityDocument: null
   });
 
   // 認証チェック
@@ -166,6 +165,40 @@ export default function FacilityRegistration() {
     }));
   };
 
+  // 本人確認書類のアップロード処理
+  const handleIdentityDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // ファイルサイズチェック (10MB以下)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('本人確認書類のファイルサイズは10MB以下にしてください');
+      return;
+    }
+
+    // ファイル形式チェック
+    if (!file.type.startsWith('image/')) {
+      setError('本人確認書類は画像ファイルを選択してください');
+      return;
+    }
+
+    setFormData(prev => ({ ...prev, identityDocument: file }));
+    
+    // プレビュー画像を作成
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setIdentityDocumentPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    setError('');
+  };
+
+  // 本人確認書類を削除
+  const removeIdentityDocument = () => {
+    setFormData(prev => ({ ...prev, identityDocument: null }));
+    setIdentityDocumentPreview('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -179,10 +212,31 @@ export default function FacilityRegistration() {
       return;
     }
 
+    if (!formData.identityDocument) {
+      setError('本人確認書類をアップロードしてください');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
     try {
+      // 本人確認書類をアップロード
+      let identityDocumentUrl = '';
+      if (formData.identityDocument) {
+        const fileName = `facility_identity_${user.id}_${Date.now()}_${formData.identityDocument.name}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('vaccine-certs')
+          .upload(fileName, formData.identityDocument, { upsert: true });
+
+        if (uploadError) {
+          throw new Error(`本人確認書類のアップロードに失敗しました: ${uploadError.message}`);
+        }
+
+        identityDocumentUrl = fileName;
+      }
+
       const facilityData = {
         owner_id: user.id,
         name: formData.name,
@@ -192,6 +246,8 @@ export default function FacilityRegistration() {
         website: formData.website,
         description: formData.description,
         status: 'pending',
+        identity_document_url: identityDocumentUrl,
+        identity_document_filename: formData.identityDocument?.name || '',
         created_at: new Date().toISOString()
       };
 
@@ -409,12 +465,12 @@ export default function FacilityRegistration() {
 
             {/* 画像プレビュー */}
             {imagePreviews.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {imagePreviews.map((preview, index) => (
                   <div key={index} className="relative">
                     <img
                       src={preview}
-                      alt={`施設画像 ${index + 1}`}
+                      alt={`プレビュー ${index + 1}`}
                       className="w-full h-32 object-cover rounded-lg border border-gray-200"
                     />
                     <button
@@ -424,15 +480,66 @@ export default function FacilityRegistration() {
                     >
                       <X className="w-4 h-4" />
                     </button>
-                    {index === 0 && (
-                      <div className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded">
-                        メイン
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
             )}
+          </div>
+        </Card>
+
+        {/* 本人確認書類アップロード */}
+        <Card className="mb-6">
+          <div className="p-6">
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <FileText className="w-6 h-6 mr-2" />
+              本人確認書類 <span className="text-red-500">*</span>
+            </h2>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <div className="flex items-center mb-2">
+                <Info className="w-5 h-5 text-blue-500 mr-2" />
+                <span className="font-medium text-blue-800">本人確認書類について</span>
+              </div>
+              <p className="text-blue-700 text-sm">
+                運転免許証、健康保険証、パスポート、住民票などの本人確認書類をアップロードしてください。
+                管理者が登録時の住所・氏名と照合して承認を行います。
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  本人確認書類をアップロード <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleIdentityDocumentUpload}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={isLoading}
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  JPG, PNG, GIF対応。1ファイル10MB以下。住所・氏名が明確に読み取れる書類をアップロードしてください。
+                </p>
+              </div>
+              
+              {identityDocumentPreview && (
+                <div className="relative">
+                  <img
+                    src={identityDocumentPreview}
+                    alt="本人確認書類プレビュー"
+                    className="w-full max-w-md h-48 object-cover rounded-lg border border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeIdentityDocument}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </Card>
 

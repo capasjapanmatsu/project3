@@ -147,13 +147,13 @@ export function OwnerDashboard() {
         label: '第一審査通過',
         color: 'bg-blue-100 text-blue-800',
         icon: CheckCircle,
-        description: '詳細情報入力待ち'
+        description: '第二審査（設備画像アップロード）が必要です'
       },
       second_stage_review: {
         label: '第二審査中',
         color: 'bg-purple-100 text-purple-800',
         icon: FileText,
-        description: '書類審査中（3-5営業日）'
+        description: '設備画像審査中（3-5営業日）'
       },
       qr_testing: {
         label: 'QRコード実証検査',

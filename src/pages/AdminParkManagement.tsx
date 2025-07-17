@@ -59,6 +59,11 @@ interface ParkData {
   image_url?: string;
   cover_image_url?: string;
   facility_images?: FacilityImage[];
+  // 本人確認書類の情報を追加
+  identity_document_url?: string;
+  identity_document_filename?: string;
+  identity_status?: 'not_submitted' | 'submitted' | 'approved' | 'rejected';
+  identity_created_at?: string;
 }
 
 interface FacilityImage {
@@ -77,6 +82,7 @@ export function AdminParkManagement() {
   const [parks, setParks] = useState<ParkData[]>([]);
   const [filteredParks, setFilteredParks] = useState<ParkData[]>([]);
   const [approvedParks, setApprovedParks] = useState<ParkData[]>([]);
+  const [allApprovedParks, setAllApprovedParks] = useState<ParkData[]>([]); // 全承認済みパークのキャッシュ
   const [pendingParks, setPendingParks] = useState<ParkData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -85,9 +91,37 @@ export function AdminParkManagement() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'first_stage_passed' | 'second_stage_review'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'created_at' | 'average_rating'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  
+  // 画像拡大表示用のステート
+  const [enlargedImage, setEnlargedImage] = useState<{
+    url: string;
+    type: string;
+    parkName: string;
+  } | null>(null);
 
   // ドッグラン申請データ用のカスタムフック
   const adminData = useAdminData('parks');
+
+  // 画像クリック時のハンドラー
+  const handleImageClick = (imageUrl: string, imageType: string, parkName: string) => {
+    setEnlargedImage({
+      url: imageUrl,
+      type: imageType,
+      parkName: parkName
+    });
+  };
+
+  // モーダルを閉じる
+  const handleCloseModal = () => {
+    setEnlargedImage(null);
+  };
+
+  // ESCキーでモーダルを閉じる
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      handleCloseModal();
+    }
+  };
 
   // メッセージ管理
   const showSuccess = (message: string) => {
@@ -135,123 +169,169 @@ export function AdminParkManagement() {
     }
   };
 
+  // PendingPark型をParkData型に変換する関数
+  const convertPendingParkToParkData = (pendingPark: any): ParkData => {
+    return {
+      id: pendingPark.id,
+      name: pendingPark.name,
+      description: pendingPark.description || '',
+      address: pendingPark.address,
+      price: pendingPark.price || 0,
+      status: pendingPark.status,
+      owner_id: pendingPark.owner_id,
+      created_at: pendingPark.created_at,
+      max_capacity: pendingPark.max_capacity || 0,
+      large_dog_area: pendingPark.large_dog_area || false,
+      small_dog_area: pendingPark.small_dog_area || false,
+      private_booths: pendingPark.private_booths || false,
+      facilities: pendingPark.facilities || {
+        parking: false,
+        shower: false,
+        restroom: false,
+        agility: false,
+        rest_area: false,
+        water_station: false
+      },
+      average_rating: pendingPark.average_rating || 0,
+      review_count: pendingPark.review_count || 0,
+      facility_details: pendingPark.facility_details || '',
+      private_booth_count: pendingPark.private_booth_count || 0,
+      image_url: pendingPark.image_url || '',
+      cover_image_url: pendingPark.cover_image_url || '',
+      owner_name: pendingPark.owner_name || 'Unknown',
+      owner_email: pendingPark.owner_email || 'Unknown',
+      owner_phone: pendingPark.owner_phone_number || '',
+      owner_address: pendingPark.owner_address || '',
+      facility_images: pendingPark.facility_images || [],
+      // 本人確認書類の情報を追加
+      identity_document_url: pendingPark.identity_document_url || '',
+      identity_document_filename: pendingPark.identity_document_filename || '',
+      identity_status: pendingPark.identity_status || 'not_submitted',
+      identity_created_at: pendingPark.identity_created_at || ''
+    };
+  };
+
   useEffect(() => {
     if (!isAdmin) {
-      console.warn('❌ 管理者権限がありません。ホームページにリダイレクトします。');
-      navigate('/');
+      navigate('/admin-dashboard');
       return;
     }
     
     console.log('✅ 管理者権限を確認しました。データ取得を開始します。');
-    fetchParks();
+    // fetchParks(); // 独自のfetchParksを削除し、useAdminDataフックのデータを使用
   }, [isAdmin, navigate]);
 
-  useEffect(() => {
-    if (parks.length > 0) {
-      console.log('🔄 パークデータが更新されました。フィルタリングを実行します。');
-      separateParks();
-    }
-  }, [parks, searchTerm, filterStatus, sortBy, sortOrder]);
-
-  const fetchParks = async () => {
-    setIsLoading(true);
-    setError('');
-    
+  // 承認済みパークを取得する関数
+  const fetchApprovedParks = async () => {
     try {
-      console.log('📡 ドッグラン一覧を取得中...');
-      
-      // プロフィール情報も含めて取得 - 存在するカラムのみ
-      const { data: parksData, error } = await supabase
+      const { data: approvedParksData, error } = await supabase
         .from('dog_parks')
         .select(`
-          id,
-          name,
-          description,
-          address,
-          price,
-          status,
-          owner_id,
-          created_at,
-          max_capacity,
-          large_dog_area,
-          small_dog_area,
-          private_booths,
-          facilities,
-          average_rating,
-          review_count,
-          facility_details,
-          private_booth_count,
-          image_url,
-          cover_image_url,
-          profiles!owner_id (
+          *,
+          profiles:owner_id (
             name,
-            email,
+            address,
             phone_number,
-            address
+            email,
+            postal_code
           )
         `)
+        .eq('status', 'approved')
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ データ取得エラー:', error);
-        showError(`データの取得に失敗しました: ${error.message}`);
-        return;
+        console.error('❌ 承認済みパーク取得エラー:', error);
+        return [];
       }
 
-      console.log('📊 取得したデータ:', parksData);
-
-      // 各パークの設備画像も取得
-      const parksWithImages = await Promise.all(
-        (parksData || []).map(async (park) => {
-          let facilityImages: FacilityImage[] = [];
-          
-          if (park.status === 'second_stage_review') {
-            try {
-              const { data: imagesData, error: imagesError } = await supabase
-                .from('dog_park_facility_images')
-                .select('*')
-                .eq('park_id', park.id)
-                .order('created_at', { ascending: true });
-
-              if (imagesError) {
-                console.error('❌ 設備画像取得エラー:', imagesError);
-              } else {
-                facilityImages = imagesData || [];
-              }
-            } catch (imgError) {
-              console.error('❌ 設備画像取得エラー:', imgError);
-            }
-          }
-
-          return {
-            ...park,
-            owner_name: park.profiles?.[0]?.name || 'Unknown',
-            owner_email: park.profiles?.[0]?.email || 'Unknown',
-            owner_phone: park.profiles?.[0]?.phone_number || '',
-            owner_address: park.profiles?.[0]?.address || '',
-            facility_images: facilityImages,
-            facilities: park.facilities || {
-              parking: false,
-              shower: false,
-              restroom: false,
-              agility: false,
-              rest_area: false,
-              water_station: false
-            }
-          };
-        })
-      );
-
-      console.log('✅ ドッグラン一覧を取得しました:', parksWithImages.length, '件');
-      setParks(parksWithImages);
-      
+      // 承認済みパークを変換
+      const convertedApprovedParks = approvedParksData.map(convertPendingParkToParkData);
+      return convertedApprovedParks;
     } catch (error) {
-      console.error('❌ データ取得エラー:', error);
-      showError('データの取得に失敗しました。');
-    } finally {
-      setIsLoading(false);
+      console.error('❌ 承認済みパーク取得エラー:', error);
+      return [];
     }
   };
+
+  useEffect(() => {
+    // useAdminDataフックから返されるデータを直接使用
+    console.log('📊 Admin Data Loading:', adminData.isLoading);
+    console.log('📊 Admin Data Pending Parks:', adminData.pendingParks);
+    
+    if (!adminData.isLoading) {
+      console.log('🔄 パークデータが更新されました。フィルタリングを実行します。');
+      // PendingPark型をParkData型に変換
+      const convertedParks = adminData.pendingParks.map(convertPendingParkToParkData);
+      setParks(convertedParks);
+      setIsLoading(false);
+      separateParks();
+      
+      // 承認済みパークも取得（一度のみ）
+      fetchApprovedParks().then(approved => {
+        setAllApprovedParks(approved);
+        filterApprovedParks(approved);
+      });
+    } else {
+      setIsLoading(true);
+    }
+  }, [adminData.pendingParks, adminData.isLoading]);
+
+  // 承認済みパークのフィルタリング機能
+  const filterApprovedParks = (approved: ParkData[]) => {
+    // 基本フィルタリング
+    let filteredApproved = approved.filter(park => {
+      const matchesSearch = !searchTerm || 
+        park.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        park.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        park.owner_name.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = filterStatus === 'all' || filterStatus === 'approved';
+      
+      return matchesSearch && matchesStatus;
+    });
+
+    // ソート機能
+    filteredApproved = filteredApproved.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'name':
+          aValue = a.name;
+          bValue = b.name;
+          break;
+        case 'average_rating':
+          aValue = a.average_rating || 0;
+          bValue = b.average_rating || 0;
+          break;
+        default:
+          aValue = a.created_at;
+          bValue = b.created_at;
+          break;
+      }
+      
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+    setApprovedParks(filteredApproved);
+  };
+
+  // 承認済みパークの検索・フィルタリング更新
+  useEffect(() => {
+    if (allApprovedParks.length > 0) {
+      filterApprovedParks(allApprovedParks);
+    }
+  }, [searchTerm, filterStatus, sortBy, sortOrder, allApprovedParks]);
+
+  // 申請中パークのフィルタリング更新
+  useEffect(() => {
+    if (parks.length > 0) {
+      separateParks();
+    }
+  }, [searchTerm, filterStatus, sortBy, sortOrder, parks]);
 
   const separateParks = () => {
     // 審査中のステータス
@@ -298,18 +378,58 @@ export function AdminParkManagement() {
       }
     });
 
-    // 審査中と審査通過後で分離
-    const approved = filteredData.filter(park => approvedStatuses.includes(park.status));
+    // 審査中のパークのみを処理（承認済みは別途処理）
     const pending = filteredData.filter(park => underReviewStatuses.includes(park.status));
 
-    setApprovedParks(approved);
     setPendingParks(pending);
     setFilteredParks(filteredData);
   };
 
   // 承認機能
   const handleApprove = async (parkId: string) => {
-    const confirmApprove = window.confirm('このドッグラン申請を承認してもよろしいですか？');
+    const park = parks.find(p => p.id === parkId);
+    if (!park) return;
+
+    // ステータスに応じた承認処理
+    let nextStatus: string;
+    let confirmMessage: string;
+    let successMessage: string;
+    let notificationTitle: string;
+    let notificationMessage: string;
+
+    switch (park.status) {
+      case 'pending':
+        nextStatus = 'first_stage_passed';
+        confirmMessage = 'このドッグランの第一審査を承認してもよろしいですか？\n承認後、オーナーは第二審査（設備画像の提出）を行うことができます。';
+        successMessage = 'ドッグランの第一審査を承認しました。オーナーに通知されます。';
+        notificationTitle = 'ドッグラン第一審査承認';
+        notificationMessage = `${park.name}の第一審査が承認されました。第二審査の詳細情報を入力してください。`;
+        break;
+
+      case 'first_stage_passed':
+        nextStatus = 'first_stage_passed';
+        confirmMessage = 'このドッグランは既に第一審査を通過しています。オーナーが第二審査（設備画像）を提出するのをお待ちください。';
+        showError('このドッグランは既に第一審査を通過しています。');
+        return;
+
+      case 'second_stage_review':
+        nextStatus = 'approved';
+        confirmMessage = 'このドッグランの第二審査を承認してもよろしいですか？\n承認後、ドッグランは一般公開されます。';
+        successMessage = 'ドッグランの第二審査を承認しました。一般公開されます。';
+        notificationTitle = 'ドッグラン第二審査承認';
+        notificationMessage = `${park.name}の第二審査が承認されました。おめでとうございます！ドッグランが一般公開されました。`;
+        break;
+
+      case 'approved':
+        showError('このドッグランは既に承認済みです。');
+        return;
+
+      default:
+        showError('このドッグランの現在のステータスでは承認できません。');
+        return;
+    }
+
+    const confirmApprove = window.confirm(confirmMessage);
     if (!confirmApprove) return;
 
     try {
@@ -318,7 +438,7 @@ export function AdminParkManagement() {
       
       const { error: updateError } = await supabase
         .from('dog_parks')
-        .update({ status: 'approved' })
+        .update({ status: nextStatus })
         .eq('id', parkId);
 
       if (updateError) {
@@ -327,32 +447,28 @@ export function AdminParkManagement() {
         return;
       }
 
-      // 承認された公園の情報を取得
-      const park = parks.find(p => p.id === parkId);
-      if (park) {
-        // 通知を送信
-        await supabase
-          .from('notifications')
-          .insert([
-            {
-              user_id: park.owner_id,
-              title: 'ドッグラン申請承認',
-              message: `${park.name}の申請が承認されました。おめでとうございます！`,
-              type: 'park_approved',
-              created_at: new Date().toISOString(),
-              read: false
-            }
-          ]);
-      }
+      // 通知を送信
+      await supabase
+        .from('notifications')
+        .insert([
+          {
+            user_id: park.owner_id,
+            title: notificationTitle,
+            message: notificationMessage,
+            type: nextStatus === 'approved' ? 'park_approved' : 'park_first_stage_passed',
+            created_at: new Date().toISOString(),
+            read: false
+          }
+        ]);
 
-      showSuccess('ドッグラン申請を承認しました。');
+      showSuccess(successMessage);
       
       // 承認後にリストを更新
       setParks(prevParks => 
-        prevParks.map(park => 
-          park.id === parkId 
-            ? { ...park, status: 'approved' as const }
-            : park
+        prevParks.map(p => 
+          p.id === parkId 
+            ? { ...p, status: nextStatus as any }
+            : p
         )
       );
       
@@ -433,7 +549,7 @@ export function AdminParkManagement() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'pending': return '一次審査中';
-      case 'first_stage_passed': return '一次審査中';
+      case 'first_stage_passed': return '二次審査提出待ち';
       case 'second_stage_review': return '二次審査中';
       case 'approved': return '承認済み';
       case 'rejected': return '却下';
@@ -708,7 +824,7 @@ export function AdminParkManagement() {
                   options={[
                     { value: 'all', label: '全ステータス' },
                     { value: 'pending', label: '審査中' },
-                    { value: 'first_stage_passed', label: '1次審査通過' },
+                    { value: 'first_stage_passed', label: '二次審査提出待ち' },
                     { value: 'second_stage_review', label: '2次審査中' },
                     { value: 'rejected', label: '却下' }
                   ]}
@@ -799,6 +915,64 @@ export function AdminParkManagement() {
                           </div>
                         </div>
                         
+                        {/* 本人確認書類セクション */}
+                        <div className="mb-4">
+                          <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                            <FileText className="w-4 h-4 mr-2" />
+                            本人確認書類
+                          </h4>
+                          <div className="bg-blue-50 p-4 rounded-lg">
+                            {park.identity_document_url && park.identity_document_url !== '' ? (
+                              <div className="flex items-start space-x-4">
+                                <div className="relative">
+                                  <img
+                                    src={`${supabase.storage.from('vaccine-certs').getPublicUrl(park.identity_document_url || '').data.publicUrl}`}
+                                    alt="本人確認書類"
+                                    className="w-32 h-32 object-cover rounded border shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                                    onClick={() => {
+                                      window.open(`${supabase.storage.from('vaccine-certs').getPublicUrl(park.identity_document_url || '').data.publicUrl}`, '_blank');
+                                    }}
+                                  />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="mb-2">
+                                    <span className="text-sm font-medium text-gray-700">ファイル名:</span>
+                                    <span className="text-sm text-gray-600 ml-2">{park.identity_document_filename || 'identity_document'}</span>
+                                  </div>
+                                  <div className="mb-2">
+                                    <span className="text-sm font-medium text-gray-700">審査状況:</span>
+                                    <span className={`text-sm ml-2 px-2 py-1 rounded-full ${
+                                      park.identity_status === 'approved' ? 'bg-green-100 text-green-800' :
+                                      park.identity_status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                      park.identity_status === 'submitted' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {park.identity_status === 'approved' ? '承認済み' :
+                                       park.identity_status === 'rejected' ? '却下' :
+                                       park.identity_status === 'submitted' ? '審査中' :
+                                       '未提出'}
+                                    </span>
+                                  </div>
+                                  {park.identity_created_at && (
+                                    <div className="mb-2">
+                                      <span className="text-sm font-medium text-gray-700">提出日:</span>
+                                      <span className="text-sm text-gray-600 ml-2">{formatDate(park.identity_created_at)}</span>
+                                    </div>
+                                  )}
+                                  <div className="text-xs text-gray-500 mt-2">
+                                    クリックして拡大表示
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-center py-8">
+                                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                                <p className="text-sm text-gray-600">本人確認書類が提出されていません</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
                         {park.description && (
                           <div className="mb-4">
                             <h4 className="font-medium text-gray-900 mb-2">施設説明</h4>
@@ -850,7 +1024,8 @@ export function AdminParkManagement() {
                                   <img
                                     src={image.image_url}
                                     alt={`設備画像 ${index + 1}`}
-                                    className="w-full h-24 object-cover rounded-md border"
+                                    className="w-full h-24 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => handleImageClick(image.image_url, image.image_type, park.name)}
                                   />
                                   <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-b-md">
                                     {image.image_type}
@@ -872,13 +1047,15 @@ export function AdminParkManagement() {
                             className="bg-green-600 hover:bg-green-700"
                           >
                             <Check className="w-4 h-4 mr-1" />
-                            承認
+                            {park.status === 'pending' ? '第一審査承認' : 
+                             park.status === 'second_stage_review' ? '第二審査承認' : 
+                             '承認'}
                           </Button>
                           <Button
                             size="sm"
                             variant="secondary"
                             onClick={() => handleReject(park.id)}
-                            className="text-red-600 hover:text-red-700"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
                             <X className="w-4 h-4 mr-1" />
                             却下
@@ -902,6 +1079,35 @@ export function AdminParkManagement() {
           </div>
         )}
       </div>
+      
+      {/* 画像拡大モーダル */}
+      {enlargedImage && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+          onClick={handleCloseModal}
+          onKeyDown={handleKeyDown}
+          tabIndex={0}
+        >
+          <div className="relative max-w-4xl max-h-full">
+            <img
+              src={enlargedImage.url}
+              alt={`${enlargedImage.parkName} - ${enlargedImage.type}`}
+              className="max-w-full max-h-full object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div className="absolute bottom-4 left-4 right-4 bg-black bg-opacity-50 text-white p-3 rounded-lg">
+              <h3 className="font-medium text-lg">{enlargedImage.parkName}</h3>
+              <p className="text-sm text-gray-300">{enlargedImage.type}</p>
+            </div>
+            <button
+              onClick={handleCloseModal}
+              className="absolute top-4 right-4 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-2"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

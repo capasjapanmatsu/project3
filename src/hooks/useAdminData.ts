@@ -27,7 +27,20 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
             address,
             status,
             created_at,
-            owner_id
+            owner_id,
+            description,
+            price,
+            max_capacity,
+            large_dog_area,
+            small_dog_area,
+            private_booths,
+            private_booth_count,
+            facilities,
+            facility_details,
+            image_url,
+            cover_image_url,
+            average_rating,
+            review_count
           `)
           .in('status', ['pending', 'first_stage_passed', 'second_stage_review'])
           .order('created_at', { ascending: false })
@@ -64,9 +77,9 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
           ? supabase.from('dog_park_review_stages').select('park_id, second_stage_submitted_at').in('park_id', parkIds)
           : Promise.resolve({ data: [], error: null }),
         
-        // Get facility images
+        // Get facility images with details
         parkIds.length > 0
-          ? supabase.from('dog_park_facility_images').select('park_id, is_approved').in('park_id', parkIds)
+          ? supabase.from('dog_park_facility_images').select('id, park_id, image_type, image_url, is_approved, admin_notes, created_at, updated_at').in('park_id', parkIds)
           : Promise.resolve({ data: [], error: null }),
         
         // Get identity verification documents
@@ -154,7 +167,30 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
           identity_document_url: identityDocumentUrl,
           identity_document_filename: identityDocumentFilename,
           identity_status: identity?.status || 'not_submitted',
-          identity_created_at: identity?.created_at || ''
+          identity_created_at: identity?.created_at || '',
+          // 追加のパークデータ
+          description: park.description || '',
+          price: park.price || 0,
+          max_capacity: park.max_capacity || 0,
+          large_dog_area: park.large_dog_area || false,
+          small_dog_area: park.small_dog_area || false,
+          private_booths: park.private_booths || false,
+          private_booth_count: park.private_booth_count || 0,
+          facilities: park.facilities || {
+            parking: false,
+            shower: false,
+            restroom: false,
+            agility: false,
+            rest_area: false,
+            water_station: false
+          },
+          facility_details: park.facility_details || '',
+          image_url: park.image_url || '',
+          cover_image_url: park.cover_image_url || '',
+          average_rating: park.average_rating || 0,
+          review_count: park.review_count || 0,
+          // 設備画像の詳細データ
+          facility_images: parkImages
         };
       });
 

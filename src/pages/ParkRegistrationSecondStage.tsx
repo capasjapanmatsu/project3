@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Upload, CheckCircle, AlertTriangle, Camera, Trash2, Building, MapPin, ParkingCircle, ShowerHead, FileText, X, Image as ImageIcon, CreditCard } from 'lucide-react';
-import Card from '../components/Card';
+import { AlertTriangle, ArrowLeft, Building, Camera, CheckCircle, CreditCard, FileText, Image as ImageIcon, MapPin, ParkingCircle, ShowerHead, Trash2, Upload, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
+import Card from '../components/Card';
 import Input from '../components/Input';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
 
 interface FacilityImage {
   id?: string;
@@ -47,6 +47,9 @@ interface BankAccount {
   account_holder_name: string;
 }
 
+// IMAGE_TYPESのキーの型定義
+type ImageTypeKey = keyof typeof IMAGE_TYPES;
+
 const IMAGE_TYPES = {
   overview: {
     label: '施設全景',
@@ -58,6 +61,18 @@ const IMAGE_TYPES = {
     label: '入口',
     description: '入口の様子がわかる写真',
     icon: MapPin,
+    required: true
+  },
+  gate: {
+    label: 'ゲート',
+    description: 'ドッグラン入口のゲートの写真',
+    icon: Building,
+    required: true
+  },
+  fence: {
+    label: 'フェンス',
+    description: 'ドッグラン周囲のフェンスの写真',
+    icon: Building,
     required: true
   },
   large_dog_area: {
@@ -309,7 +324,7 @@ export function ParkRegistrationSecondStage() {
       // Refresh images
       await fetchParkData();
       
-      const typeConfig = IMAGE_TYPES[imageType as keyof typeof IMAGE_TYPES];
+      const typeConfig = IMAGE_TYPES[imageType as ImageTypeKey];
       const label = typeConfig?.label || imageType;
       setSuccess(`${label}の画像をアップロードしました`);
       setTimeout(() => setSuccess(''), 3000);
@@ -411,23 +426,20 @@ export function ParkRegistrationSecondStage() {
       setError('');
       
       // Check if all required images are uploaded
-      const requiredTypes = Object.entries(IMAGE_TYPES)
-        .filter(([, config]) => {
-          if (config.required) return true;
-          if (config.conditionalOn && park) {
-            const path = config.conditionalOn.split('.');
-            if (path.length === 1) {
-              return ((park as any)[path[0]]) ?? false;
-            } else if (path.length === 2) {
-              const parent = (park as any)[path[0]];
-              if (parent && typeof parent === 'object') {
-                return (parent as any)[path[1]] ?? false;
-              }
-            }
-          }
-          return false;
-        })
-        .map(([key]) => key);
+      const requiredTypes = ['overview', 'entrance', 'gate', 'fence']; // 必須項目を明確に定義
+      
+      // Add conditional required types based on park facilities
+      if (park) {
+        if (park.large_dog_area) requiredTypes.push('large_dog_area');
+        if (park.small_dog_area) requiredTypes.push('small_dog_area');
+        if (park.private_booths) requiredTypes.push('private_booth');
+        if (park.facilities?.parking) requiredTypes.push('parking');
+        if (park.facilities?.shower) requiredTypes.push('shower');
+        if (park.facilities?.restroom) requiredTypes.push('restroom');
+        if (park.facilities?.agility) requiredTypes.push('agility');
+        if (park.facilities?.rest_area) requiredTypes.push('rest_area');
+        if (park.facilities?.water_station) requiredTypes.push('water_station');
+      }
       
       const missingTypes = requiredTypes.filter(type => 
         !images.some(img => img.image_type === type && img.image_url)
@@ -444,110 +456,23 @@ export function ParkRegistrationSecondStage() {
         return;
       }
       
-      // Check if bank account information is set
-      if (!bankAccount.bank_name || !bankAccount.bank_code || !bankAccount.branch_name || 
-          !bankAccount.branch_code || !bankAccount.account_number || !bankAccount.account_holder_name) {
-        setError('振込先情報を入力してください');
-        setActiveTab('bank');
-        setIsSubmitting(false);
-        return;
+      // Submit for second stage review
+      const { error: submitError } = await supabase.rpc('submit_second_stage_review', {
+        park_id_param: parkId
+      });
+      
+      if (submitError) {
+        console.error('Submit error:', submitError);
+        throw new Error(submitError.message);
       }
       
-      // Record the second stage review submission in the review stages table
-      try {
-        // First, check if a review stage record already exists
-        const { data: existingStage, error: checkError } = await supabase
-          .from('dog_park_review_stages')
-          .select('id')
-          .eq('park_id', parkId)
-          .single();
-        
-        if (checkError && checkError.code !== 'PGRST116') {
-          // PGRST116 is "not found" error, which is expected if no record exists
-          console.error('Error checking existing review stage:', checkError);
-        }
-        
-        if (existingStage) {
-          // Update existing record
-          const { error: updateError } = await supabase
-            .from('dog_park_review_stages')
-            .update({
-              second_stage_submitted_at: new Date().toISOString()
-            })
-            .eq('park_id', parkId);
-          
-          if (updateError) {
-            console.error('Error updating review stage:', updateError);
-          }
-        } else {
-          // Insert new record
-          const { error: insertError } = await supabase
-            .from('dog_park_review_stages')
-            .insert({
-              park_id: parkId,
-              second_stage_submitted_at: new Date().toISOString()
-            });
-          
-          if (insertError) {
-            console.error('Error inserting review stage:', insertError);
-          }
-        }
-      } catch (reviewError) {
-        console.error('Error recording review stage:', reviewError);
-        // Don't throw error, continue with submission
-      }
+      setSuccess('第二審査の申請が完了しました！管理者による審査をお待ちください。');
       
-      // Save bank account information if not already saved
-      try {
-        const { error: bankError } = await supabase.rpc('update_owner_bank_account', {
-          bank_name_param: bankAccount.bank_name,
-          bank_code_param: bankAccount.bank_code,
-          branch_name_param: bankAccount.branch_name,
-          branch_code_param: bankAccount.branch_code,
-          account_type_param: bankAccount.account_type,
-          account_number_param: bankAccount.account_number,
-          account_holder_name_param: bankAccount.account_holder_name
-        });
-        
-        if (bankError) {
-          console.error('Error saving bank account:', bankError);
-          // Continue even if bank account save fails
-        }
-      } catch (bankError) {
-        console.error('Error with bank account RPC:', bankError);
-        // Continue even if bank account save fails
-      }
-      
-      // Create notification for admin
-      try {
-        const { error: notifyError } = await supabase
-          .from('admin_notifications')
-          .insert([{
-            type: 'park_approval',
-            title: '新しいドッグラン第二審査申請',
-            message: `${park?.name}の第二審査が申請されました。確認してください。`,
-            data: { park_id: parkId },
-            created_at: new Date().toISOString()
-          }]);
-          
-        if (notifyError) {
-          console.error('Error creating admin notification:', notifyError);
-          // Continue even if notification fails
-        }
-      } catch (notifyError) {
-        console.error('Error with notification:', notifyError);
-        // Continue even if notification fails
-      }
-      
-      setSuccess('第二審査の申請が完了しました。審査結果をお待ちください。');
-      
-      // Refresh data
-      await fetchParkData();
-      
-      // Redirect to dashboard after 3 seconds
+      // Redirect to dashboard after 2 seconds
       setTimeout(() => {
         navigate('/owner-dashboard');
-      }, 3000);
+      }, 2000);
+      
     } catch (error: unknown) {
       console.error('Error submitting review:', error);
       setError('審査申請に失敗しました: ' + (error as Error).message);
@@ -769,7 +694,7 @@ export function ParkRegistrationSecondStage() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {images.map((image) => {
-                const imageTypeConfig = IMAGE_TYPES[image.image_type as keyof typeof IMAGE_TYPES];
+                const imageTypeConfig = IMAGE_TYPES[image.image_type as ImageTypeKey];
                 const IconComponent = imageTypeConfig?.icon || Building;
                 const isRequired = imageTypeConfig?.required || false;
                 
