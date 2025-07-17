@@ -83,8 +83,13 @@ export default function AdminFacilityApproval() {
       showError('管理者権限が必要です');
       return;
     }
+    console.error('Current user info:', { 
+      userId: user?.id, 
+      isAdmin,
+      userEmail: user?.email 
+    });
     void fetchFacilities();
-  }, [isAdmin]);
+  }, [isAdmin, user]);
 
   useEffect(() => {
     if (facilities.length > 0) {
@@ -97,11 +102,24 @@ export default function AdminFacilityApproval() {
       setIsLoading(true);
       setError('');
 
+      // 現在のユーザー権限をチェック
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
+
+      console.error('Current user profile:', userProfile);
+      console.error('Profile error:', profileError);
+
       // 施設データを取得
       const { data: facilitiesData, error: facilitiesError } = await supabase
         .from('pet_facilities')
         .select('*')
         .order('created_at', { ascending: false });
+
+      console.error('Facilities data:', facilitiesData);
+      console.error('Facilities error:', facilitiesError);
 
       if (facilitiesError) {
         console.error('Facilities fetch error:', facilitiesError);
@@ -151,16 +169,29 @@ export default function AdminFacilityApproval() {
       setActionLoading(true);
       setError('');
 
-      const { error } = await supabase
+      console.error('Approving facility:', { facilityId, userId: user?.id });
+
+      const { data, error } = await supabase
         .from('pet_facilities')
         .update({
           status: 'approved',
           approved_at: new Date().toISOString(),
           approved_by: user?.id
         })
-        .eq('id', facilityId);
+        .eq('id', facilityId)
+        .select();
 
-      if (error) throw error;
+      console.error('Approve result:', { data, error });
+
+      if (error) {
+        console.error('Approval error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
 
       showSuccess('施設を承認しました。');
       
@@ -177,7 +208,18 @@ export default function AdminFacilityApproval() {
       setSelectedFacility(null);
     } catch (error) {
       console.error('Error approving facility:', error);
-      showError('施設の承認に失敗しました');
+      
+      // エラーの詳細を表示
+      if (error && typeof error === 'object') {
+        const supabaseError = error as { message?: string };
+        if (supabaseError.message) {
+          showError(`施設の承認に失敗しました: ${supabaseError.message}`);
+        } else {
+          showError('施設の承認に失敗しました');
+        }
+      } else {
+        showError('施設の承認に失敗しました');
+      }
     } finally {
       setActionLoading(false);
     }
@@ -189,7 +231,9 @@ export default function AdminFacilityApproval() {
       setActionLoading(true);
       setError('');
 
-      const { error } = await supabase
+      console.error('Rejecting facility:', { facilityId, reason, userId: user?.id });
+
+      const { data, error } = await supabase
         .from('pet_facilities')
         .update({
           status: 'rejected',
@@ -197,9 +241,20 @@ export default function AdminFacilityApproval() {
           rejected_at: new Date().toISOString(),
           rejected_by: user?.id
         })
-        .eq('id', facilityId);
+        .eq('id', facilityId)
+        .select();
 
-      if (error) throw error;
+      console.error('Reject result:', { data, error });
+
+      if (error) {
+        console.error('Rejection error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
 
       showSuccess('施設を拒否しました。');
       
@@ -218,7 +273,18 @@ export default function AdminFacilityApproval() {
       setRejectReason('');
     } catch (error) {
       console.error('Error rejecting facility:', error);
-      showError('施設の拒否に失敗しました');
+      
+      // エラーの詳細を表示
+      if (error && typeof error === 'object') {
+        const supabaseError = error as { message?: string };
+        if (supabaseError.message) {
+          showError(`施設の拒否に失敗しました: ${supabaseError.message}`);
+        } else {
+          showError('施設の拒否に失敗しました');
+        }
+      } else {
+        showError('施設の拒否に失敗しました');
+      }
     } finally {
       setActionLoading(false);
     }
@@ -233,6 +299,8 @@ export default function AdminFacilityApproval() {
       setActionLoading(true);
       setError('');
 
+      console.error('Deleting facility:', { facilityId, userId: user?.id });
+
       // 関連する画像を削除
       const { error: imagesError } = await supabase
         .from('facility_images')
@@ -245,12 +313,23 @@ export default function AdminFacilityApproval() {
       }
 
       // 施設を削除
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('pet_facilities')
         .delete()
-        .eq('id', facilityId);
+        .eq('id', facilityId)
+        .select();
 
-      if (error) throw error;
+      console.error('Delete result:', { data, error });
+
+      if (error) {
+        console.error('Deletion error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
 
       showSuccess('施設を削除しました。');
       
@@ -263,7 +342,18 @@ export default function AdminFacilityApproval() {
       setSelectedFacility(null);
     } catch (error) {
       console.error('Error deleting facility:', error);
-      showError('施設の削除に失敗しました');
+      
+      // エラーの詳細を表示
+      if (error && typeof error === 'object') {
+        const supabaseError = error as { message?: string };
+        if (supabaseError.message) {
+          showError(`施設の削除に失敗しました: ${supabaseError.message}`);
+        } else {
+          showError('施設の削除に失敗しました');
+        }
+      } else {
+        showError('施設の削除に失敗しました');
+      }
     } finally {
       setActionLoading(false);
     }
