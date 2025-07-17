@@ -23,7 +23,10 @@ interface FirstStageFormData {
     water_station: boolean;
   };
   // 本人確認書類のフィールドを追加
-  identityDocument: File | null;
+  applicantType: 'individual' | 'corporate' | ''; // 申請者の種類
+  identityDocumentType: 'license' | 'mynumber' | 'passport' | 'registration' | ''; // 書類の種類
+  identityDocumentFront: File | null; // 運転免許証の表面/マイナンバーカード/パスポート/登記簿謄本
+  identityDocumentBack: File | null; // 運転免許証の裏面（必要な場合のみ）
 }
 
 interface ProfileData {
@@ -53,18 +56,42 @@ export default function FirstStageForm({
   profileLoading,
   onProfileUpdate,
 }: FirstStageFormProps) {
-  const [isUploading, setIsUploading] = useState(false);
   const [showProfileEditModal, setShowProfileEditModal] = useState(false);
   const [editingProfile, setEditingProfile] = useState<ProfileData>(profileData);
-  
+  const [isUploading, setIsUploading] = useState(false);
+
   const updateFormData = (updates: Partial<FirstStageFormData>) => {
     onFormDataChange(updates);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'front' | 'back') => {
     if (e.target.files && e.target.files[0]) {
-      updateFormData({ identityDocument: e.target.files[0] });
+      if (fileType === 'front') {
+        updateFormData({ identityDocumentFront: e.target.files[0] });
+      } else {
+        updateFormData({ identityDocumentBack: e.target.files[0] });
+      }
     }
+  };
+
+  const getDocumentTypeLabel = (type: string) => {
+    switch (type) {
+      case 'license': return '運転免許証';
+      case 'mynumber': return 'マイナンバーカード';
+      case 'passport': return 'パスポート';
+      case 'registration': return '登記簿謄本';
+      default: return '';
+    }
+  };
+
+  const requiresBackSide = () => {
+    return formData.identityDocumentType === 'license';
+  };
+
+  const isDocumentUploadComplete = () => {
+    if (!formData.identityDocumentFront) return false;
+    if (requiresBackSide() && !formData.identityDocumentBack) return false;
+    return true;
   };
 
   const handleProfileSave = () => {
@@ -75,7 +102,7 @@ export default function FirstStageForm({
   return (
     <div className="max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold text-center mb-8">ドッグラン登録 - 第一審査・本人確認</h1>
-      
+
       {/* 審査プロセスの説明 */}
       <Card className="mb-6 bg-blue-50 border-blue-200">
         <div className="flex items-start space-x-3">
@@ -108,7 +135,7 @@ export default function FirstStageForm({
               <p>本人確認書類に記載された情報と一致するかご確認ください。</p>
               <p>間違いがある場合は修正してから本人確認書類をアップロードしてください。</p>
             </div>
-            
+
             {profileLoading ? (
               <div className="flex items-center justify-center py-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-600"></div>
@@ -161,7 +188,8 @@ export default function FirstStageForm({
             <h3 className="font-semibold text-green-900 mb-2">本人確認書類について</h3>
             <div className="text-sm text-green-800 space-y-1">
               <p>安全なプラットフォーム運営のため、ドッグランオーナーには本人確認が必要です。</p>
-              <p>運転免許証、マイナンバーカード、パスポートなどの本人確認書類の画像をアップロードしてください。</p>
+              <p><strong>個人の場合：</strong>運転免許証（表面・裏面）、マイナンバーカード、パスポートのいずれか</p>
+              <p><strong>法人の場合：</strong>登記簿謄本（過去6か月以内に取得したもの）</p>
               <p>住所と氏名が登録情報と一致することを確認させていただきます。</p>
             </div>
           </div>
@@ -192,25 +220,25 @@ export default function FirstStageForm({
               <Input
                 label="氏名"
                 value={editingProfile.name}
-                onChange={(e) => setEditingProfile({...editingProfile, name: e.target.value})}
+                onChange={(e) => setEditingProfile({ ...editingProfile, name: e.target.value })}
                 placeholder="山田太郎"
               />
               <Input
                 label="郵便番号"
                 value={editingProfile.postal_code}
-                onChange={(e) => setEditingProfile({...editingProfile, postal_code: e.target.value})}
+                onChange={(e) => setEditingProfile({ ...editingProfile, postal_code: e.target.value })}
                 placeholder="123-4567"
               />
               <Input
                 label="住所"
                 value={editingProfile.address}
-                onChange={(e) => setEditingProfile({...editingProfile, address: e.target.value})}
+                onChange={(e) => setEditingProfile({ ...editingProfile, address: e.target.value })}
                 placeholder="東京都新宿区西新宿1-1-1"
               />
               <Input
                 label="電話番号"
                 value={editingProfile.phone_number}
-                onChange={(e) => setEditingProfile({...editingProfile, phone_number: e.target.value})}
+                onChange={(e) => setEditingProfile({ ...editingProfile, phone_number: e.target.value })}
                 placeholder="090-1234-5678"
               />
             </div>
@@ -498,34 +526,218 @@ export default function FirstStageForm({
             <label className="block text-lg font-bold text-gray-800 mb-3">
               本人確認書類のアップロード *
             </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <input
-                type="file"
-                accept="image/*,application/pdf"
-                onChange={handleFileChange}
-                className="hidden"
-                id="identity-upload"
-                required
-              />
-              <label 
-                htmlFor="identity-upload" 
-                className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium"
-              >
-                ファイルを選択
+
+            {/* 申請者の種類選択 */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                申請者の種類 *
               </label>
-              <p className="text-sm text-gray-500 mt-2">
-                運転免許証・マイナンバーカード・パスポート等の画像またはPDF
-              </p>
-              <p className="text-sm text-gray-500">
-                最大ファイルサイズ: 10MB
-              </p>
-              {formData.identityDocument && (
-                <p className="text-sm text-green-600 mt-2">
-                  選択されたファイル: {formData.identityDocument.name}
-                </p>
-              )}
+              <div className="space-y-2">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="applicantType"
+                    value="individual"
+                    checked={formData.applicantType === 'individual'}
+                    onChange={(e) => updateFormData({
+                      applicantType: e.target.value as 'individual' | 'corporate',
+                      identityDocumentType: '',
+                      identityDocumentFront: null,
+                      identityDocumentBack: null
+                    })}
+                    className="mr-2"
+                    required
+                  />
+                  <span>個人</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="applicantType"
+                    value="corporate"
+                    checked={formData.applicantType === 'corporate'}
+                    onChange={(e) => updateFormData({
+                      applicantType: e.target.value as 'individual' | 'corporate',
+                      identityDocumentType: '',
+                      identityDocumentFront: null,
+                      identityDocumentBack: null
+                    })}
+                    className="mr-2"
+                    required
+                  />
+                  <span>法人</span>
+                </label>
+              </div>
             </div>
+
+            {/* 書類の種類選択 */}
+            {formData.applicantType && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {formData.applicantType === 'individual' ? '提出する書類の種類' : '提出書類'} *
+                </label>
+                <div className="space-y-2">
+                  {formData.applicantType === 'individual' ? (
+                    <>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="identityDocumentType"
+                          value="license"
+                          checked={formData.identityDocumentType === 'license'}
+                          onChange={(e) => updateFormData({
+                            identityDocumentType: e.target.value as 'license' | 'mynumber' | 'passport' | 'registration',
+                            identityDocumentFront: null,
+                            identityDocumentBack: null
+                          })}
+                          className="mr-2"
+                          required
+                        />
+                        <span>運転免許証（表面・裏面の2枚）</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="identityDocumentType"
+                          value="mynumber"
+                          checked={formData.identityDocumentType === 'mynumber'}
+                          onChange={(e) => updateFormData({
+                            identityDocumentType: e.target.value as 'license' | 'mynumber' | 'passport' | 'registration',
+                            identityDocumentFront: null,
+                            identityDocumentBack: null
+                          })}
+                          className="mr-2"
+                          required
+                        />
+                        <span>マイナンバーカード</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="identityDocumentType"
+                          value="passport"
+                          checked={formData.identityDocumentType === 'passport'}
+                          onChange={(e) => updateFormData({
+                            identityDocumentType: e.target.value as 'license' | 'mynumber' | 'passport' | 'registration',
+                            identityDocumentFront: null,
+                            identityDocumentBack: null
+                          })}
+                          className="mr-2"
+                          required
+                        />
+                        <span>パスポート</span>
+                      </label>
+                    </>
+                  ) : (
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="identityDocumentType"
+                        value="registration"
+                        checked={formData.identityDocumentType === 'registration'}
+                        onChange={(e) => updateFormData({
+                          identityDocumentType: e.target.value as 'license' | 'mynumber' | 'passport' | 'registration',
+                          identityDocumentFront: null,
+                          identityDocumentBack: null
+                        })}
+                        className="mr-2"
+                        required
+                      />
+                      <span>登記簿謄本（過去6か月以内のもの）</span>
+                    </label>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ファイルアップロード */}
+            {formData.identityDocumentType && (
+              <div className="space-y-4">
+                {/* 表面/メインファイル */}
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/jpg"
+                    onChange={(e) => handleFileChange(e, 'front')}
+                    className="hidden"
+                    id="identity-upload-front"
+                    required
+                  />
+                  <label
+                    htmlFor="identity-upload-front"
+                    className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    ファイルを選択
+                  </label>
+                  <p className="text-sm text-gray-600 mt-2 font-medium">
+                    {formData.identityDocumentType === 'license' && '運転免許証の表面'}
+                    {formData.identityDocumentType === 'mynumber' && 'マイナンバーカード'}
+                    {formData.identityDocumentType === 'passport' && 'パスポート'}
+                    {formData.identityDocumentType === 'registration' && '登記簿謄本'}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    JPG・PNG形式のみ、最大ファイルサイズ: 10MB
+                  </p>
+                  {formData.identityDocumentFront && (
+                    <p className="text-sm text-green-600 mt-2">
+                      選択されたファイル: {formData.identityDocumentFront.name}
+                    </p>
+                  )}
+                </div>
+
+                {/* 裏面（運転免許証の場合のみ） */}
+                {requiresBackSide() && (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/jpg"
+                      onChange={(e) => handleFileChange(e, 'back')}
+                      className="hidden"
+                      id="identity-upload-back"
+                      required
+                    />
+                    <label
+                      htmlFor="identity-upload-back"
+                      className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      ファイルを選択
+                    </label>
+                    <p className="text-sm text-gray-600 mt-2 font-medium">
+                      運転免許証の裏面
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      JPG・PNG形式のみ、最大ファイルサイズ: 10MB
+                    </p>
+                    {formData.identityDocumentBack && (
+                      <p className="text-sm text-green-600 mt-2">
+                        選択されたファイル: {formData.identityDocumentBack.name}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* 書類の注意事項 */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start">
+                    <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
+                    <div className="text-sm text-blue-800">
+                      <p className="font-medium mb-2">アップロードする書類について</p>
+                      <ul className="space-y-1 text-sm">
+                        <li>• 文字がはっきりと読める鮮明な画像をアップロードしてください</li>
+                        <li>• 書類全体が画像に収まっていることを確認してください</li>
+                        <li>• 画像は正面から撮影し、傾きがないようにしてください</li>
+                        {formData.identityDocumentType === 'registration' && (
+                          <li>• 登記簿謄本は取得から6か月以内のものが必要です</li>
+                        )}
+                        <li>• 本人確認書類の住所・氏名が上記登録情報と一致している必要があります</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 予定設備 */}
@@ -581,10 +793,10 @@ export default function FirstStageForm({
               <DollarSign className="w-4 h-4 mr-1" />
               <span className="text-sm">収益システムについて</span>
             </Link>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-1/2 bg-blue-600 hover:bg-blue-700"
-              disabled={!formData.identityDocument || isUploading}
+              disabled={!isDocumentUploadComplete() || isUploading}
               isLoading={isUploading}
             >
               <Shield className="w-4 h-4 mr-2" />

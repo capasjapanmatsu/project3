@@ -1,0 +1,55 @@
+[
+  {
+    "key": "ctrl+shift+d",
+    "command": "workbench.action.tasks.runTask",
+    "args": "🚀 Start Development Server"
+  },
+  {
+    "key": "ctrl+shift+b",
+    "command": "workbench.action.tasks.runTask",
+    "args": "🔨 Build for Production"
+  },
+  {
+    "key": "ctrl+shift+l",
+    "command": "workbench.action.tasks.runTask",
+    "args": "🧹 Lint & Fix"
+  },
+  {
+    "key": "ctrl+shift+t",
+    "command": "workbench.action.tasks.runTask",
+    "args": "🔍 Type Check"
+  },
+  {
+    "key": "ctrl+shift+o",
+    "command": "simpleBrowser.show",
+    "args": "http://localhost:3005"
+  },
+  {
+    "key": "ctrl+shift+p",
+    "command": "workbench.action.tasks.runTask",
+    "args": "📊 Dev + Browser + Analysis"
+  },
+  {
+    "key": "ctrl+shift+r",
+    "command": "workbench.action.tasks.runTask",
+    "args": "🔄 Restart Dev Server"
+  },
+  {
+    "key": "ctrl+alt+b",
+    "command": "simpleBrowser.show",
+    "args": "file:///c:/Users/CAPAS/project3/dist/stats.html"
+  },
+  {
+    "key": "ctrl+shift+a",
+    "command": "workbench.action.tasks.runTask",
+    "args": "📊 Analyze Bundle"
+  },
+  {
+    "key": "alt+shift+f",
+    "command": "editor.action.formatDocument"
+  },
+  {
+    "key": "alt+shift+o",
+    "command": "editor.action.organizeImports"
+  }
+]

@@ -1,8 +1,8 @@
+import { BarChart4, CheckCircle, Clock, Edit, Eye, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { X, BarChart4, Eye, Edit, CheckCircle, Clock } from 'lucide-react';
+import type { DogPark } from '../../types';
 import Button from '../Button';
 import { getStatusBadge } from './ParkCard';
-import type { DogPark } from '../../types';
 
 interface ParkModalProps {
   park: DogPark;
@@ -50,11 +50,10 @@ export function ParkModal({ park, onClose }: ParkModalProps) {
                   water_station: '給水設備',
                 }).map(([key, label]) => (
                   <div key={key} className="flex items-center space-x-2">
-                    <div className={`w-4 h-4 rounded ${
-                      park.facilities[key as keyof typeof park.facilities] 
-                        ? 'bg-green-500' 
+                    <div className={`w-4 h-4 rounded ${park.facilities[key as keyof typeof park.facilities]
+                        ? 'bg-green-500'
                         : 'bg-gray-300'
-                    }`} />
+                      }`} />
                     <span className="text-sm">{label}</span>
                   </div>
                 ))}
@@ -109,7 +108,7 @@ export function ParkModal({ park, onClose }: ParkModalProps) {
                   <p className="text-2xl font-bold text-blue-600">32件</p>
                   <p className="text-xs text-blue-700 mt-1">前月比 +12%</p>
                 </div>
-                
+
                 <div className="bg-green-50 p-4 rounded-lg">
                   <div className="flex items-center space-x-2 mb-2">
                     <DollarSign className="w-5 h-5 text-green-600" />
@@ -118,7 +117,7 @@ export function ParkModal({ park, onClose }: ParkModalProps) {
                   <p className="text-2xl font-bold text-green-600">¥25,600</p>
                   <p className="text-xs text-green-700 mt-1">前月比 +8%</p>
                 </div>
-                
+
                 <div className="bg-purple-50 p-4 rounded-lg">
                   <div className="flex items-center space-x-2 mb-2">
                     <Users className="w-5 h-5 text-purple-600" />
@@ -141,7 +140,7 @@ export function ParkModal({ park, onClose }: ParkModalProps) {
                 </Button>
               </Link>
             )}
-            
+
             {park.status === 'approved' && (
               <Link to="/owner-payment-system">
                 <Button className="w-full bg-white hover:bg-gray-50 border border-gray-300 text-gray-700">
@@ -150,20 +149,20 @@ export function ParkModal({ park, onClose }: ParkModalProps) {
                 </Button>
               </Link>
             )}
-            
+
             {park.status === 'second_stage_review' ? (
               <div className="w-full text-center py-3 text-gray-600 text-sm bg-gray-50 rounded border">
                 審査中のため操作できません
               </div>
             ) : (
-              <Link to={park.status === 'first_stage_passed' 
-                ? `/parks/${park.id}/second-stage` 
+              <Link to={park.status === 'first_stage_passed' || park.status === 'second_stage_waiting'
+                ? `/parks/${park.id}/second-stage`
                 : `/parks/${park.id}/manage`}>
                 <Button className="w-full">
-                  {park.status === 'first_stage_passed' ? (
+                  {park.status === 'first_stage_passed' || park.status === 'second_stage_waiting' ? (
                     <>
                       <Plus className="w-4 h-4 mr-2" />
-                      第二審査を進める
+                      {park.status === 'second_stage_waiting' ? '第二審査を申し込む' : '第二審査を進める'}
                     </>
                   ) : (
                     <>
@@ -184,14 +183,14 @@ export function ParkModal({ park, onClose }: ParkModalProps) {
 // DollarSign component for the dashboard
 function DollarSign({ className }: { className?: string }) {
   return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
     >
       <line x1="12" y1="1" x2="12" y2="23"></line>
@@ -203,14 +202,14 @@ function DollarSign({ className }: { className?: string }) {
 // Users component for the dashboard
 function Users({ className }: { className?: string }) {
   return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
     >
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -224,14 +223,14 @@ function Users({ className }: { className?: string }) {
 // Plus component for the dashboard
 function Plus({ className }: { className?: string }) {
   return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
     >
       <line x1="12" y1="5" x2="12" y2="19"></line>

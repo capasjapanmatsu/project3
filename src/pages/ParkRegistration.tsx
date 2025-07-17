@@ -17,7 +17,7 @@ export function ParkRegistration() {
   const [currentStep, setCurrentStep] = useState(1); // 1: 第一審査・本人確認, 2: 基本情報入力
   const [rejectedParks, setRejectedParks] = useState<DogPark[]>([]);
   const [identityVerificationStatus, setIdentityVerificationStatus] = useState<'pending' | 'verified' | 'failed' | null>(null);
-  
+
   // プロフィール情報の状態管理
   const [profileData, setProfileData] = useState({
     name: '',
@@ -28,7 +28,7 @@ export function ParkRegistration() {
   });
   const [profileLoading, setProfileLoading] = useState(false);
   const [showProfileEditModal, setShowProfileEditModal] = useState(false);
-  
+
   // エラーハンドリング
   const { error, clearError, handleError, executeWithErrorHandling } = useErrorHandler();
   const retrySystem = useRetryWithRecovery(retryConfigs.api);
@@ -44,7 +44,10 @@ export function ParkRegistration() {
     canVisitWeekly: '', // 'yes' or 'no' (週1回の訪問が可能か)
     canReachQuickly: '', // 'yes' or 'no' (緊急時に1時間以内に到着可能か)
     // 本人確認書類
-    identityDocument: null as File | null,
+    applicantType: '' as 'individual' | 'corporate' | '',
+    identityDocumentType: '' as 'license' | 'mynumber' | 'passport' | 'registration' | '',
+    identityDocumentFront: null as File | null,
+    identityDocumentBack: null as File | null,
     // 基本情報
     name: '',
     description: '',
@@ -86,7 +89,7 @@ export function ParkRegistration() {
         .select('*')
         .eq('owner_id', user?.id)
         .eq('status', 'rejected');
-      
+
       if (error) throw error;
       setRejectedParks(data || []);
     }, { operation: 'fetch_rejected_parks' });
@@ -99,11 +102,11 @@ export function ParkRegistration() {
         .select('status')
         .eq('user_id', user?.id)
         .single();
-      
+
       if (error && error.code !== 'PGRST116') {
         throw error;
       }
-      
+
       setIdentityVerificationStatus(data?.status || null);
     }, { operation: 'check_identity_verification' });
   };
@@ -117,7 +120,7 @@ export function ParkRegistration() {
         .select('name, postal_code, address, phone_number, email')
         .eq('id', user?.id)
         .single();
-      
+
       if (error) throw error;
       setProfileData(data || {
         name: '',
@@ -138,7 +141,7 @@ export function ParkRegistration() {
         .from('profiles')
         .update(updatedData)
         .eq('id', user?.id);
-      
+
       if (error) throw error;
       setProfileData(updatedData);
       setShowProfileEditModal(false);
@@ -189,12 +192,12 @@ export function ParkRegistration() {
       if (!data.isOwnedLand) {
         throw new Error('予定地の所有状況を選択してください。');
       }
-      
+
       // 借用地の場合の所有者許可チェック
       if (data.isOwnedLand === 'no' && !data.hasOwnerPermission) {
         throw new Error('土地所有者の許可について選択してください。');
       }
-      
+
       // 近隣住民の理解チェック（所有地・借用地両方で必要）
       if (!data.hasNeighborConsent) {
         throw new Error('近隣住民の理解について選択してください。');
@@ -225,7 +228,7 @@ export function ParkRegistration() {
     }
 
     // 本人確認書類のチェック
-    if (!data.identityDocument) {
+    if (!data.identityDocumentFront) {
       throw new Error('本人確認書類をアップロードしてください。');
     }
 
@@ -235,7 +238,7 @@ export function ParkRegistration() {
       if (data.isOwnedLand === 'no' && data.hasOwnerPermission === 'no') {
         throw new Error('土地所有者の許可を得てからお申し込みください。借用地でのドッグラン運営には所有者の同意が必要です。');
       }
-      
+
       // 近隣住民の理解がない場合
       if (data.hasNeighborConsent === 'no') {
         throw new Error('近隣住民の理解を得てからお申し込みください。地域との良好な関係は運営において重要です。');
@@ -259,10 +262,10 @@ export function ParkRegistration() {
 
   const handleFirstStageSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     await executeWithErrorHandling(async () => {
       validateFirstStage(formData);
-      
+
       if (!user) {
         throw new Error('ユーザー情報が取得できません。再度ログインしてください。');
       }
@@ -271,25 +274,25 @@ export function ParkRegistration() {
 
       try {
         // 本人確認書類をアップロード
-        if (formData.identityDocument) {
+        if (formData.identityDocumentFront) {
           console.log('🔍 Identity document upload starting...');
           console.log('📁 User ID:', user.id);
           console.log('📄 File details:', {
-            name: formData.identityDocument.name,
-            type: formData.identityDocument.type,
-            size: formData.identityDocument.size,
-            lastModified: formData.identityDocument.lastModified
+            name: formData.identityDocumentFront.name,
+            type: formData.identityDocumentFront.type,
+            size: formData.identityDocumentFront.size,
+            lastModified: formData.identityDocumentFront.lastModified
           });
 
           // ファイル名例: identity_userId_タイムスタンプ_元ファイル名
-          const fileName = `identity_${user.id}_${Date.now()}_${formData.identityDocument.name}`;
+          const fileName = `identity_${user.id}_${Date.now()}_${formData.identityDocumentFront.name}`;
           console.log('📁 Upload file name:', fileName);
-          
+
           // vaccine-certsバケットを使用（管理者画面と統一）
           console.log('🚀 Starting storage upload...');
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('vaccine-certs')
-            .upload(fileName, formData.identityDocument, { upsert: true });
+            .upload(fileName, formData.identityDocumentFront, { upsert: true });
 
           if (uploadError) {
             console.error('❌ Storage upload error:', uploadError);
@@ -307,13 +310,13 @@ export function ParkRegistration() {
             verification_data: {
               document_url: uploadData.path,
               uploaded_at: new Date().toISOString(),
-              file_name: formData.identityDocument.name,
-              file_size: formData.identityDocument.size,
-              file_type: formData.identityDocument.type,
+              file_name: formData.identityDocumentFront.name,
+              file_size: formData.identityDocumentFront.size,
+              file_type: formData.identityDocumentFront.type,
               application_stage: 'first_stage' // 1次審査時の申請であることを明示
             }
           };
-          
+
           console.log('📊 Database data:', dbData);
 
           const { error: dbError } = await supabase
@@ -331,7 +334,7 @@ export function ParkRegistration() {
 
         // 基本情報入力ステップに移動
         setCurrentStep(2);
-        
+
         // ページの最上部にスクロール
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch (err) {
@@ -355,7 +358,7 @@ export function ParkRegistration() {
         console.log('📡 ユーザー認証確認中...');
         // Get the current user
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
+
         if (userError || !user) {
           console.error('❌ ユーザー認証エラー:', userError);
           throw new Error('ユーザー認証に失敗しました。再度ログインしてください。');
@@ -406,7 +409,7 @@ export function ParkRegistration() {
 
         console.log('✅ ドッグラン登録成功');
         console.log('🔄 オーナーダッシュボードに移動中...');
-        
+
         // 少し待機してから画面遷移
         setTimeout(() => {
           navigate('/owner-dashboard');
@@ -437,8 +440,8 @@ export function ParkRegistration() {
     return (
       <div>
         {/* エラー表示 */}
-        <ErrorNotification 
-          error={error} 
+        <ErrorNotification
+          error={error}
           onClear={clearError}
           className="mb-6"
         />
@@ -466,13 +469,13 @@ export function ParkRegistration() {
   return (
     <div>
       {/* エラー表示 */}
-      <ErrorNotification 
-        error={error} 
+      <ErrorNotification
+        error={error}
         onClear={clearError}
         {...(retrySystem.state.isRetrying ? {} : { onRetry: () => retrySystem.execute(() => Promise.resolve()) })}
         className="mb-6"
       />
-      
+
       {/* リトライ状態表示 */}
       {retrySystem.state.isRetrying && (
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -484,7 +487,7 @@ export function ParkRegistration() {
                 {retrySystem.state.nextRetryIn > 0 && ` | 次の試行まで: ${retrySystem.state.nextRetryIn}秒`}
               </p>
             </div>
-            <button 
+            <button
               onClick={retrySystem.cancelRetry}
               className="text-blue-600 hover:text-blue-800 text-sm underline"
             >

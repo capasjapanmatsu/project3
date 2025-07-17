@@ -1,14 +1,16 @@
 import {
-    AlertCircle,
-    Building,
-    Calendar,
-    Check,
-    CheckCircle,
-    Clock,
-    Globe,
-    MapPin,
-    Phone,
-    XCircle
+  AlertCircle,
+  Building,
+  Calendar,
+  Check,
+  CheckCircle,
+  Clock,
+  Globe,
+  MapPin,
+  Phone,
+  Trash2,
+  X,
+  XCircle
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Button from '../components/Button';
@@ -59,6 +61,8 @@ export default function AdminFacilityApproval() {
   const [showModal, setShowModal] = useState(false);
   const [selectedFacility, setSelectedFacility] = useState<PetFacility | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [rejectReason, setRejectReason] = useState<string>('');
+  const [showRejectModal, setShowRejectModal] = useState(false);
 
   // メッセージ管理
   const showSuccess = (message: string) => {
@@ -79,7 +83,7 @@ export default function AdminFacilityApproval() {
       showError('管理者権限が必要です');
       return;
     }
-    fetchFacilities();
+    void fetchFacilities();
   }, [isAdmin]);
 
   useEffect(() => {
@@ -174,6 +178,92 @@ export default function AdminFacilityApproval() {
     } catch (error) {
       console.error('Error approving facility:', error);
       showError('施設の承認に失敗しました');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 施設を拒否する関数
+  const handleReject = async (facilityId: string, reason: string) => {
+    try {
+      setActionLoading(true);
+      setError('');
+
+      const { error } = await supabase
+        .from('pet_facilities')
+        .update({
+          status: 'rejected',
+          rejection_reason: reason,
+          rejected_at: new Date().toISOString(),
+          rejected_by: user?.id
+        })
+        .eq('id', facilityId);
+
+      if (error) throw error;
+
+      showSuccess('施設を拒否しました。');
+      
+      // 拒否後にリストを更新
+      setFacilities(prevFacilities => 
+        prevFacilities.map(facility => 
+          facility.id === facilityId 
+            ? { ...facility, status: 'rejected' as const, rejection_reason: reason }
+            : facility
+        )
+      );
+      
+      setShowModal(false);
+      setShowRejectModal(false);
+      setSelectedFacility(null);
+      setRejectReason('');
+    } catch (error) {
+      console.error('Error rejecting facility:', error);
+      showError('施設の拒否に失敗しました');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 施設を削除する関数
+  const handleDelete = async (facilityId: string) => {
+    const confirmDelete = window.confirm('この施設を完全に削除してもよろしいですか？この操作は取り消せません。');
+    if (!confirmDelete) return;
+
+    try {
+      setActionLoading(true);
+      setError('');
+
+      // 関連する画像を削除
+      const { error: imagesError } = await supabase
+        .from('facility_images')
+        .delete()
+        .eq('facility_id', facilityId);
+
+      if (imagesError) {
+        console.error('Error deleting images:', imagesError);
+        // 画像削除エラーは警告として扱い、続行
+      }
+
+      // 施設を削除
+      const { error } = await supabase
+        .from('pet_facilities')
+        .delete()
+        .eq('id', facilityId);
+
+      if (error) throw error;
+
+      showSuccess('施設を削除しました。');
+      
+      // 削除後にリストを更新
+      setFacilities(prevFacilities => 
+        prevFacilities.filter(facility => facility.id !== facilityId)
+      );
+      
+      setShowModal(false);
+      setSelectedFacility(null);
+    } catch (error) {
+      console.error('Error deleting facility:', error);
+      showError('施設の削除に失敗しました');
     } finally {
       setActionLoading(false);
     }
@@ -368,13 +458,38 @@ export default function AdminFacilityApproval() {
                           詳細を確認
                         </Button>
                         <Button
-                          onClick={() => handleApprove(facility.id)}
+                          onClick={() => void handleApprove(facility.id)}
                           disabled={actionLoading}
                           className="flex-1 bg-green-600 hover:bg-green-700"
                           size="sm"
                         >
                           <CheckCircle className="w-4 h-4 mr-1" />
                           承認
+                        </Button>
+                      </div>
+                      
+                      {/* 拒否・削除ボタン */}
+                      <div className="flex space-x-2 mt-2">
+                        <Button
+                          onClick={() => {
+                            setSelectedFacility(facility);
+                            setShowRejectModal(true);
+                          }}
+                          disabled={actionLoading}
+                          className="flex-1 bg-red-600 hover:bg-red-700"
+                          size="sm"
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          拒否
+                        </Button>
+                        <Button
+                          onClick={() => void handleDelete(facility.id)}
+                          disabled={actionLoading}
+                          className="flex-1 bg-gray-600 hover:bg-gray-700"
+                          size="sm"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          削除
                         </Button>
                       </div>
                     </div>
@@ -451,17 +566,28 @@ export default function AdminFacilityApproval() {
                         </div>
                       )}
 
-                      <Button
-                        onClick={() => {
-                          setSelectedFacility(facility);
-                          setShowModal(true);
-                        }}
-                        className="w-full"
-                        size="sm"
-                        variant="secondary"
-                      >
-                        詳細を確認
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button
+                          onClick={() => {
+                            setSelectedFacility(facility);
+                            setShowModal(true);
+                          }}
+                          className="flex-1"
+                          size="sm"
+                          variant="secondary"
+                        >
+                          詳細を確認
+                        </Button>
+                        <Button
+                          onClick={() => void handleDelete(facility.id)}
+                          disabled={actionLoading}
+                          className="flex-1 bg-red-600 hover:bg-red-700"
+                          size="sm"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          削除
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 ))}
@@ -569,15 +695,38 @@ export default function AdminFacilityApproval() {
                 {selectedFacility.status === 'pending' && (
                   <div className="flex space-x-4">
                     <Button
-                      onClick={() => handleApprove(selectedFacility.id)}
+                      onClick={() => void handleApprove(selectedFacility.id)}
                       disabled={actionLoading}
                       className="flex-1 bg-green-600 hover:bg-green-700"
                     >
                       <CheckCircle className="w-4 h-4 mr-2" />
                       承認する
                     </Button>
+                    <Button
+                      onClick={() => {
+                        setShowModal(false);
+                        setShowRejectModal(true);
+                      }}
+                      disabled={actionLoading}
+                      className="flex-1 bg-red-600 hover:bg-red-700"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      拒否する
+                    </Button>
                   </div>
                 )}
+
+                {/* 削除ボタン（すべてのステータスで表示） */}
+                <div className="mt-4 pt-4 border-t">
+                  <Button
+                    onClick={() => void handleDelete(selectedFacility.id)}
+                    disabled={actionLoading}
+                    className="w-full bg-gray-600 hover:bg-gray-700"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    施設を削除
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

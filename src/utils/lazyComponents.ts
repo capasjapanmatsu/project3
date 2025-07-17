@@ -76,7 +76,7 @@ export const DogParkHistory = lazy(() => import('../pages/DogParkHistory').then(
 export const DogParkRules = lazy(() => import('../pages/DogParkRules').then(module => ({ default: module.DogParkRules })));
 export const ParkRegistrationAgreement = lazy(() => import('../pages/ParkRegistrationAgreement').then(module => ({ default: module.ParkRegistrationAgreement })));
 export const ParkRegistrationSecondStage = lazy(() => import('../pages/ParkRegistrationSecondStage').then(module => ({ default: module.ParkRegistrationSecondStage })));
-export const FacilityRegistration = lazy(() => import('../pages/FacilityRegistration').then(module => ({ default: module.FacilityRegistration })));
+export const FacilityRegistration = lazy(() => import('../pages/FacilityRegistration'));
 export const NewParkDetail = lazy(() => import('../pages/NewParkDetail').then(module => ({ default: module.NewParkDetail })));
 export const BluePrint = lazy(() => import('../pages/BluePrint').then(module => ({ default: module.BluePrint })));
 export const AccessControl = lazy(() => import('../pages/AccessControl').then(module => ({ default: module.AccessControl })));

@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Upload, CheckCircle, AlertTriangle, Camera, Trash2, Building, MapPin, ParkingCircle, ShowerHead, FileText, X, Image as ImageIcon, CreditCard } from 'lucide-react';
-import Card from '../components/Card';
+import { AlertTriangle, ArrowLeft, Building, Camera, CheckCircle, CreditCard, FileText, Image as ImageIcon, MapPin, ParkingCircle, Shield, ShowerHead, Trash2, Upload, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
+import Card from '../components/Card';
 import Input from '../components/Input';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
 
 interface FacilityImage {
   id?: string;
@@ -58,6 +58,12 @@ const IMAGE_TYPES = {
     label: '入口',
     description: '入口の様子がわかる写真',
     icon: MapPin,
+    required: true
+  },
+  gate: {
+    label: 'ゲート',
+    description: 'ドッグランのゲート（入退場管理）の写真',
+    icon: Shield,
     required: true
   },
   large_dog_area: {
@@ -149,20 +155,22 @@ export function ParkRegistrationSecondStage() {
   const [isSavingBank, setIsSavingBank] = useState(false);
   const [bankError, setBankError] = useState('');
   const [bankSuccess, setBankSuccess] = useState('');
+  const [smartLockPurchased, setSmartLockPurchased] = useState(false);
+  const [smartLockError, setSmartLockError] = useState('');
 
   useEffect(() => {
     if (!user || !parkId) {
       navigate('/owner-dashboard');
       return;
     }
-    
+
     fetchParkData();
   }, [user, parkId, navigate]);
 
   const fetchParkData = async () => {
     try {
       setIsLoading(true);
-      
+
       // Fetch park data
       const { data: parkData, error: parkError } = await supabase
         .from('dog_parks')
@@ -170,25 +178,25 @@ export function ParkRegistrationSecondStage() {
         .eq('id', parkId)
         .eq('owner_id', user?.id)
         .single();
-      
+
       if (parkError) throw parkError;
       if (!parkData) {
         navigate('/owner-dashboard');
         return;
       }
-      
+
       setPark(parkData);
-      
+
       // Fetch existing facility images
       const { data: imageData, error: imageError } = await supabase
         .from('dog_park_facility_images')
         .select('*')
         .eq('park_id', parkId);
-      
+
       if (imageError) {
         console.error('Error fetching images:', imageError);
       }
-      
+
       // Initialize images array based on park facilities and existing images
       const requiredImageTypes = Object.entries(IMAGE_TYPES)
         .filter(([, config]) => {
@@ -207,7 +215,7 @@ export function ParkRegistrationSecondStage() {
           return false;
         })
         .map(([key]) => key);
-      
+
       const facilityImages: FacilityImage[] = requiredImageTypes.map(imageType => {
         const existingImage = (imageData || []).find(img => img.image_type === imageType);
         return {
@@ -218,13 +226,13 @@ export function ParkRegistrationSecondStage() {
           admin_notes: existingImage?.admin_notes
         };
       });
-      
+
       setImages(facilityImages);
-      
+
       // Fetch bank account information
       const { data: bankData, error: bankError } = await supabase
         .rpc('get_owner_bank_account');
-      
+
       if (!bankError && bankData && bankData.length > 0) {
         setBankAccount({
           id: bankData[0].id,
@@ -246,9 +254,9 @@ export function ParkRegistrationSecondStage() {
 
   const handleImageSelect = (imageType: string, file: File) => {
     // Update the images array with the selected file
-    setImages(prev => prev.map(img => 
-      img.image_type === imageType 
-        ? { ...img, file, error: undefined } 
+    setImages(prev => prev.map(img =>
+      img.image_type === imageType
+        ? { ...img, file, error: undefined }
         : img
     ));
   };
@@ -256,30 +264,30 @@ export function ParkRegistrationSecondStage() {
   const handleImageUpload = async (imageType: string) => {
     const imageToUpload = images.find(img => img.image_type === imageType);
     if (!imageToUpload || !imageToUpload.file) return;
-    
+
     try {
       // Mark as uploading
-      setImages(prev => prev.map(img => 
-        img.image_type === imageType 
-          ? { ...img, uploading: true, error: undefined } 
+      setImages(prev => prev.map(img =>
+        img.image_type === imageType
+          ? { ...img, uploading: true, error: undefined }
           : img
       ));
-      
+
       // Upload to storage
       const fileExt = imageToUpload.file.name.split('.').pop();
       const fileName = `${parkId}/${imageType}_${Date.now()}.${fileExt}`;
-      
+
       const { error: uploadError } = await supabase.storage
         .from('dog-park-images')
         .upload(fileName, imageToUpload.file);
-      
+
       if (uploadError) throw uploadError;
-      
+
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('dog-park-images')
         .getPublicUrl(fileName);
-      
+
       // Save to database
       if (imageToUpload.id) {
         // Update existing image
@@ -291,7 +299,7 @@ export function ParkRegistrationSecondStage() {
             updated_at: new Date().toISOString()
           })
           .eq('id', imageToUpload.id);
-        
+
         if (updateError) throw updateError;
       } else {
         // Insert new image
@@ -302,24 +310,24 @@ export function ParkRegistrationSecondStage() {
             image_type: imageType,
             image_url: publicUrl
           });
-        
+
         if (insertError) throw insertError;
       }
-      
+
       // Refresh images
       await fetchParkData();
-      
+
       const typeConfig = IMAGE_TYPES[imageType as keyof typeof IMAGE_TYPES];
       const label = typeConfig?.label || imageType;
       setSuccess(`${label}の画像をアップロードしました`);
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error(`Error uploading ${imageType} image:`, error);
-      
+
       // Mark upload as failed
-      setImages(prev => prev.map(img => 
-        img.image_type === imageType 
-          ? { ...img, uploading: false, error: 'アップロードに失敗しました' } 
+      setImages(prev => prev.map(img =>
+        img.image_type === imageType
+          ? { ...img, uploading: false, error: 'アップロードに失敗しました' }
           : img
       ));
     }
@@ -327,18 +335,18 @@ export function ParkRegistrationSecondStage() {
 
   const handleDeleteImage = async (imageId?: string) => {
     if (!imageId) return;
-    
+
     try {
       const { error } = await supabase
         .from('dog_park_facility_images')
         .delete()
         .eq('id', imageId);
-      
+
       if (error) throw error;
-      
+
       // Refresh images
       await fetchParkData();
-      
+
       setSuccess('画像を削除しました');
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
@@ -353,7 +361,7 @@ export function ParkRegistrationSecondStage() {
     setIsSavingBank(true);
     setBankError('');
     setBankSuccess('');
-    
+
     try {
       // Validate bank account information
       if (!bankAccount.bank_name) throw new Error('銀行名を入力してください');
@@ -362,22 +370,22 @@ export function ParkRegistrationSecondStage() {
       if (!bankAccount.branch_code) throw new Error('支店コードを入力してください');
       if (!bankAccount.account_number) throw new Error('口座番号を入力してください');
       if (!bankAccount.account_holder_name) throw new Error('口座名義を入力してください');
-      
+
       // Validate bank code (4 digits)
       if (!/^\d{4}$/.test(bankAccount.bank_code)) {
         throw new Error('銀行コードは4桁の数字で入力してください');
       }
-      
+
       // Validate branch code (3 digits)
       if (!/^\d{3}$/.test(bankAccount.branch_code)) {
         throw new Error('支店コードは3桁の数字で入力してください');
       }
-      
+
       // Validate account number (7 digits)
       if (!/^\d{7}$/.test(bankAccount.account_number)) {
         throw new Error('口座番号は7桁の数字で入力してください');
       }
-      
+
       // Save bank account information
       const { error } = await supabase.rpc('update_owner_bank_account', {
         bank_name_param: bankAccount.bank_name,
@@ -388,11 +396,11 @@ export function ParkRegistrationSecondStage() {
         account_number_param: bankAccount.account_number,
         account_holder_name_param: bankAccount.account_holder_name
       });
-      
+
       if (error) throw error;
-      
+
       setBankSuccess('振込先情報を保存しました');
-      
+
       // 3秒後に成功メッセージを消す
       setTimeout(() => {
         setBankSuccess('');
@@ -409,7 +417,14 @@ export function ParkRegistrationSecondStage() {
     try {
       setIsSubmitting(true);
       setError('');
-      
+
+      // Check if smart lock is purchased
+      if (!smartLockPurchased) {
+        setSmartLockError('スマートロックの購入・設置完了をご確認ください');
+        setIsSubmitting(false);
+        return;
+      }
+
       // Check if all required images are uploaded
       const requiredTypes = Object.entries(IMAGE_TYPES)
         .filter(([, config]) => {
@@ -428,31 +443,31 @@ export function ParkRegistrationSecondStage() {
           return false;
         })
         .map(([key]) => key);
-      
-      const missingTypes = requiredTypes.filter(type => 
+
+      const missingTypes = requiredTypes.filter(type =>
         !images.some(img => img.image_type === type && img.image_url)
       );
-      
+
       if (missingTypes.length > 0) {
         const missingLabels = missingTypes.map(type => {
           const typeConfig = IMAGE_TYPES[type as keyof typeof IMAGE_TYPES];
           return typeConfig?.label || type;
         }).join('、');
-        
+
         setError(`以下の必要な画像がアップロードされていません: ${missingLabels}`);
         setIsSubmitting(false);
         return;
       }
-      
+
       // Check if bank account information is set
-      if (!bankAccount.bank_name || !bankAccount.bank_code || !bankAccount.branch_name || 
-          !bankAccount.branch_code || !bankAccount.account_number || !bankAccount.account_holder_name) {
+      if (!bankAccount.bank_name || !bankAccount.bank_code || !bankAccount.branch_name ||
+        !bankAccount.branch_code || !bankAccount.account_number || !bankAccount.account_holder_name) {
         setError('振込先情報を入力してください');
         setActiveTab('bank');
         setIsSubmitting(false);
         return;
       }
-      
+
       // Record the second stage review submission in the review stages table
       try {
         // First, check if a review stage record already exists
@@ -461,12 +476,12 @@ export function ParkRegistrationSecondStage() {
           .select('id')
           .eq('park_id', parkId)
           .single();
-        
+
         if (checkError && checkError.code !== 'PGRST116') {
           // PGRST116 is "not found" error, which is expected if no record exists
           console.error('Error checking existing review stage:', checkError);
         }
-        
+
         if (existingStage) {
           // Update existing record
           const { error: updateError } = await supabase
@@ -475,7 +490,7 @@ export function ParkRegistrationSecondStage() {
               second_stage_submitted_at: new Date().toISOString()
             })
             .eq('park_id', parkId);
-          
+
           if (updateError) {
             console.error('Error updating review stage:', updateError);
           }
@@ -487,7 +502,7 @@ export function ParkRegistrationSecondStage() {
               park_id: parkId,
               second_stage_submitted_at: new Date().toISOString()
             });
-          
+
           if (insertError) {
             console.error('Error inserting review stage:', insertError);
           }
@@ -496,7 +511,22 @@ export function ParkRegistrationSecondStage() {
         console.error('Error recording review stage:', reviewError);
         // Don't throw error, continue with submission
       }
-      
+
+      // Update park status to second_stage_review
+      try {
+        const { error: statusError } = await supabase
+          .from('dog_parks')
+          .update({ status: 'second_stage_review' })
+          .eq('id', parkId);
+
+        if (statusError) {
+          console.error('Error updating park status:', statusError);
+        }
+      } catch (statusError) {
+        console.error('Error updating park status:', statusError);
+        // Don't throw error, continue with submission
+      }
+
       // Save bank account information if not already saved
       try {
         const { error: bankError } = await supabase.rpc('update_owner_bank_account', {
@@ -508,7 +538,7 @@ export function ParkRegistrationSecondStage() {
           account_number_param: bankAccount.account_number,
           account_holder_name_param: bankAccount.account_holder_name
         });
-        
+
         if (bankError) {
           console.error('Error saving bank account:', bankError);
           // Continue even if bank account save fails
@@ -517,7 +547,7 @@ export function ParkRegistrationSecondStage() {
         console.error('Error with bank account RPC:', bankError);
         // Continue even if bank account save fails
       }
-      
+
       // Create notification for admin
       try {
         const { error: notifyError } = await supabase
@@ -529,7 +559,7 @@ export function ParkRegistrationSecondStage() {
             data: { park_id: parkId },
             created_at: new Date().toISOString()
           }]);
-          
+
         if (notifyError) {
           console.error('Error creating admin notification:', notifyError);
           // Continue even if notification fails
@@ -538,12 +568,12 @@ export function ParkRegistrationSecondStage() {
         console.error('Error with notification:', notifyError);
         // Continue even if notification fails
       }
-      
+
       setSuccess('第二審査の申請が完了しました。審査結果をお待ちください。');
-      
+
       // Refresh data
       await fetchParkData();
-      
+
       // Redirect to dashboard after 3 seconds
       setTimeout(() => {
         navigate('/owner-dashboard');
@@ -585,9 +615,9 @@ export function ParkRegistrationSecondStage() {
           >
             <X className="w-6 h-6" />
           </button>
-          <img 
-            src={showImagePreview} 
-            alt="画像プレビュー" 
+          <img
+            src={showImagePreview}
+            alt="画像プレビュー"
             className="max-h-[80vh] max-w-full mx-auto rounded-lg"
             onError={(e) => {
               e.currentTarget.src = 'https://via.placeholder.com/800x600?text=Image+Not+Available';
@@ -612,7 +642,7 @@ export function ParkRegistrationSecondStage() {
   }
 
   // Check if park is in the correct stage
-  if (park.status !== 'first_stage_passed' && park.status !== 'second_stage_review') {
+  if (park.status !== 'first_stage_passed' && park.status !== 'second_stage_waiting' && park.status !== 'second_stage_review') {
     return (
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
@@ -621,13 +651,13 @@ export function ParkRegistrationSecondStage() {
             ダッシュボードに戻る
           </Link>
         </div>
-        
+
         <Card className="text-center py-8">
           <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-2">このドッグランは現在第二審査の対象ではありません</h2>
           <p className="text-gray-600 mb-4">
             {park.status === 'pending' && '第一審査が完了するまでお待ちください。'}
-            {park.status === 'qr_testing' && 'QRコード実証検査中です。管理者からの連絡をお待ちください。'}
+            {park.status === 'smart_lock_testing' && 'スマートロック実証検査中です。管理者からの連絡をお待ちください。'}
             {park.status === 'approved' && 'このドッグランは既に承認されています。'}
             {park.status === 'rejected' && '審査が却下されました。詳細はダッシュボードでご確認ください。'}
           </p>
@@ -678,7 +708,9 @@ export function ParkRegistrationSecondStage() {
                 <div>
                   <span className="font-medium">第二審査</span>
                   <p className="text-xs text-blue-600">
-                    {park.status === 'first_stage_passed' ? '画像アップロード中' : '審査中'}
+                    {park.status === 'first_stage_passed' && '画像アップロード中'}
+                    {park.status === 'second_stage_waiting' && '申請準備中'}
+                    {park.status === 'second_stage_review' && '審査中'}
                   </p>
                 </div>
               </div>
@@ -708,7 +740,7 @@ export function ParkRegistrationSecondStage() {
           <p>{error}</p>
         </div>
       )}
-      
+
       {success && (
         <div className="bg-green-100 border border-green-300 text-green-800 rounded-lg p-4 flex items-start">
           <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
@@ -716,25 +748,66 @@ export function ParkRegistrationSecondStage() {
         </div>
       )}
 
+      {/* スマートロック購入確認 */}
+      <Card className="bg-orange-50 border-orange-200">
+        <div className="flex items-start space-x-3">
+          <Shield className="w-6 h-6 text-orange-600 mt-1" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-orange-900 mb-2">スマートロック購入確認</h3>
+            <p className="text-sm text-orange-800 mb-4">
+              第二審査に進む前に、スマートロックの購入と設置が完了していることを確認してください。
+            </p>
+
+            <div className="space-y-3">
+              <div className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id="smartLockPurchased"
+                  checked={smartLockPurchased}
+                  onChange={(e) => {
+                    setSmartLockPurchased(e.target.checked);
+                    setSmartLockError('');
+                  }}
+                  className="w-5 h-5 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
+                />
+                <label htmlFor="smartLockPurchased" className="text-sm font-medium text-orange-900">
+                  スマートロックを購入し、設置を完了しました
+                </label>
+              </div>
+
+              {smartLockError && (
+                <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                  {smartLockError}
+                </div>
+              )}
+
+              <div className="text-xs text-orange-700 space-y-1">
+                <p>• スマートロックはペットショップで購入できます</p>
+                <p>• 設置完了後、動作確認を行ってください</p>
+                <p>• 第二審査では実際の設置状況を確認します</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* タブナビゲーション */}
       <div className="flex space-x-4 border-b">
         <button
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'images'
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
+          className={`px-4 py-2 font-medium ${activeTab === 'images'
+            ? 'text-blue-600 border-b-2 border-blue-600'
+            : 'text-gray-500 hover:text-gray-700'
+            }`}
           onClick={() => setActiveTab('images')}
         >
           <Camera className="w-4 h-4 inline mr-2" />
           施設画像
         </button>
         <button
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'bank'
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
+          className={`px-4 py-2 font-medium ${activeTab === 'bank'
+            ? 'text-blue-600 border-b-2 border-blue-600'
+            : 'text-gray-500 hover:text-gray-700'
+            }`}
           onClick={() => setActiveTab('bank')}
         >
           <BankAccountIcon className="w-4 h-4 inline mr-2" />
@@ -749,7 +822,7 @@ export function ParkRegistrationSecondStage() {
             <Camera className="w-6 h-6 text-blue-600 mr-2" />
             施設画像のアップロード
           </h2>
-          
+
           <div className="space-y-6">
             <div className="bg-yellow-50 p-4 rounded-lg">
               <div className="flex items-start space-x-2">
@@ -766,13 +839,13 @@ export function ParkRegistrationSecondStage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {images.map((image) => {
                 const imageTypeConfig = IMAGE_TYPES[image.image_type as keyof typeof IMAGE_TYPES];
                 const IconComponent = imageTypeConfig?.icon || Building;
                 const isRequired = imageTypeConfig?.required || false;
-                
+
                 let approvalStatus = null;
                 if ((image.is_approved ?? null) !== null && image.image_url) {
                   const status = getApprovalStatus(image.is_approved ?? null);
@@ -784,7 +857,7 @@ export function ParkRegistrationSecondStage() {
                     </div>
                   );
                 }
-                
+
                 return (
                   <div key={image.image_type} className="border rounded-lg p-4 relative">
                     {/* Image type header */}
@@ -798,20 +871,20 @@ export function ParkRegistrationSecondStage() {
                       </div>
                       {approvalStatus}
                     </div>
-                    
+
                     {/* Description */}
                     <p className="text-sm text-gray-600 mb-3">{imageTypeConfig?.description || '画像をアップロードしてください'}</p>
-                    
+
                     {/* Image preview or upload button */}
                     {image.image_url ? (
                       <div className="relative">
-                        <div 
+                        <div
                           className="h-40 bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
                           onClick={() => setShowImagePreview(image.image_url || null)}
                         >
-                          <img 
-                            src={image.image_url} 
-                            alt={imageTypeConfig?.label || image.image_type} 
+                          <img
+                            src={image.image_url}
+                            alt={imageTypeConfig?.label || image.image_type}
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
@@ -833,7 +906,7 @@ export function ParkRegistrationSecondStage() {
                             <Trash2 className={`w-4 h-4 ${(image.is_approved ?? null) === true ? 'text-gray-400' : 'text-red-600'}`} />
                           </button>
                         </div>
-                        
+
                         {/* Admin notes if rejected */}
                         {image.is_approved === false && image.admin_notes && (
                           <div className="mt-2 p-2 bg-red-50 rounded text-sm text-red-800">
@@ -867,7 +940,7 @@ export function ParkRegistrationSecondStage() {
                             </span>
                           </label>
                         </div>
-                        
+
                         {image.file && (
                           <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
                             <span className="text-sm truncate">{image.file.name}</span>
@@ -880,7 +953,7 @@ export function ParkRegistrationSecondStage() {
                             </Button>
                           </div>
                         )}
-                        
+
                         {image.error && (
                           <p className="text-sm text-red-600">{image.error}</p>
                         )}
@@ -901,21 +974,21 @@ export function ParkRegistrationSecondStage() {
             <BankAccountIcon className="w-6 h-6 text-blue-600 mr-2" />
             振込先情報
           </h2>
-          
+
           {bankError && (
             <div className="mb-6 p-4 bg-red-50 rounded-lg flex items-start">
               <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
               <p className="text-red-800">{bankError}</p>
             </div>
           )}
-          
+
           {bankSuccess && (
             <div className="mb-6 p-4 bg-green-50 rounded-lg flex items-start">
               <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
               <p className="text-green-800">{bankSuccess}</p>
             </div>
           )}
-          
+
           <form onSubmit={handleSaveBankAccount}>
             <div className="space-y-6">
               <div className="bg-yellow-50 p-4 rounded-lg mb-6">
@@ -933,7 +1006,7 @@ export function ParkRegistrationSecondStage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Input
                   label="銀行名 *"
@@ -943,7 +1016,7 @@ export function ParkRegistrationSecondStage() {
                   required
                   icon={<BankAccountIcon className="w-4 h-4 text-gray-500" />}
                 />
-                
+
                 <Input
                   label="銀行コード（4桁） *"
                   value={bankAccount.bank_code}
@@ -957,7 +1030,7 @@ export function ParkRegistrationSecondStage() {
                   required
                   helperText="4桁の数字で入力してください"
                 />
-                
+
                 <Input
                   label="支店名 *"
                   value={bankAccount.branch_name}
@@ -965,7 +1038,7 @@ export function ParkRegistrationSecondStage() {
                   placeholder="例：渋谷支店"
                   required
                 />
-                
+
                 <Input
                   label="支店コード（3桁） *"
                   value={bankAccount.branch_code}
@@ -979,7 +1052,7 @@ export function ParkRegistrationSecondStage() {
                   required
                   helperText="3桁の数字で入力してください"
                 />
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     口座種別 *
@@ -1005,7 +1078,7 @@ export function ParkRegistrationSecondStage() {
                     </label>
                   </div>
                 </div>
-                
+
                 <Input
                   label="口座番号（7桁） *"
                   value={bankAccount.account_number}
@@ -1020,7 +1093,7 @@ export function ParkRegistrationSecondStage() {
                   helperText="7桁の数字で入力してください"
                   icon={<CreditCard className="w-4 h-4 text-gray-500" />}
                 />
-                
+
                 <div className="md:col-span-2">
                   <Input
                     label="口座名義（カタカナ） *"
@@ -1032,7 +1105,7 @@ export function ParkRegistrationSecondStage() {
                   />
                 </div>
               </div>
-              
+
               <div className="flex justify-end">
                 <Button
                   type="submit"
@@ -1054,8 +1127,8 @@ export function ParkRegistrationSecondStage() {
           disabled={park.status === 'second_stage_review'}
           className="bg-blue-600 hover:bg-blue-700"
         >
-          {park.status === 'second_stage_review' 
-            ? '審査中です' 
+          {park.status === 'second_stage_review'
+            ? '審査中です'
             : '第二審査を申請する'}
         </Button>
       </div>
@@ -1083,14 +1156,14 @@ export function ParkRegistrationSecondStage() {
 // BankAccountIcon component for bank account information
 function BankAccountIcon({ className }: { className?: string }) {
   return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
     >
       <path d="M3 21h18"></path>
@@ -1107,14 +1180,14 @@ function BankAccountIcon({ className }: { className?: string }) {
 
 function Clock({ className }: { className?: string }) {
   return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
     >
       <circle cx="12" cy="12" r="10"></circle>

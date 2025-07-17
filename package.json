@@ -34,7 +34,11 @@
     "pwa:checklist": "node scripts/pwa-dev-helper.js checklist",
     "pwa:icons": "node scripts/pwa-dev-helper.js generate-icons",
     "pwa:https": "node scripts/pwa-dev-helper.js https-setup",
-    "pwa:all": "node scripts/pwa-dev-helper.js all"
+    "pwa:all": "node scripts/pwa-dev-helper.js all",
+    "dev:browser": "concurrently \"npm run dev\" \"sleep 3 && start http://localhost:3005\"",
+    "dev:full": "concurrently \"npm run dev\" \"npm run analyze:build\"",
+    "browser:dev": "echo 'Use Ctrl+Shift+O to open in Simple Browser'",
+    "browser:stats": "echo 'Use Ctrl+Alt+B to view bundle analysis'"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^1.16.6",

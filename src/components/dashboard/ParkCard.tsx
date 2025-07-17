@@ -1,6 +1,7 @@
-import { Star, Edit, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
-import Button from '../Button';
+import { AlertTriangle, CheckCircle, Clock, Edit, FileText, Star } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type { DogPark } from '../../types';
+import Button from '../Button';
 
 interface ParkCardProps {
   park: DogPark;
@@ -8,8 +9,16 @@ interface ParkCardProps {
 }
 
 export function ParkCard({ park, onSelect }: ParkCardProps) {
+  const handleCardClick = (e: React.MouseEvent) => {
+    // 詳細ボタンをクリックした場合は、カードのクリックイベントを無効化
+    if ((e.target as HTMLElement).closest('.detail-button')) {
+      return;
+    }
+    onSelect(park);
+  };
+
   return (
-    <div className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer" onClick={() => onSelect(park)}>
+    <div className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer" onClick={handleCardClick}>
       <div className="flex justify-between items-start mb-2">
         <div>
           <h3 className="font-semibold">{park.name}</h3>
@@ -26,9 +35,19 @@ export function ParkCard({ park, onSelect }: ParkCardProps) {
         </div>
         <div className="flex items-center space-x-2">
           {getStatusBadge(park.status)}
-          <Button size="sm" className="bg-white hover:bg-gray-50 border border-gray-300 text-gray-700">
-            <Edit className="w-4 h-4" />
-          </Button>
+
+          {park.status === 'second_stage_waiting' ? (
+            <Link to={`/parks/${park.id}/second-stage`} className="detail-button">
+              <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white">
+                <FileText className="w-4 h-4 mr-1" />
+                申し込み
+              </Button>
+            </Link>
+          ) : (
+            <Button size="sm" className="bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 detail-button">
+              <Edit className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
@@ -55,6 +74,12 @@ export function ParkCard({ park, onSelect }: ParkCardProps) {
           第二審査中です。審査完了までお待ちください
         </div>
       )}
+      {park.status === 'second_stage_waiting' && (
+        <div className="mt-3 p-2 bg-orange-50 rounded text-sm text-orange-800">
+          <CheckCircle className="w-4 h-4 inline mr-1" />
+          第一審査通過！第二審査の申し込みが可能です
+        </div>
+      )}
     </div>
   );
 }
@@ -67,6 +92,7 @@ export function getStatusBadge(status: string) {
     confirmed: 'bg-blue-100 text-blue-800',
     cancelled: 'bg-gray-100 text-gray-800',
     first_stage_passed: 'bg-blue-100 text-blue-800',
+    second_stage_waiting: 'bg-orange-100 text-orange-800',
     second_stage_review: 'bg-purple-100 text-purple-800',
     qr_testing: 'bg-orange-100 text-orange-800',
   };
@@ -77,6 +103,7 @@ export function getStatusBadge(status: string) {
     confirmed: '確定',
     cancelled: 'キャンセル',
     first_stage_passed: '第一審査通過',
+    second_stage_waiting: '二次審査申し込み',
     second_stage_review: '第二審査中',
     qr_testing: 'QR検査中',
   };

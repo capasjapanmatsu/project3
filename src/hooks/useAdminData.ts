@@ -16,8 +16,8 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
   const fetchParks = async () => {
     try {
       log('info', '🔍 Fetching pending parks...');
-      
-      // Get parks that need approval (pending, first_stage_passed, second_stage_review)
+
+      // Get parks that need approval (全ての審査プロセス中のステータス)
       const result = await safeSupabaseQuery(() =>
         supabase
           .from('dog_parks')
@@ -29,17 +29,17 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
             created_at,
             owner_id
           `)
-          .in('status', ['pending', 'first_stage_passed', 'second_stage_review'])
+          .in('status', ['pending', 'first_stage_passed', 'second_stage_waiting', 'second_stage_review', 'smart_lock_testing'])
           .order('created_at', { ascending: false })
       );
-      
+
       if (result.error) {
         log('error', '❌ Parks fetch error:', result.error);
         throw result.error;
       }
-      
+
       const parksData = result.data || [];
-      
+
       if (parksData.length === 0) {
         log('info', 'ℹ️ No pending parks found');
         setPendingParks([]);
@@ -55,20 +55,20 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
       // Fetch all related data in parallel for better performance
       const [ownersResponse, reviewStagesResponse, imagesResponse, identityResponse] = await Promise.allSettled([
         // Get owner information (詳細情報も取得)
-        ownerIds.length > 0 
+        ownerIds.length > 0
           ? supabase.from('profiles').select('id, name, postal_code, address, phone_number, email').in('id', ownerIds)
           : Promise.resolve({ data: [], error: null }),
-        
+
         // Get review stages (if table exists)
         parkIds.length > 0
           ? supabase.from('dog_park_review_stages').select('park_id, second_stage_submitted_at').in('park_id', parkIds)
           : Promise.resolve({ data: [], error: null }),
-        
+
         // Get facility images
         parkIds.length > 0
           ? supabase.from('dog_park_facility_images').select('park_id, is_approved').in('park_id', parkIds)
           : Promise.resolve({ data: [], error: null }),
-        
+
         // Get identity verification documents
         ownerIds.length > 0
           ? supabase.from('owner_verifications').select('user_id, verification_id, status, verification_data, created_at').in('user_id', ownerIds)
@@ -78,7 +78,14 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
       // Process owners data
       const ownersData = ownersResponse.status === 'fulfilled' ? ownersResponse.value.data || [] : [];
       const ownersMap = new Map(ownersData.map(owner => [owner.id, owner]));
-      
+
+      // デバッグログ: 申請者情報の確認
+      console.log('🔍 取得した申請者情報:', {
+        ownersDataLength: ownersData.length,
+        ownersData: ownersData,
+        ownersMap: ownersMap
+      });
+
       // Process review stages data (handle if table doesn't exist)
       const reviewStagesData = reviewStagesResponse.status === 'fulfilled' ? reviewStagesResponse.value.data || [] : [];
       const reviewStagesMap = new Map(reviewStagesData.map(stage => [stage.park_id, stage]));
@@ -86,7 +93,7 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
       // Process images data (handle if table doesn't exist)
       const imagesData = imagesResponse.status === 'fulfilled' ? imagesResponse.value.data || [] : [];
       const imagesMap = new Map();
-      
+
       // Group images by park_id
       imagesData.forEach(image => {
         if (!imagesMap.has(image.park_id)) {
@@ -115,19 +122,19 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
         // Extract identity document information
         let identityDocumentUrl = '';
         let identityDocumentFilename = '';
-        
+
         if (identity && identity.verification_data) {
           if (typeof identity.verification_data === 'object') {
             identityDocumentUrl = identity.verification_data.document_url || identity.verification_data.file_path || '';
             identityDocumentFilename = identity.verification_data.file_name || identity.verification_data.filename || '';
           }
         }
-        
+
         // verification_idがファイルパスの場合はそれを使用
         if (!identityDocumentUrl && identity?.verification_id) {
           identityDocumentUrl = identity.verification_id;
         }
-        
+
         if (!identityDocumentFilename && identityDocumentUrl) {
           identityDocumentFilename = identityDocumentUrl.split('/').pop() || 'identity_document';
         }
@@ -160,7 +167,7 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
 
       log('info', `✅ Transformed ${transformedParks.length} parks with image data`);
       setPendingParks(transformedParks);
-      
+
     } catch (error) {
       log('error', '❌ Error fetching parks:', { error: handleSupabaseError(error) });
       setError(`ドッグラン申請データの取得に失敗しました: ${handleSupabaseError(error)}`);
@@ -170,10 +177,10 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
   const fetchVaccines = async () => {
     try {
       log('info', '🔍 Fetching pending vaccines...');
-      
+
       // Ensure vaccine bucket is public
       await ensureVaccineBucketIsPublic();
-      
+
       const result = await safeSupabaseQuery(() =>
         supabase
           .from('vaccine_certifications')
@@ -201,14 +208,14 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
           .eq('status', 'pending')
           .order('created_at', { ascending: false })
       );
-      
+
       if (result.error) {
         log('error', '❌ Vaccines fetch error:', result.error);
         throw result.error;
       }
-      
+
       const vaccinesData = result.data || [];
-      
+
       if (vaccinesData.length === 0) {
         log('info', 'ℹ️ No pending vaccines found');
         setPendingVaccines([]);
@@ -221,12 +228,12 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
       const transformedVaccines: PendingVaccine[] = vaccinesData.map(vaccine => {
         const dog = Array.isArray(vaccine.dog) ? vaccine.dog[0] : vaccine.dog;
         const owner = dog ? (Array.isArray(dog.owner) ? dog.owner[0] : dog.owner) : null;
-        
+
         if (!dog || !owner) {
           log('warn', '❌ Invalid vaccine data:', { vaccine });
           return null;
         }
-        
+
         return {
           id: vaccine.id,
           dog_id: vaccine.dog_id,
@@ -251,7 +258,7 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
       }).filter(vaccine => vaccine !== null) as PendingVaccine[];
 
       setPendingVaccines(transformedVaccines);
-      
+
     } catch (error) {
       log('error', '❌ Error fetching vaccines:', { error: handleSupabaseError(error) });
       setError(`ワクチン証明書データの取得に失敗しました: ${handleSupabaseError(error)}`);
@@ -262,7 +269,7 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
     try {
       setIsLoading(true);
       setError('');
-      
+
       if (activeTab === 'parks') {
         await fetchParks();
       } else if (activeTab === 'vaccines') {
@@ -300,9 +307,9 @@ export const useParkImages = (parkId: string | null) => {
     try {
       setIsLoading(true);
       setError('');
-      
+
       log('info', `🔍 Fetching images for park: ${id}`);
-      
+
       const result = await safeSupabaseQuery(() =>
         supabase
           .from('dog_park_facility_images')
@@ -310,16 +317,16 @@ export const useParkImages = (parkId: string | null) => {
           .eq('park_id', id)
           .order('created_at', { ascending: false })
       );
-      
+
       if (result.error) {
         log('error', '❌ Images fetch error:', result.error);
         throw result.error;
       }
-      
+
       const imagesData = result.data || [];
       log('info', `✅ Found ${imagesData.length} images for park ${id}`);
       setParkImages(imagesData);
-      
+
     } catch (error) {
       log('error', '❌ Error fetching park images:', { error: handleSupabaseError(error) });
       setError(`画像データの取得に失敗しました: ${handleSupabaseError(error)}`);

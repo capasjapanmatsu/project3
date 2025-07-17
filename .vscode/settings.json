@@ -43,5 +43,21 @@
     "javascriptreact",
     "typescript",
     "typescriptreact"
-  ]
+  ],
+  // Simple Browser + Vite Dev Server 設定
+  "simpleBrowser.focusLockIndicator.enabled": true,
+  "vite.autoStart": true,
+  "liveServer.settings.port": 3005,
+  "liveServer.settings.CustomBrowser": "chrome",
+  // 開発効率向上設定
+  "editor.linkedEditing": true,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": true,
+  "workbench.editor.enablePreview": false,
+  "explorer.confirmDelete": false,
+  "git.autofetch": true,
+  // Hot Reload最適化
+  "files.hotExit": "onExitAndWindowClose",
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true
 }

@@ -1,11 +1,11 @@
-import { useEffect, useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { MapPin, Users, Coins, CheckCircle, Heart, Shield, Star, Clock, AlertTriangle, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { Loader } from '@googlemaps/js-api-loader';
-import Card from '../components/Card';
+import { AlertTriangle, CheckCircle, Clock, Coins, Heart, MapPin, RefreshCw, Shield, Star, TrendingDown, TrendingUp, Users } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Button from '../components/Button';
-import { supabase } from '../utils/supabase';
+import Card from '../components/Card';
 import type { DogPark, Reservation } from '../types';
+import { supabase } from '../utils/supabase';
 
 interface OccupancyHistory {
   timestamp: string;
@@ -64,7 +64,7 @@ export function DogParkList() {
     try {
       setIsUpdating(true);
       console.log('Updating occupancy data...');
-      
+
       const { data, error } = await supabase
         .from('dog_parks')
         .select('id, current_occupancy, max_capacity')
@@ -80,7 +80,7 @@ export function DogParkList() {
       setLastUpdated(now);
 
       // パークの混雑状況を更新
-      setParks(currentParks => 
+      setParks(currentParks =>
         currentParks.map(park => {
           const updatedPark = data?.find(p => p.id === park.id);
           if (updatedPark && data) {
@@ -120,7 +120,7 @@ export function DogParkList() {
         setIsLoading(true);
         setError(null);
         console.log('Fetching dog parks...');
-        
+
         const { data, error } = await supabase
           .from('dog_parks')
           .select('*')
@@ -132,10 +132,10 @@ export function DogParkList() {
           setError(`データ取得エラー: ${error.message || 'Unknown error'}`);
           throw error;
         }
-        
+
         console.log('Fetched parks:', data);
         console.log('Number of parks:', data?.length || 0);
-        
+
         // 現在地からの距離でソート
         if (userLocation && data) {
           data.sort((a, b) => {
@@ -144,7 +144,7 @@ export function DogParkList() {
             return distA - distB;
           });
         }
-        
+
         setParks(data || []);
         if (!data || data.length === 0) {
           setError('表示できるドッグランがありません。データベースの内容を確認してください。');
@@ -166,7 +166,7 @@ export function DogParkList() {
         } else {
           console.log('Fetched rentals:', rentalsData);
         }
-        
+
         // パークIDごとに予約をグループ化
         const rentalsByParkId: Record<string, Reservation[]> = {};
         (rentalsData || []).forEach(rental => {
@@ -178,7 +178,7 @@ export function DogParkList() {
             rentalsByParkId[parkId].push(rental);
           }
         });
-        
+
         setFacilityRentals(rentalsByParkId);
 
         // メンテナンス情報を取得（現在進行中または今後のメンテナンス）
@@ -199,12 +199,12 @@ export function DogParkList() {
             const now = new Date();
             const startDate = new Date(maintenance.start_date);
             const endDate = new Date(maintenance.end_date);
-            
+
             // 現在進行中または今後のメンテナンス
             if (endDate > now) {
               // 既存のメンテナンス情報がない場合、または現在進行中のメンテナンスの場合は上書き
-              if (!maintenanceByParkId[maintenance.park_id] || 
-                  (startDate <= now && endDate > now)) {
+              if (!maintenanceByParkId[maintenance.park_id] ||
+                (startDate <= now && endDate > now)) {
                 maintenanceByParkId[maintenance.park_id] = {
                   id: maintenance.park_id,
                   title: maintenance.title,
@@ -237,12 +237,12 @@ export function DogParkList() {
         table: 'dog_parks',
       }, payload => {
         console.log('Real-time update received:', payload);
-        setParks(currentParks => 
-          currentParks.map(park => 
+        setParks(currentParks =>
+          currentParks.map(park =>
             park.id === payload.new.id ? { ...park, ...payload.new } : park
           )
         );
-        
+
         // 履歴に追加
         const now = new Date();
         setOccupancyHistory(prev => {
@@ -287,7 +287,7 @@ export function DogParkList() {
 
     const recent = history.slice(-3);
     const older = history.slice(-6, -3);
-    
+
     if (recent.length === 0 || older.length === 0) return 'stable';
 
     const recentAvg = recent.reduce((sum, h) => sum + h.occupancy, 0) / recent.length;
@@ -301,31 +301,31 @@ export function DogParkList() {
   // 混雑状況の詳細表示
   const getDetailedOccupancyStatus = (current: number, max: number) => {
     const percentage = (current / max) * 100;
-    
+
     // 4段階で表示
-    if (percentage < 25) return { 
-      text: '空いています', 
+    if (percentage < 25) return {
+      text: '空いています',
       color: 'text-green-600 bg-green-100',
       barColor: 'bg-green-500',
       description: '快適に利用できます',
       emoji: '😊'
     };
-    if (percentage < 50) return { 
-      text: 'やや空いています', 
+    if (percentage < 50) return {
+      text: 'やや空いています',
       color: 'text-blue-600 bg-blue-100',
       barColor: 'bg-blue-500',
       description: '適度な混雑です',
       emoji: '🙂'
     };
-    if (percentage < 75) return { 
-      text: 'やや混んでいます', 
+    if (percentage < 75) return {
+      text: 'やや混んでいます',
       color: 'text-yellow-600 bg-yellow-100',
       barColor: 'bg-yellow-500',
       description: '少し混雑しています',
       emoji: '😐'
     };
-    return { 
-      text: '混んでいます', 
+    return {
+      text: '混んでいます',
       color: 'text-red-600 bg-red-100',
       barColor: 'bg-red-500',
       description: '大変混雑しています',
@@ -339,7 +339,7 @@ export function DogParkList() {
     const initMap = async () => {
       // Google Maps APIキーの確認
       const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      
+
       if (!apiKey) {
         setMapError('Google Maps APIキーが設定されていません。環境変数VITE_GOOGLE_MAPS_API_KEYを設定してください。');
         return;
@@ -353,7 +353,7 @@ export function DogParkList() {
         });
 
         const google = await loader.load();
-        
+
         if (!mapRef.current) return;
 
         const map = new google.maps.Map(mapRef.current, {
@@ -401,13 +401,13 @@ export function DogParkList() {
         // ドッグランのマーカーを表示
         parks.forEach(park => {
           const status = getDetailedOccupancyStatus(park.current_occupancy, park.max_capacity);
-          
+
           // マーカーの色を決定
           let markerColor = 'red';
           if (status.color.includes('green')) markerColor = 'green';
           else if (status.color.includes('blue')) markerColor = 'blue';
           else if (status.color.includes('yellow')) markerColor = 'yellow';
-          
+
           const marker = new google.maps.Marker({
             position: { lat: Number(park.latitude), lng: Number(park.longitude) },
             map,
@@ -418,17 +418,17 @@ export function DogParkList() {
           });
 
           // 星評価のHTML生成
-          const starsHtml = Array.from({ length: 5 }, (_, i) => 
+          const starsHtml = Array.from({ length: 5 }, (_, i) =>
             `<span style="color: ${i < Math.round(park.average_rating) ? '#fbbf24' : '#d1d5db'};">★</span>`
           ).join('');
 
           // 施設貸し切り情報
           const parkRentals = facilityRentals[park.id] || [];
           let rentalInfoHtml = '';
-          
+
           if (parkRentals.length > 0) {
             // 時間帯ごとにグループ化
-            const rentalTimes: {start: string, end: string}[] = [];
+            const rentalTimes: { start: string, end: string }[] = [];
             parkRentals.forEach(rental => {
               const startHour = parseInt(rental.start_time);
               const endHour = startHour + rental.duration;
@@ -437,16 +437,16 @@ export function DogParkList() {
                 end: `${endHour.toString().padStart(2, '0')}:00`
               });
             });
-            
+
             rentalInfoHtml = `
               <div style="margin-top: 8px; padding: 8px; background-color: #fff7ed; border: 1px solid #fed7aa; border-radius: 4px;">
                 <p style="font-weight: 500; color: #9a3412; margin-bottom: 4px; font-size: 12px;">本日の貸し切り時間</p>
             `;
-            
+
             rentalTimes.forEach((time) => {
               rentalInfoHtml += `<p style="font-size: 11px; color: #9a3412; margin: 2px 0;">${time.start}〜${time.end}</p>`;
             });
-            
+
             rentalInfoHtml += `</div>`;
           }
 
@@ -490,11 +490,11 @@ export function DogParkList() {
     const R = 6371; // 地球の半径（km）
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
 
@@ -502,9 +502,9 @@ export function DogParkList() {
   const getParkRentals = (parkId: string) => {
     const rentals = facilityRentals[parkId] || [];
     if (rentals.length === 0) return null;
-    
+
     // 時間帯ごとにグループ化
-    const rentalTimes: {start: string, end: string}[] = [];
+    const rentalTimes: { start: string, end: string }[] = [];
     rentals.forEach(rental => {
       const startHour = parseInt(rental.start_time);
       const endHour = startHour + rental.duration;
@@ -513,7 +513,7 @@ export function DogParkList() {
         end: `${endHour.toString().padStart(2, '0')}:00`
       });
     });
-    
+
     return rentalTimes;
   };
 
@@ -546,14 +546,14 @@ export function DogParkList() {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">ドッグラン一覧</h1>
         </div>
-        
+
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-6 h-6 text-red-500 mr-2" />
             <h2 className="text-lg font-semibold text-red-800">エラーが発生しました</h2>
           </div>
           <p className="text-red-700 mb-4">{error}</p>
-          
+
           <div className="space-y-2 text-sm text-red-600">
             <p><strong>考えられる原因:</strong></p>
             <ul className="list-disc pl-5 space-y-1">
@@ -563,7 +563,7 @@ export function DogParkList() {
               <li>ネットワーク接続の問題</li>
             </ul>
           </div>
-          
+
           <div className="mt-4 flex space-x-2">
             <button
               onClick={() => window.location.reload()}
@@ -572,7 +572,7 @@ export function DogParkList() {
               再読み込み
             </button>
             <button
-              onClick={() => {setError(null); setIsLoading(true);}}
+              onClick={() => { setError(null); setIsLoading(true); }}
               className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium"
             >
               再試行
@@ -585,9 +585,62 @@ export function DogParkList() {
 
   return (
     <div className="space-y-6">
+      {/* ドッグラン利用案内 */}
+      <Card className="bg-green-50 border-green-200">
+        <div className="p-4">
+          <div className="flex items-start space-x-3">
+            <CheckCircle className="w-6 h-6 text-green-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold text-green-900 mb-2">
+                🐕 ドッグランをご利用いただけます
+              </h2>
+              <p className="text-green-800 mb-3">
+                以下のドッグランは審査を通過し、安全にご利用いただけます。
+              </p>
+
+              {/* 利用の流れ */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">1</div>
+                  <span className="text-sm font-medium text-green-800">ドッグランを選択</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">2</div>
+                  <span className="text-sm font-medium text-green-800">混雑状況を確認</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">3</div>
+                  <span className="text-sm font-medium text-green-800">予約・決済</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">4</div>
+                  <span className="text-sm font-medium text-green-800">ドッグランで遊ぶ</span>
+                </div>
+              </div>
+
+              {/* 便利な機能 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center space-x-2">
+                  <Users className="w-4 h-4 text-green-600" />
+                  <span className="text-green-700">リアルタイム混雑情報</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <MapPin className="w-4 h-4 text-green-600" />
+                  <span className="text-green-700">地図で場所を確認</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Star className="w-4 h-4 text-green-600" />
+                  <span className="text-green-700">利用者レビュー</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">ドッグラン一覧</h1>
-        
+        <h1 className="text-2xl font-bold">承認済みドッグラン一覧</h1>
+
         {/* リアルタイム更新コントロール */}
         <div className="flex items-center space-x-3">
           <div className="text-sm text-gray-600">
@@ -596,18 +649,17 @@ export function DogParkList() {
           <button
             onClick={handleManualUpdate}
             disabled={isUpdating}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isUpdating
+            className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isUpdating
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-            }`}
+              }`}
           >
             <RefreshCw className={`w-4 h-4 ${isUpdating ? 'animate-spin' : ''}`} />
             <span>{isUpdating ? '更新中...' : '更新'}</span>
           </button>
         </div>
       </div>
-      
+
       {/* リアルタイム更新状況の表示 */}
       <div className="bg-blue-50 p-4 rounded-lg">
         <div className="flex items-center justify-between">
@@ -622,7 +674,7 @@ export function DogParkList() {
           </div>
         </div>
       </div>
-      
+
       {/* 料金体系の説明 */}
       <div className="bg-blue-50 p-4 rounded-lg">
         <h2 className="font-semibold text-blue-900 mb-2">料金体系</h2>
@@ -642,7 +694,7 @@ export function DogParkList() {
           </div>
         </div>
       </div>
-      
+
       {/* Google Maps */}
       <div className="relative">
         {mapError ? (
@@ -672,7 +724,7 @@ export function DogParkList() {
             <MapPin className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-yellow-800 mb-2">ドッグランが見つかりません</h3>
             <p className="text-yellow-700 mb-4">現在表示できるドッグランがありません。</p>
-            
+
             <div className="space-y-2 text-sm text-yellow-600">
               <p><strong>考えられる原因:</strong></p>
               <ul className="list-disc pl-5 space-y-1 text-left inline-block">
@@ -681,7 +733,7 @@ export function DogParkList() {
                 <li>RLS（Row Level Security）の設定により表示されない</li>
               </ul>
             </div>
-            
+
             <div className="mt-4">
               <button
                 onClick={() => window.location.reload()}
@@ -700,29 +752,29 @@ export function DogParkList() {
             const distance = userLocation
               ? calculateDistance(userLocation.lat, userLocation.lng, Number(park.latitude), Number(park.longitude))
               : null;
-            
+
             // 施設貸し切り情報
             const rentalTimes = getParkRentals(park.id);
             const hasRentalsToday = rentalTimes && rentalTimes.length > 0;
-            
+
             // メンテナンス情報
             const maintenance = maintenanceInfo[park.id];
             const isUnderMaintenance = maintenance !== undefined;
-            
+
             // メンテナンス状態を判定
             let maintenanceStatus = null;
             if (maintenance) {
               const now = new Date();
               const startDate = new Date(maintenance.start_date);
               const endDate = new Date(maintenance.end_date);
-              
+
               if (now >= startDate && now < endDate) {
                 maintenanceStatus = 'active'; // 現在メンテナンス中
               } else if (now < startDate) {
                 maintenanceStatus = 'scheduled'; // 今後のメンテナンス予定
               }
             }
-            
+
             return (
               <Card key={park.id} className="overflow-hidden">
                 {/* Park Image */}
@@ -738,30 +790,29 @@ export function DogParkList() {
                         e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
                       }}
                     />
-                    
+
                     {/* 混雑状況 - 画像下側中央に配置 */}
                     <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2">
                       <span className={`px-3 py-1.5 rounded-full text-sm font-semibold shadow-lg ${status.color}`}>
                         {status.text}
                       </span>
                     </div>
-                    
+
                     {/* メンテナンス情報の表示 */}
                     {maintenanceStatus && maintenance && (
                       <div className="absolute top-2 left-2">
-                        <span className={`px-3 py-1.5 rounded-full text-sm font-semibold text-white shadow-lg ${
-                          maintenanceStatus === 'active' 
+                        <span className={`px-3 py-1.5 rounded-full text-sm font-semibold text-white shadow-lg ${maintenanceStatus === 'active'
                             ? (maintenance.is_emergency ? 'bg-red-600' : 'bg-orange-600')
                             : 'bg-blue-600'
-                        }`}>
-                          {maintenanceStatus === 'active' 
+                          }`}>
+                          {maintenanceStatus === 'active'
                             ? (maintenance.is_emergency ? '緊急メンテナンス中' : 'メンテナンス中')
                             : 'メンテナンス予定'
                           }
                         </span>
                       </div>
                     )}
-                    
+
                     {/* 本日貸し切りありの表示 */}
                     {!maintenanceStatus && hasRentalsToday && (
                       <div className="absolute top-2 left-2">
@@ -772,10 +823,10 @@ export function DogParkList() {
                     )}
                   </div>
                 )}
-                
+
                 <div className={park.image_url ? 'px-6 pb-6' : ''}>
                   <h3 className="text-lg font-semibold mb-2">{park.name}</h3>
-                  
+
                   {/* 距離表示 */}
                   {distance && (
                     <div className="flex items-center text-sm text-gray-600 mb-2">
@@ -783,7 +834,7 @@ export function DogParkList() {
                       <span>{distance.toFixed(1)}km</span>
                     </div>
                   )}
-                  
+
                   {/* 混雑状況トレンド */}
                   {trend && (
                     <div className="flex items-center text-sm mb-3">
@@ -793,12 +844,12 @@ export function DogParkList() {
                         <TrendingDown className="w-4 h-4 mr-1 text-green-500" />
                       ) : null}
                       <span className="text-gray-600">
-                        {trend === 'increasing' ? '混雑傾向' : 
-                         trend === 'decreasing' ? '空いてきています' : ''}
+                        {trend === 'increasing' ? '混雑傾向' :
+                          trend === 'decreasing' ? '空いてきています' : ''}
                       </span>
                     </div>
                   )}
-                  
+
                   {/* 現在の利用者数（リアルタイム） */}
                   <div className="flex items-center justify-between text-sm mb-3">
                     <div className="flex items-center">
@@ -806,16 +857,15 @@ export function DogParkList() {
                       <span className="text-gray-600">現在の利用者数</span>
                     </div>
                     <div className="flex items-center">
-                      <span className={`font-semibold ${
-                        (park.current_occupancy / park.max_capacity) > 0.8 ? 'text-red-600' :
-                        (park.current_occupancy / park.max_capacity) > 0.6 ? 'text-orange-600' :
-                        'text-green-600'
-                      }`}>
+                      <span className={`font-semibold ${(park.current_occupancy / park.max_capacity) > 0.8 ? 'text-red-600' :
+                          (park.current_occupancy / park.max_capacity) > 0.6 ? 'text-orange-600' :
+                            'text-green-600'
+                        }`}>
                         {park.current_occupancy}/{park.max_capacity}
                       </span>
                     </div>
                   </div>
-                  
+
                   {/* メンテナンス情報の詳細表示 */}
                   {maintenanceStatus && maintenance && (
                     <div className="bg-red-50 p-3 rounded-lg mb-3">
@@ -846,19 +896,18 @@ export function DogParkList() {
                           </span>
                         </div>
                       </div>
-                      <p className={`text-xs ${
-                        maintenanceStatus === 'active'
+                      <p className={`text-xs ${maintenanceStatus === 'active'
                           ? (maintenance.is_emergency ? 'text-red-600' : 'text-orange-600')
                           : 'text-blue-600'
-                      } mt-2`}>
-                        {maintenanceStatus === 'active' 
+                        } mt-2`}>
+                        {maintenanceStatus === 'active'
                           ? '※メンテナンス期間中は利用できません'
                           : '※メンテナンス期間中は利用できません'
                         }
                       </p>
                     </div>
                   )}
-                  
+
                   {/* 本日の貸し切り時間表示 */}
                   {!maintenanceStatus && hasRentalsToday && (
                     <div className="bg-orange-50 p-3 rounded-lg">
@@ -877,7 +926,7 @@ export function DogParkList() {
                       <p className="text-xs text-orange-600 mt-2">※貸し切り時間中は通常利用できません</p>
                     </div>
                   )}
-                  
+
                   {/* Dog Size Areas */}
                   <div className="flex items-center space-x-4">
                     {park.large_dog_area && (
@@ -947,8 +996,8 @@ export function DogParkList() {
                   {/* ボタンを2列に配置 */}
                   <div className="grid grid-cols-2 gap-2">
                     <Link to={`/parks/${park.id}`}>
-                      <Button 
-                        variant="secondary" 
+                      <Button
+                        variant="secondary"
                         className="w-full"
                         style={{
                           backgroundColor: 'white',
@@ -960,8 +1009,8 @@ export function DogParkList() {
                       </Button>
                     </Link>
                     {maintenanceStatus === 'active' ? (
-                      <Button 
-                        className="w-full bg-gray-400 cursor-not-allowed" 
+                      <Button
+                        className="w-full bg-gray-400 cursor-not-allowed"
                         disabled
                         title="メンテナンス中のため予約できません"
                       >
