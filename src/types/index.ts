@@ -33,7 +33,7 @@ export interface DogPark {
   current_occupancy: number;
   max_capacity: number;
   qr_code: string | null;
-  status: 'pending' | 'approved' | 'rejected' | 'first_stage_passed' | 'second_stage_review' | 'qr_testing';
+  status: 'pending' | 'first_stage_passed' | 'second_stage_waiting' | 'second_stage_review' | 'smart_lock_testing' | 'approved' | 'rejected';
   facilities: {
     parking: boolean;
     shower: boolean;

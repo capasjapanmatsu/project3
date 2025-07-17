@@ -278,7 +278,106 @@ export function AdminParkManagement() {
       setError('');
       setSuccess('');
 
-      // ドッグランデータを削除
+      // 関連するレコードを順番に削除
+      console.log('🗑️ 関連レコードを削除中...');
+
+      // 1. 施設画像を削除
+      const { error: imagesError } = await supabase
+        .from('dog_park_facility_images')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (imagesError) {
+        console.error('❌ 施設画像削除エラー:', imagesError);
+        showError('施設画像の削除に失敗しました。');
+        return;
+      }
+
+      // 2. パーク画像を削除
+      const { error: parkImagesError } = await supabase
+        .from('dog_park_images')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (parkImagesError) {
+        console.error('❌ パーク画像削除エラー:', parkImagesError);
+        showError('パーク画像の削除に失敗しました。');
+        return;
+      }
+
+      // 3. レビューステージを削除
+      const { error: reviewStagesError } = await supabase
+        .from('dog_park_review_stages')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (reviewStagesError) {
+        console.error('❌ レビューステージ削除エラー:', reviewStagesError);
+        showError('レビューステージの削除に失敗しました。');
+        return;
+      }
+
+      // 4. レビューを削除（レビュー画像も連動削除される）
+      const { error: reviewsError } = await supabase
+        .from('dog_park_reviews')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (reviewsError) {
+        console.error('❌ レビュー削除エラー:', reviewsError);
+        showError('レビューの削除に失敗しました。');
+        return;
+      }
+
+      // 5. 予約を削除
+      const { error: reservationsError } = await supabase
+        .from('reservations')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (reservationsError) {
+        console.error('❌ 予約削除エラー:', reservationsError);
+        showError('予約の削除に失敗しました。');
+        return;
+      }
+
+      // 6. ユーザーエントリーステータスを削除
+      const { error: entryStatusError } = await supabase
+        .from('user_entry_status')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (entryStatusError) {
+        console.error('❌ エントリーステータス削除エラー:', entryStatusError);
+        showError('エントリーステータスの削除に失敗しました。');
+        return;
+      }
+
+      // 7. スマートロックを削除
+      const { error: smartLocksError } = await supabase
+        .from('smart_locks')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (smartLocksError) {
+        console.error('❌ スマートロック削除エラー:', smartLocksError);
+        showError('スマートロックの削除に失敗しました。');
+        return;
+      }
+
+      // 8. 犬の出会い記録を削除
+      const { error: encountersError } = await supabase
+        .from('dog_encounters')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (encountersError) {
+        console.error('❌ 出会い記録削除エラー:', encountersError);
+        showError('出会い記録の削除に失敗しました。');
+        return;
+      }
+
+      // 9. 最後にドッグラン本体を削除
       const { error: deleteError } = await supabase
         .from('dog_parks')
         .delete()
@@ -289,6 +388,8 @@ export function AdminParkManagement() {
         showError('ドッグランの削除に失敗しました。');
         return;
       }
+
+      console.log('✅ ドッグランと関連データの削除完了');
 
       // 成功時の処理
       showSuccess('ドッグラン申請を削除しました。');

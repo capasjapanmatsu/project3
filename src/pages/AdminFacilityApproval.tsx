@@ -731,7 +731,70 @@ export default function AdminFacilityApproval() {
             </div>
           </div>
         )}
+
+        {/* 拒否理由入力モーダル */}
+        {showRejectModal && selectedFacility && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-md w-full">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    施設の拒否理由を入力
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowRejectModal(false);
+                      setRejectReason('');
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <XCircle className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600 mb-3">
+                    施設名: <span className="font-medium">{selectedFacility.name}</span>
+                  </p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    拒否理由を入力してください
+                  </label>
+                  <textarea
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="拒否理由を詳しく入力してください..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    rows={4}
+                    required
+                  />
+                </div>
+
+                <div className="flex space-x-3">
+                  <Button
+                    onClick={() => {
+                      setShowRejectModal(false);
+                      setRejectReason('');
+                    }}
+                    variant="secondary"
+                    className="flex-1"
+                    disabled={actionLoading}
+                  >
+                    キャンセル
+                  </Button>
+                  <Button
+                    onClick={() => void handleReject(selectedFacility.id, rejectReason)}
+                    disabled={actionLoading || !rejectReason.trim()}
+                    className="flex-1 bg-red-600 hover:bg-red-700"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    拒否する
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
-} 
+}

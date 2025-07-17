@@ -8,6 +8,7 @@ import {
   Loader,
   MapPin,
   Shield,
+  Trash2,
   User,
   X,
   ZoomIn
@@ -301,6 +302,133 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
     }
   };
 
+  const handleParkDelete = async (parkId: string) => {
+    const confirmDelete = window.confirm('このドッグラン申請を削除してもよろしいですか？この操作は取り消せません。');
+    if (!confirmDelete) return;
+
+    try {
+      console.log('🗑️ 関連レコードを削除中...');
+
+      // 1. 施設画像を削除
+      const { error: imagesError } = await supabase
+        .from('dog_park_facility_images')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (imagesError) {
+        console.error('❌ 施設画像削除エラー:', imagesError);
+        onError('施設画像の削除に失敗しました。');
+        return;
+      }
+
+      // 2. パーク画像を削除
+      const { error: parkImagesError } = await supabase
+        .from('dog_park_images')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (parkImagesError) {
+        console.error('❌ パーク画像削除エラー:', parkImagesError);
+        onError('パーク画像の削除に失敗しました。');
+        return;
+      }
+
+      // 3. レビューステージを削除
+      const { error: reviewStagesError } = await supabase
+        .from('dog_park_review_stages')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (reviewStagesError) {
+        console.error('❌ レビューステージ削除エラー:', reviewStagesError);
+        onError('レビューステージの削除に失敗しました。');
+        return;
+      }
+
+      // 4. レビューを削除（レビュー画像も連動削除される）
+      const { error: reviewsError } = await supabase
+        .from('dog_park_reviews')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (reviewsError) {
+        console.error('❌ レビュー削除エラー:', reviewsError);
+        onError('レビューの削除に失敗しました。');
+        return;
+      }
+
+      // 5. 予約を削除
+      const { error: reservationsError } = await supabase
+        .from('reservations')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (reservationsError) {
+        console.error('❌ 予約削除エラー:', reservationsError);
+        onError('予約の削除に失敗しました。');
+        return;
+      }
+
+      // 6. ユーザーエントリーステータスを削除
+      const { error: entryStatusError } = await supabase
+        .from('user_entry_status')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (entryStatusError) {
+        console.error('❌ エントリーステータス削除エラー:', entryStatusError);
+        onError('エントリーステータスの削除に失敗しました。');
+        return;
+      }
+
+      // 7. スマートロックを削除
+      const { error: smartLocksError } = await supabase
+        .from('smart_locks')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (smartLocksError) {
+        console.error('❌ スマートロック削除エラー:', smartLocksError);
+        onError('スマートロックの削除に失敗しました。');
+        return;
+      }
+
+      // 8. 犬の出会い記録を削除
+      const { error: encountersError } = await supabase
+        .from('dog_encounters')
+        .delete()
+        .eq('park_id', parkId);
+
+      if (encountersError) {
+        console.error('❌ 出会い記録削除エラー:', encountersError);
+        onError('出会い記録の削除に失敗しました。');
+        return;
+      }
+
+      // 9. 最後にドッグラン本体を削除
+      const { error: deleteError } = await supabase
+        .from('dog_parks')
+        .delete()
+        .eq('id', parkId);
+
+      if (deleteError) {
+        console.error('❌ ドッグラン削除エラー:', deleteError);
+        onError('ドッグランの削除に失敗しました。');
+        return;
+      }
+
+      console.log('✅ ドッグランと関連データの削除完了');
+      onApprovalComplete('ドッグラン申請を削除しました。');
+
+      // 一覧画面に戻る
+      setSelectedPark(null);
+
+    } catch (error) {
+      console.error('❌ ドッグラン削除エラー:', error);
+      onError('ドッグランの削除に失敗しました。');
+    }
+  };
+
   const getImageTypeLabel = (type: string) => {
     const labels: { [key: string]: string } = {
       'overview': '施設全景',
@@ -378,10 +506,10 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
             <h2 className="text-xl font-bold">画像レビュー: {getImageTypeLabel(selectedImage.image_type)}</h2>
             <div className="flex space-x-2">
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${selectedImage.is_approved === true
-                  ? 'bg-green-100 text-green-800'
-                  : selectedImage.is_approved === false
-                    ? 'bg-red-100 text-red-800'
-                    : 'bg-yellow-100 text-yellow-800'
+                ? 'bg-green-100 text-green-800'
+                : selectedImage.is_approved === false
+                  ? 'bg-red-100 text-red-800'
+                  : 'bg-yellow-100 text-yellow-800'
                 }`}>
                 {selectedImage.is_approved === true
                   ? '承認済み'
@@ -707,7 +835,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                       <div>
                         <p className="text-gray-600">審査状況</p>
                         <p className={`font-medium ${ownerIdentityData.identity_status === 'verified' ? 'text-green-600' :
-                            ownerIdentityData.identity_status === 'failed' ? 'text-red-600' : 'text-yellow-600'
+                          ownerIdentityData.identity_status === 'failed' ? 'text-red-600' : 'text-yellow-600'
                           }`}>
                           {ownerIdentityData.identity_status === 'verified' ? '承認済み' :
                             ownerIdentityData.identity_status === 'failed' ? '却下' : '審査待ち'}
@@ -923,10 +1051,10 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                     {/* ステータスバッジ */}
                     <div className="absolute top-2 right-2">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${image.is_approved === true
-                          ? 'bg-green-100 text-green-800'
-                          : image.is_approved === false
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
+                        ? 'bg-green-100 text-green-800'
+                        : image.is_approved === false
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
                         }`}>
                         {image.is_approved === true
                           ? '承認済み'
@@ -968,32 +1096,32 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
               <div className="space-y-2 text-sm">
                 <div className="flex items-center">
                   <span className={`w-4 h-4 rounded-full mr-2 ${ownerIdentityData?.owner_name && ownerIdentityData.owner_name !== '名前未登録'
-                      ? 'bg-green-500' : 'bg-red-500'
+                    ? 'bg-green-500' : 'bg-red-500'
                     }`}></span>
                   <span>登録氏名: {ownerIdentityData?.owner_name || '未登録'}</span>
                 </div>
                 <div className="flex items-center">
                   <span className={`w-4 h-4 rounded-full mr-2 ${ownerIdentityData?.address && ownerIdentityData.address !== '未登録'
-                      ? 'bg-green-500' : 'bg-red-500'
+                    ? 'bg-green-500' : 'bg-red-500'
                     }`}></span>
                   <span>登録住所: {ownerIdentityData?.address || '未登録'}</span>
                 </div>
                 <div className="flex items-center">
                   <span className={`w-4 h-4 rounded-full mr-2 ${ownerIdentityData?.phone_number && ownerIdentityData.phone_number !== '未登録'
-                      ? 'bg-green-500' : 'bg-red-500'
+                    ? 'bg-green-500' : 'bg-red-500'
                     }`}></span>
                   <span>電話番号: {ownerIdentityData?.phone_number || '未登録'}</span>
                 </div>
                 <div className="flex items-center">
                   <span className={`w-4 h-4 rounded-full mr-2 ${ownerIdentityData?.identity_document_url
-                      ? 'bg-green-500' : 'bg-red-500'
+                    ? 'bg-green-500' : 'bg-red-500'
                     }`}></span>
                   <span>本人確認書類: {ownerIdentityData?.identity_document_url ? '提出済み' : '未提出'}</span>
                 </div>
                 {ownerIdentityData?.identity_document_url && (
                   <div className="flex items-center">
                     <span className={`w-4 h-4 rounded-full mr-2 ${ownerIdentityData.identity_status === 'verified' ? 'bg-green-500' :
-                        ownerIdentityData.identity_status === 'failed' ? 'bg-red-500' : 'bg-yellow-500'
+                      ownerIdentityData.identity_status === 'failed' ? 'bg-red-500' : 'bg-yellow-500'
                       }`}></span>
                     <span>本人確認状況: {
                       ownerIdentityData.identity_status === 'verified' ? '承認済み' :
@@ -1053,6 +1181,14 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
             >
               <CheckCircle className="w-4 h-4 mr-2" />
               承認
+            </Button>
+            <Button
+              onClick={() => void handleParkDelete(selectedPark.id)}
+              isLoading={approval.isProcessing}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              <X className="w-4 h-4 mr-2" />
+              削除
             </Button>
           </div>
         </Card>
@@ -1244,6 +1380,14 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                     >
                       <Eye className="w-4 h-4 mr-2" />
                       詳細確認
+                    </Button>
+                    <Button
+                      onClick={() => void handleParkDelete(park.id)}
+                      className="bg-red-600 hover:bg-red-700"
+                      size="sm"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      削除
                     </Button>
                     {park.status === 'second_stage_waiting' && (
                       <div className="text-xs text-gray-500 text-center">
