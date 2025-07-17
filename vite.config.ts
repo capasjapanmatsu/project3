@@ -28,7 +28,13 @@ export default defineConfig(({ mode }) => ({
     react({
       // React Fast Refresh はデフォルトで有効
       babel: {
-        plugins: [],
+        plugins: [
+          // バンドルサイズを減らすための最適化
+          ['babel-plugin-transform-react-remove-prop-types', {
+            mode: 'wrap',
+            removeImport: true
+          }],
+        ],
       },
     }),
     viteCompression({
@@ -52,125 +58,160 @@ export default defineConfig(({ mode }) => ({
             open: true,
             gzipSize: true,
             brotliSize: true,
-            template: 'treemap', // 'sunburst', 'treemap', 'network'
+            template: 'treemap',
           });
         } catch (e) {
-          console.warn('Bundle analyzer not available. Run: npm install rollup-plugin-visualizer');
+          console.warn('Bundle analyzer not available');
           return null;
         }
       })()
     ].filter(Boolean) : []),
   ],
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, './src'),
-      '@/components': resolve(__dirname, './src/components'),
-      '@/pages': resolve(__dirname, './src/pages'),
-      '@/utils': resolve(__dirname, './src/utils'),
-      '@/hooks': resolve(__dirname, './src/hooks'),
-      '@/types': resolve(__dirname, './src/types'),
-      '@/context': resolve(__dirname, './src/context'),
+
+  // 開発サーバー設定
+  server: {
+    port: 3000,
+    host: true,
+    // HMRの最適化
+    hmr: {
+      overlay: false,
     },
+    // プリロード設定
+    warmup: {
+      clientFiles: [
+        './src/pages/Home.tsx',
+        './src/pages/Login.tsx',
+        './src/pages/Register.tsx',
+        './src/pages/UserDashboard.tsx'
+      ]
+    }
   },
-  // Netlify Supabase Extension 対応の環境変数設定
-  define: {
-    // 本番環境で Netlify Extension の環境変数を VITE_ プレフィックス付きで使用可能にする
-    ...(process.env.NODE_ENV === 'production' && {
-      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(
-        process.env.VITE_SUPABASE_URL || 
-        process.env.SUPABASE_DATABASE_URL || 
-        ''
-      ),
-      'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(
-        process.env.VITE_SUPABASE_ANON_KEY || 
-        process.env.SUPABASE_ANON_KEY || 
-        ''
-      ),
-      'import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY': JSON.stringify(
-        process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || 
-        process.env.SUPABASE_SERVICE_ROLE_KEY || 
-        ''
-      ),
-      'import.meta.env.VITE_SUPABASE_JWT_SECRET': JSON.stringify(
-        process.env.VITE_SUPABASE_JWT_SECRET || 
-        process.env.SUPABASE_JWT_SECRET || 
-        ''
-      ),
-    }),
+
+  // プレビュー設定
+  preview: {
+    port: 4173,
+    host: true,
   },
+
+  // ビルド最適化
   build: {
-    outDir: 'dist',
-    sourcemap: process.env.NODE_ENV === 'development',
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true,
-        pure_funcs: ['console.log', 'console.info', 'console.warn'],
-      },
-      mangle: {
-        safari10: true,
-      },
-    },
+    // パフォーマンス改善のためのソースマップ無効化（本番環境）
+    sourcemap: mode === 'development',
+
+    // チャンクサイズ警告の閾値
+    chunkSizeWarningLimit: 1000,
+
+    // Rollup設定
     rollupOptions: {
+      // 外部依存関係の最適化
+      external: [
+        // 大きなライブラリは外部CDNから読み込む場合に使用
+        // 'react',
+        // 'react-dom',
+      ],
+
       output: {
+        // チャンク分割の最適化
         manualChunks: {
-          // コアライブラリ
-          vendor: ['react', 'react-dom'],
-          // ルーター
-          router: ['react-router-dom'],
-          // Supabase関連
-          supabase: ['@supabase/supabase-js'],
+          // React関連
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+
           // UI関連
-          ui: ['lucide-react'],
+          'ui-vendor': ['framer-motion', 'lucide-react'],
+
+          // Supabase関連
+          'supabase-vendor': ['@supabase/supabase-js'],
+
           // Stripe関連
-          stripe: ['@stripe/stripe-js'],
+          'stripe-vendor': ['@stripe/stripe-js'],
+
+          // Maps関連
+          'maps-vendor': ['@googlemaps/js-api-loader'],
+
+          // 画像処理関連
+          'image-vendor': ['browser-image-compression'],
+
+          // Admin関連（大きなコンポーネント）
+          'admin-pages': [
+            './src/pages/AdminDashboard.tsx',
+            './src/pages/AdminParkManagement.tsx',
+            './src/pages/AdminVaccineApproval.tsx',
+            './src/pages/AdminFacilityApproval.tsx',
+          ],
+
+          // Park関連
+          'park-pages': [
+            './src/pages/DogParkList.tsx',
+            './src/pages/DogParkDetail.tsx',
+            './src/pages/ParkReservation.tsx',
+          ],
+
+          // Shop関連
+          'shop-pages': [
+            './src/pages/PetShop.tsx',
+            './src/pages/Cart.tsx',
+            './src/pages/Checkout.tsx',
+          ],
         },
-        // ファイル名のハッシュ化
+
+        // ファイル名の最適化
         entryFileNames: 'assets/[name].[hash].js',
         chunkFileNames: 'assets/[name].[hash].js',
         assetFileNames: 'assets/[name].[hash].[ext]',
       },
     },
-    chunkSizeWarningLimit: 600,
-    target: 'es2015',
+
+    // 最適化設定
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: mode === 'production',
+        drop_debugger: mode === 'production',
+        pure_funcs: mode === 'production' ? ['console.log'] : [],
+      },
+    },
+
+    // CSS最適化
     cssCodeSplit: true,
-    assetsDir: 'assets',
-    copyPublicDir: true,
+
+    // 並列処理でビルド高速化
+    reportCompressedSize: false,
   },
-  server: {
-    port: 3000,
-    open: true,
-    hmr: {
-      overlay: false,
-    },
-    headers: {
-      'Service-Worker-Allowed': '/',
-    },
-  },
-  // 開発環境での最適化
+
+  // 依存関係の最適化
   optimizeDeps: {
     include: [
-      '@supabase/supabase-js',
       'react',
       'react-dom',
       'react-router-dom',
+      '@supabase/supabase-js',
       'lucide-react',
-      'react-helmet-async',
     ],
-    exclude: ['@vite/client', '@vite/env'],
+    exclude: [
+      // 大きなライブラリで動的インポートを優先するもの
+      '@googlemaps/js-api-loader',
+      'browser-image-compression',
+    ],
   },
-  // プレビュー設定
-  preview: {
-    port: 3001,
-    host: true,
-    headers: {
-      'Cross-Origin-Embedder-Policy': 'require-corp',
-      'Cross-Origin-Opener-Policy': 'same-origin',
+
+  // パフォーマンス設定
+  experimental: {
+    // 新しいパフォーマンス最適化機能
+    renderBuiltUrl: (filename: string) => {
+      // CDN使用時の設定例
+      return filename;
     },
   },
-  // SSR 最適化
-  ssr: {
-    noExternal: ['react', 'react-dom'],
+
+  // 型定義
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, './src'),
+      '@components': resolve(__dirname, './src/components'),
+      '@pages': resolve(__dirname, './src/pages'),
+      '@utils': resolve(__dirname, './src/utils'),
+      '@hooks': resolve(__dirname, './src/hooks'),
+      '@types': resolve(__dirname, './src/types'),
+    },
   },
 }));

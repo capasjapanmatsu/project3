@@ -21,9 +21,35 @@ export function Home() {
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isNewsLoading, setIsNewsLoading] = useState(true); // 新着情報専用のローディング状態
-  
+
   // レスポンシブフック
   const { isMobile, isTablet, prefersReducedMotion } = useResponsive();
+
+  // Critical contentのプリロード
+  useEffect(() => {
+    // Hero画像を優先的にプリロード
+    const heroImageUrl = '/images/hero-dogs.jpg'; // 実際のHero画像パスに変更
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.href = heroImageUrl;
+    link.as = 'image';
+    link.fetchPriority = 'high';
+    document.head.appendChild(link);
+
+    // 重要なフォントをプリロード
+    const fontLink = document.createElement('link');
+    fontLink.rel = 'preload';
+    fontLink.href = '/fonts/inter-var.woff2';
+    fontLink.as = 'font';
+    fontLink.type = 'font/woff2';
+    fontLink.crossOrigin = 'anonymous';
+    document.head.appendChild(fontLink);
+
+    return () => {
+      document.head.removeChild(link);
+      document.head.removeChild(fontLink);
+    };
+  }, []);
 
   // ネットワーク状態の監視
   useEffect(() => {
@@ -54,7 +80,7 @@ export function Home() {
   // キャッシュ関数 (10分間キャッシュに延長)
   const cacheTimeout = 10 * 60 * 1000; // 10分
   const cache = useMemo(() => new Map<string, { data: any; timestamp: number }>(), []);
-  
+
   const getCachedData = useCallback((key: string) => {
     const cached = cache.get(key);
     if (cached && Date.now() - cached.timestamp < cacheTimeout) {
@@ -101,7 +127,7 @@ export function Home() {
   const fetchRecentDogs = useCallback(async () => {
     try {
       logger.info('🐕 最近仲間入りしたワンちゃんを取得中...');
-      
+
       // キャッシュから取得を試行
       const cachedData = getCachedData('recentDogs');
       if (cachedData) {
@@ -110,20 +136,20 @@ export function Home() {
         setIsLoading(false);
         return cachedData;
       }
-      
+
       setIsLoading(true);
       setNetworkError(null);
 
       // データベース接続テストを省略して高速化
       logger.info('🔍 データベースから直接取得...');
-      
+
       // 最小限のフィールドのみを取得してパフォーマンスを向上
       const { data, error } = await supabase
         .from('dogs')
         .select('id, owner_id, name, breed, birth_date, gender, image_url, created_at')
         .order('created_at', { ascending: false })
         .limit(8);
-      
+
       if (error) {
         logger.warn('❌ Database error:', error);
         // エラー時は空配列を返してアプリを継続
@@ -131,7 +157,7 @@ export function Home() {
         setIsLoading(false);
         return [];
       }
-      
+
       logger.info('✅ 最近仲間入りしたワンちゃん取得成功:', data?.length || 0, '匹');
       const dogs = data || [];
       setRecentDogs(dogs);
@@ -150,7 +176,7 @@ export function Home() {
   const fetchNews = useCallback(async () => {
     try {
       logger.info('📰 新着情報を取得中...');
-      
+
       // キャッシュから取得を試行
       const cachedData = getCachedData('news');
       if (cachedData) {
@@ -158,9 +184,9 @@ export function Home() {
         setNews(cachedData);
         return cachedData;
       }
-      
+
       setIsNewsLoading(true);
-      
+
       const { data, error } = await supabase
         .from('news_announcements')
         .select('*')
@@ -194,30 +220,30 @@ export function Home() {
   const fetchAllData = useCallback(async () => {
     logger.info('🚀 高速データ取得を開始...');
     const startTime = Date.now();
-    
+
     try {
       // 並列実行とタイムアウト設定
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 8000);
       });
-      
+
       const dataPromises = Promise.all([
         fetchRecentDogs(),
         fetchNews()
       ]);
-      
+
       const [dogs, news] = await Promise.race([dataPromises, timeoutPromise]) as [any[], any[]];
-      
+
       const endTime = Date.now();
       logger.info(`✅ 高速データ取得完了: ${endTime - startTime}ms`);
-      
+
       return { dogs, news };
     } catch (error) {
       logger.error('❌ データ取得エラー:', error);
-      
+
       // エラー時でも部分的に取得できたデータを使用
       const fallbackData = { dogs: [], news: [] };
-      
+
       // 個別にデータを取得を試みる
       try {
         const dogs = await fetchRecentDogs();
@@ -225,14 +251,14 @@ export function Home() {
       } catch (dogError) {
         logger.warn('犬データの取得に失敗:', dogError);
       }
-      
+
       try {
         const news = await fetchNews();
         fallbackData.news = news;
       } catch (newsError) {
         logger.warn('ニュースデータの取得に失敗:', newsError);
       }
-      
+
       return fallbackData;
     }
   }, [fetchRecentDogs, fetchNews]);
@@ -272,8 +298,8 @@ export function Home() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* ヒーローセクション */}
-          <section 
-            id="hero-section" 
+          <section
+            id="hero-section"
             aria-label="メインヒーロー"
             className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
             tabIndex={-1}
@@ -284,7 +310,7 @@ export function Home() {
           </section>
 
           {/* 新着情報セクション */}
-          <section 
+          <section
             id="news-section"
             aria-labelledby="news-heading"
             className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
@@ -297,13 +323,13 @@ export function Home() {
               respectReducedMotion={true}
               fallbackAnimation="fadeIn"
             >
-              <h2 
-                id="news-heading" 
+              <h2
+                id="news-heading"
                 className="sr-only"
               >
                 新着情報とお知らせ
               </h2>
-              <NewsSection 
+              <NewsSection
                 isOffline={isOffline}
                 onRetryConnection={handleRetryConnection}
                 news={news}
@@ -313,7 +339,7 @@ export function Home() {
           </section>
 
           {/* 最近登録された犬のマーキー */}
-          <section 
+          <section
             aria-label="最近登録された愛犬たち"
             className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
             tabIndex={-1}
@@ -325,8 +351,8 @@ export function Home() {
               respectReducedMotion={true}
               fallbackAnimation="fadeIn"
             >
-              <MarqueeDogsSection 
-                recentDogs={recentDogs} 
+              <MarqueeDogsSection
+                recentDogs={recentDogs}
                 isOffline={isOffline}
                 isLoading={isLoading}
               />
@@ -335,7 +361,7 @@ export function Home() {
 
           <main id="main-content" className="space-y-12 py-8">
             {/* 機能紹介セクション */}
-            <section 
+            <section
               id="features-section"
               aria-labelledby="features-heading"
               className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
@@ -348,8 +374,8 @@ export function Home() {
                 respectReducedMotion={true}
                 fallbackAnimation="fadeIn"
               >
-                <h2 
-                  id="features-heading" 
+                <h2
+                  id="features-heading"
                   className="sr-only"
                 >
                   アプリの主な機能
@@ -370,7 +396,7 @@ export function Home() {
             </AnimatedElement>
 
             {/* 利用方法・料金セクション */}
-            <section 
+            <section
               id="usage-rules"
               aria-labelledby="usage-heading"
               className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
@@ -383,8 +409,8 @@ export function Home() {
                 respectReducedMotion={true}
                 fallbackAnimation="fadeIn"
               >
-                <h2 
-                  id="usage-heading" 
+                <h2
+                  id="usage-heading"
                   className="sr-only"
                 >
                   利用方法と料金について
@@ -397,9 +423,9 @@ export function Home() {
       </div>
 
       {/* ライブリージョン（スクリーンリーダー用） */}
-      <div 
-        aria-live="polite" 
-        aria-atomic="true" 
+      <div
+        aria-live="polite"
+        aria-atomic="true"
         className="sr-only"
         id="status-region"
       >
@@ -409,9 +435,9 @@ export function Home() {
       </div>
 
       {/* アナウンスリージョン（重要な通知用） */}
-      <div 
-        aria-live="assertive" 
-        aria-atomic="true" 
+      <div
+        aria-live="assertive"
+        aria-atomic="true"
         className="sr-only"
         id="announcement-region"
       >
