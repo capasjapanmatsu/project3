@@ -1,19 +1,19 @@
 import {
-    AlertTriangle,
-    Badge,
-    BarChart4,
-    Bell,
-    Building,
-    Calendar,
-    CheckCircle,
-    DollarSign,
-    Download,
-    MapPin,
-    Settings,
-    Shield,
-    ShoppingBag,
-    TrendingUp,
-    Users
+  AlertTriangle,
+  Badge,
+  BarChart4,
+  Bell,
+  Building,
+  Calendar,
+  CheckCircle,
+  DollarSign,
+  Download,
+  MapPin,
+  Settings,
+  Shield,
+  ShoppingBag,
+  TrendingUp,
+  Users
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -81,7 +81,7 @@ export function AdminDashboard() {
       navigate('/');
       return;
     }
-    
+
     void fetchAdminData();
   }, [isAdmin, navigate]);
 
@@ -90,26 +90,40 @@ export function AdminDashboard() {
       setIsLoading(true);
       setProcessingError('');
       setProcessingSuccess('');
-      
+
       // 管理者統計情報を取得
       const { data: statsData, error: statsError } = await supabase.rpc('get_admin_stats');
-      
+
       if (statsError) throw statsError;
-      
+
       const typedStatsData = statsData as AdminStatsResponse | null;
-      
+
       // ペット関連施設の申請待ち数を取得
       const { data: pendingFacilitiesData, error: pendingFacilitiesError } = await supabase
         .from('pet_facilities')
         .select('id', { count: 'exact' })
         .eq('status', 'pending');
-      
+
       const pendingFacilitiesCount = pendingFacilitiesData?.length || 0;
-      
+
+      // ドッグランの審査待ち数を直接取得
+      const { data: pendingParksData, error: pendingParksError } = await supabase
+        .from('dog_parks')
+        .select('id', { count: 'exact' })
+        .in('status', ['pending', 'first_stage_passed', 'second_stage_waiting', 'second_stage_review', 'smart_lock_testing']);
+
+      const pendingParksCount = pendingParksData?.length || 0;
+
+      console.log('📊 審査待ち件数:', {
+        pendingParks: pendingParksCount,
+        pendingFacilities: pendingFacilitiesCount,
+        pendingVaccines: typedStatsData?.pending_vaccines || 0
+      });
+
       setStats({
         totalUsers: typedStatsData?.total_users || 0,
         totalParks: typedStatsData?.total_parks || 0,
-        pendingParks: typedStatsData?.pending_parks || 0,
+        pendingParks: pendingParksCount, // 直接取得した値を使用
         pendingVaccines: typedStatsData?.pending_vaccines || 0,
         pendingFacilities: pendingFacilitiesCount,
         totalReservations: typedStatsData?.total_reservations || 0,
@@ -158,7 +172,7 @@ export function AdminDashboard() {
           <p>{processingError}</p>
         </div>
       )}
-      
+
       {processingSuccess && (
         <div className="bg-green-100 border border-green-300 text-green-800 rounded-lg p-4 flex items-start">
           <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
@@ -408,22 +422,20 @@ export function AdminDashboard() {
       {/* タブナビゲーション */}
       <div className="flex space-x-4 border-b">
         <button
-          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${
-            activeTab === 'overview'
+          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${activeTab === 'overview'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-gray-500 hover:text-gray-700'
-          }`}
+            }`}
           onClick={() => setActiveTab('overview')}
         >
           <BarChart4 className="w-4 h-4" />
           <span>概要</span>
         </button>
         <button
-          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${
-            activeTab === 'parks'
+          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${activeTab === 'parks'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-gray-500 hover:text-gray-700'
-          }`}
+            }`}
           onClick={() => setActiveTab('parks')}
         >
           <MapPin className="w-4 h-4" />
@@ -435,11 +447,10 @@ export function AdminDashboard() {
           )}
         </button>
         <button
-          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${
-            activeTab === 'vaccines'
+          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${activeTab === 'vaccines'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-gray-500 hover:text-gray-700'
-          }`}
+            }`}
           onClick={() => setActiveTab('vaccines')}
         >
           <Badge className="w-4 h-4" />
@@ -451,11 +462,10 @@ export function AdminDashboard() {
           )}
         </button>
         <button
-          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${
-            activeTab === 'facilities'
+          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${activeTab === 'facilities'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-gray-500 hover:text-gray-700'
-          }`}
+            }`}
           onClick={() => setActiveTab('facilities')}
         >
           <Building className="w-4 h-4" />
@@ -467,22 +477,20 @@ export function AdminDashboard() {
           )}
         </button>
         <button
-          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${
-            activeTab === 'users'
+          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${activeTab === 'users'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-gray-500 hover:text-gray-700'
-          }`}
+            }`}
           onClick={() => setActiveTab('users')}
         >
           <Users className="w-4 h-4" />
           <span>ユーザー管理</span>
         </button>
         <button
-          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${
-            activeTab === 'maintenance'
+          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${activeTab === 'maintenance'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-gray-500 hover:text-gray-700'
-          }`}
+            }`}
           onClick={() => setActiveTab('maintenance')}
         >
           <Settings className="w-4 h-4" />
@@ -573,7 +581,7 @@ export function AdminDashboard() {
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4">新着情報管理</h3>
             <p className="text-gray-600">
-              サイトの新着情報・お知らせを管理するには 
+              サイトの新着情報・お知らせを管理するには
               <Link to="/admin/news" className="text-blue-600 hover:text-blue-800 mx-1">
                 こちら
               </Link>
@@ -588,7 +596,7 @@ export function AdminDashboard() {
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">ドッグラン管理</h3>
           <p className="text-gray-600">
-            詳細なドッグラン管理は 
+            詳細なドッグラン管理は
             <Link to="/admin/parks" className="text-blue-600 hover:text-blue-800 mx-1">
               ドッグラン管理ページ
             </Link>
@@ -613,7 +621,7 @@ export function AdminDashboard() {
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">ワクチン証明書管理</h3>
           <p className="text-gray-600">
-            詳細なワクチン証明書管理は 
+            詳細なワクチン証明書管理は
             <Link to="/admin/vaccine-approval" className="text-blue-600 hover:text-blue-800 mx-1">
               ワクチン証明書管理ページ
             </Link>
@@ -638,7 +646,7 @@ export function AdminDashboard() {
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">ペット関連施設承認管理</h3>
           <p className="text-gray-600">
-            詳細なペット関連施設の承認管理は 
+            詳細なペット関連施設の承認管理は
             <Link to="/admin/facility-approval" className="text-blue-600 hover:text-blue-800 mx-1">
               施設承認ページ
             </Link>
@@ -663,7 +671,7 @@ export function AdminDashboard() {
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">ユーザー管理</h3>
           <p className="text-gray-600">
-            詳細なユーザー管理は 
+            詳細なユーザー管理は
             <Link to="/admin/users" className="text-blue-600 hover:text-blue-800 mx-1">
               ユーザー管理ページ
             </Link>
