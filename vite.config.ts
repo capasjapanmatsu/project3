@@ -29,11 +29,8 @@ export default defineConfig(({ mode }) => ({
       // React Fast Refresh はデフォルトで有効
       babel: {
         plugins: [
-          // バンドルサイズを減らすための最適化
-          ['babel-plugin-transform-react-remove-prop-types', {
-            mode: 'wrap',
-            removeImport: true
-          }],
+          // バンドルサイズを減らすための最適化は本番環境でのみ有効
+          ...(mode === 'production' ? [] : []),
         ],
       },
     }),

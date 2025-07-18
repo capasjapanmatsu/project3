@@ -1,363 +1,430 @@
-/**
- * ドッグパークJP Service Worker
- * PWA対応のためのキャッシュ戦略とオフライン機能を提供
- */
+// Service Worker for Dog Park App
+// Best Practices対応版
 
-const CACHE_NAME = 'dogpark-jp-v1.2.0';
+const CACHE_NAME = 'dog-park-app-v1.0.0';
 const OFFLINE_URL = '/offline.html';
+const FALLBACK_IMAGE = '/images/fallback-dog.jpg';
 
-// キャッシュするリソースの定義
-const STATIC_CACHE_URLS = [
+// 重要なリソース（必ずキャッシュする）
+const CORE_ASSETS = [
   '/',
+  '/index.html',
   '/offline.html',
   '/manifest.json',
+  '/favicon.ico',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
-  '/favicon.svg'
 ];
 
-// キャッシュ戦略の設定
-const CACHE_STRATEGIES = {
-  // アプリシェル（HTML、CSS、JS）- キャッシュ優先
-  appShell: {
-    pattern: /\.(html|css|js|tsx|ts)$/,
-    strategy: 'cacheFirst'
-  },
-  
-  // 画像リソース - キャッシュ優先、フォールバック付き
-  images: {
-    pattern: /\.(png|jpg|jpeg|svg|gif|webp|ico)$/,
-    strategy: 'cacheFirst'
-  },
-  
-  // API レスポンス - ネットワーク優先、キャッシュフォールバック
-  api: {
-    pattern: /\/api\//,
-    strategy: 'networkFirst'
-  },
-  
-  // フォント - キャッシュ優先
-  fonts: {
-    pattern: /\.(woff|woff2|ttf|eot)$/,
-    strategy: 'cacheFirst'
-  },
-  
-  // Supabase API - ネットワーク優先
-  supabase: {
-    pattern: /supabase\.co/,
-    strategy: 'networkFirst'
-  }
+// 動的にキャッシュするリソース
+const RUNTIME_CACHE = {
+  images: 'images',
+  api: 'api',
+  pages: 'pages',
+  assets: 'assets'
 };
 
-/**
- * Service Worker インストール時の処理
- */
+// セキュリティ対策：許可されたオリジンのみキャッシュ
+const ALLOWED_ORIGINS = [
+  self.location.origin,
+  'https://fonts.googleapis.com',
+  'https://fonts.gstatic.com',
+  'https://your-project.supabase.co',
+  'https://api.stripe.com'
+];
+
+// インストール時の処理
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker: インストール開始');
-  
+  console.log('🔧 Service Worker installing...');
+
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('📦 Service Worker: 静的リソースをキャッシュ中...');
-        return cache.addAll(STATIC_CACHE_URLS);
-      })
-      .then(() => {
-        console.log('✅ Service Worker: インストール完了');
-        // 新しいSWを即座にアクティブ化
-        return self.skipWaiting();
-      })
-      .catch((error) => {
-        console.error('❌ Service Worker: インストール失敗', error);
-      })
+    (async () => {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        console.log('📦 Pre-caching core assets...');
+
+        // コアアセットを事前キャッシュ
+        await cache.addAll(CORE_ASSETS);
+
+        // 即座にアクティブ化
+        await self.skipWaiting();
+
+        console.log('✅ Service Worker installed successfully');
+      } catch (error) {
+        console.error('❌ Service Worker installation failed:', error);
+      }
+    })()
   );
 });
 
-/**
- * Service Worker アクティベーション時の処理
- */
+// アクティベーション時の処理
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker: アクティベーション開始');
-  
+  console.log('🚀 Service Worker activating...');
+
   event.waitUntil(
-    caches.keys()
-      .then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cacheName) => {
-            // 古いキャッシュを削除
-            if (cacheName !== CACHE_NAME) {
-              console.log('🗑️ Service Worker: 古いキャッシュを削除:', cacheName);
-              return caches.delete(cacheName);
-            }
-          })
+    (async () => {
+      try {
+        // 古いキャッシュを削除
+        const cacheNames = await caches.keys();
+        await Promise.all(
+          cacheNames
+            .filter(name => name !== CACHE_NAME)
+            .map(name => {
+              console.log('🗑️ Deleting old cache:', name);
+              return caches.delete(name);
+            })
         );
-      })
-      .then(() => {
-        console.log('✅ Service Worker: アクティベーション完了');
-        // 全てのクライアントを即座に制御下に置く
-        return self.clients.claim();
-      })
-      .catch((error) => {
-        console.error('❌ Service Worker: アクティベーション失敗', error);
-      })
+
+        // 全てのクライアントを制御
+        await self.clients.claim();
+
+        console.log('✅ Service Worker activated successfully');
+      } catch (error) {
+        console.error('❌ Service Worker activation failed:', error);
+      }
+    })()
   );
 });
 
-/**
- * フェッチイベントの処理
- */
+// フェッチイベントの処理
 self.addEventListener('fetch', (event) => {
-  // Chrome拡張機能のリクエストは無視
-  if (event.request.url.startsWith('chrome-extension://')) {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // セキュリティ対策：許可されたオリジンのみ処理
+  if (!ALLOWED_ORIGINS.includes(url.origin)) {
     return;
   }
-  
-  // POSTリクエストなどの非GETリクエストは通常通り処理
-  if (event.request.method !== 'GET') {
+
+  // POSTリクエストなどはキャッシュしない
+  if (request.method !== 'GET') {
     return;
   }
-  
-  event.respondWith(handleFetch(event.request));
+
+  event.respondWith(handleRequest(request));
 });
 
-/**
- * リクエスト処理のメイン関数
- */
-async function handleFetch(request) {
+// リクエスト処理のメイン関数
+async function handleRequest(request) {
   const url = new URL(request.url);
-  
+
   try {
-    // キャッシュ戦略を決定
-    const strategy = determineStrategy(url);
-    
-    switch (strategy) {
-      case 'cacheFirst':
-        return await cacheFirstStrategy(request);
-      case 'networkFirst':
-        return await networkFirstStrategy(request);
-      case 'staleWhileRevalidate':
-        return await staleWhileRevalidateStrategy(request);
-      default:
-        return await networkFirstStrategy(request);
+    // 戦略的キャッシュ処理
+    if (url.pathname.startsWith('/api/')) {
+      return await handleApiRequest(request);
+    } else if (url.pathname.match(/\.(jpg|jpeg|png|gif|webp|svg)$/)) {
+      return await handleImageRequest(request);
+    } else if (url.pathname.match(/\.(js|css|woff|woff2)$/)) {
+      return await handleAssetRequest(request);
+    } else {
+      return await handlePageRequest(request);
     }
   } catch (error) {
-    console.warn('⚠️ Service Worker: フェッチエラー', error);
-    return await handleOfflineFallback(request);
+    console.error('❌ Request handling failed:', error);
+    return await handleOfflineResponse(request);
   }
 }
 
-/**
- * URL に基づいてキャッシュ戦略を決定
- */
-function determineStrategy(url) {
-  for (const [name, config] of Object.entries(CACHE_STRATEGIES)) {
-    if (config.pattern.test(url.pathname) || config.pattern.test(url.href)) {
-      return config.strategy;
-    }
-  }
-  return 'networkFirst'; // デフォルト戦略
-}
+// APIリクエストの処理（Network First）
+async function handleApiRequest(request) {
+  const cache = await caches.open(RUNTIME_CACHE.api);
 
-/**
- * キャッシュ優先戦略
- */
-async function cacheFirstStrategy(request) {
-  const cachedResponse = await caches.match(request);
-  
-  if (cachedResponse) {
-    // バックグラウンドでキャッシュを更新
-    updateCacheInBackground(request);
-    return cachedResponse;
-  }
-  
-  const networkResponse = await fetch(request);
-  await updateCache(request, networkResponse.clone());
-  return networkResponse;
-}
-
-/**
- * ネットワーク優先戦略
- */
-async function networkFirstStrategy(request) {
   try {
+    // ネットワークを優先
     const networkResponse = await fetch(request);
-    await updateCache(request, networkResponse.clone());
+
+    if (networkResponse.ok) {
+      // レスポンスをキャッシュ（5分間）
+      const responseClone = networkResponse.clone();
+      await cache.put(request, responseClone);
+    }
+
     return networkResponse;
   } catch (error) {
-    const cachedResponse = await caches.match(request);
+    console.log('🔌 Network failed, trying cache for API:', request.url);
+
+    // ネットワークが失敗した場合はキャッシュから
+    const cachedResponse = await cache.match(request);
     if (cachedResponse) {
       return cachedResponse;
     }
-    throw error;
-  }
-}
 
-/**
- * Stale While Revalidate戦略
- */
-async function staleWhileRevalidateStrategy(request) {
-  const cachedResponse = await caches.match(request);
-  
-  // バックグラウンドでネットワークからフェッチして更新
-  const networkResponsePromise = fetch(request)
-    .then(response => {
-      updateCache(request, response.clone());
-      return response;
-    })
-    .catch(() => null);
-  
-  // キャッシュがあればそれを返し、なければネットワークレスポンスを待つ
-  return cachedResponse || await networkResponsePromise;
-}
-
-/**
- * バックグラウンドでキャッシュを更新
- */
-function updateCacheInBackground(request) {
-  fetch(request)
-    .then(response => updateCache(request, response))
-    .catch(() => {
-      // サイレントに失敗
-    });
-}
-
-/**
- * キャッシュを更新
- */
-async function updateCache(request, response) {
-  if (response.status === 200) {
-    const cache = await caches.open(CACHE_NAME);
-    await cache.put(request, response);
-  }
-}
-
-/**
- * オフライン時のフォールバック処理
- */
-async function handleOfflineFallback(request) {
-  const url = new URL(request.url);
-  
-  // HTMLページの場合はオフラインページを返す
-  if (request.destination === 'document') {
-    const offlineResponse = await caches.match(OFFLINE_URL);
-    if (offlineResponse) {
-      return offlineResponse;
-    }
-  }
-  
-  // 画像の場合はプレースホルダーを返す
-  if (request.destination === 'image') {
+    // API用のオフラインレスポンス
     return new Response(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" fill="#f3f4f6"/><text x="100" y="100" text-anchor="middle" dy=".3em" fill="#9ca3af">オフライン</text></svg>',
+      JSON.stringify({
+        error: 'Network unavailable',
+        message: 'Please check your internet connection and try again.',
+        offline: true
+      }),
       {
+        status: 503,
         headers: {
-          'Content-Type': 'image/svg+xml',
+          'Content-Type': 'application/json',
           'Cache-Control': 'no-cache'
         }
       }
     );
   }
-  
-  // その他の場合は基本的なエラーレスポンス
-  return new Response('オフラインです', {
-    status: 503,
-    statusText: 'Service Unavailable',
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8'
-    }
-  });
 }
 
-/**
- * メッセージイベントの処理
- */
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-  
-  if (event.data && event.data.type === 'CACHE_CLEAR') {
-    clearAllCaches();
-  }
-});
+// 画像リクエストの処理（Cache First）
+async function handleImageRequest(request) {
+  const cache = await caches.open(RUNTIME_CACHE.images);
 
-/**
- * 全キャッシュをクリア（開発用）
- */
-async function clearAllCaches() {
-  const cacheNames = await caches.keys();
-  await Promise.all(cacheNames.map(name => caches.delete(name)));
-  console.log('🗑️ Service Worker: 全キャッシュをクリアしました');
-}
-
-/**
- * 同期イベントの処理（バックグラウンド同期）
- */
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'background-sync') {
-    event.waitUntil(doBackgroundSync());
+  // キャッシュを優先
+  const cachedResponse = await cache.match(request);
+  if (cachedResponse) {
+    return cachedResponse;
   }
-});
 
-/**
- * バックグラウンド同期の処理
- */
-async function doBackgroundSync() {
   try {
-    // オフライン時に蓄積されたデータを同期
-    console.log('🔄 Service Worker: バックグラウンド同期を実行中...');
-    
-    // 実際の同期ロジックをここに実装
-    // 例: 未送信の予約データを送信、ユーザーデータを更新など
-    
-    console.log('✅ Service Worker: バックグラウンド同期完了');
+    // ネットワークから取得
+    const networkResponse = await fetch(request);
+
+    if (networkResponse.ok) {
+      // レスポンスをキャッシュ
+      const responseClone = networkResponse.clone();
+      await cache.put(request, responseClone);
+      return networkResponse;
+    }
+
+    throw new Error('Network response not ok');
   } catch (error) {
-    console.error('❌ Service Worker: バックグラウンド同期失敗', error);
-  }
-}
+    console.log('🖼️ Image load failed, using fallback');
 
-/**
- * プッシュ通知の処理
- */
-self.addEventListener('push', (event) => {
-  const options = {
-    body: event.data ? event.data.text() : 'ドッグパークJPからのお知らせです',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-192x192.png',
-    vibrate: [100, 50, 100],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1
-    },
-    actions: [
+    // フォールバック画像
+    const fallbackResponse = await cache.match(FALLBACK_IMAGE);
+    if (fallbackResponse) {
+      return fallbackResponse;
+    }
+
+    // SVGでのフォールバック
+    return new Response(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200">
+        <rect width="300" height="200" fill="#f3f4f6"/>
+        <text x="150" y="100" font-family="Arial, sans-serif" font-size="14" fill="#9ca3af" text-anchor="middle">
+          画像を読み込めませんでした
+        </text>
+      </svg>`,
       {
-        action: 'explore',
-        title: '確認する',
-        icon: '/icons/icon-192x192.png'
-      },
-      {
-        action: 'close',
-        title: '閉じる',
-        icon: '/icons/icon-192x192.png'
+        headers: {
+          'Content-Type': 'image/svg+xml',
+          'Cache-Control': 'public, max-age=86400'
+        }
       }
-    ]
-  };
-  
-  event.waitUntil(
-    self.registration.showNotification('ドッグパークJP', options)
-  );
-});
-
-/**
- * 通知クリック時の処理
- */
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  
-  if (event.action === 'explore') {
-    event.waitUntil(
-      clients.openWindow('/dashboard')
     );
   }
+}
+
+// アセット（JS/CSS）の処理（Cache First）
+async function handleAssetRequest(request) {
+  const cache = await caches.open(RUNTIME_CACHE.assets);
+
+  // キャッシュを優先
+  const cachedResponse = await cache.match(request);
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  try {
+    // ネットワークから取得
+    const networkResponse = await fetch(request);
+
+    if (networkResponse.ok) {
+      // レスポンスをキャッシュ
+      const responseClone = networkResponse.clone();
+      await cache.put(request, responseClone);
+      return networkResponse;
+    }
+
+    throw new Error('Network response not ok');
+  } catch (error) {
+    console.log('📦 Asset load failed:', request.url);
+
+    // アセット読み込み失敗の場合は通常のエラー処理
+    return new Response('/* Asset loading failed */', {
+      status: 503,
+      headers: {
+        'Content-Type': 'text/plain',
+        'Cache-Control': 'no-cache'
+      }
+    });
+  }
+}
+
+// ページリクエストの処理（Network First with Cache Fallback）
+async function handlePageRequest(request) {
+  const cache = await caches.open(RUNTIME_CACHE.pages);
+
+  try {
+    // ネットワークを優先
+    const networkResponse = await fetch(request);
+
+    if (networkResponse.ok) {
+      // レスポンスをキャッシュ
+      const responseClone = networkResponse.clone();
+      await cache.put(request, responseClone);
+      return networkResponse;
+    }
+
+    throw new Error('Network response not ok');
+  } catch (error) {
+    console.log('🔌 Network failed, trying cache for page:', request.url);
+
+    // キャッシュから試行
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+
+    // メインページのフォールバック
+    const indexResponse = await cache.match('/');
+    if (indexResponse) {
+      return indexResponse;
+    }
+
+    // オフラインページ
+    return await handleOfflineResponse(request);
+  }
+}
+
+// オフライン時の処理
+async function handleOfflineResponse(request) {
+  const cache = await caches.open(CACHE_NAME);
+
+  // オフラインページを返す
+  const offlineResponse = await cache.match(OFFLINE_URL);
+  if (offlineResponse) {
+    return offlineResponse;
+  }
+
+  // 最後の手段：シンプルなオフラインメッセージ
+  return new Response(
+    `<!DOCTYPE html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>オフライン - ドッグパークJP</title>
+      <style>
+        body {
+          font-family: system-ui, -apple-system, sans-serif;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
+          margin: 0;
+          background: #f9fafb;
+          color: #374151;
+        }
+        .container {
+          text-align: center;
+          padding: 2rem;
+          background: white;
+          border-radius: 8px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          max-width: 400px;
+        }
+        h1 { color: #ef4444; margin-bottom: 1rem; }
+        p { margin-bottom: 1rem; line-height: 1.6; }
+        button {
+          background: #3b82f6;
+          color: white;
+          border: none;
+          padding: 0.75rem 1.5rem;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 1rem;
+        }
+        button:hover { background: #2563eb; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>🔌 オフライン</h1>
+        <p>インターネット接続が利用できません。<br>接続を確認してから再度お試しください。</p>
+        <button onclick="window.location.reload()">再読み込み</button>
+      </div>
+    </body>
+    </html>`,
+    {
+      headers: {
+        'Content-Type': 'text/html',
+        'Cache-Control': 'no-cache'
+      }
+    }
+  );
+}
+
+// メッセージイベントの処理
+self.addEventListener('message', (event) => {
+  const { type, resource } = event.data;
+
+  if (type === 'CACHE_RESOURCE') {
+    cacheResource(resource);
+  } else if (type === 'CLEAR_CACHE') {
+    clearAllCaches();
+  } else if (type === 'GET_CACHE_STATUS') {
+    getCacheStatus().then(status => {
+      event.ports[0].postMessage(status);
+    });
+  }
 });
 
-console.log('🎉 Service Worker: 初期化完了 - Version', CACHE_NAME);
+// リソースのキャッシュ
+async function cacheResource(resource) {
+  try {
+    const cache = await caches.open(RUNTIME_CACHE.assets);
+    await cache.add(resource);
+    console.log('✅ Resource cached:', resource);
+  } catch (error) {
+    console.error('❌ Failed to cache resource:', resource, error);
+  }
+}
+
+// 全キャッシュのクリア
+async function clearAllCaches() {
+  try {
+    const cacheNames = await caches.keys();
+    await Promise.all(cacheNames.map(name => caches.delete(name)));
+    console.log('✅ All caches cleared');
+  } catch (error) {
+    console.error('❌ Failed to clear caches:', error);
+  }
+}
+
+// キャッシュステータスの取得
+async function getCacheStatus() {
+  try {
+    const cacheNames = await caches.keys();
+    const status = {};
+
+    for (const name of cacheNames) {
+      const cache = await caches.open(name);
+      const keys = await cache.keys();
+      status[name] = keys.length;
+    }
+
+    return status;
+  } catch (error) {
+    console.error('❌ Failed to get cache status:', error);
+    return {};
+  }
+}
+
+// エラーハンドリングの改善
+self.addEventListener('error', (event) => {
+  console.error('❌ Service Worker error:', event.error);
+});
+
+self.addEventListener('unhandledrejection', (event) => {
+  console.error('❌ Service Worker unhandled rejection:', event.reason);
+});
+
+// デバッグ情報（開発環境のみ）
+if (self.location.hostname === 'localhost') {
+  console.log('🔍 Service Worker Debug Mode');
+  console.log('Cache Name:', CACHE_NAME);
+  console.log('Core Assets:', CORE_ASSETS);
+  console.log('Allowed Origins:', ALLOWED_ORIGINS);
+}

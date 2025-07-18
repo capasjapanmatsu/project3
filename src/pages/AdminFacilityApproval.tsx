@@ -27,7 +27,7 @@ interface FacilityImage {
 interface PetFacility {
   id: string;
   name: string;
-  category_id: string;
+  category: string;
   address: string;
   phone?: string;
   website?: string;
@@ -35,7 +35,12 @@ interface PetFacility {
   status: 'pending' | 'approved' | 'rejected';
   rejection_reason?: string;
   created_at: string;
+  updated_at?: string;
   owner_id: string;
+  approved_at?: string;
+  approved_by?: string;
+  rejected_at?: string;
+  rejected_by?: string;
   images: FacilityImage[];
 }
 

@@ -8,6 +8,12 @@ import { AuthProvider } from './context/AuthContext';
 import { MaintenanceProvider } from './context/MaintenanceContext';
 import './index.css';
 import { initializePerformanceOptimizations } from './utils/preloadStrategies';
+import SecurityUtils, { setupErrorHandling, setupSecurityEventListeners } from './utils/securityUtils';
+
+// セキュリティ設定の初期化
+SecurityUtils.initializeSecuritySettings();
+setupSecurityEventListeners();
+setupErrorHandling();
 
 // パフォーマンス最適化の初期化
 initializePerformanceOptimizations();

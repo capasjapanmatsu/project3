@@ -1,157 +1,207 @@
 [build]
   publish = "dist"
   command = "npm run build"
-
+  
 [build.environment]
   NODE_VERSION = "18"
   NPM_VERSION = "9"
 
-# Netlify Supabase Extension の環境変数を自動的に VITE_ プレフィックス付きで使用
-[build.processing]
-  skip_processing = false
+# HTTPSリダイレクトの強制
+[[redirects]]
+  from = "http://your-site.netlify.app/*"
+  to = "https://your-site.netlify.app/:splat"
+  status = 301
+  force = true
 
-[build.processing.css]
-  bundle = true
-  minify = true
-
-[build.processing.js]
-  bundle = true
-  minify = true
-
-[build.processing.html]
-  pretty_urls = true
-
-# SPA 用のリダイレクト設定
+# SPAのルーティング設定
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# API リクエスト用のプロキシ設定（必要に応じて）
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
-# セキュリティヘッダー
+# セキュリティヘッダーの設定
 [[headers]]
   for = "/*"
   [headers.values]
+    # セキュリティヘッダー（Best Practices向上）
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://*.supabase.com https://api.stripe.com https://checkout.stripe.com wss://*.supabase.co; frame-src https://js.stripe.com https://checkout.stripe.com https://maps.googleapis.com;"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+    
+    # CSP（Content Security Policy）の設定
+    Content-Security-Policy = """
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://maps.googleapis.com https://www.google.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      img-src 'self' data: https: blob:;
+      font-src 'self' https://fonts.gstatic.com;
+      connect-src 'self' https://api.stripe.com https://your-project.supabase.co https://vitals.vercel-insights.com;
+      worker-src 'self' blob:;
+      child-src 'self' https://js.stripe.com;
+      frame-src 'self' https://js.stripe.com;
+      media-src 'self' https:;
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      frame-ancestors 'none';
+      upgrade-insecure-requests;
+    """
 
-# 静的ファイルのキャッシュ設定
+# 静的アセットのキャッシュ設定
 [[headers]]
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
-
+    
 [[headers]]
-  for = "/*.js"
+  for = "*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    
+[[headers]]
+  for = "*.woff2"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    
+[[headers]]
+  for = "*.woff"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+# 画像のキャッシュ設定
 [[headers]]
-  for = "/*.css"
+  for = "/images/*"
   [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-# フォントファイルのキャッシュ
+    Cache-Control = "public, max-age=2592000"
+    
 [[headers]]
-  for = "/*.woff2"
+  for = "*.jpg"
   [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-# 画像ファイルのキャッシュ
+    Cache-Control = "public, max-age=2592000"
+    
 [[headers]]
-  for = "/*.png"
+  for = "*.jpeg"
   [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
+    Cache-Control = "public, max-age=2592000"
+    
 [[headers]]
-  for = "/*.jpg"
+  for = "*.png"
   [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
+    Cache-Control = "public, max-age=2592000"
+    
 [[headers]]
-  for = "/*.svg"
+  for = "*.webp"
   [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+    Cache-Control = "public, max-age=2592000"
+    
+[[headers]]
+  for = "*.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
 
-# マニフェストファイルのキャッシュ
+# PWA関連ファイルのキャッシュ設定
 [[headers]]
   for = "/manifest.json"
   [headers.values]
     Cache-Control = "public, max-age=86400"
-
-# サービスワーカー（将来的に追加する場合）
+    
 [[headers]]
   for = "/sw.js"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
-
-# PWA 用の追加設定
+    
 [[headers]]
-  for = "/sw.js"
-  [headers.values]
-    Cache-Control = "public, max-age=0, must-revalidate"
-    Service-Worker-Allowed = "/"
-    Content-Type = "application/javascript"
-
-[[headers]]
-  for = "/offline.html"
-  [headers.values]
-    Cache-Control = "public, max-age=3600"
-
-# PWA マニフェストファイル
-[[headers]]
-  for = "/manifest.json"
-  [headers.values]
-    Cache-Control = "public, max-age=86400"
-    Content-Type = "application/manifest+json"
-
-# PWA アイコンファイル
-[[headers]]
-  for = "/icons/*"
+  for = "/workbox-*.js"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
-    Content-Type = "image/png"
 
-# HTTPS 強制リダイレクト（本番環境）
+# HTMLファイルの設定
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# API関連のプロキシ設定（必要に応じて）
 [[redirects]]
-  from = "http://dogparkjp.netlify.app/*"
-  to = "https://dogparkjp.netlify.app/:splat"
-  status = 301
-  force = true
+  from = "/api/*"
+  to = "https://your-project.supabase.co/rest/v1/:splat"
+  status = 200
+  headers = {Authorization = "Bearer YOUR_ANON_KEY"}
 
-# WWW なし強制（カスタムドメインがある場合）
+# エラーページの設定
 [[redirects]]
-  from = "https://www.dogparkjp.com/*"
-  to = "https://dogparkjp.com/:splat"
-  status = 301
-  force = true
+  from = "/404"
+  to = "/404.html"
+  status = 404
+  
+[[redirects]]
+  from = "/500"
+  to = "/500.html"
+  status = 500
 
-# Edge Functions（Netlify Functions）の設定
+# プレビュー設定
+[context.deploy-preview]
+  command = "npm run build"
+  
+[context.branch-deploy]
+  command = "npm run build"
+
+# 開発ブランチ設定
+[context.dev]
+  command = "npm run build"
+  
+# 本番環境用の設定
+[context.production]
+  command = "npm run build"
+  
+# 環境変数の設定例
+[build.processing]
+  skip_processing = false
+  
+[build.processing.css]
+  bundle = true
+  minify = true
+  
+[build.processing.js]
+  bundle = true
+  minify = true
+  
+[build.processing.html]
+  pretty_urls = true
+  
+[build.processing.images]
+  compress = true
+
+# Form処理の設定（必要に応じて）
+[forms]
+  settings = false
+
+# Functions設定（必要に応じて）
 [functions]
-  external_node_modules = ["@supabase/supabase-js"]
-  node_bundler = "esbuild"
-
-# 開発環境でのプレビュー設定
-[dev]
-  command = "npm run dev"
-  port = 3000
-  publish = "dist"
-
-# プラグイン設定（必要に応じて）
+  directory = "netlify/functions"
+  
+# プラグインの設定
 [[plugins]]
   package = "@netlify/plugin-lighthouse"
-
+  
   [plugins.inputs]
     output_path = "reports/lighthouse.html"
-
-# フォーム処理（将来的に使用する場合）
-[forms]
-  spam_protection = true 
+    
+[[plugins]]
+  package = "netlify-plugin-submit-sitemap"
+  
+  [plugins.inputs]
+    baseUrl = "https://your-site.netlify.app"
+    sitemapPath = "/sitemap.xml"
+    providers = [
+      "google",
+      "bing",
+      "yandex"
+    ] 
