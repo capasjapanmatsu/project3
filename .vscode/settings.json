@@ -59,5 +59,12 @@
   // Hot Reload最適化
   "files.hotExit": "onExitAndWindowClose",
   "editor.formatOnSave": true,
-  "editor.formatOnPaste": true
+  "editor.formatOnPaste": true,
+  // PowerShell ターミナル設定
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "path": "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
+    }
+  }
 }

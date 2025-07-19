@@ -59,8 +59,8 @@
   "devDependencies": {
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
-    "@typescript-eslint/eslint-plugin": "^6.14.0",
-    "@typescript-eslint/parser": "^6.14.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
     "concurrently": "^8.2.2",
@@ -76,13 +76,10 @@
     "workbox-window": "^7.0.0",
     "rollup-plugin-visualizer": "^5.12.0",
     "babel-plugin-transform-react-remove-prop-types": "^0.4.24",
-    "vite-plugin-webp": "^0.4.0",
     "vite-plugin-imagemin": "^0.6.1",
     "imagemin-webp": "^8.0.0",
     "imagemin-mozjpeg": "^10.0.0",
     "imagemin-pngquant": "^9.0.0",
-    "critical": "^6.1.3",
-    "purge-css": "^1.1.0",
     "webpack-bundle-analyzer": "^4.10.1"
   }
 }

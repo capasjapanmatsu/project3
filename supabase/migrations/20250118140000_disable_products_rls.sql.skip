@@ -1,0 +1,17 @@
+-- 開発環境用：productsテーブルのRLSを一時的に無効化
+-- これにより、認証されたユーザーは誰でも商品を登録できるようになります
+
+-- 既存のRLSポリシーを削除
+DROP POLICY IF EXISTS "products_public_select" ON products;
+DROP POLICY IF EXISTS "products_admin_manage" ON products;
+DROP POLICY IF EXISTS "products_select_all" ON products;
+DROP POLICY IF EXISTS "products_admin_write" ON products;
+DROP POLICY IF EXISTS "products_public_read" ON products;
+DROP POLICY IF EXISTS "products_admin_update" ON products;
+DROP POLICY IF EXISTS "products_admin_delete" ON products;
+
+-- RLSを無効化
+ALTER TABLE products DISABLE ROW LEVEL SECURITY;
+
+-- 確認用のコメント
+COMMENT ON TABLE products IS 'RLS disabled for development - 2025-01-18'; 
