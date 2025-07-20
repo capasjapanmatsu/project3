@@ -1083,6 +1083,7 @@ export function AdminShopManagement() {
                       { value: 'accessories', label: 'アクセサリー' },
                       { value: 'health', label: 'ヘルスケア' },
                       { value: 'sheets', label: 'ペットシーツ' },
+                      { value: 'business', label: '業務用品' },
                     ]}
                     value={productFormData.category}
                     onChange={(e) => setProductFormData({ ...productFormData, category: e.target.value })}
