@@ -44,27 +44,20 @@
     "typescript",
     "typescriptreact"
   ],
-  // Simple Browser + Vite Dev Server 設定
-  "simpleBrowser.focusLockIndicator.enabled": true,
-  "vite.autoStart": true,
-  "liveServer.settings.port": 3005,
-  "liveServer.settings.CustomBrowser": "chrome",
-  // 開発効率向上設定
-  "editor.linkedEditing": true,
-  "editor.bracketPairColorization.enabled": true,
-  "editor.guides.bracketPairs": true,
-  "workbench.editor.enablePreview": false,
-  "explorer.confirmDelete": false,
-  "git.autofetch": true,
-  // Hot Reload最適化
-  "files.hotExit": "onExitAndWindowClose",
-  "editor.formatOnSave": true,
-  "editor.formatOnPaste": true,
-  // PowerShell ターミナル設定
-  "terminal.integrated.defaultProfile.windows": "PowerShell",
-  "terminal.integrated.profiles.windows": {
-    "PowerShell": {
-      "path": "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
+  "sqltools.connections": [
+    {
+      "name": "supabase-project3",
+      "driver": "PostgreSQL",
+      "server": "db.onmcivwxtzqajcovptgf.supabase.co",
+      "port": 5432,
+      "database": "postgres",
+      "username": "postgres",
+      "password": "IvwGgc2FabElLFVt",
+      "ssl": "require",
+      "askForPassword": false,
+      "connectionTimeout": 30000,
+      "requestTimeout": 30000
     }
-  }
+  ],
+  "sqltools.autoConnectTo": ["supabase-project3"]
 }

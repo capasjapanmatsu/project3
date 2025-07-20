@@ -1,3 +1,40 @@
+// データベースレスポンスの型定義
+interface DogParkResponse {
+  id: string;
+  name: string;
+  description?: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  price: number;
+  current_occupancy: number;
+  max_capacity: number;
+  status: string;
+  facilities?: string;
+  image_url?: string;
+  average_rating: number;
+  review_count: number;
+  created_at: string;
+}
+
+interface PetFacilityResponse {
+  id: string;
+  name: string;
+  description?: string;
+  category_id: string;
+  address: string;
+  latitude?: number;
+  longitude?: number;
+  phone?: string;
+  website?: string;
+  status: string;
+  created_at: string;
+  facility_categories?: {
+    name: string;
+    name_ja: string;
+  };
+}
+
 // useParkData.ts - ドッグパークと施設データ管理のカスタムフック
 import { useCallback, useState } from 'react';
 import { type DogPark } from '../types';
@@ -18,15 +55,9 @@ export function useParkData() {
       const { data, error: queryError } = await supabase
         .from('dog_parks')
         .select(`
-          *,
-          park_facilities (
-            id,
-            name,
-            category,
-            is_available
-          )
+          *
         `)
-        .eq('is_active', true)
+        .eq('status', 'approved')
         .order('name');
 
       if (queryError) {
@@ -34,30 +65,22 @@ export function useParkData() {
       }
 
       // データの型安全性を確保
-      const parksData: DogPark[] = (data || []).map((park: any) => ({
+      const parksData: DogPark[] = (data as DogParkResponse[] || []).map((park) => ({
         id: park.id || '',
         name: park.name || '',
         description: park.description || '',
         address: park.address || '',
-        prefecture: park.prefecture || '',
-        city: park.city || '',
-        latitude: park.latitude || 0,
-        longitude: park.longitude || 0,
-        max_capacity: park.max_capacity || 0,
-        current_occupancy: park.current_occupancy || 0,
-        hourly_rate: park.hourly_rate || 0,
-        is_active: park.is_active || false,
-        is_open: park.is_open || false,
-        opening_hours: park.opening_hours || '',
-        contact_phone: park.contact_phone || '',
-        contact_email: park.contact_email || '',
-        website_url: park.website_url || '',
-        image_urls: Array.isArray(park.image_urls) ? park.image_urls : [],
-        amenities: Array.isArray(park.amenities) ? park.amenities : [],
-        rules: Array.isArray(park.rules) ? park.rules : [],
+        latitude: Number(park.latitude) || 0,
+        longitude: Number(park.longitude) || 0,
+        max_capacity: Number(park.max_capacity) || 0,
+        current_occupancy: Number(park.current_occupancy) || 0,
+        price: Number(park.price) || 0,
+        status: park.status as 'pending' | 'approved' | 'rejected' || 'pending',
+        facilities: park.facilities || '',
+        image_url: park.image_url || '',
+        average_rating: Number(park.average_rating) || 0,
+        review_count: Number(park.review_count) || 0,
         created_at: park.created_at || '',
-        updated_at: park.updated_at || '',
-        park_facilities: Array.isArray(park.park_facilities) ? park.park_facilities : [],
       }));
 
       setParks(parksData);
@@ -95,8 +118,14 @@ export function useFacilityData() {
 
       const { data, error: queryError } = await supabase
         .from('pet_facilities')
-        .select('*')
-        .eq('is_active', true)
+        .select(`
+          *,
+          facility_categories (
+            name,
+            name_ja
+          )
+        `)
+        .eq('status', 'approved')
         .order('name');
 
       if (queryError) {
@@ -104,30 +133,19 @@ export function useFacilityData() {
       }
 
       // データの型安全性を確保
-      const facilitiesData: PetFacility[] = (data || []).map((facility: any) => ({
+      const facilitiesData: PetFacility[] = (data as PetFacilityResponse[] || []).map((facility) => ({
         id: facility.id || '',
         name: facility.name || '',
         description: facility.description || '',
-        category: facility.category || 'other',
+        category: facility.category_id || 'other',
         address: facility.address || '',
-        prefecture: facility.prefecture || '',
-        city: facility.city || '',
-        latitude: facility.latitude || 0,
-        longitude: facility.longitude || 0,
+        latitude: Number(facility.latitude) || 0,
+        longitude: Number(facility.longitude) || 0,
         phone: facility.phone || '',
-        email: facility.email || '',
-        website_url: facility.website_url || '',
-        operating_hours: facility.operating_hours || '',
-        is_active: facility.is_active || false,
-        is_pet_friendly: facility.is_pet_friendly || false,
-        price_range: facility.price_range || '',
-        rating: facility.rating || 0,
-        review_count: facility.review_count || 0,
-        image_urls: Array.isArray(facility.image_urls) ? facility.image_urls : [],
-        amenities: Array.isArray(facility.amenities) ? facility.amenities : [],
-        pet_policies: facility.pet_policies || '',
+        website: facility.website || '',
+        status: facility.status as 'pending' | 'approved' | 'rejected' | 'suspended' || 'pending',
         created_at: facility.created_at || '',
-        updated_at: facility.updated_at || '',
+        category_name: facility.facility_categories?.name_ja || '',
       }));
 
       setFacilities(facilitiesData);

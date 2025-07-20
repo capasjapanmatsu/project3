@@ -24,38 +24,20 @@ export interface Dog {
 
 export interface DogPark {
   id: string;
-  owner_id: string;
   name: string;
-  description: string | null;
+  description?: string;
   address: string;
   latitude: number;
   longitude: number;
   price: number;
   current_occupancy: number;
   max_capacity: number;
-  qr_code: string | null;
-  status: 'pending' | 'first_stage_passed' | 'second_stage_waiting' | 'second_stage_review' | 'smart_lock_testing' | 'approved' | 'rejected';
-  facilities: {
-    parking: boolean;
-    shower: boolean;
-    restroom: boolean;
-    agility: boolean;
-    rest_area: boolean;
-    water_station: boolean;
-  };
-  facility_details: string | null;
-  image_url: string | null;
-  cover_image_url: string | null;
-  large_dog_area: boolean;
-  small_dog_area: boolean;
-  private_booths: boolean;
-  private_booth_count: number;
-  private_booth_price: number;
+  status: 'pending' | 'approved' | 'rejected';
+  facilities?: string;
+  image_url?: string;
   average_rating: number;
   review_count: number;
-  is_public: boolean;
   created_at: string;
-  updated_at?: string;
 }
 
 export interface DogParkImage {

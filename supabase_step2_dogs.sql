@@ -1,6 +1,5 @@
--- ステップ4: 管理者用の犬データを作成
--- 管理者アカウントの犬を作成（存在しない場合）
--- 管理者アカウントのIDを確認
+-- ステップ2: 管理者と各ユーザーの犬を作成
+-- 管理者の犬を作成（存在しない場合）
 DO $$
 DECLARE admin_id UUID;
 existing_dog_count INTEGER;
@@ -26,11 +25,11 @@ INSERT INTO dogs (
 VALUES (
         admin_id,
         'アッシュ',
-        '雑種',
+        'ミックス犬',
         4,
         15.0,
         'オス',
-        '賢くて人懐っこい性格です。他の犬とも仲良くできます。',
+        '賢くて人懐っこい性格です。他の犬とも仲良くできて、散歩が大好きです。',
         NOW() - INTERVAL '1 year'
     );
 RAISE NOTICE '管理者の犬「アッシュ」を作成しました';
@@ -40,7 +39,7 @@ END IF;
 ELSE RAISE NOTICE '管理者アカウントが見つかりません';
 END IF;
 END $$;
--- ステップ5: テストユーザーの犬データを作成
+-- テストユーザーの犬データを作成
 INSERT INTO dogs (
         owner_id,
         name,
@@ -83,10 +82,10 @@ SELECT p.id as owner_id,
         WHEN p.email = 'suzuki.misaki@example.com' THEN 'メス'
     END as gender,
     CASE
-        WHEN p.email = 'tanaka.taro@example.com' THEN '人懐っこい性格で、散歩が大好きです'
-        WHEN p.email = 'sato.hanako@example.com' THEN '元気いっぱいで遊ぶのが大好き'
-        WHEN p.email = 'yamada.jiro@example.com' THEN '温厚で子供が大好きな優しい性格'
-        WHEN p.email = 'suzuki.misaki@example.com' THEN '活発でフリスビーが得意'
+        WHEN p.email = 'tanaka.taro@example.com' THEN '人懐っこい性格で、散歩が大好きです。元気いっぱいで他の犬とも仲良く遊べます。'
+        WHEN p.email = 'sato.hanako@example.com' THEN 'とても活発で遊ぶのが大好き。賢くて芸を覚えるのも早いです。'
+        WHEN p.email = 'yamada.jiro@example.com' THEN '温厚で子供が大好きな優しい性格。大型犬ですが とても穏やかです。'
+        WHEN p.email = 'suzuki.misaki@example.com' THEN '活発でフリスビーが得意。運動能力が高く、アジリティも得意です。'
     END as personality,
     NOW() - INTERVAL '6 months' as created_at
 FROM profiles p
@@ -100,13 +99,14 @@ UPDATE
 SET name = EXCLUDED.name,
     breed = EXCLUDED.breed,
     updated_at = NOW();
--- ステップ6: 作成されたデータの確認
+-- 作成されたデータの確認
 SELECT p.name as owner_name,
     p.email as owner_email,
     d.name as dog_name,
     d.breed,
     d.age,
     d.gender,
+    d.personality,
     d.created_at
 FROM profiles p
     LEFT JOIN dogs d ON p.id = d.owner_id

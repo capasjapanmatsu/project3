@@ -1,21 +1,21 @@
 import {
-  AlertTriangle,
-  Bell,
-  Calendar,
-  CheckCircle,
-  ChevronRight,
-  Filter,
-  Heart,
-  Key,
-  MapPin,
-  MessageSquare,
-  PawPrint,
-  Send,
-  Share,
-  UserCheck,
-  UserPlus,
-  Users,
-  X
+    AlertTriangle,
+    Bell,
+    Calendar,
+    CheckCircle,
+    ChevronRight,
+    Filter,
+    Heart,
+    Key,
+    MapPin,
+    MessageSquare,
+    PawPrint,
+    Send,
+    Share,
+    UserCheck,
+    UserPlus,
+    Users,
+    X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -661,18 +661,16 @@ export function Community() {
           {/* 近くのワンちゃんタブ */}
           {activeTab === 'nearby' && (
             <div className="space-y-6">
-              <div className="block lg:hidden">
-                <NearbyDogs />
-              </div>
-              <div className="hidden lg:block">
-                <Card className="p-6 text-center">
-                  <MapPin className="w-12 h-12 text-blue-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">近くのワンちゃんたち</h3>
-                  <p className="text-gray-600">
-                    この機能はサイドバーでご利用いただけます
-                  </p>
-                </Card>
-              </div>
+              <Card className="p-6 text-center">
+                <MapPin className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">近くのワンちゃんたち</h3>
+                <p className="text-gray-600 mb-4">
+                  GPS位置情報を使用して、近くのワンちゃんたちを表示します。
+                </p>
+                <p className="text-sm text-gray-500">
+                  ※ 詳細は右側のサイドバーをご確認ください
+                </p>
+              </Card>
             </div>
           )}
 

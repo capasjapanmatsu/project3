@@ -13,25 +13,17 @@ export interface FacilityCategory {
 
 export interface PetFacility {
   id: string;
-  owner_id: string;
-  category_id: string;
   name: string;
+  description?: string;
+  category: string; // category_idの値
   address: string;
   latitude?: number;
   longitude?: number;
   phone?: string;
   website?: string;
-  description?: string;
   status: 'pending' | 'approved' | 'rejected' | 'suspended';
-  payment_status: 'paid' | 'unpaid' | 'overdue';
-  last_payment_date?: string;
-  next_payment_due?: string;
   created_at: string;
-  updated_at: string;
-  category?: FacilityCategory;
-  images?: FacilityImage[];
-  hours?: FacilityHour[];
-  reviews?: FacilityReview[];
+  category_name?: string; // JOINしたカテゴリーの日本語名
 }
 
 export interface FacilityHour {
