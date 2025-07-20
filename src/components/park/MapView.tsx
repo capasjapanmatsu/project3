@@ -1,12 +1,22 @@
-// MapView.tsx - Google Maps表示コンポーネント
-import { Loader, Navigation } from 'lucide-react';
+// MapView.tsx - シンプルなマップ表示コンポーネント
+import { ExternalLink, MapPin, Navigation } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type DogPark } from '../../types';
 import { type PetFacility } from '../../types/facilities';
+import Button from '../Button';
+import Card from '../Card';
+
+// Google Maps API の簡単な型定義
+declare global {
+  interface Window {
+    google: any;
+  }
+}
 
 interface MapViewProps {
   parks?: DogPark[];
   facilities?: PetFacility[];
+  activeView?: 'dogparks' | 'facilities';
   onLocationSelect?: (location: { lat: number; lng: number }) => void;
   center?: { lat: number; lng: number };
   className?: string;
@@ -18,141 +28,14 @@ const DEFAULT_CENTER = { lat: 35.6762, lng: 139.6503 };
 export function MapView({ 
   parks = [], 
   facilities = [], 
+  activeView = 'dogparks',
   onLocationSelect, 
   center = DEFAULT_CENTER,
   className = '' 
 }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const googleMapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
-  const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-
-  // Google Maps API の初期化
-  const initializeMap = useCallback(async () => {
-    if (!mapRef.current || !window.google) return;
-
-    try {
-      const map = new google.maps.Map(mapRef.current, {
-        center,
-        zoom: 13,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        styles: [
-          {
-            featureType: 'poi',
-            elementType: 'labels',
-            stylers: [{ visibility: 'off' }]
-          }
-        ]
-      });
-
-      googleMapRef.current = map;
-
-      // マップクリックイベント
-      if (onLocationSelect) {
-        map.addListener('click', (event: google.maps.MapMouseEvent) => {
-          if (event.latLng) {
-            onLocationSelect({
-              lat: event.latLng.lat(),
-              lng: event.latLng.lng()
-            });
-          }
-        });
-      }
-
-      setIsMapLoaded(true);
-    } catch (error) {
-      console.warn('Google Maps initialization failed:', error);
-    }
-  }, [center, onLocationSelect]);
-
-  // マーカーの更新
-  const updateMarkers = useCallback(() => {
-    if (!googleMapRef.current || !isMapLoaded) return;
-
-    // 既存のマーカーをクリア
-    markersRef.current.forEach(marker => marker.setMap(null));
-    markersRef.current = [];
-
-    // パークのマーカーを追加
-    parks.forEach(park => {
-      if (park.latitude && park.longitude) {
-        const marker = new google.maps.Marker({
-          position: { lat: Number(park.latitude), lng: Number(park.longitude) },
-          map: googleMapRef.current,
-          title: park.name,
-          icon: {
-            url: '/icons/park-marker.png',
-            scaledSize: new google.maps.Size(40, 40),
-            origin: new google.maps.Point(0, 0),
-            anchor: new google.maps.Point(20, 40)
-          }
-        });
-
-        const infoWindow = new google.maps.InfoWindow({
-          content: `
-            <div class="p-3 max-w-xs">
-              <h3 class="font-semibold text-gray-900 mb-1">${park.name}</h3>
-              ${park.address ? `<p class="text-sm text-gray-600 mb-2">${park.address}</p>` : ''}
-              ${park.current_occupancy !== undefined && park.max_capacity ? 
-                `<p class="text-xs text-gray-500">現在の利用者: ${park.current_occupancy}/${park.max_capacity}名</p>` : 
-                ''
-              }
-              <button onclick="window.location.href='/parks/${park.id}'" 
-                      class="mt-2 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
-                詳細を見る
-              </button>
-            </div>
-          `
-        });
-
-        marker.addListener('click', () => {
-          infoWindow.open(googleMapRef.current, marker);
-        });
-
-        markersRef.current.push(marker);
-      }
-    });
-
-    // 施設のマーカーを追加
-    facilities.forEach(facility => {
-      if (facility.latitude && facility.longitude) {
-        const marker = new google.maps.Marker({
-          position: { lat: Number(facility.latitude), lng: Number(facility.longitude) },
-          map: googleMapRef.current,
-          title: facility.name,
-          icon: {
-            url: '/icons/facility-marker.png',
-            scaledSize: new google.maps.Size(35, 35),
-            origin: new google.maps.Point(0, 0),
-            anchor: new google.maps.Point(17, 35)
-          }
-        });
-
-        const infoWindow = new google.maps.InfoWindow({
-          content: `
-            <div class="p-3 max-w-xs">
-              <h3 class="font-semibold text-gray-900 mb-1">${facility.name}</h3>
-              ${facility.address ? `<p class="text-sm text-gray-600 mb-2">${facility.address}</p>` : ''}
-              ${facility.phone ? `<p class="text-xs text-gray-500">TEL: ${facility.phone}</p>` : ''}
-              <button onclick="window.location.href='/facilities/${facility.id}'" 
-                      class="mt-2 px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
-                詳細を見る
-              </button>
-            </div>
-          `
-        });
-
-        marker.addListener('click', () => {
-          infoWindow.open(googleMapRef.current, marker);
-        });
-
-        markersRef.current.push(marker);
-      }
-    });
-  }, [parks, facilities, isMapLoaded]);
 
   // 現在地を取得
   const getCurrentLocation = useCallback(() => {
@@ -164,24 +47,6 @@ export function MapView({
             lng: position.coords.longitude
           };
           setUserLocation(location);
-
-          if (googleMapRef.current) {
-            googleMapRef.current.setCenter(location);
-            googleMapRef.current.setZoom(15);
-
-            // 現在地マーカーを追加
-            new google.maps.Marker({
-              position: location,
-              map: googleMapRef.current,
-              title: '現在地',
-              icon: {
-                url: '/icons/current-location.png',
-                scaledSize: new google.maps.Size(20, 20),
-                origin: new google.maps.Point(0, 0),
-                anchor: new google.maps.Point(10, 10)
-              }
-            });
-          }
         },
         (error) => {
           console.warn('位置情報の取得に失敗:', error);
@@ -195,76 +60,231 @@ export function MapView({
     }
   }, []);
 
-  // Google Maps API の読み込み
+  // Google Maps の初期化
   useEffect(() => {
-    if (window.google) {
-      void initializeMap();
-    } else {
-      // Google Maps API が読み込まれていない場合は、DogParkList.tsx で読み込み済みを待つ
-      const checkGoogleMaps = setInterval(() => {
-        if (window.google) {
-          clearInterval(checkGoogleMaps);
-          void initializeMap();
+    const loadGoogleMaps = async () => {
+      try {
+        // Google Maps API がまだ読み込まれていない場合
+        if (!window.google) {
+          const script = document.createElement('script');
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
+          script.async = true;
+          script.defer = true;
+          
+          await new Promise<void>((resolve, reject) => {
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('Google Maps API の読み込みに失敗しました'));
+            document.head.appendChild(script);
+          });
         }
-      }, 100);
 
-      return () => clearInterval(checkGoogleMaps);
-    }
-  }, [initializeMap]);
+        if (mapRef.current && window.google) {
+          const map = new window.google.maps.Map(mapRef.current, {
+            center,
+            zoom: 13,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+          });
 
-  // マーカーの更新
-  useEffect(() => {
-    updateMarkers();
-  }, [updateMarkers]);
+          // マーカーを追加
+          addMarkers(map);
+          setIsLoaded(true);
+        }
+      } catch (error) {
+        console.warn('Google Maps の初期化に失敗:', error);
+        setIsLoaded(false);
+      }
+    };
 
-  if (!isMapLoaded) {
+    const addMarkers = (map: any) => {
+      // ドッグパークのマーカー
+      if (activeView === 'dogparks' || activeView === 'facilities') {
+        parks.forEach(park => {
+          if (park.latitude && park.longitude) {
+            const marker = new window.google.maps.Marker({
+              position: { lat: Number(park.latitude), lng: Number(park.longitude) },
+              map,
+              title: park.name,
+              icon: {
+                path: window.google.maps.SymbolPath.CIRCLE,
+                scale: 8,
+                fillColor: '#3B82F6',
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: '#FFFFFF',
+              }
+            });
+
+            const infoWindow = new window.google.maps.InfoWindow({
+              content: `
+                <div style="padding: 8px; max-width: 200px;">
+                  <h3 style="font-weight: bold; margin-bottom: 4px; color: #1F2937;">${park.name}</h3>
+                  ${park.address ? `<p style="font-size: 12px; color: #6B7280; margin-bottom: 8px;">${park.address}</p>` : ''}
+                  ${park.price ? `<p style="font-size: 12px; color: #6B7280;">料金: ¥${park.price}/時間</p>` : ''}
+                </div>
+              `
+            });
+
+            marker.addListener('click', () => {
+              infoWindow.open(map, marker);
+            });
+          }
+        });
+      }
+
+      // ペット施設のマーカー
+      if (activeView === 'facilities' || activeView === 'dogparks') {
+        facilities.forEach(facility => {
+          if (facility.latitude && facility.longitude) {
+            const marker = new window.google.maps.Marker({
+              position: { lat: Number(facility.latitude), lng: Number(facility.longitude) },
+              map,
+              title: facility.name,
+              icon: {
+                path: window.google.maps.SymbolPath.CIRCLE,
+                scale: 6,
+                fillColor: '#10B981',
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: '#FFFFFF',
+              }
+            });
+
+            const infoWindow = new window.google.maps.InfoWindow({
+              content: `
+                <div style="padding: 8px; max-width: 200px;">
+                  <h3 style="font-weight: bold; margin-bottom: 4px; color: #1F2937;">${facility.name}</h3>
+                  ${facility.address ? `<p style="font-size: 12px; color: #6B7280; margin-bottom: 8px;">${facility.address}</p>` : ''}
+                  ${facility.phone ? `<p style="font-size: 12px; color: #6B7280;">TEL: ${facility.phone}</p>` : ''}
+                </div>
+              `
+            });
+
+            marker.addListener('click', () => {
+              infoWindow.open(map, marker);
+            });
+          }
+        });
+      }
+
+      // ユーザーの現在地マーカー
+      if (userLocation) {
+        new window.google.maps.Marker({
+          position: userLocation,
+          map,
+          title: '現在地',
+          icon: {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 6,
+            fillColor: '#EF4444',
+            fillOpacity: 1,
+            strokeWeight: 2,
+            strokeColor: '#FFFFFF',
+          }
+        });
+      }
+    };
+
+    void loadGoogleMaps();
+  }, [parks, facilities, activeView, center, userLocation]);
+
+  // Google Maps API キーが設定されていない場合のフォールバック
+  if (!import.meta.env.VITE_GOOGLE_MAPS_API_KEY) {
     return (
-      <div className={`relative ${className}`}>
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
-          <div className="text-center">
-            <Loader className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-600">マップを読み込み中...</p>
-          </div>
-        </div>
-      </div>
+      <Card className="p-6 text-center">
+        <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2">マップ設定が必要です</h3>
+        <p className="text-gray-600 text-sm mb-4">
+          Google Maps API キーが設定されていません
+        </p>
+        <Button 
+          onClick={() => window.open('https://developers.google.com/maps/documentation/javascript/get-api-key', '_blank')}
+          size="sm"
+          variant="secondary"
+        >
+          <ExternalLink className="w-4 h-4 mr-2" />
+          API キー取得方法
+        </Button>
+      </Card>
     );
   }
 
-  return (
-    <div className={`relative ${className}`}>
-      <div ref={mapRef} className="w-full h-full rounded-lg" />
-      
-      {/* 現在地ボタン */}
-      <button
-        onClick={getCurrentLocation}
-        className="absolute bottom-4 right-4 p-3 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow"
-        title="現在地を表示"
-      >
-        <Navigation className="w-5 h-5 text-gray-600" />
-      </button>
+  const currentData = activeView === 'dogparks' ? parks : facilities;
+  const currentCount = currentData.length;
 
-      {/* 凡例 */}
-      <div className="absolute top-4 left-4 bg-white rounded-lg shadow-md p-3">
-        <h4 className="text-sm font-medium text-gray-900 mb-2">マーカー</h4>
-        <div className="space-y-1">
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-            <span className="text-xs text-gray-600">ドッグパーク</span>
+  return (
+    <Card className={`overflow-hidden ${className}`}>
+      {/* ヘッダー */}
+      <div className="p-4 border-b bg-gray-50">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center">
+            <MapPin className="w-5 h-5 text-blue-600 mr-2" />
+            <h3 className="font-semibold">
+              {activeView === 'dogparks' ? 'ドッグパーク' : 'ペット施設'}マップ
+            </h3>
           </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-            <span className="text-xs text-gray-600">ペット施設</span>
+          <span className="text-sm text-gray-500">
+            {currentCount}件
+          </span>
+        </div>
+        
+        <div className="flex justify-between items-center mt-2">
+          <div className="flex items-center space-x-4 text-xs">
+            {activeView === 'dogparks' && (
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-blue-600 rounded-full mr-2"></div>
+                <span>ドッグパーク</span>
+              </div>
+            )}
+            {activeView === 'facilities' && (
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-green-600 rounded-full mr-2"></div>
+                <span>ペット施設</span>
+              </div>
+            )}
+            {userLocation && (
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                <span>現在地</span>
+              </div>
+            )}
           </div>
-          {userLocation && (
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-              <span className="text-xs text-gray-600">現在地</span>
-            </div>
-          )}
+          
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={getCurrentLocation}
+            className="text-xs"
+          >
+            <Navigation className="w-3 h-3 mr-1" />
+            現在地
+          </Button>
         </div>
       </div>
-    </div>
+
+      {/* マップ */}
+      <div className="relative">
+        <div
+          ref={mapRef}
+          className="w-full h-96"
+          style={{ minHeight: '400px' }}
+        />
+        
+        {!isLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+              <p className="text-sm text-gray-600">マップを読み込み中...</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* フッター */}
+      <div className="p-3 border-t bg-gray-50 text-xs text-gray-500 text-center">
+        マーカーをクリックすると詳細情報が表示されます
+      </div>
+    </Card>
   );
 }
-
-export default MapView;

@@ -43,8 +43,9 @@ export function ParkListContent({ activeView, parks, facilities }: ParkListConte
         <div className="lg:col-span-1">
           <div className="sticky top-8">
             <MapView 
-              parks={activeView === 'dogparks' ? parks : []}
-              facilities={activeView === 'facilities' ? facilities : []}
+              parks={parks}
+              facilities={facilities}
+              activeView={activeView}
             />
           </div>
         </div>

@@ -127,6 +127,40 @@ export function useParkData() {
             average_rating: 4.8,
             review_count: 42,
             created_at: new Date().toISOString(),
+          },
+          {
+            id: 'sample-3',
+            name: '品川ペットランド',
+            description: '品川駅直結の屋内ドッグパーク。天候に左右されずいつでも利用可能。',
+            address: '東京都港区品川3-3-3',
+            latitude: 35.6284,
+            longitude: 139.7387,
+            price: 450,
+            current_occupancy: 2,
+            max_capacity: 25,
+            status: 'approved',
+            facilities: '屋内施設,エアコン完備,ペットグッズ販売,無料WiFi',
+            image_url: 'https://via.placeholder.com/400x300?text=品川ペットランド',
+            average_rating: 4.3,
+            review_count: 18,
+            created_at: new Date().toISOString(),
+          },
+          {
+            id: 'sample-4',
+            name: '池袋ドッグガーデン',
+            description: '池袋の緑豊かなドッグパーク。愛犬と一緒にリフレッシュできます。',
+            address: '東京都豊島区池袋4-4-4',
+            latitude: 35.7295,
+            longitude: 139.7109,
+            price: 550,
+            current_occupancy: 8,
+            max_capacity: 18,
+            status: 'approved',
+            facilities: '芝生エリア,アジリティ設備,ベンチ,自動販売機',
+            image_url: 'https://via.placeholder.com/400x300?text=池袋ドッグガーデン',
+            average_rating: 4.6,
+            review_count: 33,
+            created_at: new Date().toISOString(),
           }
         ];
         
@@ -195,8 +229,73 @@ export function useFacilityData() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '施設データの取得に失敗しました';
       setError(errorMessage);
+      
+      // 開発環境ではサンプルデータを提供
       if (import.meta.env.DEV) {
         console.warn('🔥 Facility data fetch error:', err);
+        
+        // フォールバックサンプル施設データ
+        const sampleFacilities: PetFacility[] = [
+          {
+            id: 'facility-1',
+            name: '渋谷ペットクリニック',
+            description: '24時間対応の動物病院。緊急時も安心です。',
+            category: 'veterinary',
+            address: '東京都渋谷区渋谷2-1-1',
+            latitude: 35.6587,
+            longitude: 139.7016,
+            phone: '03-1234-5678',
+            website: 'https://shibuya-pet-clinic.com',
+            status: 'approved',
+            created_at: new Date().toISOString(),
+            category_name: '動物病院',
+          },
+          {
+            id: 'facility-2',
+            name: '新宿ペットホテル＆サロン',
+            description: 'トリミングとホテルのフルサービス施設。',
+            category: 'pet_hotel',
+            address: '東京都新宿区新宿3-2-2',
+            latitude: 35.6918,
+            longitude: 139.7046,
+            phone: '03-2345-6789',
+            website: 'https://shinjuku-pet-hotel.com',
+            status: 'approved',
+            created_at: new Date().toISOString(),
+            category_name: 'ペットホテル',
+          },
+          {
+            id: 'facility-3',
+            name: '品川ペットカフェ',
+            description: 'かわいい子犬と触れ合えるペットカフェ。',
+            category: 'pet_cafe',
+            address: '東京都港区品川4-3-3',
+            latitude: 35.6264,
+            longitude: 139.7397,
+            phone: '03-3456-7890',
+            website: 'https://shinagawa-pet-cafe.com',
+            status: 'approved',
+            created_at: new Date().toISOString(),
+            category_name: 'ペットカフェ',
+          },
+          {
+            id: 'facility-4',
+            name: '池袋ペットショップ',
+            description: 'ペット用品とフードの専門店。豊富な品揃え。',
+            category: 'pet_shop',
+            address: '東京都豊島区池袋5-4-4',
+            latitude: 35.7285,
+            longitude: 139.7119,
+            phone: '03-4567-8901',
+            website: 'https://ikebukuro-pet-shop.com',
+            status: 'approved',
+            created_at: new Date().toISOString(),
+            category_name: 'ペットショップ',
+          }
+        ];
+        
+        setFacilities(sampleFacilities);
+        setError(null); // サンプルデータを表示するためエラーをクリア
       }
     } finally {
       setFacilitiesLoading(false);

@@ -31,6 +31,7 @@ export function DogManagement() {
     breed: '',
     gender: '',
     birthDate: '',
+    microchipNumber: '', // マイクロチップNO追加
   });
   
   // 犬の画像関連
@@ -86,6 +87,7 @@ export function DogManagement() {
       breed: dog.breed,
       gender: dog.gender,
       birthDate: dog.birth_date,
+      microchipNumber: dog.microchip_number || '', // マイクロチップNO設定
     });
     
     // 画像プレビューを設定

@@ -16,6 +16,7 @@ export interface Dog {
   breed: string;
   birth_date: string;
   gender: 'オス' | 'メス';
+  microchip_number?: string; // マイクロチップNO追加
   image_url?: string;
   created_at: string;
   owner?: Profile;
