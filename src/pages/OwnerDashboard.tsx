@@ -957,10 +957,6 @@ export function OwnerDashboard() {
                 isLoading={isDeleting}
                 disabled={!confirmDelete}
                 onClick={() => {
-                    parkId: showConfirmDelete,
-                    confirmDelete,
-                    isDeleting
-                  });
                   if (showConfirmDelete) {
                     handleDeletePark(showConfirmDelete);
                   }

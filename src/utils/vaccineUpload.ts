@@ -90,6 +90,7 @@ export const uploadVaccineImage = async (
       };
     }
 
+    console.log('✅ Vaccine upload successful:', {
       fileName,
       data
     });

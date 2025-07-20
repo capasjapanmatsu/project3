@@ -1,17 +1,16 @@
-import { useState, useRef, useEffect } from 'react';
+import { ArrowLeft, Camera, X } from 'lucide-react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import Input from '../components/Input';
-import Select from '../components/Select';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { X, Camera, Upload, Loader, ArrowLeft } from 'lucide-react';
-import { dogBreeds } from '../data/dogBreeds';
-import { supabase } from '../utils/supabase';
+import Input from '../components/Input';
+import Select from '../components/Select';
 import useAuth from '../context/AuthContext';
-import { validateVaccineFile } from '../utils/vaccineUpload';
-import { handleVaccineUploadFixed } from '../utils/vaccineUploadFixed';
+import { dogBreeds } from '../data/dogBreeds';
 import { logger } from '../utils/logger';
 import { notify } from '../utils/notification';
+import { supabase } from '../utils/supabase';
+import { uploadVaccineImage, validateVaccineFile } from '../utils/vaccineUpload';
 
 
 export function DogRegistration() {
@@ -319,12 +318,20 @@ export function DogRegistration() {
       if (formData.rabiesVaccineImage && formData.comboVaccineImage) {
         logger.info('🧪 Starting vaccine certificates upload using utility...');
         
-        const uploadResult = await handleVaccineUploadFixed(
-          dog.id,
+                const uploadResult = await uploadVaccineImage(
           formData.rabiesVaccineImage,
+          {
+            dogId: dog.id,
+            imageType: 'rabies'
+          }
+        );
+        
+        const comboUploadResult = await uploadVaccineImage(
           formData.comboVaccineImage,
-          formData.rabiesExpiryDate,
-          formData.comboExpiryDate
+          {
+            dogId: dog.id,
+            imageType: 'combo'
+          }
         );
 
         if (!uploadResult.success) {

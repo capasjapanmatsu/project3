@@ -1,20 +1,20 @@
 import {
-  AlertTriangle,
-  Building,
-  Calendar,
-  Check,
-  DollarSign,
-  Eye,
-  FileText,
-  MapPin,
-  Search,
-  SortAsc,
-  SortDesc,
-  Star,
-  Trash2,
-  User,
-  Users,
-  X
+    AlertTriangle,
+    Building,
+    Calendar,
+    Check,
+    DollarSign,
+    Eye,
+    FileText,
+    MapPin,
+    Search,
+    SortAsc,
+    SortDesc,
+    Star,
+    Trash2,
+    User,
+    Users,
+    X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -552,6 +552,7 @@ export function AdminParkManagement() {
     const details = parkDetails || {};
 
     // デバッグログ: 申請者情報の確認
+    console.log('申請者情報の確認:', {
       parkName: pendingPark.name,
       owner_name: pendingPark.owner_name,
       owner_address: pendingPark.owner_address,
@@ -771,6 +772,7 @@ export function AdminParkManagement() {
     setPendingParks(pending);
     // 注意：ここでsetApprovedParksは使わない（承認済みは別途fetchApprovedParksで取得）
 
+    console.log('フィルタリング結果:', {
       total: filteredData.length,
       pending: pending.length,
       approved: approved.length,
@@ -933,6 +935,7 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
         const pending = filteredData.filter(park => applicationStatuses.includes(park.status));
         setPendingParks(pending);
 
+        console.log('ステータス変更完了:', {
           totalParks: updatedParks.length,
           pendingParks: pending.length,
           updatedStatus: nextStatus
