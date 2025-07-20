@@ -115,6 +115,7 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             
             {/* Dog Park Routes */}
+            <Route path="/parks" element={<LazyComponents.DogParkList />} />
             <Route path="/parks/:parkId" element={<LazyComponents.DogParkDetail />} />
             <Route path="/parks/rules" element={<LazyComponents.DogParkRules />} />
             
