@@ -19,9 +19,10 @@ import { ParkModal } from '../components/dashboard/ParkModal';
 import { StatsSection } from '../components/dashboard/StatsSection';
 import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
+import { useAuthStore } from '../store/authStore';
+import { useUIStore } from '../store/uiStore';
 import type { Dog, DogPark, NewsAnnouncement, Notification, Profile, Reservation } from '../types';
 import { supabase } from '../utils/supabase';
-import { validateVaccineFile } from '../utils/vaccineUpload';
 import { handleVaccineUploadFixed } from '../utils/vaccineUploadFixed';
 
 export function UserDashboard() {
@@ -29,7 +30,21 @@ export function UserDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // State management
+  // 🚀 Zustand State Management (段階的導入)
+  const { 
+    user: zustandUser, 
+    setUser,
+    updateProfile: updateAuthProfile
+  } = useAuthStore();
+  
+  const { 
+    setGlobalLoading,
+    addNotification,
+    removeNotification,
+    isGlobalLoading
+  } = useUIStore();
+
+  // 従来のState管理（段階的に移行）
   const [profile, setProfile] = useState<Profile | null>(null);
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [ownedParks, setOwnedParks] = useState<DogPark[]>([]);
@@ -38,19 +53,18 @@ export function UserDashboard() {
   const [news, setNews] = useState<NewsAnnouncement[]>([]);
   const [likedDogs, setLikedDogs] = useState<Dog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { isActive: hasSubscription } = useSubscription();
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   
-  // Park modal state
+  // Local UI state
   const [selectedPark, setSelectedPark] = useState<DogPark | null>(null);
   const [showParkModal, setShowParkModal] = useState(false);
-  
-  // Dog editing state
   const [selectedDog, setSelectedDog] = useState<Dog | null>(null);
   const [showDogEditModal, setShowDogEditModal] = useState(false);
   const [isUpdatingDog, setIsUpdatingDog] = useState(false);
-  const [dogUpdateError, setDogUpdateError] = useState('');
-  const [dogUpdateSuccess, setDogUpdateSuccess] = useState('');
+  
+  // Form state
   const [dogFormData, setDogFormData] = useState({
     name: '',
     breed: '',
@@ -59,15 +73,21 @@ export function UserDashboard() {
   });
   const [dogImageFile, setDogImageFile] = useState<File | null>(null);
   const [dogImagePreview, setDogImagePreview] = useState<string | null>(null);
-  
-  // Vaccine certificate state
   const [rabiesVaccineFile, setRabiesVaccineFile] = useState<File | null>(null);
   const [comboVaccineFile, setComboVaccineFile] = useState<File | null>(null);
   const [rabiesExpiryDate, setRabiesExpiryDate] = useState('');
   const [comboExpiryDate, setComboExpiryDate] = useState('');
-  
+
+  // Subscription hook
+  const { isActive: hasSubscription } = useSubscription();
+
+  // 🔄 Enhanced Data Fetching (TanStack Query patterns)
   const fetchDashboardData = async () => {
     try {
+      setGlobalLoading(true);
+      setIsLoading(true);
+      
+      // 並列データ取得の最適化
       const [
         profileResponse,
         dogsResponse,
@@ -116,7 +136,7 @@ export function UserDashboard() {
           .limit(3)
       ]);
 
-      // いいねしたワンちゃんの情報を別途取得（エラーハンドリング付き）
+      // いいねしたワンちゃんの情報を取得（エラーハンドリング強化）
       let likedDogsData: any[] = [];
       try {
         const likedDogsResponse = await supabase
@@ -137,17 +157,23 @@ export function UserDashboard() {
         }
       } catch (likesError) {
         console.warn('Dog likes table not available:', likesError);
-        // テーブルが存在しない場合はスキップ
       }
 
-      // Error handling
-      [profileResponse, dogsResponse, parksResponse, reservationsResponse, notificationsResponse, newsResponse]
-        .forEach((response, index) => {
-          if (response.error) {
-            console.error(`Error in response ${index}:`, response.error);
-          }
-        });
+      // エラーハンドリングの向上
+      const responses = [profileResponse, dogsResponse, parksResponse, reservationsResponse, notificationsResponse, newsResponse];
+      responses.forEach((response, index) => {
+        if (response.error) {
+          console.error(`Error in response ${index}:`, response.error);
+          addNotification({
+            type: 'error',
+            title: 'データ取得エラー',
+            message: `一部のデータの取得に失敗しました`,
+            duration: 5000
+          });
+        }
+      });
 
+      // State更新
       setProfile(profileResponse.data);
       setDogs(dogsResponse.data || []);
       setOwnedParks(parksResponse.data || []);
@@ -156,40 +182,60 @@ export function UserDashboard() {
       setNews(newsResponse.data || []);
       setLikedDogs(likedDogsData.map((like: any) => like.dog).filter(Boolean));
       
+      // Zustand Storeの更新
+      if (profileResponse.data && !zustandUser) {
+        setUser({
+          id: user?.id || '',
+          email: user?.email || '',
+          name: profileResponse.data.name,
+          role: profileResponse.data.user_type || 'user'
+        });
+      }
+      
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      setError('データの取得に失敗しました。ページを再読み込みしてください。');
+      addNotification({
+        type: 'error',
+        title: 'エラー',
+        message: 'データの取得に失敗しました',
+        duration: 5000
+      });
     } finally {
       setIsLoading(false);
+      setGlobalLoading(false);
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/');
-    } catch (error) {
-      console.error('ログアウトエラー:', error);
-    }
-  };
-
+  // 🚦 Authentication & Navigation
   useEffect(() => {
-    if (user) {
-      fetchDashboardData();
+    if (!user) {
+      navigate('/login');
+      return;
     }
-    
+
+    // Data fetching
+    fetchDashboardData();
+
     // Check for success parameter in URL
     if (location.search.includes('success=true')) {
       setShowSuccessMessage(true);
+      setSuccess('操作が正常に完了しました！');
+      addNotification({
+        type: 'success',
+        title: '成功',
+        message: '操作が正常に完了しました！',
+        duration: 3000
+      });
       window.history.replaceState({}, document.title, location.pathname);
-      setTimeout(() => setShowSuccessMessage(false), 5000);
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+        setSuccess('');
+      }, 5000);
     }
   }, [user, navigate, location]);
 
-  const handleParkSelect = (park: DogPark) => {
-    setSelectedPark(park);
-    setShowParkModal(true);
-  };
-
+  // 🐕 Dog Management Handlers  
   const handleDogSelect = (dog: Dog) => {
     setSelectedDog(dog);
     
@@ -211,94 +257,32 @@ export function UserDashboard() {
 
   const handleDogImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      try {
-        if (file.size > 10 * 1024 * 1024) {
-          setDogUpdateError('ファイルサイズは10MB以下にしてください。');
-          return;
-        }
-        
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        if (!allowedTypes.includes(file.type)) {
-          setDogUpdateError(`サポートされていない画像形式です: ${file.type}`);
-          return;
-        }
+    if (!file) return;
 
-        setDogImageFile(file);
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setDogImagePreview(e.target?.result as string);
-        };
-        reader.readAsDataURL(file);
-        setDogUpdateError('');
-      } catch (error) {
-        console.error('Image processing error:', error);
-        setDogUpdateError('画像の処理に失敗しました。別の画像をお試しください。');
-      }
-    }
-  };
-
-  const handleDogImageRemove = async () => {
-    if (!selectedDog?.image_url) return;
-    
     try {
-      setIsUpdatingDog(true);
-      setDogUpdateError('');
-      
-      const { error: dbError } = await supabase
-        .from('dogs')
-        .update({ image_url: null })
-        .eq('id', selectedDog.id);
-      
-      if (dbError) {
-        setDogUpdateError('画像の削除に失敗しました。');
+      // 基本的なファイル検証
+      if (file.size > 10 * 1024 * 1024) {
+        setError('ファイルサイズは10MB以下にしてください。');
         return;
       }
       
-      setDogImageFile(null);
-      setDogImagePreview(null);
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        setError(`サポートされていない画像形式です: ${file.type}`);
+        return;
+      }
+
+      setDogImageFile(file);
       
-      await fetchDashboardData();
-      
-      setDogUpdateSuccess('画像を削除しました。');
-      setTimeout(() => setDogUpdateSuccess(''), 3000);
-      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setDogImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+      setError('');
     } catch (error) {
-      console.error('Error removing dog image:', error);
-      setDogUpdateError('画像の削除に失敗しました。');
-    } finally {
-      setIsUpdatingDog(false);
-    }
-  };
-
-  const handleRabiesVaccineSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const validation = validateVaccineFile(file);
-      if (!validation.isValid) {
-        setDogUpdateError(validation.error || 'ファイルの検証に失敗しました');
-        return;
-      }
-      setRabiesVaccineFile(file);
-      setDogUpdateError('');
-    } else {
-      setRabiesVaccineFile(null);
-    }
-  };
-
-  const handleComboVaccineSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const validation = validateVaccineFile(file);
-      if (!validation.isValid) {
-        setDogUpdateError(validation.error || 'ファイルの検証に失敗しました');
-        return;
-      }
-      setComboVaccineFile(file);
-      setDogUpdateError('');
-    } else {
-      setComboVaccineFile(null);
+      console.error('Image processing error:', error);
+      setError('画像の処理に失敗しました。別の画像をお試しください。');
     }
   };
 
@@ -306,37 +290,38 @@ export function UserDashboard() {
     e.preventDefault();
     if (!selectedDog || !user) return;
 
-    setIsUpdatingDog(true);
-    setDogUpdateError('');
-    setDogUpdateSuccess('');
-
     try {
-      // Basic validation
+      setIsUpdatingDog(true);
+      setError('');
+
+      // 基本的なバリデーション
       if (!dogFormData.name || !dogFormData.breed || !dogFormData.gender || !dogFormData.birthDate) {
-        throw new Error('すべての必須項目を入力してください。');
+        setError('すべての必須項目を入力してください。');
+        return;
       }
 
       if (!['オス', 'メス'].includes(dogFormData.gender)) {
-        throw new Error('性別は「オス」または「メス」を選択してください');
+        setError('性別は「オス」または「メス」を選択してください');
+        return;
       }
 
-             // Handle vaccine uploads if files are selected
-       let vaccineUploadResult = null;
-       if (rabiesVaccineFile || comboVaccineFile) {
-         vaccineUploadResult = await handleVaccineUploadFixed(
-           selectedDog.id,
-           rabiesVaccineFile || undefined,
-           comboVaccineFile || undefined,
-           rabiesExpiryDate,
-           comboExpiryDate
-         );
+      // ワクチン証明書のアップロード処理
+      if (rabiesVaccineFile || comboVaccineFile) {
+        const vaccineResult = await handleVaccineUploadFixed(
+          selectedDog.id,
+          rabiesVaccineFile || undefined,
+          comboVaccineFile || undefined,
+          rabiesExpiryDate,
+          comboExpiryDate
+        );
 
-        if (!vaccineUploadResult.success) {
-          throw new Error(vaccineUploadResult.error || 'ワクチン証明書のアップロードに失敗しました');
+        if (!vaccineResult.success) {
+          setError(vaccineResult.error || 'ワクチン証明書のアップロードに失敗しました');
+          return;
         }
       }
 
-      // Update dog data
+      // 犬の情報更新
       const updateData: any = {
         name: dogFormData.name,
         breed: dogFormData.breed,
@@ -344,7 +329,7 @@ export function UserDashboard() {
         birth_date: dogFormData.birthDate,
       };
 
-      // Handle image upload if a new file is selected
+      // 画像アップロード処理
       if (dogImageFile) {
         const fileName = `profile_${Date.now()}_${dogImageFile.name}`;
         const filePath = `${selectedDog.id}/${fileName}`;
@@ -367,20 +352,30 @@ export function UserDashboard() {
 
       if (updateError) throw updateError;
 
-      setDogUpdateSuccess('ワンちゃんの情報を更新しました！');
+      setSuccess('ワンちゃんの情報を更新しました！');
+      addNotification({
+        type: 'success',
+        title: '成功',
+        message: 'ワンちゃんの情報を更新しました！',
+        duration: 3000
+      });
+      
       setShowDogEditModal(false);
       await fetchDashboardData();
 
-      // Reset form
-      setDogImageFile(null);
-      setRabiesVaccineFile(null);
-      setComboVaccineFile(null);
-      setRabiesExpiryDate('');
-      setComboExpiryDate('');
+      // フォームリセット
+      resetDogForm();
 
     } catch (error) {
       console.error('Error updating dog:', error);
-      setDogUpdateError(error instanceof Error ? error.message : 'ワンちゃんの情報の更新に失敗しました');
+      const errorMessage = error instanceof Error ? error.message : 'ワンちゃんの情報の更新に失敗しました';
+      setError(errorMessage);
+      addNotification({
+        type: 'error',
+        title: 'エラー',
+        message: errorMessage,
+        duration: 5000
+      });
     } finally {
       setIsUpdatingDog(false);
     }
@@ -399,18 +394,26 @@ export function UserDashboard() {
 
       if (dogError) throw dogError;
 
-      setDogUpdateSuccess(`${dog.name}の情報を削除しました。`);
+      setSuccess(`${dog.name}の情報を削除しました。`);
+      addNotification({
+        type: 'success',
+        title: '削除完了',
+        message: `${dog.name}の情報を削除しました。`,
+        duration: 3000
+      });
+      
       setShowDogEditModal(false);
       await fetchDashboardData();
 
     } catch (error) {
       console.error('Error deleting dog:', error);
-      setDogUpdateError('ワンちゃんの情報の削除に失敗しました。');
+      setError('ワンちゃんの情報の削除に失敗しました。');
     } finally {
       setIsUpdatingDog(false);
     }
   };
 
+  // 🔔 Notification Handler
   const markNotificationAsRead = async (notificationId: string) => {
     try {
       await supabase
@@ -419,266 +422,321 @@ export function UserDashboard() {
         .eq('id', notificationId);
       
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
+      
+      addNotification({
+        type: 'info',
+        title: '通知',
+        message: '通知を既読にしました',
+        duration: 2000
+      });
     } catch (error) {
       console.error('Error marking notification as read:', error);
+      setError('通知の更新に失敗しました。');
     }
   };
 
-  if (isLoading) {
+  // 🧹 Utility Functions
+  const resetDogForm = () => {
+    setDogImageFile(null);
+    setRabiesVaccineFile(null);
+    setComboVaccineFile(null);
+    setRabiesExpiryDate('');
+    setComboExpiryDate('');
+    setDogImagePreview(null);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('ログアウトエラー:', error);
+      setError('ログアウトに失敗しました。');
+    }
+  };
+
+  const handleParkSelect = (park: DogPark) => {
+    setSelectedPark(park);
+    setShowParkModal(true);
+  };
+
+  // 🎨 Loading State with modern design
+  if (isLoading || isGlobalLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="relative">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="absolute inset-0 animate-ping rounded-full h-12 w-12 border border-blue-400 opacity-20"></div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Header with Modern CSS */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             マイページ
           </h1>
           <p className="text-gray-600 mt-1">
-            ようこそ、{profile?.name || 'ユーザー'}さん！
+            ようこそ、{profile?.name || zustandUser?.name || 'ユーザー'}さん！
           </p>
         </div>
         <div className="flex items-center space-x-4">
-                     {isAdmin && (
-             <a
-               href="/admin"
-               className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium inline-flex items-center"
-             >
-               <Crown className="w-4 h-4 mr-2" />
-               管理者画面
-             </a>
-           )}
+          {isAdmin && (
+            <a
+              href="/admin"
+              className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-lg font-medium inline-flex items-center transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              <Crown className="w-4 h-4 mr-2" />
+              管理者画面
+            </a>
+          )}
         </div>
       </div>
 
-      {/* Success Message */}
+      {/* Success/Error Messages with Animation */}
       {showSuccessMessage && (
-        <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center">
-          <CheckCircle className="w-5 h-5 mr-2" />
+        <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-800 rounded-lg flex items-center animate-fade-in">
+          <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
           操作が正常に完了しました！
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="space-y-8">
-        {/* Statistics Section */}
-        <StatsSection
-          dogs={dogs}
-          ownedParks={ownedParks}
-          recentReservations={recentReservations}
-          profile={profile}
-        />
+      {error && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 text-red-800 rounded-lg flex items-center">
+          <div className="w-5 h-5 mr-2 text-red-600">⚠️</div>
+          {error}
+        </div>
+      )}
 
-        {/* Dog Management Section */}
-        <DogManagementSection
-          dogs={dogs}
-          user={user}
-          selectedDog={selectedDog}
-          showDogEditModal={showDogEditModal}
-          isUpdatingDog={isUpdatingDog}
-          dogUpdateError={dogUpdateError}
-          dogUpdateSuccess={dogUpdateSuccess}
-          dogFormData={dogFormData}
-          dogImageFile={dogImageFile}
-          dogImagePreview={dogImagePreview}
-          rabiesVaccineFile={rabiesVaccineFile}
-          comboVaccineFile={comboVaccineFile}
-          rabiesExpiryDate={rabiesExpiryDate}
-          comboExpiryDate={comboExpiryDate}
-          onDogSelect={handleDogSelect}
-          onCloseDogEditModal={() => setShowDogEditModal(false)}
-          onUpdateDog={(e) => void handleUpdateDog(e)}
-          onDeleteDog={(id) => void handleDeleteDog(id)}
-          onDogImageSelect={handleDogImageSelect}
-          onDogImageRemove={() => void handleDogImageRemove()}
-          onRabiesVaccineSelect={handleRabiesVaccineSelect}
-          onComboVaccineSelect={handleComboVaccineSelect}
-          onFormDataChange={setDogFormData}
-          onRabiesExpiryDateChange={setRabiesExpiryDate}
-          onComboExpiryDateChange={setComboExpiryDate}
-        />
+      {success && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-800 rounded-lg flex items-center">
+          <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
+          {success}
+        </div>
+      )}
 
-        {/* Owned Parks Management Section */}
-        {ownedParks.length > 0 && (
-          <Card className="p-6">
-            <div className="mb-4">
-              <h2 className="text-xl font-semibold flex items-center">
-                <Building className="w-6 h-6 text-green-600 mr-2" />
-                管理中のドッグラン ({ownedParks.length}施設)
-              </h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {ownedParks.map((park) => (
-                <ParkCard
-                  key={park.id}
-                  park={park}
-                  onSelect={handleParkSelect}
-                />
-              ))}
-            </div>
-          </Card>
-        )}
+      {/* Statistics Section */}
+      <StatsSection
+        dogs={dogs}
+        ownedParks={ownedParks}
+        recentReservations={recentReservations}
+        profile={profile}
+      />
 
-        {/* Quick Actions Section */}
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">クイックアクション</h2>
+      {/* Dog Management Section */}
+      <DogManagementSection
+        dogs={dogs}
+        user={user}
+        selectedDog={selectedDog}
+        showDogEditModal={showDogEditModal}
+        isUpdatingDog={isUpdatingDog}
+        dogUpdateError={error}
+        dogUpdateSuccess={success}
+        dogFormData={dogFormData}
+        dogImageFile={dogImageFile}
+        dogImagePreview={dogImagePreview}
+        rabiesVaccineFile={rabiesVaccineFile}
+        comboVaccineFile={comboVaccineFile}
+        rabiesExpiryDate={rabiesExpiryDate}
+        comboExpiryDate={comboExpiryDate}
+        onDogSelect={handleDogSelect}
+        onCloseDogEditModal={() => setShowDogEditModal(false)}
+        onUpdateDog={handleUpdateDog}
+        onDeleteDog={handleDeleteDog}
+        onDogImageSelect={handleDogImageSelect}
+        onDogImageRemove={() => {}}
+        onRabiesVaccineSelect={(e) => setRabiesVaccineFile(e.target.files?.[0] || null)}
+        onComboVaccineSelect={(e) => setComboVaccineFile(e.target.files?.[0] || null)}
+        onFormDataChange={setDogFormData}
+        onRabiesExpiryDateChange={setRabiesExpiryDate}
+        onComboExpiryDateChange={setComboExpiryDate}
+      />
+
+      {/* Owned Parks Management Section with Modern Styling */}
+      {ownedParks.length > 0 && (
+        <Card className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold flex items-center">
+              <Building className="w-6 h-6 text-green-600 mr-2" />
+              管理中のドッグラン ({ownedParks.length}施設)
+            </h2>
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Link to="/parks" className="group">
-              <div className="p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
-                <MapPin className="w-8 h-8 text-blue-600 mb-2" />
-                <h3 className="font-medium text-blue-900">ドッグラン検索</h3>
-                <p className="text-sm text-blue-700">近くのドッグランを探す</p>
-              </div>
-            </Link>
-            
-            <Link to="/community" className="group">
-              <div className="p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
-                <Users className="w-8 h-8 text-green-600 mb-2" />
-                <h3 className="font-medium text-green-900">コミュニティ</h3>
-                <p className="text-sm text-green-700">他の飼い主と交流</p>
-              </div>
-            </Link>
-            
-            <Link to="/petshop" className="group">
-              <div className="p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
-                <ShoppingBag className="w-8 h-8 text-purple-600 mb-2" />
-                <h3 className="font-medium text-purple-900">ペットショップ</h3>
-                <p className="text-sm text-purple-700">ペット用品を購入</p>
-              </div>
-            </Link>
-            
-            <Link to="/news" className="group">
-              <div className="p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors">
-                <Bell className="w-8 h-8 text-orange-600 mb-2" />
-                <h3 className="font-medium text-orange-900">新着情報</h3>
-                <p className="text-sm text-orange-700">最新のお知らせ</p>
-              </div>
-            </Link>
-            
-            <Link to="/liked-dogs" className="group">
-              <div className="p-4 bg-pink-50 rounded-lg hover:bg-pink-100 transition-colors">
-                <Heart className="w-8 h-8 text-pink-600 mb-2" />
-                <h3 className="font-medium text-pink-900">いいねしたワンちゃん</h3>
-                <p className="text-sm text-pink-700">お気に入りのワンちゃん</p>
-              </div>
-            </Link>
-            
-            {/* 新規追加：ドッグランオーナー募集 */}
-            <Link to="/park-registration-agreement" className="group">
-              <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg hover:from-yellow-100 hover:to-orange-100 transition-colors border-2 border-orange-200">
-                <Building className="w-8 h-8 text-orange-600 mb-2" />
-                <h3 className="font-medium text-orange-900">ドッグランオーナー募集</h3>
-                <p className="text-sm text-orange-700">あなたのドッグランを登録</p>
-                <div className="mt-2 text-xs text-orange-600 font-medium">
-                  🎯 収益化のチャンス！
-                </div>
-              </div>
-            </Link>
-            
-            {/* 新規追加：ペット関連施設登録 */}
-            <Link to="/facility-registration" className="group">
-              <div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg hover:from-teal-100 hover:to-cyan-100 transition-colors border-2 border-teal-200">
-                <div className="flex items-center mb-2">
-                  <Heart className="w-6 h-6 text-teal-600 mr-2" />
-                  <ShoppingBag className="w-6 h-6 text-teal-600" />
-                </div>
-                <h3 className="font-medium text-teal-900">ペット関連施設登録</h3>
-                <p className="text-sm text-teal-700">店舗・宿泊施設・サロンなど</p>
-                <div className="mt-2 text-xs text-teal-600 font-medium">
-                  🎉 今なら無料掲載！
-                </div>
-              </div>
-            </Link>
+            {ownedParks.map((park) => (
+              <ParkCard
+                key={park.id}
+                park={park}
+                onSelect={handleParkSelect}
+              />
+            ))}
           </div>
         </Card>
+      )}
 
-        {/* Notifications Section */}
-        {notifications.length > 0 && (
-          <NotificationSection
-            notifications={notifications}
-            onMarkAsRead={(id) => void markNotificationAsRead(id)}
-          />
-        )}
-
-        {/* Liked Dogs Section */}
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4 flex items-center">
-            <Heart className="w-6 h-6 text-pink-600 mr-2" />
-            いいねしたワンちゃん ({likedDogs.length}匹)
-          </h2>
-          
-          {likedDogs.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Heart className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-lg font-medium mb-2">まだいいねしたワンちゃんはいません</p>
-              <p className="text-sm">
-                気になるワンちゃんがいたら、いいねしてみましょう！
-              </p>
-              <Link to="/community" className="mt-4 inline-block">
-                <Button size="sm">
-                  コミュニティを見る
-                </Button>
-              </Link>
+      {/* Quick Actions Section with Modern CSS Grid */}
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold mb-6 flex items-center">
+          <span className="text-2xl mr-2">🚀</span>
+          クイックアクション
+        </h2>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link to="/parks" className="group">
+            <div className="p-6 bg-gradient-to-br from-blue-50 to-sky-50 rounded-xl hover:from-blue-100 hover:to-sky-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-blue-200">
+              <MapPin className="w-8 h-8 text-blue-600 mb-3" />
+              <h3 className="font-semibold text-blue-900 mb-1">ドッグラン検索</h3>
+              <p className="text-sm text-blue-700">近くのドッグランを探す</p>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {likedDogs.map((dog) => (
-                <Link
-                  key={dog.id}
-                  to={`/dog/${dog.id}`}
-                  className="group block bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow overflow-hidden"
-                >
-                  <div className="aspect-square bg-gray-200 overflow-hidden">
-                    {dog.image_url ? (
-                      <img
-                        src={dog.image_url}
-                        alt={dog.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl">
-                        🐕
-                      </div>
+          </Link>
+          
+          <Link to="/community" className="group">
+            <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl hover:from-green-100 hover:to-emerald-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-green-200">
+              <Users className="w-8 h-8 text-green-600 mb-3" />
+              <h3 className="font-semibold text-green-900 mb-1">コミュニティ</h3>
+              <p className="text-sm text-green-700">他の飼い主と交流</p>
+            </div>
+          </Link>
+          
+          <Link to="/petshop" className="group">
+            <div className="p-6 bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl hover:from-purple-100 hover:to-violet-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-purple-200">
+              <ShoppingBag className="w-8 h-8 text-purple-600 mb-3" />
+              <h3 className="font-semibold text-purple-900 mb-1">ペットショップ</h3>
+              <p className="text-sm text-purple-700">ペット用品を購入</p>
+            </div>
+          </Link>
+          
+          <Link to="/news" className="group">
+            <div className="p-6 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl hover:from-orange-100 hover:to-amber-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-orange-200">
+              <Bell className="w-8 h-8 text-orange-600 mb-3" />
+              <h3 className="font-semibold text-orange-900 mb-1">新着情報</h3>
+              <p className="text-sm text-orange-700">最新のお知らせ</p>
+            </div>
+          </Link>
+
+          <Link to="/liked-dogs" className="group">
+            <div className="p-6 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl hover:from-pink-100 hover:to-rose-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-pink-200">
+              <Heart className="w-8 h-8 text-pink-600 mb-3" />
+              <h3 className="font-semibold text-pink-900 mb-1">いいねしたワンちゃん</h3>
+              <p className="text-sm text-pink-700">お気に入りのワンちゃん</p>
+            </div>
+          </Link>
+          
+          <Link to="/park-registration-agreement" className="group">
+            <div className="p-6 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl hover:from-yellow-100 hover:to-orange-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border-2 border-orange-200">
+              <Building className="w-8 h-8 text-orange-600 mb-3" />
+              <h3 className="font-semibold text-orange-900 mb-1">ドッグランオーナー募集</h3>
+              <p className="text-sm text-orange-700 mb-2">あなたのドッグランを登録</p>
+              <div className="text-xs text-orange-600 font-semibold bg-orange-100 px-2 py-1 rounded-full inline-block">
+                💰 収益化のチャンス！
+              </div>
+            </div>
+          </Link>
+          
+          <Link to="/facility-registration" className="group">
+            <div className="p-6 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl hover:from-teal-100 hover:to-cyan-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border-2 border-teal-200">
+              <div className="flex items-center mb-3">
+                <Heart className="w-6 h-6 text-teal-600 mr-2" />
+                <ShoppingBag className="w-6 h-6 text-teal-600" />
+              </div>
+              <h3 className="font-semibold text-teal-900 mb-1">ペット関連施設登録</h3>
+              <p className="text-sm text-teal-700 mb-2">店舗・宿泊施設・サロンなど</p>
+              <div className="text-xs text-teal-600 font-semibold bg-teal-100 px-2 py-1 rounded-full inline-block">
+                🎉 今なら無料掲載！
+              </div>
+            </div>
+          </Link>
+        </div>
+      </Card>
+
+      {/* Notifications Section */}
+      {notifications.length > 0 && (
+        <NotificationSection
+          notifications={notifications}
+          onMarkAsRead={markNotificationAsRead}
+        />
+      )}
+
+      {/* Liked Dogs Section with Modern Design */}
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold mb-6 flex items-center">
+          <Heart className="w-6 h-6 text-pink-600 mr-2" />
+          いいねしたワンちゃん ({likedDogs.length}匹)
+        </h2>
+        
+        {likedDogs.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-pink-100 to-rose-100 rounded-full flex items-center justify-center">
+              <Heart className="w-12 h-12 text-pink-400" />
+            </div>
+            <p className="text-lg font-medium mb-2">まだいいねしたワンちゃんはいません</p>
+            <p className="text-sm mb-4">
+              気になるワンちゃんがいたら、いいねしてみましょう！
+            </p>
+            <Link to="/community">
+              <Button size="sm" className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600">
+                コミュニティを見る
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {likedDogs.map((dog) => (
+              <Link
+                key={dog.id}
+                to={`/dog/${dog.id}`}
+                className="group block bg-white border border-gray-200 rounded-xl hover:shadow-lg transition-all duration-300 overflow-hidden transform hover:scale-105"
+              >
+                <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+                  {dog.image_url ? (
+                    <img
+                      src={dog.image_url}
+                      alt={dog.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-6xl">
+                      🐕
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-gray-900 truncate">
+                      {dog.name}{dog.gender === 'オス' ? 'くん' : 'ちゃん'}
+                    </h3>
+                    <Heart className="w-4 h-4 text-pink-500 fill-current" />
+                  </div>
+                  <p className="text-sm text-gray-600 mb-1">{dog.breed}</p>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span className="flex items-center">
+                      <span className="mr-1">{dog.gender === 'オス' ? '♂' : '♀'}</span>
+                      {dog.gender}
+                    </span>
+                    {(dog as any).like_count > 0 && (
+                      <span className="bg-pink-100 text-pink-600 px-2 py-1 rounded-full">
+                        {(dog as any).like_count}いいね
+                      </span>
                     )}
                   </div>
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold text-gray-900 truncate">
-                        {dog.name}{dog.gender === 'オス' ? 'くん' : 'ちゃん'}
-                      </h3>
-                      <Heart className="w-4 h-4 text-pink-500 fill-current" />
-                    </div>
-                    <p className="text-sm text-gray-600 mb-1">{dog.breed}</p>
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>{dog.gender === 'オス' ? '♂' : '♀'} {dog.gender}</span>
-                      {(dog as any).like_count > 0 && (
-                        <span>{(dog as any).like_count}件のいいね</span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-          
-          {likedDogs.length >= 10 && (
-            <div className="mt-4 text-center">
-              <p className="text-sm text-gray-500">最新の10匹を表示中</p>
-            </div>
-          )}
-        </Card>
-
-
-      </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+        
+        {likedDogs.length >= 10 && (
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-500">最新の10匹を表示中</p>
+          </div>
+        )}
+      </Card>
 
       {/* Park Modal */}
       {showParkModal && selectedPark && (

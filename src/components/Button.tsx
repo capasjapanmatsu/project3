@@ -1,154 +1,186 @@
-import { ButtonHTMLAttributes, forwardRef, useId } from 'react';
+import { motion } from 'framer-motion';
+import { Loader } from 'lucide-react';
+import { ReactNode } from 'react';
+import { buttonVariants } from '../utils/animations';
+import { triggerHapticFeedback } from '../utils/hapticFeedback';
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'warning';
-  size?: 'xs' | 'sm' | 'md' | 'lg';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'outline' | 'ghost';
+type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
+
+interface ButtonProps {
+  children: ReactNode;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   isLoading?: boolean;
-  fullWidth?: boolean;
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
   loadingText?: string;
-  ariaLabel?: string;
-  ariaDescribedBy?: string;
-  tooltip?: string;
+  isFullWidth?: boolean;
+  leftIcon?: ReactNode;
+  rightIcon?: ReactNode;
+  className?: string;
+  enableHaptics?: boolean; // 新機能：ハプティックフィードバック有効/無効
+  hapticType?: 'light' | 'medium' | 'heavy'; // 新機能：ハプティックの強さ
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
+  type?: 'button' | 'submit' | 'reset';
+  form?: string;
+  id?: string;
+  name?: string;
+  value?: string;
+  'aria-label'?: string;
+  'aria-describedby'?: string;
+  title?: string;
+  tabIndex?: number;
 }
 
-const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
+const Button = ({
   children,
   variant = 'primary',
   size = 'md',
   isLoading = false,
-  fullWidth = false,
-  className = '',
+  loadingText,
+  isFullWidth = false,
   leftIcon,
   rightIcon,
-  loadingText,
-  ariaLabel,
-  ariaDescribedBy,
-  tooltip,
+  className = '',
+  enableHaptics = true,
+  hapticType = 'light',
+  onClick,
+  disabled,
   ...props
-}, ref) => {
-  const loadingId = useId();
-  
-  const baseStyles = [
-    'inline-flex items-center justify-center',
-    'rounded-lg font-medium',
-    'transition-all duration-200',
-    'disabled:opacity-50 disabled:cursor-not-allowed',
-    'focus:outline-none focus:ring-2 focus:ring-offset-2',
-    'active:scale-95',
-    // レスポンシブ：タッチターゲットサイズを確保
-    'min-h-[44px] sm:min-h-[40px]',
-    // ダークモード対応の準備
-    'dark:focus:ring-offset-gray-800'
-  ].join(' ');
-  
-  const variants = {
+}: ButtonProps) => {
+  // ベーススタイル
+  const baseClasses = [
+    'inline-flex',
+    'items-center',
+    'justify-center',
+    'font-medium',
+    'rounded-lg',
+    'transition-all',
+    'duration-200',
+    'focus:outline-none',
+    'focus:ring-2',
+    'focus:ring-offset-2',
+    'disabled:opacity-50',
+    'disabled:cursor-not-allowed',
+    'select-none',
+    // アニメーション準備
+    'transform',
+    'active:scale-95'
+  ];
+
+  // バリアントスタイル
+  const variantClasses = {
     primary: [
-      'bg-white text-blue-700 border-2 border-blue-700',
-      'hover:bg-blue-50 disabled:bg-gray-100',
-      'focus:ring-blue-600',
-      'dark:bg-white dark:text-blue-700 dark:border-blue-700 dark:hover:bg-blue-50'
-    ].join(' '),
+      'bg-blue-600',
+      'text-white',
+      'hover:bg-blue-700',
+      'focus:ring-blue-500',
+      'shadow-sm',
+      'hover:shadow-md'
+    ],
     secondary: [
-      'bg-gray-100 text-gray-700 border border-gray-300',
-      'hover:bg-gray-200 disabled:bg-gray-50',
+      'bg-gray-600',
+      'text-white',
+      'hover:bg-gray-700',
       'focus:ring-gray-500',
-      'dark:bg-gray-100 dark:text-gray-700 dark:border-gray-300 dark:hover:bg-gray-200'
-    ].join(' '),
+      'shadow-sm',
+      'hover:shadow-md'
+    ],
     danger: [
-      'bg-red-600 text-white',
-      'hover:bg-red-700 disabled:bg-red-400',
+      'bg-red-600',
+      'text-white',
+      'hover:bg-red-700',
       'focus:ring-red-500',
-      'dark:bg-red-600 dark:hover:bg-red-700'
-    ].join(' '),
-    success: [
-      'bg-green-600 text-white',
-      'hover:bg-green-700 disabled:bg-green-400',
-      'focus:ring-green-500',
-      'dark:bg-green-600 dark:hover:bg-green-700'
-    ].join(' '),
-    warning: [
-      'bg-yellow-500 text-white',
-      'hover:bg-yellow-600 disabled:bg-yellow-300',
-      'focus:ring-yellow-500',
-      'dark:bg-yellow-600 dark:hover:bg-yellow-700'
-    ].join(' '),
+      'shadow-sm',
+      'hover:shadow-md'
+    ],
+    outline: [
+      'bg-transparent',
+      'text-gray-700',
+      'border-2',
+      'border-gray-300',
+      'hover:bg-gray-50',
+      'hover:border-gray-400',
+      'focus:ring-gray-500'
+    ],
+    ghost: [
+      'bg-transparent',
+      'text-gray-600',
+      'hover:bg-gray-100',
+      'hover:text-gray-900',
+      'focus:ring-gray-500'
+    ]
   };
 
-  const sizes = {
-    xs: 'px-2 py-1 text-xs gap-1',
-    sm: 'px-3 py-1.5 text-sm gap-1.5',
-    md: 'px-4 py-2 text-base gap-2',
-    lg: 'px-6 py-3 text-lg gap-2.5',
+  // サイズスタイル
+  const sizeClasses = {
+    sm: ['px-3', 'py-1.5', 'text-sm', 'gap-1.5'],
+    md: ['px-4', 'py-2', 'text-sm', 'gap-2'],
+    lg: ['px-6', 'py-3', 'text-base', 'gap-2'],
+    xl: ['px-8', 'py-4', 'text-lg', 'gap-3']
   };
 
-  const widthClass = fullWidth ? 'w-full' : '';
+  // 幅スタイル
+  const widthClasses = isFullWidth ? ['w-full'] : [];
 
-  // bg-*, text-*, hover:bg-* クラスを外部classNameから除去
-  const filteredClassName = className
-    .split(' ')
-    .filter(
-      (cls) =>
-        !cls.startsWith('bg-') &&
-        !cls.startsWith('text-') &&
-        !cls.startsWith('hover:bg-') &&
-        !cls.startsWith('focus:ring-')
-    )
-    .join(' ');
+  // すべてのクラスを結合
+  const buttonClasses = [
+    ...baseClasses,
+    ...variantClasses[variant],
+    ...sizeClasses[size],
+    ...widthClasses,
+    className
+  ].join(' ');
 
-  // アクセシビリティ属性
-  const accessibilityProps = {
-    'aria-label': ariaLabel,
-    'aria-describedby': ariaDescribedBy,
-    'aria-busy': isLoading,
-    'aria-live': isLoading ? 'polite' as const : undefined,
-    title: tooltip,
+  // ハプティックフィードバック付きクリックハンドラー
+  const handleClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    // ハプティックフィードバックの実行
+    if (enableHaptics && !disabled && !isLoading) {
+      try {
+        await triggerHapticFeedback(hapticType);
+      } catch (error) {
+        // ハプティックフィードバックが失敗してもボタン動作は続行
+        console.debug('Haptic feedback failed:', error);
+      }
+    }
+
+    // 元のクリックハンドラーを呼び出し
+    if (onClick && !disabled && !isLoading) {
+      onClick(event);
+    }
   };
 
-  // ローディング状態での読み上げテキスト
-  const loadingAnnouncement = loadingText || `${typeof children === 'string' ? children : 'ボタン'}を処理中...`;
+  // ローディング時のコンテンツ
+  const loadingContent = (
+    <>
+      <Loader className="animate-spin" size={size === 'sm' ? 14 : size === 'lg' ? 20 : size === 'xl' ? 24 : 16} />
+      {loadingText || 'Loading...'}
+    </>
+  );
+
+  // 通常時のコンテンツ
+  const normalContent = (
+    <>
+      {leftIcon}
+      {children}
+      {rightIcon}
+    </>
+  );
 
   return (
-    <button
-      ref={ref}
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${widthClass} ${filteredClassName}`}
-      disabled={isLoading || props.disabled}
-      {...accessibilityProps}
-      {...props}
+    <motion.button
+      className={buttonClasses}
+      onClick={handleClick}
+      disabled={disabled || isLoading}
+      variants={buttonVariants}
+      initial="initial"
+      whileHover={!disabled && !isLoading ? "hover" : "initial"}
+      whileTap={!disabled && !isLoading ? "tap" : "initial"}
+      {...(props as any)} // 型安全性を確保しつつMotion propsを受け入れ
     >
-      {isLoading ? (
-        <>
-          <div 
-            className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin flex-shrink-0"
-            aria-hidden="true"
-          />
-          <span className="truncate">
-            {loadingText || children}
-          </span>
-          <span className="sr-only" aria-live="polite" id={loadingId}>
-            {loadingAnnouncement}
-          </span>
-        </>
-      ) : (
-        <>
-          {leftIcon && (
-            <span className="flex-shrink-0" aria-hidden="true">
-              {leftIcon}
-            </span>
-          )}
-          <span className="truncate">{children}</span>
-          {rightIcon && (
-            <span className="flex-shrink-0" aria-hidden="true">
-              {rightIcon}
-            </span>
-          )}
-        </>
-      )}
-    </button>
+      {isLoading ? loadingContent : normalContent}
+    </motion.button>
   );
-});
-
-Button.displayName = 'Button';
+};
 
 export default Button;

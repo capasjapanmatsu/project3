@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { MapPin, Clock, Users, RefreshCw } from 'lucide-react';
-import Card from '../components/Card';
+import { Clock, MapPin, RefreshCw, Users } from 'lucide-react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import Button from '../components/Button';
+import Card from '../components/Card';
 import { supabase } from '../utils/supabase';
 
 interface DogPark {
@@ -89,7 +89,7 @@ const ParkCard = memo(({ park, onDetailClick, onReserveClick }: {
           {park.is_open && (
             <Button
               size="sm"
-              variant="outline"
+              variant="secondary"
               className="flex-1"
               onClick={() => onReserveClick(park.id)}
               disabled={park.current_occupancy >= park.capacity}
@@ -179,10 +179,10 @@ export function DogParkList() {
     }
   }, []);
 
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = useCallback(() => {
     setRefreshing(true);
-    await fetchParkData();
-    setRefreshing(false);
+    void fetchParkData()
+      .finally(() => setRefreshing(false));
   }, [fetchParkData]);
 
   // ナビゲーション関数をメモ化
@@ -205,7 +205,12 @@ export function DogParkList() {
   }, [parks]);
 
   useEffect(() => {
-    fetchParkData();
+    void fetchParkData();
+  }, [fetchParkData]);
+
+  // エラー再試行用のハンドラ
+  const handleRetry = useCallback(() => {
+    void fetchParkData();
   }, [fetchParkData]);
 
   if (loading && !refreshing) {
@@ -213,7 +218,7 @@ export function DogParkList() {
   }
 
   if (error) {
-    return <ErrorDisplay error={error} onRetry={fetchParkData} />;
+    return <ErrorDisplay error={error} onRetry={handleRetry} />;
   }
 
   return (
