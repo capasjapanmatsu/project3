@@ -6,17 +6,16 @@ import {
     Heart,
     MapPin,
     ShoppingBag,
+    User,
     Users
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import Button from '../components/Button';
 import Card from '../components/Card';
 import { DogManagementSection } from '../components/dashboard/DogManagementSection';
 import { NotificationSection } from '../components/dashboard/NotificationSection';
 import { ParkCard } from '../components/dashboard/ParkCard';
 import { ParkModal } from '../components/dashboard/ParkModal';
-import { StatsSection } from '../components/dashboard/StatsSection';
 import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { useAuthStore } from '../store/authStore';
@@ -475,11 +474,11 @@ export function UserDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-8 space-y-8">
       {/* Header with Modern CSS */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-xl font-bold text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             マイページ
           </h1>
           <p className="text-gray-600 mt-1">
@@ -521,13 +520,7 @@ export function UserDashboard() {
         </div>
       )}
 
-      {/* Statistics Section */}
-      <StatsSection
-        dogs={dogs}
-        ownedParks={ownedParks}
-        recentReservations={recentReservations}
-        profile={profile}
-      />
+
 
       {/* Dog Management Section */}
       <DogManagementSection
@@ -620,13 +613,7 @@ export function UserDashboard() {
             </div>
           </Link>
 
-          <Link to="/liked-dogs" className="group">
-            <div className="p-6 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl hover:from-pink-100 hover:to-rose-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-pink-200">
-              <Heart className="w-8 h-8 text-pink-600 mb-3" />
-              <h3 className="font-semibold text-pink-900 mb-1">いいねしたワンちゃん</h3>
-              <p className="text-sm text-pink-700">お気に入りのワンちゃん</p>
-            </div>
-          </Link>
+
           
           <Link to="/park-registration-agreement" className="group">
             <div className="p-6 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl hover:from-yellow-100 hover:to-orange-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border-2 border-orange-200">
@@ -652,6 +639,14 @@ export function UserDashboard() {
               </div>
             </div>
           </Link>
+          
+          <Link to="/profile-settings" className="group">
+            <div className="p-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl hover:from-indigo-100 hover:to-purple-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-indigo-200">
+              <User className="w-8 h-8 text-indigo-600 mb-3" />
+              <h3 className="font-semibold text-indigo-900 mb-1">登録情報</h3>
+              <p className="text-sm text-indigo-700">住所・氏名・連絡先を編集</p>
+            </div>
+          </Link>
         </div>
       </Card>
 
@@ -663,80 +658,7 @@ export function UserDashboard() {
         />
       )}
 
-      {/* Liked Dogs Section with Modern Design */}
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-6 flex items-center">
-          <Heart className="w-6 h-6 text-pink-600 mr-2" />
-          いいねしたワンちゃん ({likedDogs.length}匹)
-        </h2>
-        
-        {likedDogs.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-pink-100 to-rose-100 rounded-full flex items-center justify-center">
-              <Heart className="w-12 h-12 text-pink-400" />
-            </div>
-            <p className="text-lg font-medium mb-2">まだいいねしたワンちゃんはいません</p>
-            <p className="text-sm mb-4">
-              気になるワンちゃんがいたら、いいねしてみましょう！
-            </p>
-            <Link to="/community">
-              <Button size="sm" className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600">
-                コミュニティを見る
-              </Button>
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {likedDogs.map((dog) => (
-              <Link
-                key={dog.id}
-                to={`/dog/${dog.id}`}
-                className="group block bg-white border border-gray-200 rounded-xl hover:shadow-lg transition-all duration-300 overflow-hidden transform hover:scale-105"
-              >
-                <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
-                  {dog.image_url ? (
-                    <img
-                      src={dog.image_url}
-                      alt={dog.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-6xl">
-                      🐕
-                    </div>
-                  )}
-                </div>
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900 truncate">
-                      {dog.name}{dog.gender === 'オス' ? 'くん' : 'ちゃん'}
-                    </h3>
-                    <Heart className="w-4 h-4 text-pink-500 fill-current" />
-                  </div>
-                  <p className="text-sm text-gray-600 mb-1">{dog.breed}</p>
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span className="flex items-center">
-                      <span className="mr-1">{dog.gender === 'オス' ? '♂' : '♀'}</span>
-                      {dog.gender}
-                    </span>
-                    {(dog as any).like_count > 0 && (
-                      <span className="bg-pink-100 text-pink-600 px-2 py-1 rounded-full">
-                        {(dog as any).like_count}いいね
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-        
-        {likedDogs.length >= 10 && (
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500">最新の10匹を表示中</p>
-          </div>
-        )}
-      </Card>
+
 
       {/* Park Modal */}
       {showParkModal && selectedPark && (

@@ -1,9 +1,9 @@
-import { Edit, Trash2, Camera, Shield, PawPrint, Upload, FileText, X, AlertTriangle } from 'lucide-react';
+import { Camera, Edit, FileText, PawPrint, Shield, Trash2, Upload, X } from 'lucide-react';
+import { dogBreeds } from '../../data/dogBreeds';
+import type { Dog } from '../../types';
 import Button from '../Button';
 import Input from '../Input';
 import Select from '../Select';
-import { dogBreeds } from '../../data/dogBreeds';
-import type { Dog } from '../../types';
 import VaccineBadge, { getVaccineStatusFromDog } from '../VaccineBadge';
 
 interface DogCardProps {
@@ -18,7 +18,7 @@ export function DogCard({ dog, onEdit }: DogCardProps) {
   return (
     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
       <div className="flex items-center space-x-4">
-        <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+        <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
           {dog.image_url ? (
             <img 
               src={dog.image_url} 
@@ -26,7 +26,7 @@ export function DogCard({ dog, onEdit }: DogCardProps) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <PawPrint className="w-6 h-6 text-gray-500" />
+            <PawPrint className="w-8 h-8 text-gray-500" />
           )}
         </div>
         <div>
@@ -40,7 +40,7 @@ export function DogCard({ dog, onEdit }: DogCardProps) {
       <div className="flex space-x-2">
         <Button 
           size="sm" 
-          className="bg-white hover:bg-gray-50 border border-gray-300 text-gray-700"
+          className="bg-blue-50 hover:bg-blue-100 text-blue-600 border-0"
           onClick={() => onEdit(dog)}
         >
           <Edit className="w-4 h-4" />

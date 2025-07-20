@@ -1,63 +1,76 @@
-import { useState } from 'react';
-import type { DogPark } from '../types';
+// useParkData.ts - ドッグパークと施設データ管理のカスタムフック
+import { useCallback, useState } from 'react';
+import { type DogPark } from '../types';
+import { type PetFacility } from '../types/facilities';
 import { supabase } from '../utils/supabase';
 
-// 共通のPetFacility型定義をエクスポート
-export interface FacilityImage {
-  id: string;
-  facility_id: string;
-  image_data: string;
-  is_primary: boolean;
-  created_at: string;
-}
-
-export interface PetFacility {
-  id: string;
-  name: string;
-  category_id: string;
-  address: string;
-  phone?: string;
-  website?: string;
-  description?: string;
-  status: 'pending' | 'approved' | 'rejected';
-  latitude?: number;
-  longitude?: number;
-  created_at: string;
-  owner_id: string;
-  images?: FacilityImage[];
-}
-
-export const useParkData = () => {
+// ドッグパークデータ管理フック
+export function useParkData() {
   const [parks, setParks] = useState<DogPark[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchParkData = async () => {
+  const fetchParkData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('🔍 Fetching park data...');
 
-      const { data: parksData, error } = await supabase
+      const { data, error: queryError } = await supabase
         .from('dog_parks')
-        .select('*')
-        .eq('status', 'approved')
-        .order('created_at', { ascending: false });
+        .select(`
+          *,
+          park_facilities (
+            id,
+            name,
+            category,
+            is_available
+          )
+        `)
+        .eq('is_active', true)
+        .order('name');
 
-      if (error) {
-        console.error('❌ Park fetch error:', error);
-        throw error;
+      if (queryError) {
+        throw queryError;
       }
 
-      console.log('✅ Found', parksData?.length || 0, 'approved parks');
-      setParks(parksData || []);
-    } catch (error) {
-      console.error('❌ Error fetching parks:', error);
-      setError(error instanceof Error ? error.message : 'Failed to fetch park data');
+      // データの型安全性を確保
+      const parksData: DogPark[] = (data || []).map((park: any) => ({
+        id: park.id || '',
+        name: park.name || '',
+        description: park.description || '',
+        address: park.address || '',
+        prefecture: park.prefecture || '',
+        city: park.city || '',
+        latitude: park.latitude || 0,
+        longitude: park.longitude || 0,
+        max_capacity: park.max_capacity || 0,
+        current_occupancy: park.current_occupancy || 0,
+        hourly_rate: park.hourly_rate || 0,
+        is_active: park.is_active || false,
+        is_open: park.is_open || false,
+        opening_hours: park.opening_hours || '',
+        contact_phone: park.contact_phone || '',
+        contact_email: park.contact_email || '',
+        website_url: park.website_url || '',
+        image_urls: Array.isArray(park.image_urls) ? park.image_urls : [],
+        amenities: Array.isArray(park.amenities) ? park.amenities : [],
+        rules: Array.isArray(park.rules) ? park.rules : [],
+        created_at: park.created_at || '',
+        updated_at: park.updated_at || '',
+        park_facilities: Array.isArray(park.park_facilities) ? park.park_facilities : [],
+      }));
+
+      setParks(parksData);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'データの取得に失敗しました';
+      setError(errorMessage);
+      if (import.meta.env.DEV) {
+        console.warn('🔥 Park data fetch error:', err);
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   return {
     parks,
@@ -65,66 +78,76 @@ export const useParkData = () => {
     error,
     fetchParkData,
     setError,
-    setIsLoading
+    setIsLoading,
   };
-};
+}
 
-export const useFacilityData = () => {
+// 施設データ管理フック
+export function useFacilityData() {
   const [facilities, setFacilities] = useState<PetFacility[]>([]);
   const [facilitiesLoading, setFacilitiesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchFacilities = async () => {
+  const fetchFacilities = useCallback(async () => {
     try {
       setFacilitiesLoading(true);
       setError(null);
-      console.log('🏪 Fetching pet facilities...');
 
-      const { data: facilitiesData, error: facilitiesError } = await supabase
+      const { data, error: queryError } = await supabase
         .from('pet_facilities')
         .select('*')
-        .eq('status', 'approved')
-        .order('created_at', { ascending: false });
+        .eq('is_active', true)
+        .order('name');
 
-      if (facilitiesError) {
-        console.error('❌ Facilities fetch error:', facilitiesError);
-        throw facilitiesError;
+      if (queryError) {
+        throw queryError;
       }
 
-      console.log('✅ Found', facilitiesData?.length || 0, 'approved facilities');
+      // データの型安全性を確保
+      const facilitiesData: PetFacility[] = (data || []).map((facility: any) => ({
+        id: facility.id || '',
+        name: facility.name || '',
+        description: facility.description || '',
+        category: facility.category || 'other',
+        address: facility.address || '',
+        prefecture: facility.prefecture || '',
+        city: facility.city || '',
+        latitude: facility.latitude || 0,
+        longitude: facility.longitude || 0,
+        phone: facility.phone || '',
+        email: facility.email || '',
+        website_url: facility.website_url || '',
+        operating_hours: facility.operating_hours || '',
+        is_active: facility.is_active || false,
+        is_pet_friendly: facility.is_pet_friendly || false,
+        price_range: facility.price_range || '',
+        rating: facility.rating || 0,
+        review_count: facility.review_count || 0,
+        image_urls: Array.isArray(facility.image_urls) ? facility.image_urls : [],
+        amenities: Array.isArray(facility.amenities) ? facility.amenities : [],
+        pet_policies: facility.pet_policies || '',
+        created_at: facility.created_at || '',
+        updated_at: facility.updated_at || '',
+      }));
 
-      // 各施設の画像を取得
-      const facilitiesWithImages = await Promise.all(
-        (facilitiesData || []).map(async (facility) => {
-          const { data: images, error: imagesError } = await supabase
-            .from('facility_images')
-            .select('*')
-            .eq('facility_id', facility.id)
-            .order('is_primary', { ascending: false });
-
-          if (imagesError) {
-            console.error('Images fetch error for facility', facility.id, ':', imagesError);
-            return { ...facility, images: [] };
-          }
-
-          return { ...facility, images: images || [] };
-        })
-      );
-
-      setFacilities(facilitiesWithImages);
-    } catch (error) {
-      console.error('❌ Error fetching facilities:', error);
-      setError(error instanceof Error ? error.message : 'Failed to fetch facilities');
+      setFacilities(facilitiesData);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '施設データの取得に失敗しました';
+      setError(errorMessage);
+      if (import.meta.env.DEV) {
+        console.warn('🔥 Facility data fetch error:', err);
+      }
     } finally {
       setFacilitiesLoading(false);
     }
-  };
+  }, []);
 
   return {
     facilities,
     facilitiesLoading,
     error,
     fetchFacilities,
-    setError
+    setError,
+    setFacilitiesLoading,
   };
-}; 
+}

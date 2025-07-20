@@ -39,6 +39,7 @@ export function ProfileSettings() {
   const [success, setSuccess] = useState('');
   const [formData, setFormData] = useState({
     name: '',
+    nickname: '',
     postal_code: '',
     address: '',
     phone_number: '',
@@ -46,6 +47,7 @@ export function ProfileSettings() {
   });
   const [originalData, setOriginalData] = useState({
     name: '',
+    nickname: '',
     postal_code: '',
     address: '',
     phone_number: '',
@@ -92,6 +94,7 @@ export function ProfileSettings() {
       
       const profileData = {
         name: data.name || '',
+        nickname: data.nickname || '',
         postal_code: data.postal_code || '',
         address: data.address || '',
         phone_number: data.phone_number || '',
@@ -262,6 +265,7 @@ export function ProfileSettings() {
         .from('profiles')
         .update({
           name: formData.name,
+          nickname: formData.nickname,
           postal_code: formData.postal_code,
           address: formData.address,
           phone_number: formData.phone_number,
@@ -510,6 +514,14 @@ export function ProfileSettings() {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
+                icon={<User className="w-4 h-4 text-gray-500" />}
+              />
+
+              <Input
+                label="ニックネーム"
+                value={formData.nickname}
+                onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+                placeholder="表示名やニックネームを入力（任意）"
                 icon={<User className="w-4 h-4 text-gray-500" />}
               />
               

@@ -43,8 +43,14 @@ export function ParkCard({ park, onSelect }: ParkCardProps) {
                 申し込み
               </Button>
             </Link>
+          ) : park.status === 'approved' ? (
+            <Link to={`/parks/${park.id}/manage`} className="detail-button">
+              <Button size="sm" className="bg-blue-50 hover:bg-blue-100 text-blue-600 border-0">
+                <Edit className="w-4 h-4" />
+              </Button>
+            </Link>
           ) : (
-            <Button size="sm" className="bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 detail-button">
+            <Button size="sm" className="bg-blue-50 hover:bg-blue-100 text-blue-600 border-0 detail-button">
               <Edit className="w-4 h-4" />
             </Button>
           )}

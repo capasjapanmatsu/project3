@@ -2,6 +2,7 @@ export interface Profile {
   id: string;
   user_type: 'user' | 'owner' | 'admin';
   name: string;
+  nickname?: string;
   postal_code?: string;
   address?: string;
   phone_number?: string;
@@ -52,6 +53,7 @@ export interface DogPark {
   private_booth_price: number;
   average_rating: number;
   review_count: number;
+  is_public: boolean;
   created_at: string;
   updated_at?: string;
 }

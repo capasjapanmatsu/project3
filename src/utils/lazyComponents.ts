@@ -11,7 +11,7 @@ export const Register = lazy(() => import('../pages/Register').then(module => ({
 // User Dashboard & Profile
 export const UserDashboard = lazy(() => import('../pages/UserDashboard').then(module => ({ default: module.UserDashboard })));
 export const ProfileSettings = lazy(() => import('../pages/ProfileSettings').then(module => ({ default: module.ProfileSettings })));
-export const Dashboard = lazy(() => import('../pages/Dashboard')); // Default export
+
 
 // Dog Management (Named Exports)
 export const DogManagement = lazy(() => import('../pages/DogManagement').then(module => ({ default: module.DogManagement })));

@@ -1,34 +1,32 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Building, 
-  MapPin, 
-  Users, 
-  Star, 
-  Settings, 
-  Calendar, 
-  DollarSign, 
-  Clock, 
-  CheckCircle, 
-  AlertTriangle,
-  Edit,
-  Eye,
-  Key,
-  QrCode,
-  FileText,
-  Image as ImageIcon,
-  Wrench,
-  Plus,
-  X
+import {
+    AlertTriangle,
+    ArrowLeft,
+    Building,
+    Calendar,
+    CheckCircle,
+    Clock,
+    DollarSign,
+    Edit,
+    Eye,
+    FileText,
+    Image as ImageIcon,
+    Key,
+    MapPin,
+    Plus,
+    Settings,
+    Star,
+    Users,
+    Wrench,
+    X
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import useAuth from '../context/AuthContext';
 import { PinCodeGenerator } from '../components/PinCodeGenerator';
+import useAuth from '../context/AuthContext';
+import type { DogPark, SmartLock } from '../types';
 import { supabase } from '../utils/supabase';
-import type { DogPark, SmartLock, Dog } from '../types';
-import VaccineBadge, { getVaccineStatusFromDog } from '../components/VaccineBadge';
 
 interface MaintenanceSchedule {
   id: string;
@@ -76,9 +74,6 @@ export function ParkManagement() {
   const [smartLocks, setSmartLocks] = useState<SmartLock[]>([]);
   const [selectedLock, setSelectedLock] = useState<SmartLock | null>(null);
   const [pinPurpose, setPinPurpose] = useState<'entry' | 'exit'>('entry');
-  const [dogs, setDogs] = useState<Dog[]>([]);
-  const [selectedDogs, setSelectedDogs] = useState<string[]>([]);
-  
   // メンテナンス関連のstate
   const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>([]);
   const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
@@ -95,6 +90,7 @@ export function ParkManagement() {
   // 編集関連のstate
   const [showEditForm, setShowEditForm] = useState(false);
   const [isEditLoading, setIsEditLoading] = useState(false);
+  const [isToggleLoading, setIsToggleLoading] = useState(false);
   const [editForm, setEditForm] = useState({
     max_capacity: 0,
     facilities: {
@@ -113,8 +109,6 @@ export function ParkManagement() {
     description: ''
   });
 
-  const MAX_DOGS = 3; // 最大3頭まで選択可能
-
   useEffect(() => {
     if (!user || !parkId) {
       navigate('/owner-dashboard');
@@ -124,41 +118,7 @@ export function ParkManagement() {
     fetchParkData();
   }, [user, parkId, navigate]);
 
-  useEffect(() => {
-    const fetchDogs = async () => {
-      if (!user) return;
 
-      try {
-        const { data, error } = await supabase
-          .from('dogs')
-          .select(`
-            *,
-            vaccine_certifications (
-              id,
-              status,
-              rabies_expiry_date,
-              combo_expiry_date,
-              approved_at
-            )
-          `)
-          .eq('owner_id', user.id);
-
-        if (error) throw error;
-        
-        // ワクチン承認済みのワンちゃんのみをフィルタリング
-        const approvedDogs = (data || []).filter(dog => {
-          const vaccineStatus = getVaccineStatusFromDog(dog);
-          return vaccineStatus === 'approved';
-        });
-        
-        setDogs(approvedDogs);
-      } catch (error) {
-        console.error('Error fetching dogs:', error);
-      }
-    };
-
-    fetchDogs();
-  }, [user]);
 
   const fetchParkData = async () => {
     try {
@@ -213,18 +173,7 @@ export function ParkManagement() {
         setSelectedLock(locksData[0]);
       }
 
-      // Fetch dogs with approved vaccine certifications
-      const { data: dogsData, error: dogsError } = await supabase
-        .from('dogs')
-        .select(`
-          *,
-          vaccine_certifications!inner(*)
-        `)
-        .eq('owner_id', user?.id)
-        .eq('vaccine_certifications.status', 'approved');
-      
-      if (dogsError) throw dogsError;
-      setDogs(dogsData || []);
+
       
       // Fetch maintenance schedules
       await fetchMaintenanceSchedules();
@@ -402,23 +351,7 @@ export function ParkManagement() {
     }
   };
 
-  // 犬選択の処理
-  const handleDogSelection = (dogId: string) => {
-    setSelectedDogs(prev => {
-      if (prev.includes(dogId)) {
-        // 既に選択されている場合は削除
-        return prev.filter(id => id !== dogId);
-      } else {
-        // 新しく選択する場合
-        if (prev.length >= MAX_DOGS) {
-          setError(`最大${MAX_DOGS}頭まで選択可能です。`);
-          return prev;
-        }
-        setError(''); // エラーをクリア
-        return [...prev, dogId];
-      }
-    });
-  };
+
 
   // PINコード生成成功時の処理
   const handlePinSuccess = (pin: string) => {
@@ -440,18 +373,7 @@ export function ParkManagement() {
     }, 5000);
   };
 
-  // 犬の性別に応じた敬称を取得する関数
-  const getDogHonorific = (gender: string) => {
-    return gender === 'オス' ? 'くん' : 'ちゃん';
-  };
 
-  // 選択された犬の名前を取得
-  const getSelectedDogNames = () => {
-    return selectedDogs.map(dogId => {
-      const dog = dogs.find(d => d.id === dogId);
-      return dog ? `${dog.name}${getDogHonorific(dog.gender)}` : '';
-    }).filter(name => name).join('、');
-  };
 
   const formatMaintenanceDate = (dateString: string | null) => {
     if (!dateString) return '未設定';
@@ -463,6 +385,40 @@ export function ParkManagement() {
       minute: '2-digit',
       timeZone: 'Asia/Tokyo'
     });
+  };
+
+  // 公開状態をトグルする関数
+  const handlePublicToggle = async () => {
+    if (!park) return;
+    
+    setIsToggleLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const newIsPublic = !park.is_public;
+      
+      const { error: updateError } = await supabase
+        .from('dog_parks')
+        .update({ is_public: newIsPublic })
+        .eq('id', park.id);
+
+      if (updateError) throw updateError;
+
+      // ローカルのparkデータを更新
+      setPark(prev => prev ? { ...prev, is_public: newIsPublic } : null);
+      
+      setSuccess(
+        newIsPublic 
+          ? 'ドッグランを公開状態にしました。一般リストに表示されます。' 
+          : 'ドッグランを非公開状態にしました。一般リストに表示されません。'
+      );
+    } catch (error) {
+      console.error('Error toggling public status:', error);
+      setError('公開状態の変更に失敗しました。');
+    } finally {
+      setIsToggleLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -496,28 +452,64 @@ export function ParkManagement() {
         </Link>
       </div>
 
-      <div className="flex justify-between items-center">
+      <div className="space-y-4">
+        {/* ドッグラン名 */}
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2 flex items-center">
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center">
             <Building className="w-8 h-8 text-blue-600 mr-3" />
-            {park.name}の管理
+            {park.name}
           </h1>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 mt-2">
             <MapPin className="w-4 h-4 text-gray-500" />
             <p className="text-gray-600">{park.address}</p>
           </div>
         </div>
-        <div className="flex space-x-3">
-          <Link to={`/parks/${park.id}`}>
-            <Button variant="secondary">
-              <Eye className="w-4 h-4 mr-2" />
-              公開ページを見る
+
+        {/* 公開状況とボタン */}
+        <div className="flex justify-between items-start">
+          <div>
+            {park.status === 'approved' && (
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-gray-600">公開状況:</div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handlePublicToggle}
+                    disabled={isToggleLoading}
+                    className={`
+                      relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                      ${park.is_public ? 'bg-blue-600' : 'bg-gray-200'}
+                      ${isToggleLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                    `}
+                    title={park.is_public ? '公開中（クリックで非公開）' : '非公開（クリックで公開）'}
+                  >
+                    <span className="sr-only">公開状態を切り替える</span>
+                    <span
+                      className={`
+                        inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                        ${park.is_public ? 'translate-x-6' : 'translate-x-1'}
+                      `}
+                    />
+                  </button>
+                  <span className="text-sm font-medium text-gray-700">
+                    {park.is_public ? '公開中' : '非公開'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex space-x-3">
+            <Link to={`/parks/${park.id}`}>
+              <Button variant="secondary" className="min-w-[100px]">
+                <Eye className="w-4 h-4 mr-2" />
+                公開ページ
+              </Button>
+            </Link>
+            <Button onClick={() => setShowEditForm(true)} className="min-w-[100px]">
+              <Edit className="w-4 h-4 mr-2" />
+              設定編集
             </Button>
-          </Link>
-          <Button onClick={() => setShowEditForm(true)}>
-            <Edit className="w-4 h-4 mr-2" />
-            設定を編集
-          </Button>
+          </div>
         </div>
       </div>
 
@@ -857,7 +849,7 @@ export function ParkManagement() {
                     <li>PINコードは5分間有効です</li>
                     <li>入場・退場それぞれでPINコードが必要です</li>
                     <li>スタッフと共有することもできます</li>
-                    <li>入場する犬を選択してください</li>
+                    <li>管理用途なので決済は不要です</li>
                   </ul>
                 </div>
               </div>
@@ -912,103 +904,18 @@ export function ParkManagement() {
               </div>
             )}
 
-            {/* 犬選択 */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                入場するワンちゃんを選択（最大{MAX_DOGS}頭）
-              </label>
-              
-              {dogs.length === 0 ? (
-                <div className="p-4 bg-yellow-50 rounded-lg">
-                  <p className="text-yellow-800">
-                    ワクチン接種証明書が承認されたワンちゃんがいません。
-                    <Link to="/register-dog" className="text-blue-600 hover:underline ml-1">
-                      ワンちゃんを登録する
-                    </Link>
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {dogs.map((dog) => {
-                    const isSelected = selectedDogs.includes(dog.id);
-                    const isDisabled = !isSelected && selectedDogs.length >= MAX_DOGS;
-                    
-                    return (
-                      <div
-                        key={dog.id}
-                        className={`p-4 border-2 rounded-lg cursor-pointer transition-colors relative ${
-                          isSelected
-                            ? 'border-green-500 bg-green-50'
-                            : isDisabled
-                            ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                        onClick={() => !isDisabled && handleDogSelection(dog.id)}
-                      >
-                        {isSelected && (
-                          <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center">
-                            <CheckCircle className="w-4 h-4" />
-                          </div>
-                        )}
-                        
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
-                            {dog.image_url ? (
-                              <img 
-                                src={dog.image_url} 
-                                alt={dog.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-6 h-6 text-gray-500">🐾</div>
-                            )}
-                          </div>
-                          <div>
-                            <div className="flex items-center space-x-2 mb-1">
-                              <h3 className="font-semibold">{dog.name}{getDogHonorific(dog.gender)}</h3>
-                              <VaccineBadge 
-                                status={getVaccineStatusFromDog(dog)} 
-                                size="sm" 
-                              />
-                            </div>
-                            <p className="text-sm text-gray-600">{dog.breed} • {dog.gender}</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              
-              {selectedDogs.length > 0 && (
-                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <h4 className="font-medium text-green-900 mb-1">選択中のワンちゃん</h4>
-                  <p className="text-sm text-green-800">{getSelectedDogNames()}</p>
-                  <p className="text-xs text-green-700 mt-1">
-                    {selectedDogs.length}頭が同時入場できます
-                  </p>
-                </div>
-              )}
-            </div>
+
             
             {/* PINコードジェネレーター */}
             {selectedLock ? (
               <div className="mt-6">
-                {selectedDogs.length > 0 ? (
-                  <PinCodeGenerator
-                    lockId={selectedLock.lock_id}
-                    parkName={park.name}
-                    purpose={pinPurpose}
-                    onSuccess={handlePinSuccess}
-                    onError={handlePinError}
-                  />
-                ) : (
-                  <div className="p-4 bg-yellow-50 rounded-lg text-center">
-                    <AlertTriangle className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
-                    <p className="text-yellow-800 font-medium">ワンちゃんを1頭以上選択してください</p>
-                    <p className="text-sm text-yellow-700 mt-1">PINコードを発行するには、入場するワンちゃんを選択する必要があります</p>
-                  </div>
-                )}
+                <PinCodeGenerator
+                  lockId={selectedLock.lock_id}
+                  parkName={park.name}
+                  purpose={pinPurpose}
+                  onSuccess={handlePinSuccess}
+                  onError={handlePinError}
+                />
               </div>
             ) : (
               <div className="text-center py-8">

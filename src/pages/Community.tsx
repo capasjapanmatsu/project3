@@ -1,21 +1,21 @@
 import {
-    AlertTriangle,
-    Bell,
-    Calendar,
-    CheckCircle,
-    ChevronRight,
-    Filter,
-    Heart,
-    Key,
-    MapPin,
-    MessageSquare,
-    PawPrint,
-    Send,
-    Share,
-    UserCheck,
-    UserPlus,
-    Users,
-    X
+  AlertTriangle,
+  Bell,
+  Calendar,
+  CheckCircle,
+  ChevronRight,
+  Filter,
+  Heart,
+  Key,
+  MapPin,
+  MessageSquare,
+  PawPrint,
+  Send,
+  Share,
+  UserCheck,
+  UserPlus,
+  Users,
+  X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -24,7 +24,6 @@ import Card from '../components/Card';
 import { NearbyDogs } from '../components/NearbyDogs';
 import useAuth from '../context/AuthContext';
 import type { Dog, DogEncounter, FriendRequest, Friendship, Message, Notification } from '../types';
-import { log, parallelSupabaseQueries, safeSupabaseQuery } from '../utils/helpers';
 import { supabase } from '../utils/supabase';
 
 export function Community() {
@@ -96,117 +95,149 @@ export function Community() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      log('info', 'コミュニティデータ取得開始');
-      
-      const results = await parallelSupabaseQueries({
-        friendRequests: () => safeSupabaseQuery(() =>
-          supabase
-            .from('friend_requests')
-            .select(`
-              *,
-              requester:profiles!friend_requests_requester_id_fkey(*)
-            `)
-            .eq('requested_id', user?.id)
-            .eq('status', 'pending')
-            .order('created_at', { ascending: false })
-        ),
-        friends: () => safeSupabaseQuery(() =>
-          supabase.rpc('get_friends_with_dogs', { p_user_id: user?.id })
-        ),
-        notifications: () => safeSupabaseQuery(() =>
-          supabase
-            .from('notifications')
-            .select('*')
-            .eq('user_id', user?.id)
-            .order('created_at', { ascending: false })
-            .limit(20)
-        ),
-        messages: () => safeSupabaseQuery(() =>
-          supabase
-            .from('messages')
-            .select(`
-              *,
-              sender:profiles!messages_sender_id_fkey(*),
-              receiver:profiles!messages_receiver_id_fkey(*)
-            `)
-            .or(`sender_id.eq.${user?.id},receiver_id.eq.${user?.id}`)
-            .order('created_at', { ascending: false })
-            .limit(50)
-        ),
-        dogEncounters: () => safeSupabaseQuery(() =>
-          supabase
-            .from('dog_encounters')
-            .select(`
-              *,
-              encountered_dog:dogs!dog_encounters_encountered_dog_id_fkey(
-                *,
-                owner:profiles!dogs_owner_id_fkey(*)
-              )
-            `)
-            .eq('user_id', user?.id)
-            .order('encounter_date', { ascending: false })
-            .limit(10)
-        ),
-        userDogs: () => safeSupabaseQuery(() =>
-          supabase
-            .from('dogs')
-            .select('*')
-            .eq('owner_id', user?.id)
-        ),
-        blacklistedDogs: () => safeSupabaseQuery(() =>
-          supabase
-            .from('dog_blacklist')
-            .select(`
-              *,
-              blacklisted_dog:dogs!dog_blacklist_dog_id_fkey(
-                *,
-                owner:profiles!dogs_owner_id_fkey(*)
-              )
-            `)
-            .eq('user_id', user?.id)
-            .order('created_at', { ascending: false })
-        )
-      });
-
-      // 結果を設定
-      setFriendRequests(results.friendRequests || []);
-      setFriends(results.friends || []);
-      setNotifications(results.notifications || []);
-      setMessages(results.messages || []);
-      setDogEncounters(results.dogEncounters || []);
-      setUserDogs(results.userDogs || []);
-      setBlacklistedDogs(results.blacklistedDogs || []);
-      
-      log('info', 'コミュニティデータ取得完了');
+      await Promise.all([
+        fetchFriendRequests(),
+        fetchFriends(),
+        fetchNotifications(),
+        fetchMessages(),
+        fetchDogEncounters(),
+        fetchUserDogs(),
+        fetchBlacklistedDogs()
+      ]);
     } catch (error) {
-      log('error', 'コミュニティデータ取得エラー', { error });
+      console.error('Error fetching data:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const fetchFriendRequests = async () => {
+    const { data, error } = await supabase
+      .from('friend_requests')
+      .select(`
+        *,
+        requester:profiles!friend_requests_requester_id_fkey(*)
+      `)
+      .eq('requested_id', user?.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    setFriendRequests(data || []);
+  };
+
+  const fetchFriends = async () => {
+    const { data, error } = await supabase
+      .rpc('get_friends_with_dogs', {
+        p_user_id: user?.id
+      });
+    
+    if (error) throw error;
+    setFriends(data || []);
+  };
+
+  const fetchNotifications = async () => {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user?.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    
+    if (error) throw error;
+    setNotifications(data || []);
+    
+    // 未読の通知を読み込み済みにする
+    const unreadNotifications = data?.filter(notification => !notification.read) || [];
+    if (unreadNotifications.length > 0) {
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .in('id', unreadNotifications.map(n => n.id));
+    }
+  };
+
+  const fetchMessages = async () => {
+    const { data, error } = await supabase
+      .from('latest_messages')
+      .select(`
+        *,
+        sender:profiles!messages_sender_id_fkey(*)
+      `)
+      .or(`sender_id.eq.${user?.id},receiver_id.eq.${user?.id}`)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    setMessages(data || []);
+  };
+
+  const fetchDogEncounters = async () => {
+    const { data, error } = await supabase
+      .from('dog_encounters')
+      .select(`
+        *,
+        dog1:dogs!dog_encounters_dog1_id_fkey(*),
+        dog2:dogs!dog_encounters_dog2_id_fkey(*),
+        park:dog_parks(*)
+      `)
+      .order('encounter_date', { ascending: false })
+      .limit(10);
+    
+    if (error) throw error;
+    setDogEncounters(data || []);
+  };
+
+  const fetchUserDogs = async () => {
+    const { data, error } = await supabase
+      .from('dogs')
+      .select('*')
+      .eq('owner_id', user?.id);
+    
+    if (error) throw error;
+    setUserDogs(data || []);
+  };
+
+  const fetchBlacklistedDogs = async () => {
+    const { data, error } = await supabase
+      .from('dog_blacklist')
+      .select(`
+        *,
+        blacklisted_dog:dogs!dog_blacklist_dog_id_fkey(
+          *,
+          owner:profiles!dogs_owner_id_fkey(*)
+        )
+      `)
+      .eq('user_id', user?.id)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    setBlacklistedDogs(data || []);
+  };
 
   const handleFriendRequest = async (requestId: string, accept: boolean) => {
     try {
-      const result = await safeSupabaseQuery(() =>
-        supabase
-          .from('friend_requests')
-          .update({
-            status: accept ? 'accepted' : 'rejected',
-            responded_at: new Date().toISOString()
-          })
-          .eq('id', requestId)
-      );
+      const { error } = await supabase
+        .from('friend_requests')
+        .update({
+          status: accept ? 'accepted' : 'rejected',
+          responded_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
       
-      if (result.error) throw result.error;
+      if (error) throw error;
       
-      // データを再取得
-      await fetchData();
+      // 友達リクエスト一覧を更新
+      await fetchFriendRequests();
+      
+      // 友達一覧を更新（承認した場合）
+      if (accept) {
+        await fetchFriends();
+      }
       
       setSuccess(accept ? '友達リクエストを承認しました' : '友達リクエストを拒否しました');
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      log('error', 'Error handling friend request', { error, requestId, accept });
+      console.error('Error handling friend request:', error);
       setError('リクエストの処理に失敗しました');
       setTimeout(() => setError(''), 3000);
     }
@@ -219,26 +250,24 @@ export function Community() {
     setIsSendingMessage(true);
     
     try {
-      const result = await safeSupabaseQuery(() =>
-        supabase
-          .from('messages')
-          .insert({
-            sender_id: user?.id,
-            receiver_id: selectedFriend.friend_id,
-            content: messageText.trim(),
-            read: false
-          })
-      );
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: user?.id,
+          receiver_id: selectedFriend.friend_id,
+          content: messageText.trim(),
+          read: false
+        });
       
-      if (result.error) throw result.error;
+      if (error) throw error;
       
       // メッセージ一覧を更新
-      await fetchData();
+      await fetchMessages();
       
       // 入力フィールドをクリア
       setMessageText('');
     } catch (error) {
-      log('error', 'Error sending message', { error, friendId: selectedFriend?.friend_id });
+      console.error('Error sending message:', error);
       setError('メッセージの送信に失敗しました');
       setTimeout(() => setError(''), 3000);
     } finally {
@@ -248,14 +277,12 @@ export function Community() {
 
   const markNotificationAsRead = async (notificationId: string) => {
     try {
-      const result = await safeSupabaseQuery(() =>
-        supabase
-          .from('notifications')
-          .update({ read: true })
-          .eq('id', notificationId)
-      );
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', notificationId);
       
-      if (result.error) throw result.error;
+      if (error) throw error;
       
       // 通知一覧を更新
       setNotifications(prev => 
@@ -266,7 +293,7 @@ export function Community() {
         )
       );
     } catch (error) {
-      log('error', 'Error marking notification as read', { error, notificationId });
+      console.error('Error marking notification as read:', error);
     }
   };
 
@@ -306,22 +333,20 @@ export function Community() {
 
     const sendFriendRequest = async (targetUserId: string, dogName: string) => {
     try {
-      const result = await safeSupabaseQuery(() =>
-        supabase
-          .from('friend_requests')
-          .insert({
-            requester_id: user?.id,
-            requested_id: targetUserId,
-            message: `ドッグランでお会いした際は、よろしくお願いします！`
-          })
-      );
+      const { error } = await supabase
+        .from('friend_requests')
+        .insert({
+          requester_id: user?.id,
+          requested_id: targetUserId,
+          message: `ドッグランでお会いした際は、よろしくお願いします！`
+        });
 
-      if (result.error) throw result.error;
+      if (error) throw error;
 
       setSuccess('友達申請を送信しました');
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      log('error', 'Error sending friend request', { error, targetUserId, dogName });
+      console.error('Error sending friend request:', error);
       setError('友達申請の送信に失敗しました');
       setTimeout(() => setError(''), 3000);
     }
@@ -329,24 +354,22 @@ export function Community() {
 
   const addToBlacklist = async (dogId: string, reason: string) => {
     try {
-      const result = await safeSupabaseQuery(() =>
-        supabase
-          .from('dog_blacklist')
-          .insert({
-            user_id: user?.id,
-            dog_id: dogId,
-            reason: reason,
-            notify_when_nearby: true
-          })
-      );
+      const { error } = await supabase
+        .from('dog_blacklist')
+        .insert({
+          user_id: user?.id,
+          dog_id: dogId,
+          reason: reason,
+          notify_when_nearby: true
+        });
       
-      if (result.error) throw result.error;
+      if (error) throw error;
       
-      await fetchData();
+      await fetchBlacklistedDogs();
       setSuccess('ブラックリストに追加しました');
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      log('error', 'Error adding to blacklist', { error, dogId, reason });
+      console.error('Error adding to blacklist:', error);
       setError('ブラックリストへの追加に失敗しました');
       setTimeout(() => setError(''), 3000);
     }
@@ -354,20 +377,18 @@ export function Community() {
 
   const removeFromBlacklist = async (blacklistId: string) => {
     try {
-      const result = await safeSupabaseQuery(() =>
-        supabase
-          .from('dog_blacklist')
-          .delete()
-          .eq('id', blacklistId)
-      );
+      const { error } = await supabase
+        .from('dog_blacklist')
+        .delete()
+        .eq('id', blacklistId);
       
-      if (result.error) throw result.error;
+      if (error) throw error;
       
-      await fetchData();
+      await fetchBlacklistedDogs();
       setSuccess('ブラックリストから削除しました');
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      log('error', 'Error removing from blacklist', { error, blacklistId });
+      console.error('Error removing from blacklist:', error);
       setError('ブラックリストからの削除に失敗しました');
       setTimeout(() => setError(''), 3000);
     }
@@ -420,29 +441,29 @@ export function Community() {
         {/* メインコンテンツ */}
         <div className="lg:col-span-2">
           {/* タブナビゲーション */}
-          <div className="sticky top-0 z-20 bg-white border-b mb-6 overflow-x-auto pb-2">
-            <div className="flex space-x-1">
+          <div className="bg-white border-b mb-6 -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
             <button
-              className={`px-4 py-2 font-medium relative whitespace-nowrap ${
+              className={`px-2 py-3 font-medium relative flex flex-col items-center space-y-1 rounded-lg transition-colors ${
                 activeTab === 'friends'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'text-blue-600 bg-blue-50'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
               onClick={() => setActiveTab('friends')}
             >
-              <Users className="w-5 h-5 inline mr-1" />
-              友達
+              <Users className="w-6 h-6" />
+              <span className="text-xs">友達</span>
             </button>
             <button
-              className={`px-4 py-2 font-medium relative whitespace-nowrap ${
+              className={`px-2 py-3 font-medium relative flex flex-col items-center space-y-1 rounded-lg transition-colors ${
                 activeTab === 'requests'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'text-blue-600 bg-blue-50'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
               onClick={() => setActiveTab('requests')}
             >
-              <UserPlus className="w-5 h-5 inline mr-1" />
-              リクエスト
+              <UserPlus className="w-6 h-6" />
+              <span className="text-xs">リクエスト</span>
               {friendRequests.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   {friendRequests.length}
@@ -450,15 +471,15 @@ export function Community() {
               )}
             </button>
             <button
-              className={`px-4 py-2 font-medium relative whitespace-nowrap ${
+              className={`px-2 py-3 font-medium relative flex flex-col items-center space-y-1 rounded-lg transition-colors ${
                 activeTab === 'notifications'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'text-blue-600 bg-blue-50'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
               onClick={() => setActiveTab('notifications')}
             >
-              <Bell className="w-5 h-5 inline mr-1" />
-              通知
+              <Bell className="w-6 h-6" />
+              <span className="text-xs">通知</span>
               {notifications.filter(n => !n.read).length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   {notifications.filter(n => !n.read).length}
@@ -466,15 +487,15 @@ export function Community() {
               )}
             </button>
             <button
-              className={`px-4 py-2 font-medium relative whitespace-nowrap ${
+              className={`px-2 py-3 font-medium relative flex flex-col items-center space-y-1 rounded-lg transition-colors ${
                 activeTab === 'messages'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'text-blue-600 bg-blue-50'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
               onClick={() => setActiveTab('messages')}
             >
-              <MessageSquare className="w-5 h-5 inline mr-1" />
-              メッセージ
+              <MessageSquare className="w-6 h-6" />
+              <span className="text-xs">メッセージ</span>
               {messages.filter(m => !m.read && m.receiver_id === user?.id).length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   {messages.filter(m => !m.read && m.receiver_id === user?.id).length}
@@ -482,26 +503,26 @@ export function Community() {
               )}
             </button>
             <button
-              className={`px-4 py-2 font-medium relative whitespace-nowrap ${
+              className={`px-2 py-3 font-medium relative flex flex-col items-center space-y-1 rounded-lg transition-colors ${
                 activeTab === 'nearby'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'text-blue-600 bg-blue-50'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
               onClick={() => setActiveTab('nearby')}
             >
-              <MapPin className="w-5 h-5 inline mr-1" />
-              近くのワンちゃん
+              <MapPin className="w-6 h-6" />
+              <span className="text-xs">近くの子</span>
             </button>
             <button
-              className={`px-4 py-2 font-medium relative whitespace-nowrap ${
+              className={`px-2 py-3 font-medium relative flex flex-col items-center space-y-1 rounded-lg transition-colors ${
                 activeTab === 'blacklist'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'text-blue-600 bg-blue-50'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
               onClick={() => setActiveTab('blacklist')}
             >
-              <AlertTriangle className="w-5 h-5 inline mr-1" />
-              ブラックリスト
+              <AlertTriangle className="w-6 h-6" />
+              <span className="text-xs">ブラックリスト</span>
               {blacklistedDogs.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   {blacklistedDogs.length}
