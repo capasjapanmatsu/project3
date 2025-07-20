@@ -32,6 +32,9 @@ export function DogCard({ dog, onEdit }: DogCardProps) {
         <div>
           <h3 className="font-semibold">{dog.name}{honorific}</h3>
           <p className="text-sm text-gray-600">{dog.breed} • {dog.gender}</p>
+          {dog.microchip_number && (
+            <p className="text-xs text-gray-500">マイクロチップ: {dog.microchip_number}</p>
+          )}
           <div className="flex items-center space-x-2 mt-1">
             <VaccineBadge status={vaccineStatus} size="sm" />
           </div>
