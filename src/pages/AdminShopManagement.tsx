@@ -46,8 +46,8 @@ export function AdminShopManagement() {
   const [isUpdating, setIsUpdating] = useState(false);
   
   // 画像アップロード用のstate
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   
   const [orderFormData, setOrderFormData] = useState({
@@ -129,7 +129,9 @@ export function AdminShopManagement() {
       status: order.status,
       tracking_number: order.tracking_number || '',
       shipping_carrier: order.shipping_carrier || '',
-      estimated_delivery_date: order.estimated_delivery_date ? new Date(order.estimated_delivery_date).toISOString().split('T')[0] : '',
+      estimated_delivery_date: order.estimated_delivery_date && typeof order.estimated_delivery_date === 'string' 
+        ? new Date(order.estimated_delivery_date).toISOString().split('T')[0] 
+        : '',
       notes: order.notes || ''
     });
   };
@@ -269,27 +271,20 @@ export function AdminShopManagement() {
       // 画像アップロード処理
       let imageUrl = productFormData.image_url; // デフォルトはフォームのURL
       
-      if (selectedFile) {
-        // ファイルが選択されている場合、Supabaseストレージにアップロード
-        const fileName = `${Date.now()}-${selectedFile.name}`;
-        const { data, error: uploadError } = await supabase.storage
-          .from('product_images')
-          .upload(fileName, selectedFile, {
-            contentType: selectedFile.type,
-            upsert: false,
+      // 複数画像がある場合は1枚目を使用（将来的に複数画像対応予定）
+      if (selectedFiles.length > 0 && selectedFiles[0]) {
+        // 一時的にBase64データURLを使用（Supabaseストレージ設定が完了するまで）
+        try {
+          const reader = new FileReader();
+          imageUrl = await new Promise<string>((resolve) => {
+            reader.onload = (e) => {
+              resolve(e.target?.result as string || productFormData.image_url);
+            };
+            reader.readAsDataURL(selectedFiles[0] as File);
           });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        // 公開URLを取得
-        const { data: publicUrlData } = supabase.storage
-          .from('product_images')
-          .getPublicUrl(fileName);
-
-        if (publicUrlData && publicUrlData.publicUrl) {
-          imageUrl = publicUrlData.publicUrl;
+        } catch (error) {
+          console.error('画像読み込みエラー:', error);
+          setError('画像の処理中にエラーが発生しました');
         }
       }
 
@@ -347,8 +342,8 @@ export function AdminShopManagement() {
       
       // モーダルを閉じる
       setShowProductModal(false);
-      setSelectedFile(null); // 画像ファイルをクリア
-      setImagePreview(''); // 画像プレビューをクリア
+      setSelectedFiles([]); // 画像ファイルをクリア
+      setImagePreviews([]); // 画像プレビューをクリア
       
       // 3秒後に成功メッセージを消す
       setTimeout(() => {
@@ -362,43 +357,102 @@ export function AdminShopManagement() {
     }
   };
 
-  // 画像ファイル選択処理
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // ファイルサイズチェック (5MB制限)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('ファイルサイズは5MB以下にしてください');
-        return;
-      }
+  // 画像圧縮・リサイズ関数
+  const compressImage = (file: File, maxWidth: number = 800, maxHeight: number = 600, quality: number = 0.8): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
       
-      // ファイル形式チェック
-      if (!file.type.startsWith('image/')) {
-        setError('画像ファイルを選択してください');
-        return;
-      }
-      
-      setSelectedFile(file);
-      
-      // プレビュー用のURLを作成
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          setImagePreview(e.target.result as string);
+      img.onload = () => {
+        let { width, height } = img;
+        
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
         }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          }
+        }, 'image/jpeg', quality);
       };
-      reader.readAsDataURL(file);
       
-      setError(''); // エラーをクリア
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  // 複数画像ファイル選択処理
+  const handleMultipleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    
+    if (files.length === 0) return;
+    
+    if (selectedFiles.length + files.length > 10) {
+      setError('画像は最大10枚まで選択できます');
+      return;
+    }
+    
+    try {
+      setError('');
+      setIsUploading(true);
+      
+      const processedFiles: File[] = [];
+      const newPreviews: string[] = [];
+      
+      for (const file of files) {
+        if (file.size > 10 * 1024 * 1024) {
+          setError(`${file.name} のファイルサイズは10MB以下にしてください`);
+          continue;
+        }
+        
+        if (!file.type.startsWith('image/')) {
+          setError(`${file.name} は画像ファイルではありません`);
+          continue;
+        }
+        
+        const compressedFile = await compressImage(file);
+        processedFiles.push(compressedFile);
+        
+        const previewUrl = URL.createObjectURL(compressedFile);
+        newPreviews.push(previewUrl);
+      }
+      
+      setSelectedFiles(prev => [...prev, ...processedFiles]);
+      setImagePreviews(prev => [...prev, ...newPreviews]);
+      
+    } catch (error) {
+      console.error('画像処理エラー:', error);
+      setError('画像の処理中にエラーが発生しました');
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  // 画像ファイルをクリア
-  const clearImageFile = () => {
-    setSelectedFile(null);
-    setImagePreview('');
-    // ファイルinputをリセット
-    const fileInput = document.getElementById('product-image') as HTMLInputElement;
+  // 全画像削除
+  const clearAllImages = () => {
+    imagePreviews.forEach(url => URL.revokeObjectURL(url));
+    setSelectedFiles([]);
+    setImagePreviews([]);
+    
+    const fileInput = document.getElementById('product-images') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
     }
@@ -408,8 +462,7 @@ export function AdminShopManagement() {
   const closeProductModal = () => {
     setShowProductModal(false);
     setSelectedProduct(null);
-    setSelectedFile(null);
-    setImagePreview('');
+    clearAllImages();
     setProductFormData({
       name: '',
       description: '',
@@ -1164,16 +1217,16 @@ export function AdminShopManagement() {
                     </label>
                     
                     {/* 画像プレビュー */}
-                    {(imagePreview || productFormData.image_url) && (
+                    {(imagePreviews.length > 0 || productFormData.image_url) && (
                       <div className="mb-4 relative">
                         <img
-                          src={imagePreview || productFormData.image_url}
+                          src={imagePreviews.length > 0 ? imagePreviews[0] : productFormData.image_url}
                           alt="商品画像プレビュー"
                           className="w-full max-w-xs h-48 object-cover rounded-lg border"
                         />
                         <button
                           type="button"
-                          onClick={clearImageFile}
+                          onClick={clearAllImages}
                           className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
                         >
                           <X className="w-4 h-4" />
@@ -1185,21 +1238,22 @@ export function AdminShopManagement() {
                     <div className="flex space-x-3">
                       <div className="flex-1">
                         <input
-                          id="product-image"
+                          id="product-images"
                           type="file"
                           accept="image/*"
                           capture="environment"
-                          onChange={handleFileSelect}
+                          onChange={handleMultipleFileSelect}
                           className="hidden"
+                          multiple // 複数ファイル選択を許可
                         />
                         <Button
                           type="button"
                           variant="secondary"
-                          onClick={() => document.getElementById('product-image')?.click()}
+                          onClick={() => document.getElementById('product-images')?.click()}
                           className="w-full"
                         >
                           <Upload className="w-4 h-4 mr-2" />
-                          {selectedFile ? 'ファイルを変更' : 'ファイルを選択'}
+                          {selectedFiles.length > 0 ? 'ファイルを変更' : 'ファイルを選択'}
                         </Button>
                       </div>
                       
@@ -1209,7 +1263,7 @@ export function AdminShopManagement() {
                           type="file"
                           accept="image/*"
                           capture="user"
-                          onChange={handleFileSelect}
+                          onChange={handleMultipleFileSelect}
                           className="hidden"
                         />
                         <Button
@@ -1234,9 +1288,9 @@ export function AdminShopManagement() {
                       />
                     </div>
                     
-                    {selectedFile && (
+                    {selectedFiles.length > 0 && (
                       <p className="text-sm text-green-600 mt-2">
-                        選択されたファイル: {selectedFile.name}
+                        選択されたファイル: {selectedFiles.map(f => f.name).join(', ')}
                       </p>
                     )}
                   </div>
