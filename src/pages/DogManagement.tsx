@@ -280,6 +280,7 @@ export function DogManagement() {
         breed: dogFormData.breed,
         gender: dogFormData.gender,
         birth_date: dogFormData.birthDate,
+        microchip_number: dogFormData.microchipNumber || null, // マイクロチップNO追加
       };
 
       // 画像が変更された場合はアップロード

@@ -67,6 +67,7 @@ interface DogEditModalProps {
     breed: string;
     gender: string;
     birthDate: string;
+    microchipNumber: string; // マイクロチップNO追加
   };
   dogImagePreview: string | null;
   onClose: () => void;
@@ -77,6 +78,7 @@ interface DogEditModalProps {
     breed: string;
     gender: string;
     birthDate: string;
+    microchipNumber: string; // マイクロチップNO追加
   }) => void;
   onImageSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImageRemove: () => void;
@@ -251,6 +253,15 @@ export function DogEditModal({
                     value={dogFormData.birthDate}
                     onChange={(e) => onFormChange({ ...dogFormData, birthDate: e.target.value })}
                     required
+                  />
+                  
+                  <Input
+                    label="マイクロチップNO"
+                    type="text"
+                    value={dogFormData.microchipNumber}
+                    onChange={(e) => onFormChange({ ...dogFormData, microchipNumber: e.target.value })}
+                    placeholder="15桁の数字（任意）"
+                    maxLength={15}
                   />
                 </div>
               </div>
