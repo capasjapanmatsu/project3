@@ -42,9 +42,6 @@ export default function IdentityVerificationForm({
     onError('');
 
     try {
-      console.log('🔍 Identity upload starting...');
-      console.log('📁 User ID:', user.id);
-      console.log('📄 File details:', {
         name: identityFile.name,
         type: identityFile.type,
         size: identityFile.size,
@@ -53,10 +50,8 @@ export default function IdentityVerificationForm({
 
       // ファイル名例: userId_タイムスタンプ_元ファイル名
       const fileName = `identity_${user.id}_${Date.now()}_${identityFile.name}`;
-      console.log('📁 Upload file name:', fileName);
       
       // vaccine-certsバケットを使用（管理者画面と統一）
-      console.log('🚀 Starting storage upload...');
       const { data, error: uploadError } = await supabase.storage
         .from('vaccine-certs')
         .upload(fileName, identityFile, { upsert: true });
@@ -66,10 +61,8 @@ export default function IdentityVerificationForm({
         throw new Error(`ファイルアップロードに失敗しました: ${uploadError.message}`);
       }
 
-      console.log('✅ Storage upload success:', data);
 
       // owner_verificationsテーブルに正しい構造で保存
-      console.log('💾 Starting database save...');
       const dbData = {
         user_id: user.id,
         verification_id: data.path, // ファイルパスをverification_idとして使用
@@ -83,7 +76,6 @@ export default function IdentityVerificationForm({
         }
       };
       
-      console.log('📊 Database data:', dbData);
 
       const { error: dbError } = await supabase
         .from('owner_verifications')
@@ -94,8 +86,6 @@ export default function IdentityVerificationForm({
         throw new Error(`データベース保存に失敗しました: ${dbError.message}`);
       }
 
-      console.log('✅ Database save success');
-      console.log('🎉 Identity upload completed successfully');
 
       onNext(); // 次のステップへ
     } catch (err) {

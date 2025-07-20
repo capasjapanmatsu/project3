@@ -104,7 +104,6 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const initializeAuth = async () => {
       try {
-        console.log('🔐 Auth initialization started...');
         
         // シンプルなセッション取得
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -123,7 +122,6 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         if (session && session.user && isMounted) {
-          console.log('✅ Session found, user:', session.user.email);
           
           setSession(session);
           setUser(session.user);
@@ -137,7 +135,6 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
           });
         } else {
-          console.log('ℹ️ No active session found');
           if (isMounted) {
             setSession(null);
             setUser(null);
@@ -159,7 +156,6 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
       } finally {
         if (isMounted) {
           setLoading(false);
-          console.log('🔐 Auth initialization completed');
         }
       }
     };
@@ -169,12 +165,10 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     // セッション変更を監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔄 Auth state changed:', event, session?.user?.email || 'No user');
         
         if (!isMounted) return;
 
         if (event === 'SIGNED_IN' && session) {
-          console.log('✅ User signed in:', session.user.email);
           setSession(session);
           setUser(session.user);
           setIsAuthenticated(true);
@@ -187,7 +181,6 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
           });
         } else if (event === 'SIGNED_OUT') {
-          console.log('👋 User signed out');
           if (isMounted) {
             setSession(null);
             setUser(null);
@@ -196,7 +189,6 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
             setIsAdmin(false);
           }
         } else if (event === 'TOKEN_REFRESHED' && session) {
-          console.log('🔄 Token refreshed for:', session.user.email);
           if (isMounted) {
             setSession(session);
             setUser(session.user);

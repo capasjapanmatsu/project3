@@ -204,7 +204,6 @@ export function DogParkList() {
       try {
         setIsLoading(true);
         setError(null);
-        // console.log('🔄 Fetching dog parks...');
 
         const { data, error } = await supabase
           .from('dog_parks')
@@ -212,7 +211,6 @@ export function DogParkList() {
           .eq('status', 'approved')
           .order('created_at', { ascending: false });
 
-        // console.log('📡 Supabase response:', { data, error });
 
         if (error) {
           console.error('❌ Error fetching dog parks:', error);
@@ -223,12 +221,9 @@ export function DogParkList() {
           return;
         }
 
-        // console.log('✅ Fetched parks:', data?.length || 0, 'parks');
-        // console.log('🏞️ Parks data:', data);
 
         // 現在地からの距離でソート
         if (userLocation && data) {
-          // console.log('📍 Sorting by distance from user location:', userLocation);
           data.sort((a, b) => {
             const distA = calculateDistance(
               userLocation.lat,
@@ -247,13 +242,10 @@ export function DogParkList() {
         }
 
         setParks(data || []);
-        // console.log('🎯 Parks state updated:', data?.length || 0, 'parks');
 
         if (!data || data.length === 0) {
-          // console.log('⚠️ No parks found in database');
           setError('表示できるドッグランがありません。データベースの内容を確認してください。');
         } else {
-          // console.log('✅ Successfully loaded parks');
         }
 
         // 本日の施設貸し切り予約を取得（今後の予約）

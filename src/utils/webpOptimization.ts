@@ -117,20 +117,12 @@ export async function processImagesInDirectory(
  */
 export function displayOptimizationSummary(results: ImageOptimizationResult[]) {
   if (results.length === 0) {
-    console.warn('📷 No images were processed');
     return;
   }
 
   const totalOriginalSize = results.reduce((sum, r) => sum + r.originalSize, 0);
   const totalWebpSize = results.reduce((sum, r) => sum + r.webpSize, 0);
   const totalSavings = ((totalOriginalSize - totalWebpSize) / totalOriginalSize) * 100;
-
-  console.warn('\n📊 WebP Conversion Summary:');
-  console.warn(`   Images processed: ${results.length}`);
-  console.warn(`   Original size: ${formatBytes(totalOriginalSize)}`);
-  console.warn(`   WebP size: ${formatBytes(totalWebpSize)}`);
-  console.warn(`   Total savings: ${totalSavings.toFixed(1)}% (${formatBytes(totalOriginalSize - totalWebpSize)})`);
-}
 
 /**
  * バイト数を人間が読みやすい形式に変換

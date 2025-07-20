@@ -50,14 +50,12 @@ class PWAManager {
    */
   private async registerServiceWorker(): Promise<void> {
     try {
-      console.log('🔧 PWA: Service Worker登録中...');
       
       this.registration = await navigator.serviceWorker.register('/sw.js', {
         scope: '/',
         updateViaCache: 'none'
       });
 
-      console.log('✅ PWA: Service Worker登録成功', this.registration.scope);
 
       // Service Worker の状態を監視
       this.registration.addEventListener('updatefound', () => {
@@ -66,7 +64,6 @@ class PWAManager {
 
       // アクティブなService Worker がある場合の処理
       if (this.registration.active) {
-        console.log('🟢 PWA: Service Worker はアクティブです');
       }
 
     } catch (error) {
@@ -89,7 +86,6 @@ class PWAManager {
     const newWorker = this.registration.installing;
     if (!newWorker) return;
 
-    console.log('🔄 PWA: 新しいService Workerが見つかりました');
 
     newWorker.addEventListener('statechange', () => {
       if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
@@ -259,7 +255,6 @@ class PWAManager {
   private applyUpdate(): void {
     if (!this.registration || !this.registration.waiting) return;
 
-    console.log('🔄 PWA: アプリを更新中...');
 
     // 新しいService Worker にメッセージを送信
     this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -273,7 +268,6 @@ class PWAManager {
    */
   private setupBeforeInstallPrompt(): void {
     window.addEventListener('beforeinstallprompt', (e) => {
-      console.log('📱 PWA: インストールプロンプト利用可能');
       
       // デフォルトの表示を防ぐ
       e.preventDefault();
@@ -292,7 +286,6 @@ class PWAManager {
   private showInstallBanner(): void {
     // 既にインストール済みかチェック
     if (window.matchMedia('(display-mode: standalone)').matches) {
-      console.log('📱 PWA: 既にインストール済みです');
       return;
     }
 
@@ -492,7 +485,6 @@ class PWAManager {
     }
 
     try {
-      console.log('📱 PWA: インストールプロンプトを表示中...');
       
       // プロンプトを表示
       await this.deferredPrompt.prompt();
@@ -501,10 +493,8 @@ class PWAManager {
       const choiceResult = await this.deferredPrompt.userChoice;
       
       if (choiceResult.outcome === 'accepted') {
-        console.log('✅ PWA: ユーザーがインストールを承認しました');
         this.showNotification('アプリがインストールされました！', 'success');
       } else {
-        console.log('❌ PWA: ユーザーがインストールを拒否しました');
       }
       
       // プロンプトをクリア
@@ -527,7 +517,6 @@ class PWAManager {
   private setupInstallPrompt(): void {
     // アプリがインストールされた時の処理
     window.addEventListener('appinstalled', () => {
-      console.log('🎉 PWA: アプリがインストールされました');
       this.showNotification('ドッグパークJPがインストールされました！', 'success');
       
       // インストールバナーを削除
@@ -565,7 +554,6 @@ class PWAManager {
       const isOnline = navigator.onLine;
       
       if (isOnline) {
-        console.log('🟢 PWA: オンラインに復帰しました');
         this.showNotification('インターネット接続が復帰しました', 'success');
         
         // Service Worker の更新をチェック
@@ -573,7 +561,6 @@ class PWAManager {
           this.registration.update();
         }
       } else {
-        console.log('🔴 PWA: オフラインになりました');
         this.showNotification('オフラインモードで動作しています', 'info');
       }
       
@@ -716,7 +703,6 @@ class PWAManager {
    */
   public async clearCache(): Promise<void> {
     try {
-      console.log('🗑️ PWA: キャッシュをクリア中...');
       
       const cacheNames = await caches.keys();
       await Promise.all(cacheNames.map(name => caches.delete(name)));
@@ -726,7 +712,6 @@ class PWAManager {
         this.registration.active.postMessage({ type: 'CACHE_CLEAR' });
       }
       
-      console.log('✅ PWA: キャッシュクリア完了');
       this.showNotification('キャッシュがクリアされました', 'success');
       
     } catch (error) {
@@ -744,7 +729,6 @@ class PWAManager {
       (window as any).gtag('event', eventName, data);
     }
     
-    console.log(`📊 PWA Event: ${eventName}`, data);
   }
 
   /**
@@ -771,7 +755,6 @@ class PWAManager {
     if (!this.registration) return false;
 
     try {
-      console.log('🔄 PWA: アップデートを手動チェック中...');
       await this.registration.update();
       return true;
     } catch (error) {

@@ -50,7 +50,6 @@ export function AdminManagement() {
   useEffect(() => {
     const setupAdminUser = async () => {
       if (user?.email === 'capasjapan@gmail.com' && !isAdmin) {
-        console.log('🔧 Setting up admin user...');
         
         try {
           const result = await checkAndSetAdminUser(user.email);
@@ -72,12 +71,10 @@ export function AdminManagement() {
   // 管理者権限チェックとデータ取得
   useEffect(() => {
     if (!isAdmin) {
-      console.log('❌ Admin access denied - redirecting to home');
       navigate('/');
       return;
     }
     
-    console.log('✅ Admin access granted - fetching data');
     adminData.refetch();
   }, [isAdmin, navigate, activeTab]);
 

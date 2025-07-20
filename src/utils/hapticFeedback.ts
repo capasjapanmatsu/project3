@@ -52,7 +52,6 @@ const loadCapacitorPlugins = async () => {
       Capacitor: coreModule.Capacitor
     };
     
-    console.log('✅ Capacitor Haptics loaded successfully');
   } catch (error) {
     console.warn('⚠️ Capacitor Haptics not available, using Web API only');
     capacitorPlugins = {}; // エラー時は空オブジェクト
@@ -82,7 +81,6 @@ const isNativePlatform = async (): Promise<boolean> => {
 export const triggerHapticFeedback = async (type: HapticType): Promise<void> => {
   try {
     // デバッグログ
-    console.log(`🔄 Triggering haptic feedback: ${type}`);
     
     // Capacitorプラグインを読み込み
     const plugins = await loadCapacitorPlugins();
@@ -90,7 +88,6 @@ export const triggerHapticFeedback = async (type: HapticType): Promise<void> => 
     
     // ネイティブアプリ環境（Capacitor）でのハプティックフィードバック
     if (isNative && plugins.Haptics && plugins.ImpactStyle) {
-      console.log('📱 Using Capacitor Haptics');
       
       switch (type) {
         case 'success':
@@ -127,19 +124,16 @@ export const triggerHapticFeedback = async (type: HapticType): Promise<void> => 
           await plugins.Haptics.impact({ style: plugins.ImpactStyle.Light });
       }
       
-      console.log('✅ Capacitor haptic feedback executed');
       return;
     }
     
     // PWA/ブラウザ環境でのWeb Vibration API
     if ('vibrate' in navigator) {
-      console.log('🌐 Using Web Vibration API');
       
       const pattern = VIBRATION_PATTERNS[type];
       const success = navigator.vibrate(pattern);
       
       if (success) {
-        console.log(`✅ Web vibration executed: [${pattern.join(', ')}]ms`);
       } else {
         console.warn('⚠️ Web vibration failed');
       }
@@ -156,7 +150,6 @@ export const triggerHapticFeedback = async (type: HapticType): Promise<void> => 
  * 決済完了時の特別なハプティックフィードバック
  */
 export const triggerPaymentSuccessHaptic = async (): Promise<void> => {
-  console.log('💳 Payment success haptic feedback');
   
   try {
     const plugins = await loadCapacitorPlugins();
@@ -170,11 +163,9 @@ export const triggerPaymentSuccessHaptic = async (): Promise<void> => {
       await new Promise(resolve => setTimeout(resolve, 100));
       await plugins.Haptics.impact({ style: plugins.ImpactStyle.Heavy });
       
-      console.log('✅ Payment success haptic (native) completed');
     } else if ('vibrate' in navigator) {
       // PWA：カスタムパターン
       navigator.vibrate([100, 50, 150, 50, 200]);
-      console.log('✅ Payment success haptic (web) completed');
     }
   } catch (error) {
     console.error('❌ Payment success haptic error:', error);
@@ -185,7 +176,6 @@ export const triggerPaymentSuccessHaptic = async (): Promise<void> => {
  * PIN発行時の特別なハプティックフィードバック
  */
 export const triggerPinGenerationHaptic = async (): Promise<void> => {
-  console.log('🔑 PIN generation haptic feedback');
   
   try {
     const plugins = await loadCapacitorPlugins();
@@ -199,11 +189,9 @@ export const triggerPinGenerationHaptic = async (): Promise<void> => {
       await new Promise(resolve => setTimeout(resolve, 80));
       await plugins.Haptics.impact({ style: plugins.ImpactStyle.Medium });
       
-      console.log('✅ PIN generation haptic (native) completed');
     } else if ('vibrate' in navigator) {
       // PWA：カスタムPINパターン
       navigator.vibrate([80, 40, 80, 40, 120]);
-      console.log('✅ PIN generation haptic (web) completed');
     }
   } catch (error) {
     console.error('❌ PIN generation haptic error:', error);
@@ -283,7 +271,6 @@ export const isHapticFeedbackEnabled = (): boolean => {
 export const setHapticFeedbackEnabled = (enabled: boolean): void => {
   try {
     localStorage.setItem('haptic-feedback-enabled', enabled.toString());
-    console.log(`🔧 Haptic feedback ${enabled ? 'enabled' : 'disabled'}`);
   } catch (error) {
     console.error('❌ Failed to save haptic feedback setting:', error);
   }

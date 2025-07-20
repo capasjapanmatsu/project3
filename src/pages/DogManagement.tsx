@@ -1,13 +1,14 @@
 import { ArrowLeft, PawPrint, Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { DogCard, DogEditModal } from '../components/dashboard/DogCard';
 import useAuth from '../context/AuthContext';
 import type { Dog } from '../types';
-import { log, safeSupabaseQuery } from '../utils/helpers';
+import { log } from '../utils/helpers';
 import { supabase } from '../utils/supabase';
+import { safeSupabaseQuery } from '../utils/supabaseHelpers';
 
 export function DogManagement() {
   const { user } = useAuth();
@@ -44,13 +45,7 @@ export function DogManagement() {
   const [rabiesExpiryDate, setRabiesExpiryDate] = useState('');
   const [comboExpiryDate, setComboExpiryDate] = useState('');
 
-  useEffect(() => {
-    if (user) {
-      fetchDogs();
-    }
-  }, [user]);
-
-  const fetchDogs = async () => {
+  const fetchDogs = useCallback(async () => {
     try {
       setIsLoading(true);
       setError('');
@@ -69,14 +64,20 @@ export function DogManagement() {
         return;
       }
 
-      setDogs(result.data || []);
+      setDogs((result.data as Dog[]) || []);
     } catch (err) {
       log('error', 'Exception in fetchDogs', { error: err, userId: user?.id });
       setError('ワンちゃんの情報を取得できませんでした。');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user) {
+      void fetchDogs();
+    }
+  }, [user, fetchDogs]);
 
   const handleDogSelect = (dog: Dog) => {
     setSelectedDog(dog);
@@ -103,7 +104,7 @@ export function DogManagement() {
     setShowDogEditModal(true);
   };
 
-  const handleDogImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDogImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     log('info', '🔍 File selected:', file ? {
       name: file.name,
@@ -153,7 +154,7 @@ export function DogManagement() {
           setDogImagePreview(e.target?.result as string);
         };
         reader.readAsDataURL(file);
-      } catch (err) {
+      } catch (_err) {
         setDogUpdateError('画像の処理に失敗しました。');
       }
     }
@@ -202,7 +203,7 @@ export function DogManagement() {
       // 3. UIを更新
       setDogImageFile(null);
       setDogImagePreview(null);
-      setSelectedDog({ ...selectedDog, image_url: undefined });
+      setSelectedDog({ ...selectedDog, image_url: '' });
       
       // 4. データを再取得
       await fetchDogs();
@@ -223,7 +224,7 @@ export function DogManagement() {
     }
   };
 
-  const handleRabiesVaccineSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRabiesVaccineSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       // ファイルサイズチェック（10MB以下）
@@ -244,7 +245,7 @@ export function DogManagement() {
     }
   };
 
-  const handleComboVaccineSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleComboVaccineSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       // ファイルサイズチェック（10MB以下）
@@ -275,18 +276,18 @@ export function DogManagement() {
 
     try {
       // 基本情報の更新
-      const updateData: any = {
+      const updateData: Partial<Dog> = {
         name: dogFormData.name,
         breed: dogFormData.breed,
-        gender: dogFormData.gender,
+        gender: dogFormData.gender as 'オス' | 'メス',
         birth_date: dogFormData.birthDate,
-        microchip_number: dogFormData.microchipNumber || null, // マイクロチップNO追加
+        ...(dogFormData.microchipNumber && { microchip_number: dogFormData.microchipNumber }),
       };
 
       // 画像が変更された場合はアップロード
       if (dogImageFile) {
-        // ファイル情報をデバッグ出力
-        console.log('🔍 Uploading dog image:', {
+        // ファイル情報をログ出力
+        log('info', 'Uploading dog image', {
           name: dogImageFile.name,
           type: dogImageFile.type,
           size: dogImageFile.size,
@@ -301,11 +302,11 @@ export function DogManagement() {
         
         // 🔥 最終手段：fetch API で直接 Storage API を呼び出し
         const fileName = `${selectedDog.id}/dog-photo.jpg`;
-        console.log('📁 File path:', fileName);
-        console.log('🚀 Using direct fetch API to bypass SDK...');
+        log('info', 'File path', { fileName });
+        log('info', 'Using direct fetch API to bypass SDK');
         
         // Supabase Storage API の直接呼び出し（正しい認証トークン使用）
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
         const uploadUrl = `${supabaseUrl}/storage/v1/object/dog-images/${fileName}`;
         
         // 現在のユーザーのアクセストークンを取得
@@ -313,12 +314,11 @@ export function DogManagement() {
         if (!session?.access_token) {
           throw new Error('認証されていません。ログインしてください。');
         }
-        
-        console.log('📡 Direct upload URL:', uploadUrl);
-        console.log('🔑 Using user access token for authentication');
-        
-        console.log('🔧 Using PUT method for Supabase Storage API...');
-        console.log('📤 Upload options:', {
+         log('info', 'Direct upload URL', { uploadUrl });
+        log('info', 'Using user access token for authentication');
+
+        log('info', 'Using PUT method for Supabase Storage API');
+        log('info', 'Upload options', {
           method: 'PUT',
           contentType: dogImageFile.type,
           authorization: 'Bearer [token]',
@@ -335,17 +335,17 @@ export function DogManagement() {
           body: dogImageFile
         });
         
-        console.log('📡 Response status:', response.status);
-        console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+        log('info', 'Response status', { status: response.status });
+        log('info', 'Response headers', { headers: Object.fromEntries(response.headers.entries()) });
         
         if (!response.ok) {
           const errorText = await response.text();
-          log('error', '❌ Direct upload failed', { error: errorText });
+          log('error', 'Direct upload failed', { error: errorText });
           throw new Error(`直接アップロードに失敗しました: ${response.status} ${errorText}`);
         }
         
-        const responseData = await response.json();
-        console.log('✅ Direct upload success:', responseData);
+        const responseData: unknown = await response.json();
+        log('info', 'Direct upload success', { responseData });
 
         const { data: { publicUrl } } = supabase.storage
           .from('dog-images')
@@ -374,7 +374,7 @@ export function DogManagement() {
         const rabiesPath = `temp/${selectedDog.id}/rabies_${timestamp}.${rabiesExt}`;
         const comboPath = `temp/${selectedDog.id}/combo_${timestamp}.${comboExt}`;
 
-        console.log('🧪 Uploading vaccine certificates with direct method...');
+        log('info', 'Uploading vaccine certificates with direct method');
         
         // First, debug authentication status
         const { debugAuthStatus } = await import('../utils/authDebug');
@@ -382,68 +382,73 @@ export function DogManagement() {
         
         // Import the direct upload function and execute uploads
         const { directVaccineUpload } = await import('../utils/directVaccineUpload');
-        console.log('✅ Direct upload function imported successfully');
+        log('info', 'Direct upload function imported successfully');
         
         const [rabiesUpload, comboUpload] = await Promise.all([
           directVaccineUpload(rabiesPath, rabiesVaccineFile),
           directVaccineUpload(comboPath, comboVaccineFile),
         ]);
         
-        console.log('📊 Upload results:', { rabiesUpload, comboUpload });
+        log('info', 'Upload results', { rabiesUpload, comboUpload });
 
         if (!rabiesUpload.success || !comboUpload.success) {
-          log('error', '🚨 === VACCINE UPLOAD ERROR DETAILS ===');
+          log('error', 'VACCINE UPLOAD ERROR DETAILS');
           if (!rabiesUpload.success) {
-            log('error', '❌ Rabies upload error', { error: rabiesUpload.error });
+            log('error', 'Rabies upload error', { error: rabiesUpload.error });
           }
           if (!comboUpload.success) {
-            log('error', '❌ Combo upload error', { error: comboUpload.error });
+            log('error', 'Combo upload error', { error: comboUpload.error });
           }
           
           const errorMessage = rabiesUpload.error || comboUpload.error || 'ワクチン証明書のアップロードに失敗しました。';
           throw new Error(`ワクチン証明書のアップロードに失敗しました: ${errorMessage}`);
         }
 
-        console.log('✅ Vaccine certificates uploaded successfully');
-        console.log('📄 Rabies upload result:', rabiesUpload.url);
-        console.log('📄 Combo upload result:', comboUpload.url);
+        log('info', 'Vaccine certificates uploaded successfully');
+        log('info', 'Rabies upload result', { url: rabiesUpload.url });
+        log('info', 'Combo upload result', { url: comboUpload.url });
 
         // 公開URLを取得
         const rabiesPublicUrl = rabiesUpload.url;
         const comboPublicUrl = comboUpload.url;
         
-        console.log('🌐 Public URLs obtained:', {
+        log('info', 'Public URLs obtained', {
           rabiesPublicUrl,
           comboPublicUrl
         });
 
         // 既存のワクチン証明書を更新または新規作成
-        console.log('💾 Saving vaccine certificates to database...');
-        const { error: certUpsertError } = await supabase
-          .from('vaccine_certifications')
-          .upsert([
-            {
-              dog_id: selectedDog.id,
-              rabies_vaccine_image: rabiesPublicUrl,
-              combo_vaccine_image: comboPublicUrl,
-              rabies_expiry_date: rabiesExpiryDate,
-              combo_expiry_date: comboExpiryDate,
-              status: 'pending' // 承認待ち状態
-            },
-          ], { onConflict: 'dog_id' });
+        log('info', 'Saving vaccine certificates to database');
+        const result = await safeSupabaseQuery(() =>
+          supabase
+            .from('vaccine_certifications')
+            .upsert([
+              {
+                dog_id: selectedDog.id,
+                rabies_vaccine_image: rabiesPublicUrl,
+                combo_vaccine_image: comboPublicUrl,
+                rabies_expiry_date: rabiesExpiryDate,
+                combo_expiry_date: comboExpiryDate,
+                status: 'pending' // 承認待ち状態
+              },
+            ], { onConflict: 'dog_id' })
+        );
 
-        if (certUpsertError) {
-          log('error', '❌ Database save error', { error: certUpsertError });
+        if (result.error) {
+          log('error', 'Database save error', { error: result.error });
           
           // サーバーエラーの場合、より適切なエラーメッセージを提供
-          if (certUpsertError.message && certUpsertError.message.includes('520')) {
+          const errorMessage = result.error instanceof Error 
+            ? result.error.message 
+            : JSON.stringify(result.error);
+          if (errorMessage.includes('520')) {
             throw new Error('一時的なサーバーエラーが発生しました。ファイルのアップロードは成功しましたが、データベースへの保存に失敗しました。しばらく待ってから再度お試しください。');
           } else {
-            throw new Error(`データベースへの保存に失敗しました: ${certUpsertError.message}`);
+            throw new Error(`データベースへの保存に失敗しました: ${errorMessage}`);
           }
         }
         
-        console.log('✅ Vaccine certificates saved to database successfully');
+        log('info', 'Vaccine certificates saved to database successfully');
       }
       
       setDogUpdateSuccess('ワンちゃん情報を更新しました');
@@ -490,7 +495,7 @@ export function DogManagement() {
     setDogUpdateError('');
     
     try {
-      console.log('🗑️ Deleting dog:', dog.name, 'ID:', dog.id);
+      log('info', 'Deleting dog:', { name: dog.name, id: dog.id });
       
       // 1. ワクチン証明書を削除
       const { error: certError } = await supabase
@@ -555,7 +560,7 @@ export function DogManagement() {
         throw dogError;
       }
       
-      console.log('✅ Dog deleted successfully:', dog.name);
+      log('info', 'Dog deleted successfully', { dogName: dog.name });
       
       // データを再取得
       await fetchDogs();
@@ -666,11 +671,11 @@ export function DogManagement() {
           dogFormData={dogFormData}
           dogImagePreview={dogImagePreview}
           onClose={() => setShowDogEditModal(false)}
-          onSubmit={handleUpdateDog}
-          onDelete={handleDeleteDog}
+          onSubmit={(data) => void handleUpdateDog(data)}
+          onDelete={(dog) => void handleDeleteDog(dog)}
           onFormChange={setDogFormData}
           onImageSelect={handleDogImageSelect}
-          onImageRemove={handleDogImageRemove}
+          onImageRemove={() => void handleDogImageRemove()}
           // ワクチン証明書関連の props
           rabiesVaccineFile={rabiesVaccineFile}
           comboVaccineFile={comboVaccineFile}

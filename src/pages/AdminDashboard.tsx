@@ -1,19 +1,19 @@
 import {
-  AlertTriangle,
-  Badge,
-  BarChart4,
-  Bell,
-  Building,
-  Calendar,
-  CheckCircle,
-  DollarSign,
-  Download,
-  MapPin,
-  Settings,
-  Shield,
-  ShoppingBag,
-  TrendingUp,
-  Users
+    AlertTriangle,
+    Badge,
+    BarChart4,
+    Bell,
+    Building,
+    Calendar,
+    CheckCircle,
+    DollarSign,
+    Download,
+    MapPin,
+    Settings,
+    Shield,
+    ShoppingBag,
+    TrendingUp,
+    Users
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -113,12 +113,6 @@ export function AdminDashboard() {
         .in('status', ['pending', 'first_stage_passed', 'second_stage_waiting', 'second_stage_review', 'smart_lock_testing']);
 
       const pendingParksCount = pendingParksData?.length || 0;
-
-      console.log('📊 審査待ち件数:', {
-        pendingParks: pendingParksCount,
-        pendingFacilities: pendingFacilitiesCount,
-        pendingVaccines: typedStatsData?.pending_vaccines || 0
-      });
 
       setStats({
         totalUsers: typedStatsData?.total_users || 0,

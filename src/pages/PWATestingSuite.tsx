@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import Card from '../components/Card';
+import { AlertCircle, CheckCircle, Monitor, RefreshCw, Smartphone, WifiOff, XCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import Button from '../components/Button';
-import { CheckCircle, XCircle, AlertCircle, RefreshCw, Monitor, Smartphone, Wifi, WifiOff } from 'lucide-react';
+import Card from '../components/Card';
 
 interface PWACheckItem {
   id: string;
@@ -57,7 +57,7 @@ const PWATestingSuite: React.FC = () => {
         features: featureTests
       });
     } catch (error) {
-      console.error('テスト実行エラー:', error);
+      // テスト実行エラー
     } finally {
       setIsRunning(false);
     }

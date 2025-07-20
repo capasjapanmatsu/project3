@@ -6,9 +6,6 @@ export const directVaccineUpload = async (
   bucket: string = 'vaccine-certs'
 ): Promise<{ success: boolean; url?: string; error?: string }> => {
   try {
-    console.log('🔍 Direct vaccine upload starting...');
-    console.log('📁 File path:', filePath);
-    console.log('📄 File details:', {
       name: file.name,
       type: file.type,
       size: file.size,
@@ -51,11 +48,9 @@ export const directVaccineUpload = async (
       throw new Error(`サポートされていないMIMEタイプ: ${contentType}`);
     }
 
-    console.log('✅ Using content type:', contentType);
 
     // v2 の正しい認証トークン取得方法
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    console.log('🔑 v2 Session check:', {
       hasSession: !!session,
       hasAccessToken: !!session?.access_token,
       sessionError,
@@ -74,14 +69,11 @@ export const directVaccineUpload = async (
     }
     
     const token = session.access_token;
-    console.log('✅ Access token obtained:', token.substring(0, 20) + '...');
 
     // Supabase Storage APIのURL
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${filePath}`;
 
-    console.log('🚀 Direct upload URL:', uploadUrl);
-    console.log('🔑 Using authorization token');
 
     // v2 の正しいfetchアップロード（PUTメソッド使用）
     const response = await fetch(uploadUrl, {
@@ -95,8 +87,6 @@ export const directVaccineUpload = async (
       body: file
     });
 
-    console.log('📡 Response status:', response.status);
-    console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -115,14 +105,12 @@ export const directVaccineUpload = async (
     }
 
     const responseData = await response.json();
-    console.log('✅ Upload successful:', responseData);
 
     // 公開URLを取得
     const { data: { publicUrl } } = supabase.storage
       .from(bucket)
       .getPublicUrl(filePath);
 
-    console.log('🌐 Public URL:', publicUrl);
 
     return {
       success: true,

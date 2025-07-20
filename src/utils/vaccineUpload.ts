@@ -90,7 +90,6 @@ export const uploadVaccineImage = async (
       };
     }
 
-    console.log('✅ Vaccine image uploaded successfully:', {
       fileName,
       data
     });
@@ -120,7 +119,6 @@ export const uploadVaccineWithRetry = async (
   const retryDelay = config.retryDelay || 1000;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    console.log(`🔄 Vaccine upload attempt ${attempt}/${maxRetries}`);
     
     const result = await uploadVaccineImage(file, config);
     
@@ -265,7 +263,6 @@ export const handleVaccineUpload = async (
       return { success: false, error: `データベース更新エラー: ${dbResult.error}` };
     }
 
-    console.log('✅ Vaccine certificates uploaded and updated successfully');
     return { success: true };
 
   } catch (error) {

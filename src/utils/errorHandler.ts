@@ -220,7 +220,6 @@ export class ErrorHandler {
     // 外部サービスへの送信（例：Sentry、LogRocket等）
     private static sendToExternalService(errorLog: ErrorLog): void {
         // 実際の実装では、適切な外部サービスのAPIを使用
-        console.log('📤 Sending error to external service:', errorLog);
 
         // 例: Sentry
         // Sentry.captureException(errorLog.error, {

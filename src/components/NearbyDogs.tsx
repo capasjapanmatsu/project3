@@ -99,7 +99,6 @@ export function NearbyDogs() {
 
       // デバッグ用：現在のユーザーIDをログ出力
       if (import.meta.env.DEV) {
-        console.log('🐕 Current User ID:', user.id);
       }
 
       // 自分の犬以外の全ての犬を取得
@@ -123,9 +122,7 @@ export function NearbyDogs() {
 
       // デバッグ用：取得した犬のデータを確認
       if (import.meta.env.DEV) {
-        console.log('🐕 Found dogs count:', dogsData?.length || 0);
         if (dogsData) {
-          console.log('🐕 Dog owner IDs:', dogsData.map(d => `${d.name} (owner: ${d.owner_id})`));
           
           // 万が一自分の犬が含まれていないかチェック
           const ownDogsIncluded = dogsData.filter(d => d.owner_id === user.id);
@@ -178,12 +175,10 @@ export function NearbyDogs() {
 
       // デバッグ用：最終結果を確認
       if (import.meta.env.DEV) {
-        console.log('🐕 Final nearby dogs:', sortedDogs.length);
         const finalOwnerCheck = sortedDogs.filter(d => d.owner_id === user.id);
         if (finalOwnerCheck.length > 0) {
           console.error('❌ Own dogs still in final list!', finalOwnerCheck);
         } else {
-          console.log('✅ Own dogs successfully excluded from nearby list');
         }
       }
 

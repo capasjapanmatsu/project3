@@ -23,7 +23,6 @@ export function ImageTest() {
                 alt={`テスト画像 ${index + 1}`}
                 className="w-full h-full object-cover"
                 onLoad={() => {
-                  console.log(`✅ 画像読み込み成功: ${imageUrl}`);
                 }}
                 onError={e => {
                   console.error(`❌ 画像読み込み失敗: ${imageUrl}`);

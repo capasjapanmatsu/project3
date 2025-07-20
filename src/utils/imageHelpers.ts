@@ -30,7 +30,6 @@ export const validateAndGetImageUrl = async (imagePath: string | null): Promise<
     const isValid = await testImageUrl(fullUrl);
     
     if (isValid) {
-      console.log(`✅ Valid image found: ${fullUrl}`);
       return fullUrl;
     }
   }

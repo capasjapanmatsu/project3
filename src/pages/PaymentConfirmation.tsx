@@ -70,11 +70,9 @@ export function PaymentConfirmation() {
       if (prePaymentAuthState) {
         try {
           const authState = JSON.parse(prePaymentAuthState);
-          console.log('💳 Pre-payment auth state found:', authState);
           
           // 認証状態を確認し、必要に応じて警告
           if (!user || user.id !== authState.user_id) {
-            console.warn('⚠️ Authentication state mismatch after payment');
             
             // 決済キャンセル後に認証状態が失われた場合
             if (canceled === 'true') {

@@ -164,7 +164,6 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
         scope: '/'
       });
       
-      console.log('Service Worker 登録成功:', registration.scope);
       
       // 更新チェック
       registration.addEventListener('updatefound', () => {
@@ -198,7 +197,6 @@ async function installPWA() {
   if (deferredPrompt) {
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    console.log('インストール結果:', outcome);
     deferredPrompt = null;
   }
 }`

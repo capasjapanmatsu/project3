@@ -18,7 +18,6 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
       const registration = await navigator.serviceWorker.register('/sw.js', {
         scope: '/'
       });
-      console.log('🎉 Service Worker registered successfully:', registration.scope);
 
       // Check for service worker updates
       registration.addEventListener('updatefound', () => {
@@ -26,7 +25,6 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log('🆕 New version available');
               showUpdateNotification();
             }
           });
@@ -49,12 +47,10 @@ interface BeforeInstallPromptEvent extends Event {
 window.addEventListener('beforeinstallprompt', (e: Event) => {
   e.preventDefault();
   deferredPrompt = e as BeforeInstallPromptEvent;
-  console.log('💾 PWA installable');
   window.dispatchEvent(new Event('pwa-installable'));
 });
 
 window.addEventListener('appinstalled', () => {
-  console.log('🎉 PWA installed successfully');
   deferredPrompt = null;
 });
 
@@ -129,10 +125,8 @@ export const installPWA = async (): Promise<boolean> => {
     const choiceResult = await deferredPrompt.userChoice;
 
     if (choiceResult.outcome === 'accepted') {
-      console.log('🎉 PWA installation accepted');
       return true;
     } else {
-      console.log('❌ PWA installation declined');
       return false;
     }
   } catch (error) {
@@ -169,6 +163,5 @@ root.render(AppWrapper);
 // ===== HOT MODULE REPLACEMENT =====
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
-    console.log('🔄 HMR: Application updated');
   });
 }

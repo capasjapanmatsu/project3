@@ -1,9 +1,9 @@
 import {
-  AlertCircle,
-  Building,
-  CheckCircle,
-  Image as ImageIcon,
-  X
+    AlertCircle,
+    Building,
+    CheckCircle,
+    Image as ImageIcon,
+    X
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -242,7 +242,8 @@ export default function FacilityRegistration() {
         const imageInserts = formData.images.map((imageData, index) => ({
           facility_id: (facility as { id: string }).id,
           image_data: imageData,
-          is_primary: index === 0,
+          image_type: 'image/jpeg',
+          display_order: index,
           created_at: new Date().toISOString()
         }));
 

@@ -86,7 +86,6 @@ export function AdminReservationManagement() {
 
   // ✨ Optimized filtering with useMemo for performance
   const filteredReservations = useMemo(() => {
-    console.log(`🔍 Filtering ${reservations.length} reservations...`);
     
     let filtered = [...reservations];
 
@@ -130,7 +129,6 @@ export function AdminReservationManagement() {
       }
     });
 
-    console.log(`✅ Filtered to ${filtered.length} reservations`);
     return filtered;
   }, [reservations, deferredSearchTerm, deferredFilterStatus, deferredFilterDate, deferredSortBy, deferredSortOrder]);
 
@@ -139,7 +137,6 @@ export function AdminReservationManagement() {
     setSearchTerm(value); // Immediate update for input responsiveness
     
     startTransition(() => {
-      console.log(`🔍 Searching reservations for "${value}"`);
     });
   };
 

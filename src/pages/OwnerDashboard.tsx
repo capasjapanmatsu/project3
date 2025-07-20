@@ -26,7 +26,7 @@ export function OwnerDashboard() {
   // データ取得関数を分離
   const fetchParks = async () => {
     try {
-      console.log('Fetching parks for user:', user?.id);
+
       const { data, error } = await supabase
         .from('dog_parks')
         .select('*')
@@ -34,11 +34,11 @@ export function OwnerDashboard() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching parks:', error);
+
         throw error;
       }
 
-      console.log('Fetched parks:', data);
+
       setParks(data || []);
 
       // 仮のデータを設定（実際の実装ではデータベースから取得）
@@ -46,7 +46,7 @@ export function OwnerDashboard() {
       setTotalReservations(32);
       setTotalUsers(128);
     } catch (error) {
-      console.error('Error fetching dog parks:', error);
+
       setError('ドッグランの取得に失敗しました');
     }
   };
@@ -70,27 +70,22 @@ export function OwnerDashboard() {
   };
 
   useEffect(() => {
-    console.log('🚀 OwnerDashboard初期化開始');
 
     if (!user) {
-      console.log('❌ ユーザーが未認証、ログインページに移動');
       navigate('/login');
       return;
     }
 
-    console.log('✅ ユーザー認証済み:', user.id);
 
     const loadData = async () => {
       try {
-        console.log('📡 データ取得開始');
         setIsLoading(true);
         setError('');
 
         await fetchParks();
 
-        console.log('✅ データ取得完了');
       } catch (error) {
-        console.error('❌ 初期データ取得エラー:', error);
+
         setError('データの取得に失敗しました。ページを再読み込みしてください。');
       } finally {
         setIsLoading(false);
@@ -110,7 +105,7 @@ export function OwnerDashboard() {
           filter: `owner_id=eq.${user.id}`
         },
         (payload) => {
-          console.log('Park data changed:', payload);
+
           // データが変更されたらリフレッシュ
           fetchParks();
         }
@@ -200,60 +195,50 @@ export function OwnerDashboard() {
 
   const handleDeletePark = async (parkId: string) => {
     try {
-      console.log('🗑️ Starting park deletion for:', parkId);
       setIsDeleting(true);
       setError('');
 
       // First, check if there are any related facility images
-      console.log('📷 Checking for facility images...');
       const { data: facilityImages } = await supabase
         .from('dog_park_facility_images')
         .select('id')
         .eq('park_id', parkId);
 
-      console.log('📷 Found facility images:', facilityImages?.length || 0);
 
       // If there are facility images, delete them first
       if (facilityImages && facilityImages.length > 0) {
-        console.log('🗑️ Deleting facility images...');
         const { error: deleteImagesError } = await supabase
           .from('dog_park_facility_images')
           .delete()
           .eq('park_id', parkId);
 
         if (deleteImagesError) {
-          console.error('❌ Error deleting facility images:', deleteImagesError);
+
           throw new Error('施設画像の削除に失敗しました。');
         }
-        console.log('✅ Facility images deleted successfully');
       }
 
       // Check for review stages
-      console.log('📋 Checking for review stages...');
       const { data: reviewStages } = await supabase
         .from('dog_park_review_stages')
         .select('id')
         .eq('park_id', parkId);
 
-      console.log('📋 Found review stages:', reviewStages?.length || 0);
 
       // Delete review stages if they exist
       if (reviewStages && reviewStages.length > 0) {
-        console.log('🗑️ Deleting review stages...');
         const { error: deleteStagesError } = await supabase
           .from('dog_park_review_stages')
           .delete()
           .eq('park_id', parkId);
 
         if (deleteStagesError) {
-          console.error('❌ Error deleting review stages:', deleteStagesError);
+
           throw new Error('審査ステージの削除に失敗しました。');
         }
-        console.log('✅ Review stages deleted successfully');
       }
 
       // Now delete the park
-      console.log('🏞️ Deleting park...');
       const { error } = await supabase
         .from('dog_parks')
         .delete()
@@ -261,10 +246,9 @@ export function OwnerDashboard() {
         .eq('owner_id', user?.id); // Ensure the user owns the park
 
       if (error) {
-        console.error('❌ Error deleting park:', error);
+
         throw error;
       }
-      console.log('✅ Park deleted successfully');
 
       // Update the parks list by refetching
       await fetchParks();
@@ -276,7 +260,6 @@ export function OwnerDashboard() {
       const parkName = deletedPark?.name || 'ドッグラン';
       setSuccess(`${parkName}の申請を完全に削除しました。再度ご利用の際は新規申請が必要です。`);
 
-      console.log('🎉 Park deletion completed successfully for:', parkName);
 
       // Clear success message after 5 seconds (longer for important message)
       setTimeout(() => {
@@ -284,7 +267,7 @@ export function OwnerDashboard() {
       }, 5000);
 
     } catch (err) {
-      console.error('❌ Park deletion failed:', err);
+
       setError((err as Error).message || 'エラーが発生しました');
 
       // Clear error message after 3 seconds
@@ -292,7 +275,6 @@ export function OwnerDashboard() {
         setError('');
       }, 3000);
     } finally {
-      console.log('🔄 Setting isDeleting to false');
       setIsDeleting(false);
     }
   };
@@ -948,7 +930,6 @@ export function OwnerDashboard() {
                   checked={confirmDelete}
                   className="mt-1 rounded border-gray-300 text-red-600 focus:ring-red-500"
                   onChange={(e) => {
-                    console.log('✅ Checkbox changed to:', e.target.checked);
                     setConfirmDelete(e.target.checked);
                   }}
                 />
@@ -976,7 +957,6 @@ export function OwnerDashboard() {
                 isLoading={isDeleting}
                 disabled={!confirmDelete}
                 onClick={() => {
-                  console.log('🚨 Delete button clicked!', {
                     parkId: showConfirmDelete,
                     confirmDelete,
                     isDeleting

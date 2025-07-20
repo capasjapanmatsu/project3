@@ -1,12 +1,12 @@
+import { AlertTriangle, Loader, Lock, Mail, MapPin, Phone, Shield, User } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import Input from '../components/Input';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { supabase } from '../utils/supabase';
-import { Shield, AlertTriangle, MapPin, Phone, Mail, User, Loader, Lock, Eye, EyeOff } from 'lucide-react';
-import { lookupPostalCode, formatAddress } from '../utils/postalCodeLookup';
+import Input from '../components/Input';
+import { formatAddress, lookupPostalCode } from '../utils/postalCodeLookup';
 import { safeSetItem } from '../utils/safeStorage';
+import { supabase } from '../utils/supabase';
 
 export function Register() {
   const navigate = useNavigate();
@@ -84,7 +84,6 @@ export function Register() {
           setPostalCodeError(result.message || '住所が見つかりませんでした');
         }
       } catch (error) {
-        console.error('Error looking up postal code:', error);
         setPostalCodeError('住所の検索中にエラーが発生しました');
       } finally {
         setIsLookingUpPostalCode(false);

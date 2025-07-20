@@ -145,7 +145,6 @@ export function Checkout() {
           // 認証状態を復元を試みる
           const prePaymentAuthState = localStorage.getItem('pre_payment_auth_state');
           if (prePaymentAuthState) {
-            console.log('🔄 Attempting to restore authentication state');
             // メッセージを表示して、ログインページに遷移
             setError('セッションが切断されました。再度ログインしてください。');
             setTimeout(() => {

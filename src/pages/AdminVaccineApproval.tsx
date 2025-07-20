@@ -142,7 +142,6 @@ export default function AdminVaccineApproval() {
         admin_notes: item.admin_notes || ''
       }));
 
-      console.log('✅ ワクチン証明書申請を取得しました:', formattedApplications.length, '件');
       setApplications(formattedApplications);
       
     } catch (error) {

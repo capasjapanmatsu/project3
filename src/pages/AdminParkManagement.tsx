@@ -279,7 +279,6 @@ export function AdminParkManagement() {
       setSuccess('');
 
       // 関連するレコードを順番に削除
-      console.log('🗑️ 関連レコードを削除中...');
 
       // 1. ニュース・お知らせを削除
       try {
@@ -293,7 +292,6 @@ export function AdminParkManagement() {
           showError(`ニュースの削除に失敗しました: ${newsError.message}`);
           return;
         }
-        console.log('✅ ニュース削除完了');
       } catch (error) {
         console.error('❌ ニュース削除処理エラー:', error);
         showError('ニュース削除処理でエラーが発生しました。');
@@ -312,7 +310,6 @@ export function AdminParkManagement() {
           showError(`新規開園情報の削除に失敗しました: ${newParkOpeningsError.message}`);
           return;
         }
-        console.log('✅ 新規開園情報削除完了');
       } catch (error) {
         console.error('❌ 新規開園情報削除処理エラー:', error);
         showError('新規開園情報削除処理でエラーが発生しました。');
@@ -341,7 +338,6 @@ export function AdminParkManagement() {
             return;
           }
         }
-        console.log('✅ ロックアクセスログ削除完了');
       } catch (error) {
         console.error('❌ ロックアクセスログ削除処理エラー:', error);
         showError('ロックアクセスログ削除処理でエラーが発生しました。');
@@ -360,7 +356,6 @@ export function AdminParkManagement() {
           showError(`スマートロックの削除に失敗しました: ${smartLocksError.message}`);
           return;
         }
-        console.log('✅ スマートロック削除完了');
       } catch (error) {
         console.error('❌ スマートロック削除処理エラー:', error);
         showError('スマートロック削除処理でエラーが発生しました。');
@@ -379,7 +374,6 @@ export function AdminParkManagement() {
           showError(`エントリーステータスの削除に失敗しました: ${entryStatusError.message}`);
           return;
         }
-        console.log('✅ エントリーステータス削除完了');
       } catch (error) {
         console.error('❌ エントリーステータス削除処理エラー:', error);
         showError('エントリーステータス削除処理でエラーが発生しました。');
@@ -398,7 +392,6 @@ export function AdminParkManagement() {
           showError(`予約の削除に失敗しました: ${reservationsError.message}`);
           return;
         }
-        console.log('✅ 予約削除完了');
       } catch (error) {
         console.error('❌ 予約削除処理エラー:', error);
         showError('予約削除処理でエラーが発生しました。');
@@ -417,7 +410,6 @@ export function AdminParkManagement() {
           showError(`出会い記録の削除に失敗しました: ${encountersError.message}`);
           return;
         }
-        console.log('✅ 出会い記録削除完了');
       } catch (error) {
         console.error('❌ 出会い記録削除処理エラー:', error);
         showError('出会い記録削除処理でエラーが発生しました。');
@@ -446,7 +438,6 @@ export function AdminParkManagement() {
             return;
           }
         }
-        console.log('✅ レビュー画像削除完了');
       } catch (error) {
         console.error('❌ レビュー画像削除処理エラー:', error);
         showError('レビュー画像削除処理でエラーが発生しました。');
@@ -465,7 +456,6 @@ export function AdminParkManagement() {
           showError(`レビューの削除に失敗しました: ${reviewsError.message}`);
           return;
         }
-        console.log('✅ レビュー削除完了');
       } catch (error) {
         console.error('❌ レビュー削除処理エラー:', error);
         showError('レビュー削除処理でエラーが発生しました。');
@@ -484,7 +474,6 @@ export function AdminParkManagement() {
           showError(`施設画像の削除に失敗しました: ${imagesError.message}`);
           return;
         }
-        console.log('✅ 施設画像削除完了');
       } catch (error) {
         console.error('❌ 施設画像削除処理エラー:', error);
         showError('施設画像削除処理でエラーが発生しました。');
@@ -503,7 +492,6 @@ export function AdminParkManagement() {
           showError(`パーク画像の削除に失敗しました: ${parkImagesError.message}`);
           return;
         }
-        console.log('✅ パーク画像削除完了');
       } catch (error) {
         console.error('❌ パーク画像削除処理エラー:', error);
         showError('パーク画像削除処理でエラーが発生しました。');
@@ -522,7 +510,6 @@ export function AdminParkManagement() {
           showError(`レビューステージの削除に失敗しました: ${reviewStagesError.message}`);
           return;
         }
-        console.log('✅ レビューステージ削除完了');
       } catch (error) {
         console.error('❌ レビューステージ削除処理エラー:', error);
         showError('レビューステージ削除処理でエラーが発生しました。');
@@ -541,14 +528,12 @@ export function AdminParkManagement() {
           showError(`ドッグランの削除に失敗しました: ${deleteError.message}`);
           return;
         }
-        console.log('✅ ドッグラン本体削除完了');
       } catch (error) {
         console.error('❌ ドッグラン削除処理エラー:', error);
         showError('ドッグラン削除処理でエラーが発生しました。');
         return;
       }
 
-      console.log('✅ ドッグランと関連データの削除完了');
 
       // 成功時の処理
       showSuccess('ドッグラン申請を削除しました。');
@@ -567,7 +552,6 @@ export function AdminParkManagement() {
     const details = parkDetails || {};
 
     // デバッグログ: 申請者情報の確認
-    console.log('🔍 申請者情報のデバッグ:', {
       parkName: pendingPark.name,
       owner_name: pendingPark.owner_name,
       owner_address: pendingPark.owner_address,
@@ -624,7 +608,6 @@ export function AdminParkManagement() {
       return;
     }
 
-    console.log('✅ 管理者権限を確認しました。データ取得を開始します。');
     // fetchParks(); // 独自のfetchParksを削除し、useAdminDataフックのデータを使用
   }, [isAdmin, navigate]);
 
@@ -632,7 +615,6 @@ export function AdminParkManagement() {
   useEffect(() => {
     if (!adminData.isLoading && adminData.pendingParks.length > 0) {
       const fetchAndMergeDetails = async () => {
-        console.log('🔄 詳細情報を取得中...');
 
         // パークIDを抽出
         const parkIds = adminData.pendingParks.map(park => park.id);
@@ -651,7 +633,6 @@ export function AdminParkManagement() {
           return convertPendingParkToParkData(pendingPark, parkDetails, facilityImages);
         });
 
-        console.log('✅ 詳細情報を統合しました:', convertedParks.length, 'パーク');
         setParks(convertedParks);
         setIsLoading(false);
         separateParks();
@@ -665,7 +646,6 @@ export function AdminParkManagement() {
 
       fetchAndMergeDetails();
     } else if (!adminData.isLoading) {
-      console.log('🔍 審査中のパークが見つかりませんでした');
       setParks([]);
       setIsLoading(false);
       separateParks();
@@ -791,7 +771,6 @@ export function AdminParkManagement() {
     setPendingParks(pending);
     // 注意：ここでsetApprovedParksは使わない（承認済みは別途fetchApprovedParksで取得）
 
-    console.log('🔄 パーク分離完了:', {
       total: filteredData.length,
       pending: pending.length,
       approved: approved.length,
@@ -869,7 +848,6 @@ export function AdminParkManagement() {
       setError('');
       setSuccess('');
 
-      console.log('🔄 承認処理開始:', { parkId, currentStatus: park.status, nextStatus });
 
       // ステータス更新を実行
       const { error: updateError } = await supabase
@@ -900,10 +878,8 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
         return;
       }
 
-      console.log('✅ ステータス更新成功:', { parkId, nextStatus });
 
       // 通知を送信（一時的に無効化）
-      console.log('🔄 通知送信をスキップ（一時的に無効化）');
       /*
       try {
         const { error: notificationError } = await supabase
@@ -922,7 +898,6 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
         if (notificationError) {
           console.error('❌ 通知送信エラー:', notificationError);
         } else {
-          console.log('✅ 通知送信成功');
         }
       } catch (notificationError) {
         console.error('❌ 通知送信エラー:', notificationError);
@@ -958,14 +933,12 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
         const pending = filteredData.filter(park => applicationStatuses.includes(park.status));
         setPendingParks(pending);
 
-        console.log('🔄 リスト更新完了:', {
           totalParks: updatedParks.length,
           pendingParks: pending.length,
           updatedStatus: nextStatus
         });
       }, 100);
 
-      console.log('✅ 承認処理完了');
 
     } catch (error) {
       console.error('❌ 承認処理エラー:', error);

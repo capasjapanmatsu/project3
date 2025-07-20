@@ -2,7 +2,6 @@ import { supabase } from './supabase';
 
 export const deleteSampleDogParks = async () => {
   try {
-    console.log('🗑️ Starting comprehensive sample data deletion...');
     let deletedCount = 0;
     
     // 1. 特定のサンプルドッグラン名で削除（正しいテーブル名を使用）
@@ -25,7 +24,6 @@ export const deleteSampleDogParks = async () => {
     ];
 
     for (const parkName of sampleParkNames) {
-      console.log(`🗑️ Deleting park: ${parkName}`);
       
       // 関連する画像も先に削除
       const { data: parkData, error: parkFetchError } = await supabase
@@ -49,7 +47,6 @@ export const deleteSampleDogParks = async () => {
           if (imageDeleteError) {
             console.error(`❌ Error deleting images for park ${parkName}:`, imageDeleteError);
           } else {
-            console.log(`✅ Deleted images for park: ${parkName}`);
           }
         }
       }
@@ -66,7 +63,6 @@ export const deleteSampleDogParks = async () => {
       } else {
         const deleted = data ? data.length : 0;
         deletedCount += deleted;
-        console.log(`✅ Deleted ${deleted} park(s) named: ${parkName}`);
       }
     }
 
@@ -74,7 +70,6 @@ export const deleteSampleDogParks = async () => {
     const sampleOwnerNames = ['山田太郎', '鈴木花子', 'テストユーザー', 'サンプルユーザー'];
     
     for (const ownerName of sampleOwnerNames) {
-      console.log(`🗑️ Deleting parks by owner: ${ownerName}`);
       
       // 関連する画像も先に削除
       const { data: ownerParksData, error: ownerParksFetchError } = await supabase
@@ -98,7 +93,6 @@ export const deleteSampleDogParks = async () => {
           if (imageDeleteError) {
             console.error(`❌ Error deleting images for owner ${ownerName}:`, imageDeleteError);
           } else {
-            console.log(`✅ Deleted images for owner: ${ownerName}`);
           }
         }
       }
@@ -115,12 +109,10 @@ export const deleteSampleDogParks = async () => {
       } else {
         const deleted = data ? data.length : 0;
         deletedCount += deleted;
-        console.log(`✅ Deleted ${deleted} park(s) by owner: ${ownerName}`);
       }
     }
 
     // 3. サンプルの説明文を含むものを削除
-    console.log('🗑️ Deleting parks with sample descriptions...');
     
     // 関連する画像も先に削除
     const { data: sampleDescParksData, error: sampleDescParksFetchError } = await supabase
@@ -141,7 +133,6 @@ export const deleteSampleDogParks = async () => {
         if (imageDeleteError) {
           console.error(`❌ Error deleting images for sample description park:`, imageDeleteError);
         } else {
-          console.log(`✅ Deleted images for sample description park`);
         }
       }
     }
@@ -158,11 +149,9 @@ export const deleteSampleDogParks = async () => {
     } else {
       const deleted = sampleDescData ? sampleDescData.length : 0;
       deletedCount += deleted;
-      console.log(`✅ Deleted ${deleted} park(s) with sample descriptions`);
     }
 
     // 4. 孤立した画像を削除（park_idが存在しないもの）
-    console.log('🗑️ Deleting orphan facility images...');
     
     // 存在しないpark_idを持つ画像を削除
     const { data: allImages, error: allImagesError } = await supabase
@@ -189,7 +178,6 @@ export const deleteSampleDogParks = async () => {
           if (deleteOrphanError) {
             console.error(`❌ Error deleting orphan image ${image.id}:`, deleteOrphanError);
           } else {
-            console.log(`✅ Deleted orphan image: ${image.id}`);
           }
         }
       }
@@ -199,7 +187,6 @@ export const deleteSampleDogParks = async () => {
     const sampleUsers = ['山田太郎', '鈴木花子', 'テストユーザー', 'サンプルユーザー'];
     
     for (const userName of sampleUsers) {
-      console.log(`🗑️ Checking for sample user profile: ${userName}`);
       
       // プロフィールを削除（full_name列をチェック）
       const { data: deletedProfiles, error: profileError } = await supabase
@@ -212,12 +199,10 @@ export const deleteSampleDogParks = async () => {
         console.error(`❌ Error deleting profile for ${userName}:`, profileError);
       } else {
         const deleted = deletedProfiles ? deletedProfiles.length : 0;
-        console.log(`✅ Deleted ${deleted} profile(s) for ${userName}`);
       }
     }
 
     // 6. 関連するオーナー認証データも削除
-    console.log('🗑️ Deleting related owner verification data...');
     
     for (const userName of sampleUsers) {
       const { error: verificationError } = await supabase
@@ -228,11 +213,9 @@ export const deleteSampleDogParks = async () => {
       if (verificationError) {
         console.error(`❌ Error deleting verification for ${userName}:`, verificationError);
       } else {
-        console.log(`✅ Deleted verification data for ${userName}`);
       }
     }
 
-    console.log(`🎉 Sample data deletion completed! Total parks deleted: ${deletedCount}`);
     return { success: true, message: `サンプルデータを削除しました（${deletedCount}件のパーク）` };
   } catch (error) {
     console.error('❌ Sample data deletion failed:', error);
@@ -253,7 +236,6 @@ export const checkRemainingData = async () => {
       return;
     }
 
-    console.log('📊 Remaining dog park facilities:', parks);
     
     // 関連するプロフィールも確認
     const { data: profiles, error: profileError } = await supabase
@@ -264,7 +246,6 @@ export const checkRemainingData = async () => {
     if (profileError) {
       console.error('❌ Error checking remaining profiles:', profileError);
     } else {
-      console.log('📊 Remaining profiles:', profiles);
     }
     
     return { parks, profiles };

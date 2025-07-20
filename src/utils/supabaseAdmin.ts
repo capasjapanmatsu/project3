@@ -5,7 +5,6 @@ import { supabase } from './supabase';
  * RLSポリシーを完全に無効化
  */
 export const disableRLS = async () => {
-  console.log('🔒 Disabling RLS policies...');
   
   try {
     // vaccine_certificationsテーブルのRLS無効化
@@ -35,7 +34,6 @@ export const disableRLS = async () => {
       console.warn('⚠️ Profiles RLS disable warning:', profilesRLSError);
     }
     
-    console.log('✅ RLS policies disabled');
     return { success: true };
     
   } catch (error) {
@@ -48,7 +46,6 @@ export const disableRLS = async () => {
  * データベース権限を管理者レベルに設定
  */
 export const grantAdminAccess = async () => {
-  console.log('👑 Granting admin access...');
   
   try {
     // 管理者権限をすべてのテーブルに付与
@@ -62,7 +59,6 @@ export const grantAdminAccess = async () => {
       if (error) {
         console.warn(`⚠️ Grant privileges warning for ${table}:`, error);
       } else {
-        console.log(`✅ Admin access granted for ${table}`);
       }
     }
     
@@ -78,7 +74,6 @@ export const grantAdminAccess = async () => {
  * ストレージバケットの強制修復
  */
 export const forceFixBucket = async () => {
-  console.log('📦 Force fixing storage bucket...');
   
   try {
     // 1. バケットが存在するか確認
@@ -92,7 +87,6 @@ export const forceFixBucket = async () => {
     const vaccineBucket = buckets?.find(b => b.id === 'vaccine-certs');
     
     if (!vaccineBucket) {
-      console.log('📦 Creating vaccine-certs bucket...');
       
       // バケットを新規作成
       const { error: createError } = await supabase.storage.createBucket('vaccine-certs', {
@@ -106,9 +100,7 @@ export const forceFixBucket = async () => {
         return { success: false, error: createError.message };
       }
       
-      console.log('✅ Bucket created successfully');
     } else {
-      console.log('📦 Updating existing bucket...');
       
       // 既存バケットを更新
       const { error: updateError } = await supabase.storage.updateBucket('vaccine-certs', {
@@ -122,11 +114,9 @@ export const forceFixBucket = async () => {
         return { success: false, error: updateError.message };
       }
       
-      console.log('✅ Bucket updated successfully');
     }
     
     // 2. tempフォルダを作成
-    console.log('📁 Creating temp folder...');
     const keepFile = new File(['# Keep this folder'], '.keep', { type: 'text/plain' });
     
     const { error: uploadError } = await supabase.storage
@@ -136,7 +126,6 @@ export const forceFixBucket = async () => {
     if (uploadError) {
       console.warn('⚠️ Temp folder creation warning:', uploadError);
     } else {
-      console.log('✅ Temp folder created');
     }
     
     return { success: true };

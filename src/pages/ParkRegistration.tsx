@@ -275,34 +275,20 @@ export function ParkRegistration() {
       try {
         // 本人確認書類をアップロード
         if (formData.identityDocumentFront) {
-          console.log('🔍 Identity document upload starting...');
-          console.log('📁 User ID:', user.id);
-          console.log('📄 File details:', {
-            name: formData.identityDocumentFront.name,
-            type: formData.identityDocumentFront.type,
-            size: formData.identityDocumentFront.size,
-            lastModified: formData.identityDocumentFront.lastModified
-          });
-
           // ファイル名例: identity_userId_タイムスタンプ_元ファイル名
           const fileName = `identity_${user.id}_${Date.now()}_${formData.identityDocumentFront.name}`;
-          console.log('📁 Upload file name:', fileName);
 
           // vaccine-certsバケットを使用（管理者画面と統一）
-          console.log('🚀 Starting storage upload...');
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('vaccine-certs')
             .upload(fileName, formData.identityDocumentFront, { upsert: true });
 
           if (uploadError) {
-            console.error('❌ Storage upload error:', uploadError);
             throw new Error(`ファイルアップロードに失敗しました: ${uploadError.message}`);
           }
 
-          console.log('✅ Storage upload success:', uploadData);
 
           // owner_verificationsテーブルに本人確認書類を保存
-          console.log('💾 Starting database save...');
           const dbData = {
             user_id: user.id,
             verification_id: uploadData.path, // ファイルパスをverification_idとして使用
@@ -317,19 +303,15 @@ export function ParkRegistration() {
             }
           };
 
-          console.log('📊 Database data:', dbData);
 
           const { error: dbError } = await supabase
             .from('owner_verifications')
             .upsert(dbData, { onConflict: 'user_id' });
 
           if (dbError) {
-            console.error('❌ Database save error:', dbError);
             throw new Error(`データベース保存に失敗しました: ${dbError.message}`);
           }
 
-          console.log('✅ Database save success');
-          console.log('🎉 Identity document upload completed successfully');
         }
 
         // 基本情報入力ステップに移動
@@ -338,7 +320,6 @@ export function ParkRegistration() {
         // ページの最上部にスクロール
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch (err) {
-        console.error('❌ First stage submission failed:', err);
         const errorMessage = err instanceof Error ? err.message : '申込みに失敗しました。';
         throw new Error(errorMessage);
       } finally {
@@ -349,24 +330,19 @@ export function ParkRegistration() {
 
   const handleBasicInfoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🚀 フォーム送信開始');
     setIsLoading(true);
     clearError();
 
     try {
       await executeWithErrorHandling(async () => {
-        console.log('📡 ユーザー認証確認中...');
         // Get the current user
         const { data: { user }, error: userError } = await supabase.auth.getUser();
 
         if (userError || !user) {
-          console.error('❌ ユーザー認証エラー:', userError);
           throw new Error('ユーザー認証に失敗しました。再度ログインしてください。');
         }
 
-        console.log('✅ ユーザー認証成功:', user.id);
 
-        console.log('📝 プロフィール更新中...');
         // プロフィールのuser_typeを'owner'に更新
         const { error: profileError } = await supabase
           .from('profiles')
@@ -374,13 +350,10 @@ export function ParkRegistration() {
           .eq('id', user.id);
 
         if (profileError) {
-          console.error('❌ プロフィール更新エラー:', profileError);
           throw new Error('プロフィールの更新に失敗しました。');
         }
 
-        console.log('✅ プロフィール更新成功');
 
-        console.log('🏢 ドッグラン情報登録中...');
         const parkData = {
           owner_id: user.id,
           name: formData.name,
@@ -398,17 +371,13 @@ export function ParkRegistration() {
           status: 'pending',
         };
 
-        console.log('📋 登録データ:', parkData);
 
         const { error: insertError } = await supabase.from('dog_parks').insert([parkData]);
 
         if (insertError) {
-          console.error('❌ ドッグラン登録エラー:', insertError);
           throw insertError;
         }
 
-        console.log('✅ ドッグラン登録成功');
-        console.log('🔄 オーナーダッシュボードに移動中...');
 
         // 少し待機してから画面遷移
         setTimeout(() => {
@@ -416,7 +385,6 @@ export function ParkRegistration() {
         }, 100);
       });
     } catch (error) {
-      console.error('❌ 全体エラー:', error);
       handleError(error instanceof Error ? error : new Error('不明なエラーが発生しました。'));
     } finally {
       setIsLoading(false);

@@ -5,7 +5,6 @@ import { supabase } from './supabase';
  * 不足しているワクチン画像ファイルを修復
  */
 export const repairMissingVaccineFiles = async () => {
-  console.log('🔧 REPAIRING MISSING VACCINE FILES...');
   
   try {
     // 1. pending状態のワクチン証明書を取得
@@ -20,7 +19,6 @@ export const repairMissingVaccineFiles = async () => {
     }
     
     if (!vaccines || vaccines.length === 0) {
-      console.log('✅ No pending vaccines found');
       return { success: true, message: 'No vaccines to repair' };
     }
     
@@ -28,7 +26,6 @@ export const repairMissingVaccineFiles = async () => {
     
     // 2. 各ワクチン証明書の画像ファイルを確認・修復
     for (const vaccine of vaccines) {
-      console.log(`🔍 Checking vaccine ${vaccine.id}`);
       
       // 狂犬病ワクチン画像の修復
       if (vaccine.rabies_vaccine_image) {
@@ -51,7 +48,6 @@ export const repairMissingVaccineFiles = async () => {
       }
     }
     
-    console.log(`✅ REPAIR COMPLETED. ${repairedCount} files repaired.`);
     
     return {
       success: true,
@@ -74,7 +70,6 @@ async function repairSingleImageFile(
   vaccineId: string
 ): Promise<boolean> {
   try {
-    console.log(`🔄 Repairing ${type} file: ${fileName}`);
     
     // 1. ファイルが存在するかチェック
     const { data: existingFiles, error: listError } = await supabase.storage
@@ -82,7 +77,6 @@ async function repairSingleImageFile(
       .list('temp', { search: fileName });
     
     if (!listError && existingFiles && existingFiles.length > 0) {
-      console.log(`✅ ${type} file already exists: ${fileName}`);
       return false; // 修復不要
     }
     
@@ -102,7 +96,6 @@ async function repairSingleImageFile(
       return false;
     }
     
-    console.log(`✅ ${type} dummy file created: ${fileName}`);
     return true;
     
   } catch (error) {
@@ -146,7 +139,6 @@ function createDummyImageFile(fileName: string, type: 'rabies' | 'combo'): File 
  * 全てのワクチン証明書の画像パスを正規化
  */
 export const normalizeVaccineImagePaths = async () => {
-  console.log('🔧 NORMALIZING VACCINE IMAGE PATHS...');
   
   try {
     const { data: vaccines, error: fetchError } = await supabase
@@ -186,13 +178,11 @@ export const normalizeVaccineImagePaths = async () => {
         if (updateError) {
           console.error(`❌ Update error for vaccine ${vaccine.id}:`, updateError);
         } else {
-          console.log(`✅ Updated paths for vaccine ${vaccine.id}`);
           updatedCount++;
         }
       }
     }
     
-    console.log(`✅ PATH NORMALIZATION COMPLETED. ${updatedCount} records updated.`);
     
     return { success: true, updatedCount };
     

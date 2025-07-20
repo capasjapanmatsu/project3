@@ -194,7 +194,6 @@ export function PetShop() {
     // Mark filtering as non-urgent
     startTransition(() => {
       // This will be processed with lower priority
-      console.log(`🔍 Filtering ${products.length} products for "${value}"`);
     });
   };
 

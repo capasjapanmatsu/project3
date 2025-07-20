@@ -1,16 +1,16 @@
-import { useState, useEffect, useMemo } from 'react';
+import { Building, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { X, Building } from 'lucide-react';
-import { supabase } from '../utils/supabase';
-import useAuth from '../context/AuthContext';
-import { useSubscription } from '../hooks/useSubscription';
-import { useStripe } from '../hooks/useStripe';
-import { products } from '../stripe-config';
 import { ReservationForm } from '../components/reservation/ReservationForm';
 import { ReservationSidebar } from '../components/reservation/ReservationSidebar';
+import useAuth from '../context/AuthContext';
+import { useStripe } from '../hooks/useStripe';
+import { useSubscription } from '../hooks/useSubscription';
+import { products } from '../stripe-config';
 import type { Dog, DogPark, Reservation } from '../types';
+import { supabase } from '../utils/supabase';
 
 interface TimeSlot {
   time: string;
@@ -299,13 +299,6 @@ export function ParkReservation() {
     setIsLoading(true);
     setError('');
     
-    console.log('Starting reservation submission...', {
-      formData,
-      selectedDogs,
-      hasSubscription,
-      totalPrice: calculateTotalPrice()
-    });
-    
     try {
       if (formData.paymentType === 'facility_rental' && !formData.selectedTimeSlot) {
         setError('施設貸し切りの場合は時間を選択してください。');
@@ -358,7 +351,6 @@ export function ParkReservation() {
 
       // 1日券の場合
       if (formData.paymentType === 'single') {
-        console.log('Processing 1日券 payment...');
         const dayPassProduct = products.find(p => p.mode === 'payment');
         if (!dayPassProduct) {
           setError('1日券商品が見つかりません。');
@@ -366,7 +358,6 @@ export function ParkReservation() {
           return;
         }
 
-        console.log('Creating checkout session for 1日券:', dayPassProduct);
         await createCheckoutSession({
           priceId: dayPassProduct.priceId,
           mode: 'payment',

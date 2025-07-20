@@ -48,9 +48,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
   onError
 }) => {
   // デバッグ: 受け取っているparksデータを確認
-  console.log('🔍 AdminParkApproval received parks:', pendingParks);
   pendingParks.forEach((park, index) => {
-    console.log(`🏞️ Park ${index + 1}:`, {
       id: park.id,
       name: park.name,
       owner_id: park.owner_id,
@@ -77,7 +75,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
   // デバッグ用：owner_verificationsテーブルのデータを確認
   useEffect(() => {
     const debugOwnerVerifications = async () => {
-      console.log('🔍 Debugging owner_verifications table...');
 
       try {
         const { data, error } = await supabase
@@ -88,18 +85,15 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
         if (error) {
           console.error('❌ Error fetching owner_verifications:', error);
         } else {
-          console.log('✅ Owner verifications data:', data);
 
           // identity_から始まるファイルを検索
           const identityFiles = data?.filter(item =>
             item.verification_id && item.verification_id.includes('identity_')
           );
 
-          console.log('📄 Identity files found:', identityFiles);
 
           // verification_dataの中身も確認
           data?.forEach(item => {
-            console.log(`🔍 Verification item ${item.id}:`, {
               user_id: item.user_id,
               verification_id: item.verification_id,
               status: item.status,
@@ -126,7 +120,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
     try {
       setIdentityImageLoading(true);
       setIdentityImageError(null);
-      console.log('🔍 本人確認書類データを取得中:', ownerId);
 
       // プロフィール情報を取得
       const { data: profileData, error: profileError } = await supabase
@@ -141,7 +134,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
         return;
       }
 
-      console.log('✅ プロフィール情報:', profileData);
 
       // 本人確認書類情報を取得
       const { data: identityData, error: identityError } = await supabase
@@ -154,17 +146,13 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
       if (identityError) {
         console.error('❌ 本人確認書類取得エラー:', identityError);
         // エラーがあってもプロフィール情報は表示する
-        console.log('⚠️ 本人確認書類がないため、プロフィール情報のみ表示');
       }
 
-      console.log('📊 本人確認書類データ:', identityData);
 
       if (identityData && identityData.length > 0) {
         const identity = identityData[0];
-        console.log('📋 本人確認書類詳細:', identity);
 
         // verification_dataの構造を確認
-        console.log('🔍 verification_data:', identity.verification_data);
 
         // 複数の方法でdocument_urlを取得
         let documentUrl = '';
@@ -188,8 +176,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
           documentFilename = documentUrl.split('/').pop() || 'identity_document';
         }
 
-        console.log('📄 最終的な画像URL:', documentUrl);
-        console.log('📄 ファイル名:', documentFilename);
 
         setOwnerIdentityData({
           id: identity.id,
@@ -205,7 +191,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
         });
       } else {
         // 本人確認書類がない場合でも、プロフィール情報は表示
-        console.log('📋 本人確認書類未提出のため、プロフィール情報のみ表示');
         setOwnerIdentityData({
           id: '',
           owner_name: profileData.name || '名前未登録',
@@ -247,7 +232,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
 
   const handleParkApproval = async (parkId: string, approved: boolean) => {
     try {
-      console.log(`${approved ? '✅' : '❌'} ドッグラン${approved ? '承認' : '却下'}中:`, parkId);
 
       // 承認の場合は全画像が承認されているかチェック
       if (approved) {
@@ -307,7 +291,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
     if (!confirmDelete) return;
 
     try {
-      console.log('🗑️ 関連レコードを削除中...');
 
       // 1. ニュース・お知らせを削除
       try {
@@ -321,7 +304,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
           onError(`ニュースの削除に失敗しました: ${newsError.message}`);
           return;
         }
-        console.log('✅ ニュース削除完了');
       } catch (error) {
         console.error('❌ ニュース削除処理エラー:', error);
         onError('ニュース削除処理でエラーが発生しました。');
@@ -340,7 +322,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
           onError(`新規開園情報の削除に失敗しました: ${newParkOpeningsError.message}`);
           return;
         }
-        console.log('✅ 新規開園情報削除完了');
       } catch (error) {
         console.error('❌ 新規開園情報削除処理エラー:', error);
         onError('新規開園情報削除処理でエラーが発生しました。');
@@ -369,7 +350,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
             return;
           }
         }
-        console.log('✅ ロックアクセスログ削除完了');
       } catch (error) {
         console.error('❌ ロックアクセスログ削除処理エラー:', error);
         onError('ロックアクセスログ削除処理でエラーが発生しました。');
@@ -388,7 +368,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
           onError(`スマートロックの削除に失敗しました: ${smartLocksError.message}`);
           return;
         }
-        console.log('✅ スマートロック削除完了');
       } catch (error) {
         console.error('❌ スマートロック削除処理エラー:', error);
         onError('スマートロック削除処理でエラーが発生しました。');
@@ -407,7 +386,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
           onError(`エントリーステータスの削除に失敗しました: ${entryStatusError.message}`);
           return;
         }
-        console.log('✅ エントリーステータス削除完了');
       } catch (error) {
         console.error('❌ エントリーステータス削除処理エラー:', error);
         onError('エントリーステータス削除処理でエラーが発生しました。');
@@ -426,7 +404,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
           onError(`予約の削除に失敗しました: ${reservationsError.message}`);
           return;
         }
-        console.log('✅ 予約削除完了');
       } catch (error) {
         console.error('❌ 予約削除処理エラー:', error);
         onError('予約削除処理でエラーが発生しました。');
@@ -445,7 +422,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
           onError(`出会い記録の削除に失敗しました: ${encountersError.message}`);
           return;
         }
-        console.log('✅ 出会い記録削除完了');
       } catch (error) {
         console.error('❌ 出会い記録削除処理エラー:', error);
         onError('出会い記録削除処理でエラーが発生しました。');
@@ -474,7 +450,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
             return;
           }
         }
-        console.log('✅ レビュー画像削除完了');
       } catch (error) {
         console.error('❌ レビュー画像削除処理エラー:', error);
         onError('レビュー画像削除処理でエラーが発生しました。');
@@ -493,7 +468,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
           onError(`レビューの削除に失敗しました: ${reviewsError.message}`);
           return;
         }
-        console.log('✅ レビュー削除完了');
       } catch (error) {
         console.error('❌ レビュー削除処理エラー:', error);
         onError('レビュー削除処理でエラーが発生しました。');
@@ -512,7 +486,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
           onError(`施設画像の削除に失敗しました: ${imagesError.message}`);
           return;
         }
-        console.log('✅ 施設画像削除完了');
       } catch (error) {
         console.error('❌ 施設画像削除処理エラー:', error);
         onError('施設画像削除処理でエラーが発生しました。');
@@ -531,7 +504,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
           onError(`パーク画像の削除に失敗しました: ${parkImagesError.message}`);
           return;
         }
-        console.log('✅ パーク画像削除完了');
       } catch (error) {
         console.error('❌ パーク画像削除処理エラー:', error);
         onError('パーク画像削除処理でエラーが発生しました。');
@@ -550,7 +522,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
           onError(`レビューステージの削除に失敗しました: ${reviewStagesError.message}`);
           return;
         }
-        console.log('✅ レビューステージ削除完了');
       } catch (error) {
         console.error('❌ レビューステージ削除処理エラー:', error);
         onError('レビューステージ削除処理でエラーが発生しました。');
@@ -569,14 +540,12 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
           onError(`ドッグランの削除に失敗しました: ${deleteError.message}`);
           return;
         }
-        console.log('✅ ドッグラン本体削除完了');
       } catch (error) {
         console.error('❌ ドッグラン削除処理エラー:', error);
         onError('ドッグラン削除処理でエラーが発生しました。');
         return;
       }
 
-      console.log('✅ ドッグランと関連データの削除完了');
       onApprovalComplete('ドッグラン申請を削除しました。');
 
       // 一覧画面に戻る
@@ -1106,7 +1075,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                   size="sm"
                   variant="secondary"
                   onClick={() => {
-                    console.log('🔄 Manual refresh triggered for park:', selectedPark.id);
                     void parkImages.fetchParkImages(selectedPark.id);
                   }}
                 >
@@ -1116,7 +1084,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                   size="sm"
                   variant="secondary"
                   onClick={async () => {
-                    console.log('🗃️ Direct database query for park:', selectedPark.id);
                     try {
                       const { data, error } = await supabase
                         .from('dog_park_facility_images')
@@ -1126,7 +1093,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                       if (error) {
                         console.error('❌ Direct query error:', error);
                       } else {
-                        console.log('📋 Direct query result:', data);
                         alert('データベース直接クエリ結果をコンソールに出力しました');
                       }
                     } catch (err) {
@@ -1170,7 +1136,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                 <Button
                   variant="secondary"
                   onClick={() => {
-                    console.log('🔄 Manual refresh triggered for park:', selectedPark.id);
                     void parkImages.fetchParkImages(selectedPark.id);
                   }}
                   className="mt-4"
@@ -1188,7 +1153,6 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                         alt={getImageTypeLabel(image.image_type)}
                         className="w-full h-48 object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
                         onClick={() => handleImageSelect(image)}
-                        onLoad={() => console.log(`🖼️ Image ${index + 1} loaded successfully:`, image.image_url)}
                         onError={(e) => {
                           console.error(`❌ Image ${index + 1} failed to load:`, image.image_url);
                           e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';

@@ -190,7 +190,6 @@ export class SecurityUtils {
                         'Content-Security-Policy'
                     ];
 
-                    console.log('🔍 セキュリティヘッダー確認:');
                     securityHeaders.forEach(header => {
                         const value = headers.get(header);
                         console.log(`  ${header}: ${value || '未設定'}`);
@@ -239,7 +238,6 @@ export const setupSecurityEventListeners = (): void => {
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
             // ページが非表示になった時の処理
-            console.log('🔒 ページが非表示になりました');
         }
     });
 

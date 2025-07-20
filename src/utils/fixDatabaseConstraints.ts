@@ -2,7 +2,6 @@ import { supabase } from './supabase';
 
 export const fixDogParksStatusConstraint = async () => {
     try {
-        console.log('🔄 dog_parks テーブルの status 制約を更新中...');
 
         // 既存の制約を削除
         const { error: dropError } = await supabase.rpc('sql', {
@@ -14,7 +13,6 @@ export const fixDogParksStatusConstraint = async () => {
         if (dropError) {
             console.error('❌ 既存制約削除エラー:', dropError);
         } else {
-            console.log('✅ 既存制約削除成功');
         }
 
         // 新しい制約を追加
@@ -37,7 +35,6 @@ export const fixDogParksStatusConstraint = async () => {
             console.error('❌ 新制約追加エラー:', addError);
             return false;
         } else {
-            console.log('✅ 新制約追加成功');
             return true;
         }
 
@@ -59,7 +56,6 @@ export const executeSqlDirect = async (sql: string) => {
             return { success: false, error };
         }
 
-        console.log('✅ SQL実行成功:', data);
         return { success: true, data };
     } catch (error) {
         console.error('❌ SQL実行エラー:', error);
