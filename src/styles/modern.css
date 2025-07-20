@@ -1,0 +1,401 @@
+/* =================================
+   最新CSS技術実装
+   - Container Queries
+   - CSS Custom Properties
+   - Modern Layout (Grid, Flexbox)
+   - New CSS Functions
+   ================================= */
+
+/* CSS Container Queries */
+.container-query-card {
+  container-type: inline-size;
+  container-name: card;
+  background: white;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+/* Container-based responsive design */
+@container card (min-width: 300px) {
+  .card-content {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem;
+    align-items: center;
+  }
+  
+  .card-image {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+  }
+}
+
+@container card (min-width: 500px) {
+  .card-content {
+    grid-template-columns: 120px 1fr auto;
+  }
+  
+  .card-image {
+    width: 120px;
+    height: 120px;
+  }
+  
+  .card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+@container card (min-width: 700px) {
+  .container-query-card {
+    padding: 2rem;
+  }
+  
+  .card-content {
+    grid-template-columns: 150px 1fr auto;
+    gap: 2rem;
+  }
+  
+  .card-image {
+    width: 150px;
+    height: 150px;
+    border-radius: 12px;
+  }
+}
+
+/* Modern Layout with CSS Grid */
+.modern-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: clamp(1rem, 3vw, 2rem);
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+/* CSS Custom Properties for Dynamic Theming */
+:root {
+  /* Color System */
+  --primary-hue: 220;
+  --primary-saturation: 70%;
+  --primary-lightness: 50%;
+  
+  /* Dynamic Colors */
+  --color-primary: hsl(var(--primary-hue), var(--primary-saturation), var(--primary-lightness));
+  --color-primary-light: hsl(var(--primary-hue), var(--primary-saturation), calc(var(--primary-lightness) + 20%));
+  --color-primary-dark: hsl(var(--primary-hue), var(--primary-saturation), calc(var(--primary-lightness) - 20%));
+  
+  /* Surface Colors */
+  --color-surface: hsl(0, 0%, 100%);
+  --color-surface-secondary: hsl(0, 0%, 98%);
+  --color-surface-tertiary: hsl(0, 0%, 95%);
+  
+  /* Text Colors */
+  --color-text-primary: hsl(0, 0%, 10%);
+  --color-text-secondary: hsl(0, 0%, 40%);
+  --color-text-tertiary: hsl(0, 0%, 60%);
+  
+  /* Spacing System */
+  --space-unit: 0.25rem;
+  --space-xs: calc(var(--space-unit) * 1); /* 4px */
+  --space-sm: calc(var(--space-unit) * 2); /* 8px */
+  --space-md: calc(var(--space-unit) * 4); /* 16px */
+  --space-lg: calc(var(--space-unit) * 6); /* 24px */
+  --space-xl: calc(var(--space-unit) * 8); /* 32px */
+  --space-2xl: calc(var(--space-unit) * 12); /* 48px */
+  
+  /* Typography System */
+  --font-size-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+  --font-size-sm: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
+  --font-size-md: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+  --font-size-lg: clamp(1.125rem, 1rem + 0.625vw, 1.25rem);
+  --font-size-xl: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
+  --font-size-2xl: clamp(1.5rem, 1.3rem + 1vw, 2rem);
+  --font-size-3xl: clamp(2rem, 1.7rem + 1.5vw, 3rem);
+  
+  /* Border Radius System */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 50%;
+  
+  /* Shadow System */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  
+  /* Transition System */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+  --color-surface: hsl(0, 0%, 10%);
+  --color-surface-secondary: hsl(0, 0%, 12%);
+  --color-surface-tertiary: hsl(0, 0%, 15%);
+  
+  --color-text-primary: hsl(0, 0%, 95%);
+  --color-text-secondary: hsl(0, 0%, 70%);
+  --color-text-tertiary: hsl(0, 0%, 50%);
+  
+  --primary-lightness: 60%;
+}
+
+/* Modern Button Component with CSS Functions */
+.modern-button {
+  --button-color: var(--color-primary);
+  --button-hover-color: var(--color-primary-dark);
+  
+  background: var(--button-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+  
+  /* Modern hover effect */
+  &:hover {
+    background: var(--button-hover-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  /* Ripple effect */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.3);
+    transition: width 0.6s, height 0.6s, top 0.6s, left 0.6s;
+    transform: translate(-50%, -50%);
+  }
+  
+  &:active::before {
+    width: 300px;
+    height: 300px;
+    top: 50%;
+    left: 50%;
+  }
+}
+
+/* CSS Subgrid Support */
+.subgrid-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+}
+
+.subgrid-item {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 3;
+  gap: var(--space-sm);
+}
+
+/* Modern Card with Container Queries */
+.adaptive-card {
+  container-type: inline-size;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-normal);
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+  }
+}
+
+@container (min-width: 320px) {
+  .adaptive-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+}
+
+@container (min-width: 480px) {
+  .adaptive-card-content {
+    flex-direction: row;
+    align-items: center;
+  }
+  
+  .adaptive-card-image {
+    flex: 0 0 120px;
+  }
+  
+  .adaptive-card-body {
+    flex: 1;
+  }
+}
+
+/* CSS Logical Properties */
+.logical-layout {
+  margin-block: var(--space-lg);
+  margin-inline: var(--space-md);
+  padding-block: var(--space-md);
+  padding-inline: var(--space-lg);
+  border-inline-start: 4px solid var(--color-primary);
+}
+
+/* Modern Focus Management */
+.focus-visible:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* CSS Nesting for Component Styles */
+.product-gallery {
+  display: grid;
+  gap: var(--space-md);
+  
+  .gallery-main {
+    aspect-ratio: 4/3;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform var(--transition-normal);
+      
+      &:hover {
+        transform: scale(1.05);
+      }
+    }
+  }
+  
+  .gallery-thumbnails {
+    display: flex;
+    gap: var(--space-sm);
+    overflow-x: auto;
+    scrollbar-width: thin;
+    
+    .thumbnail {
+      flex: 0 0 80px;
+      aspect-ratio: 1;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color var(--transition-fast);
+      
+      &.active {
+        border-color: var(--color-primary);
+      }
+      
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+  }
+}
+
+/* Utility Classes */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Modern Responsive Images */
+.responsive-image {
+  width: 100%;
+  height: auto;
+  aspect-ratio: attr(width) / attr(height);
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+
+/* CSS Grid Areas for Complex Layouts */
+.app-layout {
+  display: grid;
+  grid-template-areas: 
+    "header header"
+    "sidebar main"
+    "footer footer";
+  grid-template-columns: minmax(200px, 300px) 1fr;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+  gap: var(--space-md);
+  
+  .header { grid-area: header; }
+  .sidebar { grid-area: sidebar; }
+  .main { grid-area: main; }
+  .footer { grid-area: footer; }
+}
+
+@media (max-width: 768px) {
+  .app-layout {
+    grid-template-areas:
+      "header"
+      "main"
+      "footer";
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Modern Animation with CSS Custom Properties */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideInUp var(--transition-normal) cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* CSS env() for Safe Areas (mobile) */
+.safe-area-layout {
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+} 

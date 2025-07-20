@@ -1,3 +1,5 @@
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { HelmetProvider } from 'react-helmet-async';
@@ -6,6 +8,8 @@ import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { MaintenanceProvider } from './context/MaintenanceContext';
 import './index.css';
+import './styles/modern.css';
+import { queryClient } from './utils/queryClient';
 
 // ===== PWA SERVICE WORKER =====
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
@@ -144,15 +148,19 @@ const root = ReactDOM.createRoot(document.getElementById('root')!);
 
 const AppWrapper = (
   <React.StrictMode>
-    <HelmetProvider>
-      <BrowserRouter>
-        <MaintenanceProvider>
-          <AuthProvider>
-            <App />
-          </AuthProvider>
-        </MaintenanceProvider>
-      </BrowserRouter>
-    </HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <HelmetProvider>
+        <BrowserRouter>
+          <MaintenanceProvider>
+            <AuthProvider>
+              <App />
+            </AuthProvider>
+          </MaintenanceProvider>
+        </BrowserRouter>
+        {/* Development環境でのみReact Query DevToolsを表示 */}
+        {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+      </HelmetProvider>
+    </QueryClientProvider>
   </React.StrictMode>
 );
 
