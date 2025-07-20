@@ -1,10 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
+import { AlertCircle, ChevronDown, MapPin, Navigation } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Navigation, AlertCircle, ChevronDown } from 'lucide-react';
-import Card from './Card';
-import Button from './Button';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
+import Button from './Button';
+import Card from './Card';
 
 interface NearbyDog {
   id: string;
@@ -97,6 +97,11 @@ export function NearbyDogs() {
       setIsLoading(true);
       setError('');
 
+      // デバッグ用：現在のユーザーIDをログ出力
+      if (import.meta.env.DEV) {
+        console.log('🐕 Current User ID:', user.id);
+      }
+
       // 自分の犬以外の全ての犬を取得
       const { data: dogsData, error: dogsError } = await supabase
         .from('dogs')
@@ -115,6 +120,20 @@ export function NearbyDogs() {
         .limit(50);
 
       if (dogsError) throw dogsError;
+
+      // デバッグ用：取得した犬のデータを確認
+      if (import.meta.env.DEV) {
+        console.log('🐕 Found dogs count:', dogsData?.length || 0);
+        if (dogsData) {
+          console.log('🐕 Dog owner IDs:', dogsData.map(d => `${d.name} (owner: ${d.owner_id})`));
+          
+          // 万が一自分の犬が含まれていないかチェック
+          const ownDogsIncluded = dogsData.filter(d => d.owner_id === user.id);
+          if (ownDogsIncluded.length > 0) {
+            console.warn('⚠️ Own dogs found in nearby list:', ownDogsIncluded);
+          }
+        }
+      }
 
       if (!dogsData || dogsData.length === 0) {
         setNearbyDogs([]);
@@ -153,8 +172,20 @@ export function NearbyDogs() {
 
       // 距離でソート（近い順）
       const sortedDogs = dogsWithDistance
+        .filter(dog => dog.owner_id !== user.id) // 念のため最終チェックで自分の犬を除外
         .sort((a, b) => a.distance - b.distance)
         .slice(0, 20); // 最大20匹まで表示
+
+      // デバッグ用：最終結果を確認
+      if (import.meta.env.DEV) {
+        console.log('🐕 Final nearby dogs:', sortedDogs.length);
+        const finalOwnerCheck = sortedDogs.filter(d => d.owner_id === user.id);
+        if (finalOwnerCheck.length > 0) {
+          console.error('❌ Own dogs still in final list!', finalOwnerCheck);
+        } else {
+          console.log('✅ Own dogs successfully excluded from nearby list');
+        }
+      }
 
       setNearbyDogs(sortedDogs);
     } catch (err) {
@@ -227,11 +258,16 @@ export function NearbyDogs() {
 
   return (
     <Card className="p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4">
         <div className="flex items-center">
           <MapPin className="w-6 h-6 text-blue-600 mr-2" />
           <h2 className="text-xl font-bold">近くのワンちゃんたち</h2>
         </div>
+      </div>
+      <p className="text-sm text-gray-600 mb-4">
+        あなたの近くにいるワンちゃんたちです（あなたの犬は除く）
+      </p>
+      <div className="flex justify-end mb-2">
         <Button
           size="sm"
           variant="secondary"
