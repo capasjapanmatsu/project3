@@ -1,5 +1,5 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, Home, PhoneCall } from 'lucide-react';
+import { AlertTriangle, Copy, Home, RefreshCw } from 'lucide-react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -8,215 +8,176 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
-  errorInfo: ErrorInfo | null;
   isReloading: boolean;
+  copied: boolean;
 }
 
 class ErrorBoundary extends Component<Props, State> {
-  private reloadTimeouts: NodeJS.Timeout[] = [];
-
   public state: State = {
     hasError: false,
     error: null,
-    errorInfo: null,
-    isReloading: false
+    isReloading: false,
+    copied: false
   };
 
   public static getDerivedStateFromError(error: Error): State {
-    // エラーが発生した場合の状態更新
     return {
       hasError: true,
       error,
-      errorInfo: null,
-      isReloading: false
+      isReloading: false,
+      copied: false
     };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('🚨 Error Boundary caught an error:', error);
-    console.error('Error Info:', errorInfo);
+    // Log error for developers
+    console.error('🚨 アプリケーションエラー:', error);
+    console.error('エラー詳細:', errorInfo);
     
-    // 本番環境でも詳細なエラー情報をログに出力
-    console.error('Error Stack:', error.stack);
-    console.error('Component Stack:', errorInfo.componentStack);
-    
-    this.setState({
-      error,
-      errorInfo,
-      hasError: true
-    });
-
-    // エラーを外部ログサービスに送信（将来の実装用）
-    this.logErrorToService(error, errorInfo);
+    // Store error for potential support
+    this.logErrorForSupport(error, errorInfo);
   }
 
-  private logErrorToService = (error: Error, errorInfo: ErrorInfo) => {
+  private logErrorForSupport = (error: Error, errorInfo: ErrorInfo) => {
     try {
-      // 本番環境でのエラー情報の保存
       const errorData = {
         message: error.message,
-        stack: error.stack,
-        componentStack: errorInfo.componentStack,
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        url: window.location.href,
-        environment: import.meta.env.PROD ? 'production' : 'development'
+        timestamp: new Date().toLocaleString('ja-JP'),
+        page: window.location.pathname,
+        userAgent: navigator.userAgent
       };
       
-      // localStorage に保存（将来的には外部サービスに送信）
-      const existingErrors = JSON.parse(localStorage.getItem('app_errors') || '[]');
-      existingErrors.push(errorData);
-      
-      // 最大10件のエラーを保持
-      if (existingErrors.length > 10) {
-        existingErrors.shift();
-      }
-      
-      localStorage.setItem('app_errors', JSON.stringify(existingErrors));
+      localStorage.setItem('last_error', JSON.stringify(errorData));
     } catch (e) {
-      console.error('Failed to log error:', e);
+      console.warn('エラーの保存に失敗しました');
     }
   };
 
   private handleReload = () => {
     this.setState({ isReloading: true });
     
-    // ローカルストレージをクリア
+    // Clear potentially corrupted data
     try {
-      const keysToRemove = [
-        'sb-onmcivwxtzqajcovptgf-auth-token',
-        'supabase.auth.token',
-        'lastUsedEmail',
-        'isTrustedDevice',
-        'maintenance_last_check',
-        'maintenance_status'
-      ];
-      
-      keysToRemove.forEach(key => {
-        localStorage.removeItem(key);
-      });
-      
+      localStorage.removeItem('cached_data');
       sessionStorage.clear();
     } catch (e) {
-      console.error('Failed to clear storage:', e);
+      console.warn('キャッシュクリアに失敗しました');
     }
     
-    // 3秒後にリロード
-    const timeout = setTimeout(() => {
+    setTimeout(() => {
       window.location.reload();
-    }, 3000);
-    
-    this.reloadTimeouts.push(timeout);
+    }, 2000);
   };
 
   private handleGoHome = () => {
-    try {
-      window.location.href = '/';
-    } catch (e) {
-      window.location.reload();
-    }
+    window.location.href = '/';
   };
 
   private handleCopyError = () => {
     const errorText = `
-Error: ${this.state.error?.message || 'Unknown error'}
-Stack: ${this.state.error?.stack || 'No stack trace'}
-Component Stack: ${this.state.errorInfo?.componentStack || 'No component stack'}
-URL: ${window.location.href}
-User Agent: ${navigator.userAgent}
-Timestamp: ${new Date().toISOString()}
+エラーが発生しました
+時間: ${new Date().toLocaleString('ja-JP')}
+ページ: ${window.location.pathname}
+エラー: ${this.state.error?.message || '不明なエラー'}
+
+この情報をサポートにお送りください。
     `.trim();
 
     navigator.clipboard.writeText(errorText).then(() => {
-      alert('エラー情報をクリップボードにコピーしました');
+      this.setState({ copied: true });
+      setTimeout(() => this.setState({ copied: false }), 2000);
     }).catch(() => {
-      prompt('エラー情報をコピーしてください:', errorText);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = errorText;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      this.setState({ copied: true });
+      setTimeout(() => this.setState({ copied: false }), 2000);
     });
   };
-
-  componentWillUnmount() {
-    // タイムアウトをクリア
-    this.reloadTimeouts.forEach(timeout => clearTimeout(timeout));
-  }
 
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+            {/* Error Icon */}
             <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="w-8 h-8 text-red-600" />
+              <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-10 h-10 text-red-500" />
               </div>
-              <h1 className="text-xl font-bold text-gray-900 mb-2">
-                エラーが発生しました
+              <h1 className="text-2xl font-bold text-gray-800 mb-2">
+                おっと！
               </h1>
-              <p className="text-gray-600 text-sm">
-                申し訳ございません。アプリケーションでエラーが発生しました。
+              <p className="text-gray-600">
+                予期しないエラーが発生しました。<br />
+                心配しないでください、すぐに解決できます。
               </p>
             </div>
 
-            {/* 本番環境でもエラー詳細を表示 */}
+            {/* Simple Error Display */}
             {this.state.error && (
-              <div className="mb-6 p-3 bg-red-50 rounded border text-xs">
-                <p className="font-medium text-red-800 mb-1">エラー詳細:</p>
-                <p className="text-red-700 break-words">
-                  {this.state.error.message}
+              <div className="mb-6 p-4 bg-red-50 rounded-xl border border-red-100">
+                <p className="text-sm text-red-700 font-medium mb-1">
+                  エラーの詳細:
                 </p>
-                {import.meta.env.DEV && this.state.error.stack && (
-                  <details className="mt-2">
-                    <summary className="cursor-pointer text-red-600">
-                      スタックトレース
-                    </summary>
-                    <pre className="mt-1 text-xs text-red-600 whitespace-pre-wrap">
-                      {this.state.error.stack}
-                    </pre>
-                  </details>
-                )}
+                <p className="text-sm text-red-600">
+                  {this.state.error.message || 'システムエラーが発生しました'}
+                </p>
               </div>
             )}
 
+            {/* Action Buttons */}
             <div className="space-y-3">
               <button
                 onClick={this.handleReload}
                 disabled={this.state.isReloading}
-                className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
               >
                 {this.state.isReloading ? (
                   <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    リロード中...
+                    <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                    画面を更新中...
                   </>
                 ) : (
                   <>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    ページをリロード
+                    <RefreshCw className="w-5 h-5 mr-2" />
+                    画面を更新する
                   </>
                 )}
               </button>
 
               <button
                 onClick={this.handleGoHome}
-                className="w-full flex items-center justify-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                className="w-full flex items-center justify-center px-6 py-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all duration-200 font-medium"
               >
-                <Home className="w-4 h-4 mr-2" />
-                ホームページに戻る
+                <Home className="w-5 h-5 mr-2" />
+                ホームに戻る
               </button>
 
               <button
                 onClick={this.handleCopyError}
-                className="w-full flex items-center justify-center px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+                className={`w-full flex items-center justify-center px-6 py-3 rounded-xl transition-all duration-200 font-medium ${
+                  this.state.copied 
+                    ? 'bg-green-600 text-white' 
+                    : 'bg-orange-600 text-white hover:bg-orange-700'
+                }`}
               >
-                <PhoneCall className="w-4 h-4 mr-2" />
-                エラー情報をコピー
+                <Copy className="w-5 h-5 mr-2" />
+                {this.state.copied ? 'コピーしました！' : 'エラー情報をコピー'}
               </button>
             </div>
 
-            <div className="mt-6 pt-4 border-t text-center">
-              <p className="text-xs text-gray-500">
-                問題が続く場合は、ブラウザのキャッシュを削除するか、
-                <br />
-                シークレットモードでお試しください。
+            {/* Help Message */}
+            <div className="mt-6 pt-6 border-t text-center">
+              <p className="text-sm text-gray-500 leading-relaxed">
+                💡 <strong>解決のヒント:</strong><br />
+                ・ページを更新してみてください<br />
+                ・ブラウザを再起動してください<br />
+                ・問題が続く場合は、エラー情報をコピーしてサポートにお問い合わせください
               </p>
             </div>
           </div>

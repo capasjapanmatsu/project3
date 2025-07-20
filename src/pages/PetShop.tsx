@@ -1,26 +1,26 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { 
-  ShoppingBag, 
-  Star, 
-  Heart,
-  Plus,
-  Minus,
-  ShoppingCart,
-  Package,
-  Truck,
-  Crown,
-  Sparkles,
-  Gift
+import {
+    Crown,
+    Gift,
+    Heart,
+    Minus,
+    Package,
+    Plus,
+    ShoppingBag,
+    ShoppingCart,
+    Sparkles,
+    Star,
+    Truck
 } from 'lucide-react';
+import { startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
-import { supabase } from '../utils/supabase';
+import { SubscriptionButton } from '../components/SubscriptionButton';
 import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
-import { SubscriptionButton } from '../components/SubscriptionButton';
-import type { Product, CartItem } from '../types';
+import type { CartItem, Product } from '../types';
+import { supabase } from '../utils/supabase';
 
 export function PetShop() {
   const { user } = useAuth();
@@ -31,6 +31,11 @@ export function PetShop() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'name' | 'price' | 'category'>('name');
   const { isActive: hasSubscription } = useSubscription();
+
+  // ✨ React 18 Concurrent Features
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const deferredCategory = useDeferredValue(selectedCategory);
+  const deferredSortBy = useDeferredValue(sortBy);
 
   const categories = [
     { value: 'all', label: 'すべて', icon: ShoppingBag },
@@ -47,29 +52,38 @@ export function PetShop() {
   }, [user]);
 
   const fetchData = async () => {
+    setIsLoading(true);
     try {
-      const [productsResponse, cartResponse] = await Promise.all([
-        supabase
-          .from('products')
-          .select('*')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false }),
-        
-        user ? supabase
-          .from('cart_items')
-          .select('*, product:products(*)')
-          .eq('user_id', user.id) : Promise.resolve({ data: [] })
+      await Promise.all([
+        fetchProducts(),
+        user ? fetchCartItems() : Promise.resolve()
       ]);
-
-      if (productsResponse.error) throw productsResponse.error;
-
-      setProducts(productsResponse.data || []);
-      setCartItems(cartResponse.data || []);
     } catch (error) {
-      console.error('Error fetching shop data:', error);
+      console.error('データ取得エラー:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchProducts = async () => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    setProducts(data || []);
+  };
+
+  const fetchCartItems = async () => {
+    const { data, error } = await supabase
+      .from('cart_items')
+      .select('*, product:products(*)')
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+    setCartItems(data || []);
   };
 
   const addToCart = async (productId: string, quantity: number = 1) => {
@@ -145,18 +159,22 @@ export function PetShop() {
     return hasSubscription ? Math.round(price * 0.9) : price; // 10%割引
   };
 
-  const filteredProducts = products
-    .filter(product => {
-      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (product.brand && product.brand.toLowerCase().includes(searchTerm.toLowerCase()));
+  // ✨ Optimized filtering with useMemo and deferred values
+  const filteredProducts = useMemo(() => {
+    // Use deferred values for non-urgent updates
+    const filtered = products.filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+                           product.description.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+                           (product.brand && product.brand.toLowerCase().includes(deferredSearchTerm.toLowerCase()));
       
-      const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+      const matchesCategory = deferredCategory === 'all' || product.category === deferredCategory;
       
       return matchesSearch && matchesCategory;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
+    });
+
+    // Apply sorting
+    return filtered.sort((a, b) => {
+      switch (deferredSortBy) {
         case 'name':
           return a.name.localeCompare(b.name);
         case 'price':
@@ -167,6 +185,30 @@ export function PetShop() {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
     });
+  }, [products, deferredSearchTerm, deferredCategory, deferredSortBy]);
+
+  // ✨ Optimized search handler with startTransition
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value); // Immediate update for input responsiveness
+    
+    // Mark filtering as non-urgent
+    startTransition(() => {
+      // This will be processed with lower priority
+      console.log(`🔍 Filtering ${products.length} products for "${value}"`);
+    });
+  };
+
+  const handleCategoryChange = (category: string) => {
+    startTransition(() => {
+      setSelectedCategory(category);
+    });
+  };
+
+  const handleSortChange = (sort: 'name' | 'price' | 'category') => {
+    startTransition(() => {
+      setSortBy(sort);
+    });
+  };
 
   if (isLoading) {
     return (
@@ -261,14 +303,14 @@ export function PetShop() {
           <Input
             label=""
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="商品名、ブランド名で検索..."
           />
         </div>
         <div>
           <select
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
+            onChange={(e) => handleCategoryChange(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             {categories.map(category => (
@@ -281,7 +323,7 @@ export function PetShop() {
         <div>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'name' | 'price' | 'category')}
+            onChange={(e) => handleSortChange(e.target.value as 'name' | 'price' | 'category')}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             <option value="popular">人気順</option>
@@ -299,7 +341,7 @@ export function PetShop() {
           return (
             <button
               key={category.value}
-              onClick={() => setSelectedCategory(category.value)}
+              onClick={() => handleCategoryChange(category.value)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
                 selectedCategory === category.value
                   ? 'bg-green-600 text-white'

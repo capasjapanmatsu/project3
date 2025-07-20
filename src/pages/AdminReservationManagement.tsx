@@ -1,28 +1,24 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { 
-  Calendar, 
-  ArrowLeft, 
-  Search, 
-  Clock, 
-  Users,
-  MapPin,
-  DollarSign,
-  Filter,
-  Download,
-  Eye,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  TrendingUp,
-  Crown,
-  BarChart3
+import {
+    AlertTriangle,
+    ArrowLeft,
+    BarChart3,
+    Calendar,
+    CheckCircle,
+    Clock,
+    Crown,
+    DollarSign,
+    Download,
+    Eye,
+    Search,
+    XCircle
 } from 'lucide-react';
-import Card from '../components/Card';
+import { startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import Card from '../components/Card';
 import Input from '../components/Input';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
 
 interface ReservationData {
   id: string;
@@ -63,7 +59,6 @@ export function AdminReservationManagement() {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [reservations, setReservations] = useState<ReservationData[]>([]);
-  const [filteredReservations, setFilteredReservations] = useState<ReservationData[]>([]);
   const [stats, setStats] = useState<ReservationStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -72,6 +67,13 @@ export function AdminReservationManagement() {
   const [filterDate, setFilterDate] = useState('');
   const [sortBy, setSortBy] = useState<'reservation_date' | 'created_at' | 'total_price'>('reservation_date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // ✨ React 18 Concurrent Features for large datasets
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const deferredFilterStatus = useDeferredValue(filterStatus);
+  const deferredFilterDate = useDeferredValue(filterDate);
+  const deferredSortBy = useDeferredValue(sortBy);
+  const deferredSortOrder = useDeferredValue(sortOrder);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -82,9 +84,88 @@ export function AdminReservationManagement() {
     fetchStats();
   }, [isAdmin, navigate]);
 
-  useEffect(() => {
-    filterAndSortReservations();
-  }, [reservations, searchTerm, filterStatus, filterDate, sortBy, sortOrder]);
+  // ✨ Optimized filtering with useMemo for performance
+  const filteredReservations = useMemo(() => {
+    console.log(`🔍 Filtering ${reservations.length} reservations...`);
+    
+    let filtered = [...reservations];
+
+    // Search filter with deferred value
+    if (deferredSearchTerm) {
+      filtered = filtered.filter(reservation =>
+        reservation.user_name.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+        reservation.user_email.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+        reservation.park_name.toLowerCase().includes(deferredSearchTerm.toLowerCase())
+      );
+    }
+
+    // Status filter
+    if (deferredFilterStatus !== 'all') {
+      filtered = filtered.filter(reservation => reservation.status === deferredFilterStatus);
+    }
+
+    // Date filter
+    if (deferredFilterDate) {
+      const filterDateObj = new Date(deferredFilterDate);
+      filtered = filtered.filter(reservation => {
+        const reservationDate = new Date(reservation.reservation_date);
+        return reservationDate.toDateString() === filterDateObj.toDateString();
+      });
+    }
+
+    // Sorting
+    filtered.sort((a, b) => {
+      let aValue: any = a[deferredSortBy];
+      let bValue: any = b[deferredSortBy];
+
+      if (deferredSortBy === 'reservation_date' || deferredSortBy === 'created_at') {
+        aValue = new Date(aValue).getTime();
+        bValue = new Date(bValue).getTime();
+      }
+
+      if (deferredSortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+    console.log(`✅ Filtered to ${filtered.length} reservations`);
+    return filtered;
+  }, [reservations, deferredSearchTerm, deferredFilterStatus, deferredFilterDate, deferredSortBy, deferredSortOrder]);
+
+  // ✨ Optimized handlers with startTransition
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value); // Immediate update for input responsiveness
+    
+    startTransition(() => {
+      console.log(`🔍 Searching reservations for "${value}"`);
+    });
+  };
+
+  const handleStatusFilter = (status: typeof filterStatus) => {
+    startTransition(() => {
+      setFilterStatus(status);
+    });
+  };
+
+  const handleDateFilter = (date: string) => {
+    startTransition(() => {
+      setFilterDate(date);
+    });
+  };
+
+  const handleSortChange = (sort: typeof sortBy) => {
+    startTransition(() => {
+      setSortBy(sort);
+    });
+  };
+
+  const handleSortOrderChange = (order: typeof sortOrder) => {
+    startTransition(() => {
+      setSortOrder(order);
+    });
+  };
 
   const fetchReservations = async () => {
     try {
@@ -245,52 +326,6 @@ export function AdminReservationManagement() {
     } catch (err) {
       console.error('Error fetching reservation stats:', err);
     }
-  };
-
-  const filterAndSortReservations = () => {
-    let filtered = [...reservations];
-
-    // 検索フィルター
-    if (searchTerm) {
-      filtered = filtered.filter(reservation =>
-        reservation.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        reservation.user_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        reservation.park_name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // ステータスフィルター
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter(reservation => reservation.status === filterStatus);
-    }
-
-    // 日付フィルター
-    if (filterDate) {
-      const filterDateObj = new Date(filterDate);
-      filtered = filtered.filter(reservation => {
-        const reservationDate = new Date(reservation.reservation_date);
-        return reservationDate.toDateString() === filterDateObj.toDateString();
-      });
-    }
-
-    // ソート
-    filtered.sort((a, b) => {
-      let aValue: any = a[sortBy];
-      let bValue: any = b[sortBy];
-
-      if (sortBy === 'reservation_date' || sortBy === 'created_at') {
-        aValue = new Date(aValue).getTime();
-        bValue = new Date(bValue).getTime();
-      }
-
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
-
-    setFilteredReservations(filtered);
   };
 
   const exportToCSV = () => {
@@ -538,7 +573,7 @@ export function AdminReservationManagement() {
               label="検索"
               placeholder="ユーザー名、メール、ドッグラン名で検索..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               icon={<Search className="w-4 h-4 text-gray-500" />}
             />
           </div>
@@ -549,7 +584,7 @@ export function AdminReservationManagement() {
             </label>
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as any)}
+              onChange={(e) => handleStatusFilter(e.target.value as any)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="all">すべて</option>
@@ -566,7 +601,7 @@ export function AdminReservationManagement() {
             <input
               type="date"
               value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
+              onChange={(e) => handleDateFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
@@ -579,8 +614,8 @@ export function AdminReservationManagement() {
               value={`${sortBy}-${sortOrder}`}
               onChange={(e) => {
                 const [field, order] = e.target.value.split('-');
-                setSortBy(field as any);
-                setSortOrder(order as any);
+                handleSortChange(field as any);
+                handleSortOrderChange(order as any);
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
