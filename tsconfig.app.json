@@ -52,7 +52,8 @@
       "@/utils/*": ["src/utils/*"],
       "@/hooks/*": ["src/hooks/*"],
       "@/types/*": ["src/types/*"],
-      "@/context/*": ["src/context/*"]
+      "@/context/*": ["src/context/*"],
+      "@/store/*": ["src/store/*"]
     }
   },
   "include": ["src", "src/**/*"],

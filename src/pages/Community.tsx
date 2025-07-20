@@ -420,7 +420,8 @@ export function Community() {
         {/* メインコンテンツ */}
         <div className="lg:col-span-2">
           {/* タブナビゲーション */}
-          <div className="flex space-x-1 border-b mb-6 overflow-x-auto">
+          <div className="sticky top-0 z-20 bg-white border-b mb-6 overflow-x-auto pb-2">
+            <div className="flex space-x-1">
             <button
               className={`px-4 py-2 font-medium relative whitespace-nowrap ${
                 activeTab === 'friends'
@@ -507,6 +508,7 @@ export function Community() {
                 </span>
               )}
             </button>
+            </div>
           </div>
           
           {/* 友達タブ */}
