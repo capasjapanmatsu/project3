@@ -1,30 +1,28 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  ShoppingBag, 
-  Package, 
-  Truck, 
-  CheckCircle, 
-  X, 
-  Eye, 
-  AlertTriangle,
-  Search,
-  Download,
-  Edit,
-  Save,
-  Calendar,
-  Bell,
-  Building
+import {
+    AlertTriangle,
+    ArrowLeft,
+    Calendar,
+    CheckCircle,
+    Download,
+    Edit,
+    Eye,
+    Package,
+    Save,
+    Search,
+    ShoppingBag,
+    Truck,
+    X
 } from 'lucide-react';
-import Card from '../components/Card';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import Card from '../components/Card';
 import Input from '../components/Input';
 import Select from '../components/Select';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
+import type { Order, OrderItem, Product } from '../types';
 import { downloadCSVWithBOM } from '../utils/csvExport';
-import type { Order, OrderItem, Product, NewsAnnouncement, NewParkOpening } from '../types';
+import { supabase } from '../utils/supabase';
 
 interface OrderWithItems extends Order {
   order_items: (OrderItem & { product: Product })[];
@@ -33,11 +31,9 @@ interface OrderWithItems extends Order {
 export function AdminShopManagement() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'news'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'products'>('orders');
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [news, setNews] = useState<NewsAnnouncement[]>([]);
-  const [newParks, setNewParks] = useState<NewParkOpening[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -45,8 +41,6 @@ export function AdminShopManagement() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [selectedNews, setSelectedNews] = useState<NewsAnnouncement | null>(null);
-  const [selectedNewPark, setSelectedNewPark] = useState<NewParkOpening | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [orderFormData, setOrderFormData] = useState({
     status: '',
@@ -70,26 +64,7 @@ export function AdminShopManagement() {
     dog_size: '',
     image_url: ''
   });
-  const [newsFormData, setNewsFormData] = useState({
-    title: '',
-    content: '',
-    category: 'news',
-    is_important: false,
-    image_url: '',
-    link_url: '',
-    park_id: ''
-  });
-  const [newParkFormData, setNewParkFormData] = useState({
-    name: '',
-    address: '',
-    image_url: '',
-    opening_date: '',
-    park_id: ''
-  });
   const [showProductModal, setShowProductModal] = useState(false);
-  const [showNewsModal, setShowNewsModal] = useState(false);
-  const [showNewParkModal, setShowNewParkModal] = useState(false);
-  const [dogParks, setDogParks] = useState<{id: string, name: string}[]>([]);
 
   useEffect(() => {
     // 管理者権限チェック
@@ -99,7 +74,6 @@ export function AdminShopManagement() {
     }
     
     fetchData();
-    fetchDogParks();
   }, [isAdmin, navigate, activeTab]);
 
   const fetchData = async () => {
@@ -131,24 +105,6 @@ export function AdminShopManagement() {
         
         if (error) throw error;
         setProducts(data || []);
-      } else if (activeTab === 'news') {
-        // 新着情報を取得
-        const { data: newsData, error: newsError } = await supabase
-          .from('news_announcements')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (newsError) throw newsError;
-        setNews(newsData || []);
-        
-        // 新規オープンのドッグランを取得
-        const { data: parksData, error: parksError } = await supabase
-          .from('new_park_openings')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (parksError) throw parksError;
-        setNewParks(parksData || []);
       }
     } catch (error) {
       setError((error as Error).message || 'エラーが発生しました');
@@ -157,19 +113,7 @@ export function AdminShopManagement() {
     }
   };
 
-  const fetchDogParks = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('dog_parks')
-        .select('id, name')
-        .eq('status', 'approved');
-      
-      if (error) throw error;
-      setDogParks(data || []);
-    } catch (error) {
-      console.error('Error fetching dog parks:', error);
-    }
-  };
+
 
   const handleOrderSelect = (order: OrderWithItems) => {
     setSelectedOrder(order);
@@ -202,31 +146,7 @@ export function AdminShopManagement() {
     setShowProductModal(true);
   };
 
-  const handleNewsSelect = (news: NewsAnnouncement) => {
-    setSelectedNews(news);
-    setNewsFormData({
-      title: news.title,
-      content: news.content,
-      category: news.category,
-      is_important: news.is_important || false,
-      image_url: news.image_url || '',
-      link_url: news.link_url || '',
-      park_id: news.park_id || ''
-    });
-    setShowNewsModal(true);
-  };
 
-  const handleNewParkSelect = (park: NewParkOpening) => {
-    setSelectedNewPark(park);
-    setNewParkFormData({
-      name: park.name,
-      address: park.address,
-      image_url: park.image_url,
-      opening_date: park.opening_date,
-      park_id: park.park_id || ''
-    });
-    setShowNewParkModal(true);
-  };
 
   const handleOrderUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -381,210 +301,11 @@ export function AdminShopManagement() {
     }
   };
 
-  const handleNewsUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      setIsUpdating(true);
-      setError('');
-      setSuccess('');
-      
-      if (selectedNews) {
-        // 既存のニュースを更新
-        const { error } = await supabase
-          .from('news_announcements')
-          .update({
-            title: newsFormData.title,
-            content: newsFormData.content,
-            category: newsFormData.category,
-            is_important: newsFormData.is_important,
-            image_url: newsFormData.image_url || null,
-            link_url: newsFormData.link_url || null,
-            park_id: newsFormData.park_id || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', selectedNews.id);
-        
-        if (error) throw error;
-        
-        setSuccess('新着情報を更新しました');
-      } else {
-        // 新規ニュースを作成
-        const { error } = await supabase
-          .from('news_announcements')
-          .insert([{
-            title: newsFormData.title,
-            content: newsFormData.content,
-            category: newsFormData.category,
-            is_important: newsFormData.is_important,
-            image_url: newsFormData.image_url || null,
-            link_url: newsFormData.link_url || null,
-            park_id: newsFormData.park_id || null,
-            created_by: user?.id
-          }]);
-        
-        if (error) throw error;
-        
-        setSuccess('新着情報を作成しました');
-      }
-      
-      // 新着情報一覧を再取得
-      await fetchData();
-      
-      // モーダルを閉じる
-      setShowNewsModal(false);
-      setSelectedNews(null);
-      setNewsFormData({
-        title: '',
-        content: '',
-        category: 'news',
-        is_important: false,
-        image_url: '',
-        link_url: '',
-        park_id: ''
-      });
-      
-      // 3秒後に成功メッセージを消す
-      setTimeout(() => {
-        setSuccess('');
-      }, 3000);
-    } catch (error) {
-      console.error('Error updating news:', error);
-      setError('新着情報の更新に失敗しました');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
 
-  const handleNewParkUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      setIsUpdating(true);
-      setError('');
-      setSuccess('');
-      
-      if (selectedNewPark) {
-        // 既存の新規オープン情報を更新
-        const { error } = await supabase
-          .from('new_park_openings')
-          .update({
-            name: newParkFormData.name,
-            address: newParkFormData.address,
-            image_url: newParkFormData.image_url,
-            opening_date: newParkFormData.opening_date,
-            park_id: newParkFormData.park_id || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', selectedNewPark.id);
-        
-        if (error) throw error;
-        
-        setSuccess('新規オープン情報を更新しました');
-      } else {
-        // 新規オープン情報を作成
-        const { error } = await supabase
-          .from('new_park_openings')
-          .insert([{
-            name: newParkFormData.name,
-            address: newParkFormData.address,
-            image_url: newParkFormData.image_url,
-            opening_date: newParkFormData.opening_date,
-            park_id: newParkFormData.park_id || null
-          }]);
-        
-        if (error) throw error;
-        
-        setSuccess('新規オープン情報を作成しました');
-      }
-      
-      // 新規オープン情報一覧を再取得
-      await fetchData();
-      
-      // モーダルを閉じる
-      setShowNewParkModal(false);
-      setSelectedNewPark(null);
-      setNewParkFormData({
-        name: '',
-        address: '',
-        image_url: '',
-        opening_date: '',
-        park_id: ''
-      });
-      
-      // 3秒後に成功メッセージを消す
-      setTimeout(() => {
-        setSuccess('');
-      }, 3000);
-    } catch (error) {
-      console.error('Error updating new park:', error);
-      setError('新規オープン情報の更新に失敗しました');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
 
-  const handleDeleteNews = async (id: string) => {
-    if (!confirm('この新着情報を削除してもよろしいですか？')) return;
-    
-    try {
-      setIsUpdating(true);
-      setError('');
-      
-      const { error } = await supabase
-        .from('news_announcements')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      setSuccess('新着情報を削除しました');
-      
-      // 新着情報一覧を再取得
-      await fetchData();
-      
-      // 3秒後に成功メッセージを消す
-      setTimeout(() => {
-        setSuccess('');
-      }, 3000);
-    } catch (error) {
-      console.error('Error deleting news:', error);
-      setError('新着情報の削除に失敗しました');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
 
-  const handleDeleteNewPark = async (id: string) => {
-    if (!confirm('この新規オープン情報を削除してもよろしいですか？')) return;
-    
-    try {
-      setIsUpdating(true);
-      setError('');
-      
-      const { error } = await supabase
-        .from('new_park_openings')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      setSuccess('新規オープン情報を削除しました');
-      
-      // 新規オープン情報一覧を再取得
-      await fetchData();
-      
-      // 3秒後に成功メッセージを消す
-      setTimeout(() => {
-        setSuccess('');
-      }, 3000);
-    } catch (error) {
-      console.error('Error deleting new park:', error);
-      setError('新規オープン情報の削除に失敗しました');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+
+
 
   const getStatusLabel = (status: string) => {
     const labels = {
@@ -724,15 +445,7 @@ export function AdminShopManagement() {
     (product.brand && product.brand.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const filteredNews = news.filter(item => 
-    item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.content.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
-  const filteredNewParks = newParks.filter(park => 
-    park.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    park.address.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   if (isLoading) {
     return (
@@ -800,17 +513,6 @@ export function AdminShopManagement() {
         >
           <ShoppingBag className="w-4 h-4 inline mr-2" />
           商品管理
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'news'
-              ? 'text-green-600 border-b-2 border-green-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-          onClick={() => setActiveTab('news')}
-        >
-          <Bell className="w-4 h-4 inline mr-2" />
-          新着情報管理
         </button>
       </div>
 
@@ -1002,163 +704,7 @@ export function AdminShopManagement() {
         </div>
       )}
 
-      {/* 新着情報管理タブ */}
-      {activeTab === 'news' && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <Input
-              label=""
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="タイトル、内容で検索..."
-              icon={<Search className="w-4 h-4 text-gray-500" />}
-              className="w-64"
-            />
-            <div className="flex space-x-3">
-              <Button onClick={() => {
-                setSelectedNews(null);
-                setNewsFormData({
-                  title: '',
-                  content: '',
-                  category: 'news',
-                  is_important: false,
-                  image_url: '',
-                  link_url: '',
-                  park_id: ''
-                });
-                setShowNewsModal(true);
-              }}>
-                <Bell className="w-4 h-4 mr-2" />
-                新着情報を追加
-              </Button>
-              <Button onClick={() => {
-                setSelectedNewPark(null);
-                setNewParkFormData({
-                  name: '',
-                  address: '',
-                  image_url: '',
-                  opening_date: '',
-                  park_id: ''
-                });
-                setShowNewParkModal(true);
-              }}>
-                <Building className="w-4 h-4 mr-2" />
-                新規オープン情報を追加
-              </Button>
-            </div>
-          </div>
 
-          {/* 新着情報一覧 */}
-          <h2 className="text-xl font-semibold mb-4 flex items-center">
-            <Bell className="w-6 h-6 text-blue-600 mr-2" />
-            新着情報
-          </h2>
-          
-          {filteredNews.length === 0 ? (
-            <Card className="text-center py-8">
-              <Bell className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">新着情報がありません</p>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {filteredNews.map((item) => (
-                <Card key={item.id} className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(item.category)}`}>
-                          {getCategoryLabel(item.category)}
-                        </span>
-                        {item.is_important && (
-                          <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
-                            重要
-                          </span>
-                        )}
-                        <span className="text-xs text-gray-500">
-                          {new Date(item.created_at).toLocaleDateString('ja-JP')}
-                        </span>
-                      </div>
-                      <h3 className="font-semibold">{item.title}</h3>
-                      <p className="text-sm text-gray-600 line-clamp-2 mt-1">{item.content}</p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleNewsSelect(item)}
-                      >
-                        <Edit className="w-4 h-4 mr-1" />
-                        編集
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="text-red-600 hover:text-red-700"
-                        onClick={() => handleDeleteNews(item.id)}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* 新規オープン情報一覧 */}
-          <h2 className="text-xl font-semibold mb-4 flex items-center mt-8">
-            <Building className="w-6 h-6 text-purple-600 mr-2" />
-            新規オープン情報
-          </h2>
-          
-          {filteredNewParks.length === 0 ? (
-            <Card className="text-center py-8">
-              <Building className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">新規オープン情報がありません</p>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {filteredNewParks.map((park) => (
-                <Card key={park.id} className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
-                          新規オープン
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {new Date(park.created_at).toLocaleDateString('ja-JP')}
-                        </span>
-                      </div>
-                      <h3 className="font-semibold">{park.name}</h3>
-                      <p className="text-sm text-gray-600 mt-1">{park.address}</p>
-                      <p className="text-sm text-blue-600 mt-1">オープン日: {park.opening_date}</p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleNewParkSelect(park)}
-                      >
-                        <Edit className="w-4 h-4 mr-1" />
-                        編集
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="text-red-600 hover:text-red-700"
-                        onClick={() => handleDeleteNewPark(park.id)}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* 注文詳細モーダル */}
       {selectedOrder && (
@@ -1532,194 +1078,6 @@ export function AdminShopManagement() {
         </div>
       )}
 
-      {/* 新着情報編集モーダル */}
-      {showNewsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">{selectedNews ? '新着情報を編集' : '新着情報を追加'}</h2>
-                <button
-                  onClick={() => setShowNewsModal(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <form onSubmit={handleNewsUpdate}>
-                <div className="space-y-4">
-                  <Input
-                    label="タイトル *"
-                    value={newsFormData.title}
-                    onChange={(e) => setNewsFormData({ ...newsFormData, title: e.target.value })}
-                    required
-                  />
-                  
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      内容 *
-                    </label>
-                    <textarea
-                      value={newsFormData.content}
-                      onChange={(e) => setNewsFormData({ ...newsFormData, content: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={6}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Select
-                      label="カテゴリー *"
-                      options={[
-                        { value: 'news', label: 'お知らせ' },
-                        { value: 'announcement', label: '重要なお知らせ' },
-                        { value: 'sale', label: 'セール情報' },
-                      ]}
-                      value={newsFormData.category}
-                      onChange={(e) => setNewsFormData({ ...newsFormData, category: e.target.value })}
-                      required
-                    />
-                    
-                    <div className="flex items-center space-x-2 mt-8">
-                      <input
-                        type="checkbox"
-                        id="is_important"
-                        checked={newsFormData.is_important}
-                        onChange={(e) => setNewsFormData({ ...newsFormData, is_important: e.target.checked })}
-                        className="rounded text-blue-600"
-                      />
-                      <label htmlFor="is_important" className="text-sm text-gray-700">
-                        重要なお知らせとして表示する
-                      </label>
-                    </div>
-                  </div>
-                  
-                  <Input
-                    label="画像URL"
-                    value={newsFormData.image_url}
-                    onChange={(e) => setNewsFormData({ ...newsFormData, image_url: e.target.value })}
-                    placeholder="https://example.com/image.jpg"
-                  />
-                  
-                  <Input
-                    label="リンクURL"
-                    value={newsFormData.link_url}
-                    onChange={(e) => setNewsFormData({ ...newsFormData, link_url: e.target.value })}
-                    placeholder="https://example.com/page"
-                  />
-                  
-                  <Select
-                    label="関連ドッグラン"
-                    options={[
-                      { value: '', label: '関連ドッグランなし' },
-                      ...dogParks.map(park => ({ value: park.id, label: park.name }))
-                    ]}
-                    value={newsFormData.park_id}
-                    onChange={(e) => setNewsFormData({ ...newsFormData, park_id: e.target.value })}
-                  />
-                </div>
-
-                <div className="flex justify-end space-x-3 mt-6">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setShowNewsModal(false)}
-                  >
-                    キャンセル
-                  </Button>
-                  <Button
-                    type="submit"
-                    isLoading={isUpdating}
-                  >
-                    {selectedNews ? '更新する' : '追加する'}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 新規オープン情報編集モーダル */}
-      {showNewParkModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">{selectedNewPark ? '新規オープン情報を編集' : '新規オープン情報を追加'}</h2>
-                <button
-                  onClick={() => setShowNewParkModal(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <form onSubmit={handleNewParkUpdate}>
-                <div className="space-y-4">
-                  <Input
-                    label="施設名 *"
-                    value={newParkFormData.name}
-                    onChange={(e) => setNewParkFormData({ ...newParkFormData, name: e.target.value })}
-                    required
-                  />
-                  
-                  <Input
-                    label="住所 *"
-                    value={newParkFormData.address}
-                    onChange={(e) => setNewParkFormData({ ...newParkFormData, address: e.target.value })}
-                    required
-                  />
-                  
-                  <Input
-                    label="画像URL *"
-                    value={newParkFormData.image_url}
-                    onChange={(e) => setNewParkFormData({ ...newParkFormData, image_url: e.target.value })}
-                    placeholder="https://example.com/image.jpg"
-                    required
-                  />
-                  
-                  <Input
-                    label="オープン日 *"
-                    value={newParkFormData.opening_date}
-                    onChange={(e) => setNewParkFormData({ ...newParkFormData, opening_date: e.target.value })}
-                    placeholder="2025年7月1日"
-                    required
-                  />
-                  
-                  <Select
-                    label="関連ドッグラン"
-                    options={[
-                      { value: '', label: '関連ドッグランなし' },
-                      ...dogParks.map(park => ({ value: park.id, label: park.name }))
-                    ]}
-                    value={newParkFormData.park_id}
-                    onChange={(e) => setNewParkFormData({ ...newParkFormData, park_id: e.target.value })}
-                  />
-                </div>
-
-                <div className="flex justify-end space-x-3 mt-6">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setShowNewParkModal(false)}
-                  >
-                    キャンセル
-                  </Button>
-                  <Button
-                    type="submit"
-                    isLoading={isUpdating}
-                  >
-                    {selectedNewPark ? '更新する' : '追加する'}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
