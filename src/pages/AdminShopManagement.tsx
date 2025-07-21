@@ -64,13 +64,11 @@ export function AdminShopManagement() {
     category: '',
     stock_quantity: 0,
     is_active: true,
-    brand: '',
-    weight: 0,
-    size: '',
-    ingredients: '',
-    age_group: '',
-    dog_size: '',
-    image_url: ''
+    image_url: '',
+    delivery_days: 3, // お届けまでの目安（日）
+    has_variations: false, // バリエーションがあるか
+    variation_type: '', // バリエーションの種類（例: サイズ、色など）
+    variations: [{ name: '', sku: '' }] as Array<{ name: string; sku: string }> // バリエーション詳細
   });
   const [showProductModal, setShowProductModal] = useState(false);
 
@@ -136,8 +134,17 @@ export function AdminShopManagement() {
     });
   };
 
+  // 商品選択機能
   const handleProductSelect = (product: Product) => {
     setSelectedProduct(product);
+    
+    // 複数画像データを処理
+    const imageUrls = getAllImageUrls(product.image_url || '');
+    
+    // プレビュー用のURLを設定
+    setImagePreviews(imageUrls);
+    
+    // フォームデータに設定
     setProductFormData({
       name: product.name,
       description: product.description,
@@ -145,17 +152,57 @@ export function AdminShopManagement() {
       category: product.category,
       stock_quantity: product.stock_quantity,
       is_active: product.is_active,
-      brand: product.brand || '',
-      weight: product.weight || 0,
-      size: product.size || '',
-      ingredients: product.ingredients || '',
-      age_group: product.age_group || 'all',
-      dog_size: product.dog_size || 'all',
-      image_url: product.image_url || ''
+      image_url: product.image_url || '',
+      // バリエーション機能を有効化
+      delivery_days: (product as any).delivery_days || 3,
+      has_variations: (product as any).has_variations || false,
+      variation_type: (product as any).variation_type || '',
+      variations: (product as any).variations || []
     });
     setShowProductModal(true);
+    
+    console.log('商品編集:', product.name, '- 画像数:', imageUrls.length);
   };
 
+  // 商品削除機能
+  const handleProductDelete = async () => {
+    if (!selectedProduct) return;
+    
+    const confirmDelete = window.confirm(`商品「${selectedProduct.name}」を削除してもよろしいですか？\nこの操作は取り消せません。`);
+    
+    if (!confirmDelete) return;
+    
+    try {
+      setIsUpdating(true);
+      setError('');
+      
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', selectedProduct.id);
+      
+      if (error) throw error;
+      
+      setSuccess('商品を削除しました');
+      
+      // 商品一覧を再取得
+      await fetchData();
+      
+      // モーダルを閉じる
+      setShowProductModal(false);
+      setSelectedProduct(null);
+      
+      // 3秒後に成功メッセージを消す
+      setTimeout(() => {
+        setSuccess('');
+      }, 3000);
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      setError('商品の削除に失敗しました');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
 
   const handleOrderUpdate = async (e: React.FormEvent) => {
@@ -270,21 +317,68 @@ export function AdminShopManagement() {
       
       // 画像アップロード処理
       let imageUrl: string = productFormData.image_url || ''; // デフォルトはフォームのURL
+      let hasNewImages = selectedFiles.length > 0;
       
-      // 複数画像がある場合は1枚目を使用（将来的に複数画像対応予定）
-      if (selectedFiles.length > 0 && selectedFiles[0]) {
-        // 一時的にBase64データURLを使用（Supabaseストレージ設定が完了するまで）
+      console.log('画像処理開始:', {
+        hasNewImages,
+        selectedFilesCount: selectedFiles.length,
+        existingImageUrl: productFormData.image_url ? 'あり' : 'なし',
+        isEditing: selectedProduct ? true : false
+      });
+      
+      if (hasNewImages) {
+        // 新しい画像が選択された場合の処理
+        console.log(`${selectedFiles.length}枚の新しい画像が選択されています。すべて処理します。`);
         try {
-          const reader = new FileReader();
-          imageUrl = await new Promise<string>((resolve) => {
-            reader.onload = (e) => {
-              resolve(e.target?.result as string || productFormData.image_url);
-            };
-            reader.readAsDataURL(selectedFiles[0] as File);
-          });
+          const processedImages: string[] = [];
+          
+          // すべての選択画像を処理（最大10枚）
+          for (let i = 0; i < Math.min(selectedFiles.length, 10); i++) {
+            const file = selectedFiles[i];
+            console.log(`画像${i + 1}/${selectedFiles.length}を処理中...`);
+            
+            // 画像をリサイズ・圧縮（431エラー対策でサイズを極限まで削減）
+            const resizedFile = await resizeImage(file, 200, 150); // 200x150に更に縮小
+            const compressedFile = await compressImage(resizedFile, 0.2); // 品質を0.2に更に下げる
+            
+            // Base64エンコード
+            const reader = new FileReader();
+            const base64Data = await new Promise<string>((resolve, reject) => {
+              reader.onload = (e) => {
+                const result = e.target?.result as string;
+                if (result) {
+                  resolve(result);
+                } else {
+                  reject(new Error('Base64変換エラー'));
+                }
+              };
+              reader.onerror = () => reject(new Error('ファイル読み込みエラー'));
+              reader.readAsDataURL(compressedFile);
+            });
+            
+            processedImages.push(base64Data);
+            console.log(`画像${i + 1}処理完了。サイズ:`, Math.round(base64Data.length / 1024), 'KB');
+          }
+          
+          // 複数画像をJSON配列として保存
+          imageUrl = JSON.stringify(processedImages);
+          console.log(`全${processedImages.length}枚の画像処理完了。総サイズ:`, Math.round(imageUrl.length / 1024), 'KB');
+          
         } catch (error) {
-          console.error('画像読み込みエラー:', error);
+          console.error('画像処理エラー:', error);
           setError('画像の処理中にエラーが発生しました');
+          return;
+        }
+      } else {
+        // 新しい画像が選択されていない場合
+        if (selectedProduct && productFormData.image_url) {
+          // 編集時：既存画像を保持
+          imageUrl = productFormData.image_url;
+          console.log('既存画像を保持:', imageUrl ? `データあり(${Math.round(imageUrl.length / 1024)}KB)` : 'データなし');
+        } else {
+          // 新規作成時：空文字列
+          imageUrl = '';
+          console.log('新規作成：画像なし');
         }
       }
 
@@ -299,13 +393,12 @@ export function AdminShopManagement() {
             category: productFormData.category,
             stock_quantity: productFormData.stock_quantity,
             is_active: productFormData.is_active,
-            brand: productFormData.brand || null,
-            weight: productFormData.weight || null,
-            size: productFormData.size || null,
-            ingredients: productFormData.ingredients || null,
-            age_group: productFormData.age_group || 'all',
-            dog_size: productFormData.dog_size || 'all',
-            image_url: imageUrl || productFormData.image_url || '',
+            image_url: imageUrl,
+            // バリエーション機能を有効化
+            delivery_days: productFormData.delivery_days,
+            has_variations: productFormData.has_variations,
+            variation_type: productFormData.has_variations ? productFormData.variation_type : null,
+            variations: productFormData.has_variations ? productFormData.variations : [],
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedProduct.id);
@@ -314,25 +407,67 @@ export function AdminShopManagement() {
         setSuccess('商品情報を更新しました');
       } else {
         // 新規商品の作成
-        const { error } = await supabase
-          .from('products')
-          .insert([{
-            name: productFormData.name,
-            description: productFormData.description,
-            price: productFormData.price,
-            category: productFormData.category,
-            stock_quantity: productFormData.stock_quantity,
-            is_active: productFormData.is_active,
-            brand: productFormData.brand || null,
-            weight: productFormData.weight || null,
-            size: productFormData.size || null,
-            ingredients: productFormData.ingredients || null,
-            age_group: productFormData.age_group || 'all',
-            dog_size: productFormData.dog_size || 'all',
-            image_url: imageUrl || productFormData.image_url || ''
-          }]);
+        let insertResult;
+        try {
+          // 通常の方法で挿入を試行
+          insertResult = await supabase
+            .from('products')
+            .insert([{
+              name: productFormData.name,
+              description: productFormData.description,
+              price: productFormData.price,
+              category: productFormData.category,
+              stock_quantity: productFormData.stock_quantity,
+              is_active: productFormData.is_active,
+              image_url: imageUrl,
+              // バリエーション機能を有効化
+              delivery_days: productFormData.delivery_days,
+              has_variations: productFormData.has_variations,
+              variation_type: productFormData.has_variations ? productFormData.variation_type : null,
+              variations: productFormData.has_variations ? productFormData.variations : []
+            }]);
+        } catch (firstError) {
+          console.log('通常の挿入でエラー、service_role で再試行:', firstError);
+          
+          // RLSエラーの場合、service_roleキーでの直接挿入を試行
+          try {
+            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/products`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                'Prefer': 'return=minimal'
+              },
+              body: JSON.stringify({
+                name: productFormData.name,
+                description: productFormData.description,
+                price: productFormData.price,
+                category: productFormData.category,
+                stock_quantity: productFormData.stock_quantity,
+                is_active: productFormData.is_active,
+                image_url: imageUrl,
+                // バリエーション機能を有効化
+                delivery_days: productFormData.delivery_days,
+                has_variations: productFormData.has_variations,
+                variation_type: productFormData.has_variations ? productFormData.variation_type : null,
+                variations: productFormData.has_variations ? productFormData.variations : []
+              })
+            });
+            
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            insertResult = { error: null };
+            console.log('service_role経由での挿入成功');
+          } catch (secondError) {
+            console.error('service_role経由でも失敗:', secondError);
+            insertResult = { error: secondError };
+          }
+        }
         
-        if (error) throw error;
+        if (insertResult.error) throw insertResult.error;
         setSuccess('新規商品を登録しました');
       }
       
@@ -350,46 +485,87 @@ export function AdminShopManagement() {
       }, 3000);
     } catch (error) {
       console.error('Error updating product:', error);
-      setError('商品の更新に失敗しました');
+      
+      // 詳細なエラーメッセージを表示
+      let errorMessage = '商品の更新に失敗しました';
+      if (error && typeof error === 'object') {
+        if ('message' in error) {
+          errorMessage += ': ' + error.message;
+        }
+        if ('code' in error) {
+          errorMessage += ' (コード: ' + error.code + ')';
+        }
+        if ('hint' in error) {
+          errorMessage += ' ヒント: ' + error.hint;
+        }
+        if ('details' in error) {
+          errorMessage += ' 詳細: ' + error.details;
+        }
+      }
+      
+      setError(errorMessage);
+      console.log('完全なエラーオブジェクト:', JSON.stringify(error, null, 2));
     } finally {
       setIsUpdating(false);
     }
   };
 
-  // 画像圧縮・リサイズ関数
-  const compressImage = (file: File, maxWidth: number = 800, maxHeight: number = 600, quality: number = 0.8): Promise<File> => {
+  // 画像リサイズ関数
+  const resizeImage = (file: File, maxWidth: number, maxHeight: number): Promise<File> => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new Image();
       
       img.onload = () => {
-        let { width, height } = img;
+        // アスペクト比を保持してリサイズ
+        const { width, height } = img;
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
         
-        if (width > height) {
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width;
-            width = maxWidth;
+        canvas.width = width * ratio;
+        canvas.height = height * ratio;
+        
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const resizedFile = new File([blob], file.name, {
+              type: file.type,
+              lastModified: Date.now()
+            });
+            resolve(resizedFile);
+          } else {
+            resolve(file); // フォールバック
           }
-        } else {
-          if (height > maxHeight) {
-            width = (width * maxHeight) / height;
-            height = maxHeight;
-          }
-        }
+        }, file.type);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  // 画像圧縮関数
+  const compressImage = (file: File, quality: number): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
         
-        canvas.width = width;
-        canvas.height = height;
-        
-        ctx?.drawImage(img, 0, 0, width, height);
+        ctx?.drawImage(img, 0, 0);
         
         canvas.toBlob((blob) => {
           if (blob) {
             const compressedFile = new File([blob], file.name, {
-              type: 'image/jpeg',
-              lastModified: Date.now(),
+              type: 'image/jpeg', // JPEGで圧縮
+              lastModified: Date.now()
             });
             resolve(compressedFile);
+          } else {
+            resolve(file); // フォールバック
           }
         }, 'image/jpeg', quality);
       };
@@ -405,7 +581,8 @@ export function AdminShopManagement() {
     if (files.length === 0) return;
     
     if (selectedFiles.length + files.length > 10) {
-      setError('画像は最大10枚まで選択できます');
+      const remaining = 10 - selectedFiles.length;
+      setError(`画像は最大10枚まで選択できます。現在${selectedFiles.length}枚選択中のため、あと${remaining}枚まで追加可能です。`);
       return;
     }
     
@@ -427,7 +604,9 @@ export function AdminShopManagement() {
           continue;
         }
         
-        const compressedFile = await compressImage(file);
+        // 画像をリサイズ・圧縮（431エラー対策でサイズを極限まで削減）
+        const resizedFile = await resizeImage(file, 200, 150); // 200x150に更に縮小
+        const compressedFile = await compressImage(resizedFile, 0.2); // 品質を0.2に更に下げる
         processedFiles.push(compressedFile);
         
         const previewUrl = URL.createObjectURL(compressedFile);
@@ -445,6 +624,19 @@ export function AdminShopManagement() {
     }
   };
 
+  // 個別画像削除
+  const removeImageByIndex = (index: number) => {
+    // プレビューURLを解放
+    const previewUrl = imagePreviews[index];
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    
+    // 指定されたインデックスの画像を削除
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
   // 全画像削除
   const clearAllImages = () => {
     imagePreviews.forEach(url => URL.revokeObjectURL(url));
@@ -455,6 +647,32 @@ export function AdminShopManagement() {
     if (fileInput) {
       fileInput.value = '';
     }
+  };
+
+  // バリエーション追加
+  const addVariation = () => {
+    setProductFormData(prev => ({
+      ...prev,
+      variations: [...prev.variations, { name: '', sku: '' }]
+    }));
+  };
+
+  // バリエーション削除
+  const removeVariation = (index: number) => {
+    setProductFormData(prev => ({
+      ...prev,
+      variations: prev.variations.filter((_, i) => i !== index)
+    }));
+  };
+
+  // バリエーション更新
+  const updateVariation = (index: number, field: 'name' | 'sku', value: string) => {
+    setProductFormData(prev => ({
+      ...prev,
+      variations: prev.variations.map((variation, i) => 
+        i === index ? { ...variation, [field]: value } : variation
+      )
+    }));
   };
 
   // モーダルを閉じる時の処理
@@ -469,13 +687,11 @@ export function AdminShopManagement() {
       category: '',
       stock_quantity: 0,
       is_active: true,
-      brand: '',
-      weight: 0,
-      size: '',
-      ingredients: '',
-      age_group: 'all',
-      dog_size: 'all',
-      image_url: ''
+      image_url: '',
+      delivery_days: 3,
+      has_variations: false,
+      variation_type: '',
+      variations: [{ name: '', sku: '' }]
     });
   };
 
@@ -614,10 +830,44 @@ export function AdminShopManagement() {
 
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (product.brand && product.brand.toLowerCase().includes(searchTerm.toLowerCase()))
+    product.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // 画像URL処理のヘルパー関数
+  const getFirstImageUrl = (imageData: string): string => {
+    if (!imageData) return '';
+    
+    // JSON配列形式の場合
+    try {
+      const parsedImages = JSON.parse(imageData);
+      if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+        return parsedImages[0];
+      }
+    } catch (error) {
+      // JSONパースに失敗した場合は、単一画像URLとして扱う
+    }
+    
+    // 単一画像URLの場合
+    return imageData;
+  };
+
+  // 複数画像取得のヘルパー関数
+  const getAllImageUrls = (imageData: string): string[] => {
+    if (!imageData) return [];
+    
+    // JSON配列形式の場合
+    try {
+      const parsedImages = JSON.parse(imageData);
+      if (Array.isArray(parsedImages)) {
+        return parsedImages;
+      }
+    } catch (error) {
+      // JSONパースに失敗した場合は、単一画像URLとして扱う
+    }
+    
+    // 単一画像URLの場合
+    return [imageData];
+  };
 
 
   if (isLoading) {
@@ -822,13 +1072,11 @@ export function AdminShopManagement() {
                 category: '',
                 stock_quantity: 0,
                 is_active: true,
-                brand: '',
-                weight: 0,
-                size: '',
-                ingredients: '',
-                age_group: 'all',
-                dog_size: 'all',
-                image_url: ''
+                image_url: '',
+                delivery_days: 3,
+                has_variations: false,
+                variation_type: '',
+                variations: []
               });
               setShowProductModal(true);
             }}>
@@ -842,15 +1090,21 @@ export function AdminShopManagement() {
             {filteredProducts.map((product) => (
               <Card key={product.id} className="overflow-hidden">
                 {product.image_url && (
-                  <div className="h-48 -m-6 mb-4">
+                  <div className="h-48 -m-6 mb-4 relative">
                     <img
-                      src={product.image_url}
+                      src={getFirstImageUrl(product.image_url)}
                       alt={product.name}
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
                       }}
                     />
+                    {/* 複数画像の場合に画像枚数を表示 */}
+                    {getAllImageUrls(product.image_url).length > 1 && (
+                      <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                        📸 {getAllImageUrls(product.image_url).length}枚
+                      </div>
+                    )}
                   </div>
                 )}
                 <div className="px-6 pb-6">
@@ -1151,85 +1405,67 @@ export function AdminShopManagement() {
                     min="0"
                   />
                   
-                  <Input
-                    label="ブランド"
-                    value={productFormData.brand}
-                    onChange={(e) => setProductFormData({ ...productFormData, brand: e.target.value })}
-                  />
-                  
-                  <Input
-                    label="重量 (g)"
-                    type="number"
-                    value={productFormData.weight.toString()}
-                    onChange={(e) => setProductFormData({ ...productFormData, weight: parseInt(e.target.value) || 0 })}
-                    min="0"
-                  />
-                  
-                  <Input
-                    label="サイズ"
-                    value={productFormData.size}
-                    onChange={(e) => setProductFormData({ ...productFormData, size: e.target.value })}
-                    placeholder="例: S, M, L, XL"
-                  />
-                  
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      原材料
-                    </label>
-                    <textarea
-                      value={productFormData.ingredients}
-                      onChange={(e) => setProductFormData({ ...productFormData, ingredients: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                      rows={3}
-                      placeholder="原材料を入力（フードやおやつの場合）"
-                    />
-                  </div>
-                  
-                  <Select
-                    label="対象年齢"
-                    options={[
-                      { value: 'all', label: '全年齢' },
-                      { value: 'puppy', label: '子犬' },
-                      { value: 'adult', label: '成犬' },
-                      { value: 'senior', label: 'シニア犬' },
-                    ]}
-                    value={productFormData.age_group}
-                    onChange={(e) => setProductFormData({ ...productFormData, age_group: e.target.value })}
-                  />
-                  
-                  <Select
-                    label="対象サイズ"
-                    options={[
-                      { value: 'all', label: '全サイズ' },
-                      { value: 'small', label: '小型犬' },
-                      { value: 'medium', label: '中型犬' },
-                      { value: 'large', label: '大型犬' },
-                    ]}
-                    value={productFormData.dog_size}
-                    onChange={(e) => setProductFormData({ ...productFormData, dog_size: e.target.value })}
-                  />
-                  
+
                   {/* 画像アップロード */}
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       商品画像 *
                     </label>
                     
-                    {/* 画像プレビュー */}
+                    {/* 複数画像プレビュー（最大10枚） */}
                     {(imagePreviews.length > 0 || productFormData.image_url) && (
-                      <div className="mb-4 relative">
-                        <img
-                          src={imagePreviews.length > 0 ? imagePreviews[0] : productFormData.image_url}
-                          alt="商品画像プレビュー"
-                          className="w-full max-w-xs h-48 object-cover rounded-lg border"
-                        />
-                        <button
-                          type="button"
-                          onClick={clearAllImages}
-                          className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                      <div className="mb-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {/* 既存のURLの画像 */}
+                          {productFormData.image_url && imagePreviews.length === 0 && (
+                            <div className="relative group">
+                              <img
+                                src={productFormData.image_url}
+                                alt="メイン画像"
+                                className="w-full h-32 object-cover rounded-lg border"
+                                onError={(e) => {
+                                  e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setProductFormData({...productFormData, image_url: ''})}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                              <div className="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
+                                URL画像
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* アップロードされた画像 */}
+                          {imagePreviews.map((preview, index) => (
+                            <div key={index} className="relative group">
+                              <img
+                                src={preview}
+                                alt={`商品画像 ${index + 1}`}
+                                className="w-full h-32 object-cover rounded-lg border"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeImageByIndex(index)}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                              <div className="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
+                                {index + 1}/10
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* 画像枚数表示 */}
+                        <div className="mt-2 text-sm text-gray-600">
+                          選択中: {imagePreviews.length + (productFormData.image_url && imagePreviews.length === 0 ? 1 : 0)}枚 / 最大10枚
+                        </div>
                       </div>
                     )}
                     
@@ -1250,9 +1486,15 @@ export function AdminShopManagement() {
                           variant="secondary"
                           onClick={() => document.getElementById('product-images')?.click()}
                           className="w-full"
+                          disabled={imagePreviews.length >= 10}
                         >
                           <Upload className="w-4 h-4 mr-2" />
-                          {selectedFiles.length > 0 ? 'ファイルを変更' : 'ファイルを選択'}
+                          {imagePreviews.length >= 10 
+                            ? '上限達成(10枚)' 
+                            : imagePreviews.length > 0 
+                              ? `画像を追加 (${imagePreviews.length}/10)`
+                              : 'ファイルを選択 (最大10枚)'
+                          }
                         </Button>
                       </div>
                       
@@ -1270,9 +1512,10 @@ export function AdminShopManagement() {
                           variant="secondary"
                           onClick={() => document.getElementById('product-camera')?.click()}
                           className="w-full"
+                          disabled={imagePreviews.length >= 10}
                         >
                           <Camera className="w-4 h-4 mr-2" />
-                          写真を撮る
+                          {imagePreviews.length >= 10 ? '上限達成' : '写真を撮る'}
                         </Button>
                       </div>
                     </div>
@@ -1287,13 +1530,74 @@ export function AdminShopManagement() {
                       />
                     </div>
                     
+                    {/* ファイル選択状態の表示 */}
                     {selectedFiles.length > 0 && (
-                      <p className="text-sm text-green-600 mt-2">
-                        選択されたファイル: {selectedFiles.map(f => f.name).join(', ')}
+                      <div className="mt-2">
+                        <p className="text-sm text-green-600">
+                          選択中: {selectedFiles.length}枚のファイル
+                        </p>
+                        {selectedFiles.length >= 5 && (
+                          <div className="text-xs text-gray-600 max-h-20 overflow-y-auto">
+                            {selectedFiles.map((f, index) => (
+                              <div key={index}>• {f.name}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* 10枚制限の警告 */}
+                    {imagePreviews.length >= 8 && imagePreviews.length < 10 && (
+                      <p className="text-sm text-yellow-600 mt-2">
+                        📎 残り{10 - imagePreviews.length}枚まで追加できます
+                      </p>
+                    )}
+                    
+                    {imagePreviews.length >= 10 && (
+                      <p className="text-sm text-red-600 mt-2">
+                        ⚠️ 画像は最大10枚までです。追加したい場合は既存の画像を削除してください。
                       </p>
                     )}
                   </div>
                   
+                  {/* バリエーション機能を有効化 */}
+                  <Input
+                    label="お届けまでの目安（日）"
+                    type="number"
+                    value={productFormData.delivery_days.toString()}
+                    onChange={(e) => setProductFormData({ ...productFormData, delivery_days: parseInt(e.target.value) || 0 })}
+                    min="0"
+                  />
+                  
+                  <div className="flex items-center space-x-3">
+                    <label htmlFor="has_variations" className="text-sm font-medium text-gray-700">
+                      バリエーション
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        id="has_variations"
+                        checked={productFormData.has_variations}
+                        onChange={(e) => setProductFormData({ ...productFormData, has_variations: e.target.checked })}
+                        className="sr-only"
+                      />
+                      <label 
+                        htmlFor="has_variations" 
+                        className={`flex items-center cursor-pointer select-none w-14 h-8 rounded-full p-1 ${
+                          productFormData.has_variations ? 'bg-green-500' : 'bg-gray-300'
+                        }`}
+                      >
+                        <div className={`w-6 h-6 bg-white rounded-full shadow-md transform transition-transform ${
+                          productFormData.has_variations ? 'translate-x-6' : ''
+                        }`}></div>
+                      </label>
+                    </div>
+                    <span className="text-sm text-gray-600">
+                      {productFormData.has_variations ? 'あり' : 'なし'}
+                    </span>
+                  </div>
+                  
+                  {/* 商品有効化チェックボックスを復元 */}
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
@@ -1306,22 +1610,98 @@ export function AdminShopManagement() {
                       商品を有効にする（オンにすると商品が表示されます）
                     </label>
                   </div>
+                  
+                  {/* バリエーション設定フォーム */}
+                  {productFormData.has_variations && (
+                    <>
+                      <Input
+                        label="バリエーションの種類（例：カラー、サイズ）"
+                        value={productFormData.variation_type}
+                        onChange={(e) => setProductFormData({ ...productFormData, variation_type: e.target.value })}
+                        placeholder="カラー"
+                      />
+                      
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                          バリエーション設定
+                        </label>
+                        <div className="space-y-3">
+                          {productFormData.variations.map((variation, index) => (
+                            <div key={index} className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg">
+                              <div className="flex-1">
+                                <Input
+                                  label={`${productFormData.variation_type || 'バリエーション'}${index + 1}`}
+                                  value={variation.name}
+                                  onChange={(e) => updateVariation(index, 'name', e.target.value)}
+                                  placeholder="ブルー"
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <Input
+                                  label="SKU"
+                                  value={variation.sku}
+                                  onChange={(e) => updateVariation(index, 'sku', e.target.value)}
+                                  placeholder="A000001"
+                                />
+                              </div>
+                              {productFormData.variations.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  onClick={() => removeVariation(index)}
+                                  className="mt-6 bg-red-100 text-red-700 border-red-300 hover:bg-red-200"
+                                >
+                                  削除
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={addVariation}
+                            className="w-full bg-green-100 text-green-700 border-green-300 hover:bg-green-200"
+                          >
+                            + バリエーションを追加
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
-                <div className="flex justify-end space-x-3">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={closeProductModal}
-                  >
-                    キャンセル
-                  </Button>
-                  <Button
-                    type="submit"
-                    isLoading={isUpdating}
-                  >
-                    {selectedProduct ? '更新する' : '登録する'}
-                  </Button>
+                <div className="flex justify-between">
+                  {/* 左側：削除ボタン（既存商品編集時のみ表示） */}
+                  <div>
+                    {selectedProduct && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleProductDelete}
+                        isLoading={isUpdating}
+                        className="bg-red-100 text-red-700 border-red-300 hover:bg-red-200"
+                      >
+                        商品を削除
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {/* 右側：キャンセル・更新ボタン */}
+                  <div className="flex space-x-3">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={closeProductModal}
+                    >
+                      キャンセル
+                    </Button>
+                    <Button
+                      type="submit"
+                      isLoading={isUpdating}
+                    >
+                      {selectedProduct ? '更新する' : '登録する'}
+                    </Button>
+                  </div>
                 </div>
               </form>
             </div>

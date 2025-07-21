@@ -1,10 +1,12 @@
-import { AlertTriangle, BarChart4, Camera, CheckCircle, ChevronRight, Clock, DollarSign, Edit, Eye, FileText, MapPin, PlusCircle, RefreshCw, Shield, Star, Trash2, TrendingUp, Users } from 'lucide-react';
+import { AlertTriangle, BarChart4, Building, Camera, CheckCircle, ChevronRight, Clock, DollarSign, Edit, Eye, FileText, Globe, MapPin, PlusCircle, RefreshCw, Shield, Star, Trash2, TrendingUp, Upload, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import Input from '../components/Input';
 import useAuth from '../context/AuthContext';
 import type { DogPark } from '../types';
+import type { FacilityImage, PetFacility } from '../types/facilities';
 import { supabase } from '../utils/supabase';
 
 export function OwnerDashboard() {
@@ -22,6 +24,22 @@ export function OwnerDashboard() {
   const [success, setSuccess] = useState('');
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  
+  // ペット施設管理用のstate
+  const [facilities, setFacilities] = useState<PetFacility[]>([]);
+  const [selectedFacility, setSelectedFacility] = useState<PetFacility | null>(null);
+  const [showFacilityModal, setShowFacilityModal] = useState(false);
+  const [isUpdatingFacility, setIsUpdatingFacility] = useState(false);
+  const [facilityImages, setFacilityImages] = useState<FacilityImage[]>([]);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreview, setImagePreview] = useState<string[]>([]);
+  const [facilityFormData, setFacilityFormData] = useState({
+    name: '',
+    description: '',
+    website: '',
+    phone: '',
+    status: 'approved' as 'pending' | 'approved' | 'rejected' | 'suspended'
+  });
 
   // データ取得関数を分離
   const fetchParks = async () => {
@@ -51,21 +69,257 @@ export function OwnerDashboard() {
     }
   };
 
-  // 手動リフレッシュ機能
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    setError('');
-    setSuccess('');
-
+  // ペット施設データ取得関数
+  const fetchFacilities = async () => {
     try {
-      await fetchParks();
-      setSuccess('データを更新しました');
+      const { data, error } = await supabase
+        .from('pet_facilities')
+        .select('*')
+        .eq('owner_id', user?.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      setFacilities(data || []);
+    } catch (error) {
+      console.error('Error fetching facilities:', error);
+      setError('ペット施設の取得に失敗しました');
+    }
+  };
+
+  // 施設編集ハンドラー
+  const handleEditFacility = (facility: any) => {
+    setSelectedFacility(facility);
+    setFacilityFormData({
+      name: facility.name,
+      description: facility.description || '',
+      website: facility.website || '',
+      phone: facility.phone || '',
+      status: facility.status
+    });
+    setShowFacilityModal(true);
+  };
+
+  // 公開・非公開トグル
+  const handleTogglePublic = async (facilityId: string, isPublic: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('pet_facilities')
+        .update({ 
+          status: isPublic ? 'approved' : 'suspended',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', facilityId)
+        .eq('owner_id', user?.id);
+
+      if (error) throw error;
+
+      await fetchFacilities();
+      setSuccess('公開設定を更新しました');
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
-      setError('データの更新に失敗しました');
+      console.error('Error toggling facility status:', error);
+      setError('公開設定の更新に失敗しました');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  // 施設情報更新
+  const handleUpdateFacility = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFacility) return;
+
+    try {
+      setIsUpdatingFacility(true);
+      setError('');
+
+      const { error } = await supabase
+        .from('pet_facilities')
+        .update({
+          name: facilityFormData.name,
+          description: facilityFormData.description,
+          website: facilityFormData.website,
+          phone: facilityFormData.phone,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedFacility.id)
+        .eq('owner_id', user?.id);
+
+      if (error) throw error;
+
+      await fetchFacilities();
+      setShowFacilityModal(false);
+      setSuccess('施設情報を更新しました');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error updating facility:', error);
+      setError('施設情報の更新に失敗しました');
       setTimeout(() => setError(''), 3000);
     } finally {
-      setIsRefreshing(false);
+      setIsUpdatingFacility(false);
+    }
+  };
+
+  const getStatusInfo = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return {
+          icon: Clock,
+          label: '第一審査中',
+          description: '申請内容を審査中です。しばらくお待ちください。',
+          color: 'bg-yellow-100 text-yellow-800'
+        };
+      case 'first_stage_passed':
+        return {
+          icon: CheckCircle,
+          label: '第一審査通過（旧）',
+          description: '第一審査を通過しました。（旧システム）',
+          color: 'bg-blue-100 text-blue-800'
+        };
+      case 'second_stage_waiting':
+        return {
+          icon: AlertTriangle,
+          label: '二次審査申し込み',
+          description: '第一審査通過！スマートロックを購入し、第二審査を提出してください。',
+          color: 'bg-orange-100 text-orange-800',
+          showSmartLockPurchase: true
+        };
+      case 'second_stage_review':
+        return {
+          icon: FileText,
+          label: '第二審査中',
+          description: '第二審査を実施中です。審査結果をお待ちください。',
+          color: 'bg-purple-100 text-purple-800'
+        };
+      case 'smart_lock_testing':
+        return {
+          icon: Shield,
+          label: 'スマートロック認証待ち',
+          description: 'スマートロックの動作確認を行ってください。',
+          color: 'bg-indigo-100 text-indigo-800'
+        };
+      case 'approved':
+        return {
+          icon: CheckCircle,
+          label: '承認済み・公開可能',
+          description: 'ドッグランの運営を開始できます！',
+          color: 'bg-green-100 text-green-800'
+        };
+      case 'rejected':
+        return {
+          icon: AlertTriangle,
+          label: '却下',
+          description: '申請が却下されました。詳細をご確認ください。',
+          color: 'bg-red-100 text-red-800'
+        };
+      default:
+        return {
+          icon: Clock,
+          label: '不明',
+          description: 'ステータスが不明です。',
+          color: 'bg-gray-100 text-gray-800'
+        };
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'first_stage_passed': return 'bg-blue-100 text-blue-800';
+      case 'second_stage_waiting': return 'bg-orange-100 text-orange-800';
+      case 'second_stage_review': return 'bg-purple-100 text-purple-800';
+      case 'smart_lock_testing': return 'bg-indigo-100 text-indigo-800';
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const handleDeletePark = async (parkId: string) => {
+    try {
+      setIsDeleting(true);
+      setError('');
+
+      // First, check if there are any related facility images
+      const { data: facilityImages } = await supabase
+        .from('dog_park_facility_images')
+        .select('id')
+        .eq('park_id', parkId);
+
+
+      // If there are facility images, delete them first
+      if (facilityImages && facilityImages.length > 0) {
+        const { error: deleteImagesError } = await supabase
+          .from('dog_park_facility_images')
+          .delete()
+          .eq('park_id', parkId);
+
+        if (deleteImagesError) {
+
+          throw new Error('施設画像の削除に失敗しました。');
+        }
+      }
+
+      // Check for review stages
+      const { data: reviewStages } = await supabase
+        .from('dog_park_review_stages')
+        .select('id')
+        .eq('park_id', parkId);
+
+
+      // Delete review stages if they exist
+      if (reviewStages && reviewStages.length > 0) {
+        const { error: deleteStagesError } = await supabase
+          .from('dog_park_review_stages')
+          .delete()
+          .eq('park_id', parkId);
+
+        if (deleteStagesError) {
+
+          throw new Error('審査ステージの削除に失敗しました。');
+        }
+      }
+
+      // Now delete the park
+      const { error } = await supabase
+        .from('dog_parks')
+        .delete()
+        .eq('id', parkId)
+        .eq('owner_id', user?.id); // Ensure the user owns the park
+
+      if (error) {
+
+        throw error;
+      }
+
+      // Update the parks list by refetching
+      await fetchParks();
+      setShowConfirmDelete(null);
+      setConfirmDelete(false);
+
+      // Get park name for success message
+      const deletedPark = parks.find(p => p.id === parkId);
+      const parkName = deletedPark?.name || 'ドッグラン';
+      setSuccess(`${parkName}の申請を完全に削除しました。再度ご利用の際は新規申請が必要です。`);
+
+
+      // Clear success message after 5 seconds (longer for important message)
+      setTimeout(() => {
+        setSuccess('');
+      }, 5000);
+
+    } catch (err) {
+
+      setError((err as Error).message || 'エラーが発生しました');
+
+      // Clear error message after 3 seconds
+      setTimeout(() => {
+        setError('');
+      }, 3000);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -83,16 +337,17 @@ export function OwnerDashboard() {
         setError('');
 
         await fetchParks();
+        await fetchFacilities(); // ペット施設データも取得
 
       } catch (error) {
-
+        console.error('Error loading data:', error);
         setError('データの取得に失敗しました。ページを再読み込みしてください。');
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadData();
+    void loadData(); // void演算子でPromise警告を回避
 
     // Supabaseリアルタイム機能を追加
     const subscription = supabase
@@ -105,9 +360,9 @@ export function OwnerDashboard() {
           filter: `owner_id=eq.${user.id}`
         },
         (payload) => {
-
+          console.log('Dog parks changed:', payload);
           // データが変更されたらリフレッシュ
-          fetchParks();
+          void fetchParks(); // void演算子でPromise警告を回避
         }
       )
       .subscribe();
@@ -860,6 +1115,137 @@ export function OwnerDashboard() {
         </div>
       )}
 
+      {/* 管理中のその他施設一覧 */}
+      <Card>
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold flex items-center">
+            <Building className="w-6 h-6 text-blue-600 mr-2" />
+            管理中のその他施設 ({facilities.length}施設)
+          </h2>
+          <p className="text-gray-600 mt-1">ペットショップ、動物病院、トリミングサロンなどの施設管理</p>
+        </div>
+
+        {facilities.length === 0 ? (
+          <div className="text-center py-12">
+            <Building className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">まだその他施設が登録されていません</h3>
+            <p className="text-gray-600 mb-6">ペット関連施設を登録して、より多くのお客様に知ってもらいましょう</p>
+            <Link to="/facility-registration">
+              <Button>
+                <PlusCircle className="w-4 h-4 mr-2" />
+                ペット関連施設を登録する
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {facilities.map((facility) => (
+              <Card key={facility.id} className="hover:shadow-lg transition-shadow">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-xl font-semibold mb-2">{facility.name}</h3>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1 ${
+                        facility.status === 'approved' 
+                          ? 'bg-green-100 text-green-800'
+                          : facility.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {facility.status === 'approved' && <CheckCircle className="w-4 h-4" />}
+                        {facility.status === 'pending' && <Clock className="w-4 h-4" />}
+                        {facility.status === 'rejected' && <AlertTriangle className="w-4 h-4" />}
+                        <span>
+                          {facility.status === 'approved' && '公開中'}
+                          {facility.status === 'pending' && '審査中'}
+                          {facility.status === 'rejected' && '却下'}
+                          {facility.status === 'suspended' && '停止中'}
+                        </span>
+                      </span>
+                      
+                      {/* 公開・非公開トグル */}
+                      {facility.status === 'approved' && (
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-gray-600">公開設定:</span>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={facility.status === 'approved'}
+                              onChange={(e) => handleTogglePublic(facility.id, e.target.checked)}
+                              className="sr-only"
+                            />
+                            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-green-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {facility.description && (
+                  <p className="text-gray-600 mb-4 line-clamp-2">{facility.description}</p>
+                )}
+
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center text-gray-600">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    <span className="text-sm">{facility.address}</span>
+                  </div>
+                  {facility.phone && (
+                    <div className="flex items-center text-gray-600">
+                      <Users className="w-4 h-4 mr-2" />
+                      <span className="text-sm">{facility.phone}</span>
+                    </div>
+                  )}
+                  {facility.website && (
+                    <div className="flex items-center text-gray-600">
+                      <Globe className="w-4 h-4 mr-2" />
+                      <a 
+                        href={facility.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        公式サイト
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* アクションボタン */}
+                <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                  <div className="flex space-x-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleEditFacility(facility)}
+                      className="flex items-center"
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      修正
+                    </Button>
+                    {facility.status === 'approved' && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => window.open(`/facility/${facility.id}`, '_blank')}
+                        className="flex items-center"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        公開ページ
+                      </Button>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {facility.category_name || 'その他施設'}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {/* 運営サポート情報 */}
       <Card className="bg-gray-50">
         <div className="flex items-start space-x-3">
@@ -973,6 +1359,172 @@ export function OwnerDashboard() {
                 <strong>💡 ヒント：</strong> 一時的に申請を中断したい場合は、削除せずに運営事務局にご相談ください。
               </p>
             </div>
+          </div>
+        </div>
+      )}
+      
+      {/* 施設修正モーダル */}
+      {showFacilityModal && selectedFacility && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold">施設情報の修正</h2>
+              <button
+                onClick={() => setShowFacilityModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateFacility}>
+              <div className="space-y-4">
+                {/* 施設名 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    施設名 *
+                  </label>
+                  <Input
+                    type="text"
+                    value={facilityFormData.name}
+                    onChange={(e) => setFacilityFormData(prev => ({ ...prev, name: e.target.value }))}
+                    required
+                    className="w-full"
+                  />
+                </div>
+
+                {/* 説明・コメント */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    施設の説明・コメント
+                  </label>
+                  <textarea
+                    value={facilityFormData.description}
+                    onChange={(e) => setFacilityFormData(prev => ({ ...prev, description: e.target.value }))}
+                    rows={4}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="施設の特徴やサービス内容を詳しく記載してください"
+                  />
+                </div>
+
+                {/* 電話番号 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    電話番号
+                  </label>
+                  <Input
+                    type="tel"
+                    value={facilityFormData.phone}
+                    onChange={(e) => setFacilityFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full"
+                    placeholder="03-1234-5678"
+                  />
+                </div>
+
+                {/* ウェブサイトURL */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    ウェブサイトURL
+                  </label>
+                  <Input
+                    type="url"
+                    value={facilityFormData.website}
+                    onChange={(e) => setFacilityFormData(prev => ({ ...prev, website: e.target.value }))}
+                    className="w-full"
+                    placeholder="https://example.com"
+                  />
+                </div>
+
+                {/* 画像アップロード */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    施設画像の追加・変更
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setSelectedImages(files);
+                        
+                        // プレビュー生成
+                        const previews: string[] = [];
+                        files.forEach(file => {
+                          const reader = new FileReader();
+                          reader.onload = (e) => {
+                            previews.push(e.target?.result as string);
+                            if (previews.length === files.length) {
+                              setImagePreview(previews);
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        });
+                      }}
+                      className="hidden"
+                      id="facility-images"
+                    />
+                    <label 
+                      htmlFor="facility-images"
+                      className="cursor-pointer bg-gray-50 hover:bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center"
+                    >
+                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <span className="text-sm text-gray-600">
+                        画像を選択またはドラッグ&ドロップ
+                      </span>
+                    </label>
+                  </div>
+                  
+                  {/* 画像プレビュー */}
+                  {imagePreview.length > 0 && (
+                    <div className="mt-4 grid grid-cols-3 gap-4">
+                      {imagePreview.map((preview, index) => (
+                        <div key={index} className="relative">
+                          <img 
+                            src={preview} 
+                            alt={`Preview ${index}`}
+                            className="w-full h-24 object-cover rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newPreviews = [...imagePreview];
+                              newPreviews.splice(index, 1);
+                              setImagePreview(newPreviews);
+                              
+                              const newFiles = [...selectedImages];
+                              newFiles.splice(index, 1);
+                              setSelectedImages(newFiles);
+                            }}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowFacilityModal(false)}
+                >
+                  キャンセル
+                </Button>
+                <Button
+                  type="submit"
+                  isLoading={isUpdatingFacility}
+                  disabled={!facilityFormData.name.trim()}
+                >
+                  保存
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

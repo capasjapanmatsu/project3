@@ -1,20 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 import {
-  AlertTriangle,
-  Building,
-  Calendar,
-  Check,
-  Eye,
-  FileText,
-  Globe,
-  MapPin,
-  Phone,
-  Search,
-  SortAsc,
-  SortDesc,
-  Trash2,
-  User,
-  X
+    AlertTriangle,
+    Building,
+    Calendar,
+    Check,
+    Eye,
+    FileText,
+    Globe,
+    MapPin,
+    Phone,
+    Search,
+    SortAsc,
+    SortDesc,
+    Trash2,
+    User,
+    X
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';

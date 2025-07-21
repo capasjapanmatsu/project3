@@ -40,9 +40,18 @@ export interface FacilityImage {
   id: string;
   facility_id: string;
   image_url: string;
-  is_primary: boolean;
+  description?: string;
   created_at: string;
 }
+
+/**
+ * 管理ダッシュボードで使う施設申請の型
+ * PetFacility型を拡張し、所有者の情報を含む
+ */
+export type FacilityApplication = PetFacility & {
+  owner_name: string;
+  owner_email: string;
+};
 
 export interface FacilitySubscription {
   id: string;
@@ -191,4 +200,4 @@ export const DAYS_OF_WEEK = [
   '木曜日',
   '金曜日',
   '土曜日',
-] as const; 
+] as const;

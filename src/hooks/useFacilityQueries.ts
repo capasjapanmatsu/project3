@@ -1,6 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FacilityApplication } from '../types'; // Assuming types are in /types
+import { PetFacility } from '../types/facilities';
 import { supabase } from '../utils/supabase';
+
+// 拡張された施設データの型定義
+interface ExtendedPetFacility extends PetFacility {
+  owner_name: string;
+  owner_email: string;
+  owner?: {
+    username: string | null;
+    email: string | null;
+  } | null;
+}
+
+// Supabaseのレスポンス型
+interface FacilityResponse extends PetFacility {
+  owner?: {
+    username: string | null;
+    email: string | null;
+  } | null;
+}
 
 // 施設データを取得するためのキー
 const facilityKeys = {
@@ -10,8 +28,7 @@ const facilityKeys = {
 };
 
 // 1. 効率的なデータ取得関数
-// 施設情報と所有者情報を一度に取得
-const fetchFacilities = async (): Promise<FacilityApplication[]> => {
+const fetchFacilities = async (): Promise<ExtendedPetFacility[]> => {
   const { data, error } = await supabase
     .from('pet_facilities')
     .select(`
@@ -20,30 +37,31 @@ const fetchFacilities = async (): Promise<FacilityApplication[]> => {
         username,
         email
       )
-    `);
+    `)
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching facilities:', error);
     throw new Error(error.message);
   }
 
-  // 取得したデータをアプリケーションで使いやすい形式に整形
-  return data.map((facility: any) => ({
+  return (data as FacilityResponse[] || []).map((facility) => ({
     ...facility,
-    owner_name: facility.owner?.username || 'N/A',
-    owner_email: facility.owner?.email || 'N/A',
+    owner_name: facility.owner?.username ?? 'N/A',
+    owner_email: facility.owner?.email ?? 'N/A',
   }));
 };
 
-// 2. 施設リストを取得するためのカスタムフック (useQuery)
-export const useFacilities = () => {
+// 2. 施設リストを取得するためのカスタムフック
+export const useFacilities = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: facilityKeys.all,
     queryFn: fetchFacilities,
+    ...options,
   });
 };
 
-// 3. 施設のステータスを更新するためのカスタムフック (useMutation)
+// 3. 施設のステータスを更新するためのカスタムフック
 export const useUpdateFacilityStatus = () => {
   const queryClient = useQueryClient();
 
@@ -59,21 +77,33 @@ export const useUpdateFacilityStatus = () => {
         throw new Error(error.message);
       }
     },
-    // 成功時にキャッシュを無効化し、データを再取得
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: facilityKeys.all });
+    onSuccess: (_, variables) => {
+      // IDに基づいて特定のクエリのみを無効化
+      void queryClient.invalidateQueries({ 
+        queryKey: facilityKeys.detail(variables.id)
+      });
     },
   });
 };
 
-// 4. 施設を削除するためのカスタムフック (useMutation)
+// 4. 施設を削除するためのカスタムフック
 export const useDeleteFacility = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // TODO: 関連データの削除ロジックをここに集約する (例: facility_images)
-      // この例では簡略化のため施設本体の削除のみ
+      // 関連する画像の削除を最初に実行
+      const { error: imageError } = await supabase
+        .from('facility_images')
+        .delete()
+        .eq('facility_id', id);
+
+      if (imageError) {
+        console.error('Error deleting facility images:', imageError);
+        throw new Error(imageError.message);
+      }
+
+      // 施設本体の削除
       const { error } = await supabase
         .from('pet_facilities')
         .delete()
@@ -84,8 +114,22 @@ export const useDeleteFacility = () => {
         throw new Error(error.message);
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: facilityKeys.all });
+    onSuccess: (_, id) => {
+      // 無限リロード防止: クエリ無効化を最小限に抑制
+      console.log(`Facility ${id} deleted successfully`);
+      
+      // 削除された特定の施設のクエリのみを無効化
+      queryClient.removeQueries({ 
+        queryKey: facilityKeys.detail(id)
+      });
+      
+      // 全体リストは一度だけ更新（無限ループ防止）
+      setTimeout(() => {
+        void queryClient.invalidateQueries({ 
+          queryKey: facilityKeys.all,
+          exact: true
+        });
+      }, 100); // 100ms遅延で一度だけ実行
     },
   });
 };

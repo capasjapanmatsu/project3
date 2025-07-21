@@ -1,6 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { supabase } from '../utils/supabase';
-import { getCachedClientIP } from '../utils/ipUtils';
+import { ReactNode, createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 interface MaintenanceSchedule {
   id: string;
@@ -31,127 +29,33 @@ const MaintenanceContext = createContext<MaintenanceContextType>({
   refreshMaintenanceStatus: async () => {},
 });
 
-const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
-  const [isMaintenanceActive, setIsMaintenanceActive] = useState(false);
-  const [maintenanceInfo, setMaintenanceInfo] = useState<MaintenanceSchedule | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [clientIP, setClientIP] = useState<string | null>(null);
-  const [isIPWhitelisted, setIsIPWhitelisted] = useState(false);
+export const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
+  // 🚨 緊急対応: メンテナンス機能を完全無効化 🚨
+  const [isMaintenanceActive] = useState(false); // 常にfalse
+  const [maintenanceInfo] = useState<MaintenanceSchedule | null>(null); // 常にnull
+  const [loading] = useState(false); // 常にfalse（ローディング無し）
+  const [error] = useState<string | null>(null); // 常にnull
+  const [clientIP] = useState<string | null>('127.0.0.1'); // ダミーIP
+  const [isIPWhitelisted] = useState(true); // 常にtrue
 
-  const fetchMaintenanceStatus = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Get client IP address
-      const ipInfo = await getCachedClientIP();
-      setClientIP(ipInfo.ip);
-
-      // Check maintenance status with IP whitelist
-      const { data, error } = await supabase.rpc('should_show_maintenance', {
-        client_ip: ipInfo.ip
-      });
-
-      if (error) {
-        console.warn('メンテナンス状態チェックでエラー:', error);
-        // エラーが発生した場合は、メンテナンス状態を無効として処理
-        setMaintenanceInfo(null);
-        setIsMaintenanceActive(false);
-        setIsIPWhitelisted(true);
-        setError(null);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        const result = data[0];
-        setIsMaintenanceActive(result.is_maintenance_active);
-        setIsIPWhitelisted(result.is_ip_allowed);
-        
-        if (result.is_maintenance_active && result.maintenance_info) {
-          setMaintenanceInfo(result.maintenance_info);
-        } else {
-          setMaintenanceInfo(null);
-        }
-      } else {
-        setMaintenanceInfo(null);
-        setIsMaintenanceActive(false);
-        setIsIPWhitelisted(true);
-      }
-    } catch (err) {
-      console.warn('メンテナンス状態の取得でエラー:', err);
-      setMaintenanceInfo(null);
-      setIsMaintenanceActive(false);
-      setIsIPWhitelisted(true);
-      setError(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []); // 空の依存配列を維持
-
+  // すべての処理をスキップして即座に正常状態を返す
   const refreshMaintenanceStatus = useCallback(async () => {
-    await fetchMaintenanceStatus();
-  }, [fetchMaintenanceStatus]);
+    console.log('MaintenanceContext: スキップ（無効化中）');
+    return Promise.resolve();
+  }, []);
 
-  // 初回実行とインターバル設定
+  // メンテナンス機能が無効化されていることをログ出力
   useEffect(() => {
-    let isMounted = true;
-    let timeoutId: NodeJS.Timeout;
+    console.log('🚨 MaintenanceContext: 緊急対応により完全無効化されています');
+  }, []);
 
-    const runFetch = async () => {
-      if (isMounted) {
-        await fetchMaintenanceStatus();
-      }
-    };
-
-    // 緊急フォールバック: 30秒後に強制的にローディングを終了
-    const emergencyTimeout = setTimeout(() => {
-      if (isMounted && loading) {
-        console.warn('Maintenance check timeout: Force completing initialization');
-        setLoading(false);
-        setIsMaintenanceActive(false);
-        setIsIPWhitelisted(true);
-        setMaintenanceInfo(null);
-        setError(null);
-      }
-    }, 30000);
-
-    // 初回実行
-    runFetch().catch(error => {
-      console.error('Initial maintenance fetch failed:', error);
-      if (isMounted) {
-        setLoading(false);
-        setIsMaintenanceActive(false);
-        setIsIPWhitelisted(true);
-        setMaintenanceInfo(null);
-        setError(null);
-      }
-    });
-
-    // 5分おきにメンテナンス状態をチェック
-    const interval = setInterval(() => {
-      if (isMounted) {
-        runFetch().catch(error => {
-          console.error('Periodic maintenance fetch failed:', error);
-          // 定期チェックでエラーが発生してもアプリを継続
-        });
-      }
-    }, 5 * 60 * 1000);
-
-    return () => {
-      isMounted = false;
-      clearTimeout(emergencyTimeout);
-      clearInterval(interval);
-    };
-  }, []); // 空の依存配列で初回のみ実行
-
-  const value = {
-    isMaintenanceActive,
-    maintenanceInfo,
-    loading,
-    error,
-    clientIP,
-    isIPWhitelisted,
+  const value: MaintenanceContextType = {
+    isMaintenanceActive, // false
+    maintenanceInfo, // null
+    loading, // false
+    error, // null
+    clientIP, // '127.0.0.1'
+    isIPWhitelisted, // true
     refreshMaintenanceStatus,
   };
 
@@ -162,7 +66,8 @@ const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-const useMaintenance = () => {
+// useMaintenance hookを個別にエクスポート
+export const useMaintenance = () => {
   const context = useContext(MaintenanceContext);
   if (!context) {
     throw new Error('useMaintenance must be used within a MaintenanceProvider');
@@ -170,5 +75,6 @@ const useMaintenance = () => {
   return context;
 };
 
-export { MaintenanceProvider, useMaintenance };
-export type { MaintenanceSchedule }; 
+// 型定義をエクスポート
+export type { MaintenanceSchedule };
+

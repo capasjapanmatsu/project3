@@ -187,6 +187,42 @@ export function PetShop() {
     });
   }, [products, deferredSearchTerm, deferredCategory, deferredSortBy]);
 
+  // 画像URL処理のヘルパー関数
+  const getFirstImageUrl = (imageData: string): string => {
+    if (!imageData) return '';
+    
+    // JSON配列形式の場合
+    try {
+      const parsedImages = JSON.parse(imageData);
+      if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+        return parsedImages[0];
+      }
+    } catch (error) {
+      // JSONパースに失敗した場合は、単一画像URLとして扱う
+    }
+    
+    // 単一画像URLの場合
+    return imageData;
+  };
+
+  // 複数画像取得のヘルパー関数
+  const getAllImageUrls = (imageData: string): string[] => {
+    if (!imageData) return [];
+    
+    // JSON配列形式の場合
+    try {
+      const parsedImages = JSON.parse(imageData);
+      if (Array.isArray(parsedImages)) {
+        return parsedImages;
+      }
+    } catch (error) {
+      // JSONパースに失敗した場合は、単一画像URLとして扱う
+    }
+    
+    // 単一画像URLの場合
+    return [imageData];
+  };
+
   // ✨ Optimized search handler with startTransition
   const handleSearchChange = (value: string) => {
     setSearchTerm(value); // Immediate update for input responsiveness
@@ -373,13 +409,19 @@ export function PetShop() {
                 {/* 商品画像 */}
                 <div className="relative h-48 mb-4 -m-6 mb-4">
                   <img
-                    src={product.image_url}
+                    src={getFirstImageUrl(product.image_url)}
                     alt={product.name}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
                     }}
                   />
+                  {/* 複数画像の場合に画像枚数を表示 */}
+                  {getAllImageUrls(product.image_url).length > 1 && (
+                    <div className="absolute top-3 right-3 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                      📸 {getAllImageUrls(product.image_url).length}枚
+                    </div>
+                  )}
                   {hasDiscount && (
                     <div className="absolute top-3 left-3">
                       <span className="bg-purple-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">

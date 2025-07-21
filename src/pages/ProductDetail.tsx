@@ -1,27 +1,28 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  ShoppingCart, 
-  Plus, 
-  Minus, 
-  Heart,
-  Package,
-  Truck,
-  Shield,
-  Crown,
-  ChevronLeft,
-  ChevronRight,
-  X
+import {
+    AlertTriangle,
+    ArrowLeft,
+    ChevronLeft,
+    ChevronRight,
+    Crown,
+    Heart,
+    Minus,
+    Package,
+    Plus,
+    Shield,
+    ShoppingCart,
+    Truck,
+    X
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
-import type { Product, CartItem } from '../types';
+import type { CartItem, Product } from '../types';
 import { logger } from '../utils/logger';
 import { notify } from '../utils/notification';
+import { supabase } from '../utils/supabase';
 
 interface ProductImage {
   id: string;
@@ -40,6 +41,12 @@ export function ProductDetail() {
   const [productImages, setProductImages] = useState<ProductImage[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedVariation, setSelectedVariation] = useState<string>(''); // 選択されたバリエーション
+  const [variationError, setVariationError] = useState<string>(''); // バリエーションエラーメッセージ
+  
+  // スワイプ操作用の状態
+  const [touchStart, setTouchStart] = useState<number>(0);
+  const [touchEnd, setTouchEnd] = useState<number>(0);
 
   useEffect(() => {
     if (productId) {
@@ -114,8 +121,17 @@ export function ProductDetail() {
       return;
     }
 
+    // バリエーション選択チェック
+    if (product?.has_variations && !selectedVariation) {
+      setVariationError('バリエーションを選択してください');
+      return;
+    }
+
     try {
-      const existingItem = cartItems.find(item => item.product_id === product?.id);
+      const existingItem = cartItems.find(item => 
+        item.product_id === product?.id && 
+        item.variation_sku === selectedVariation
+      );
 
       if (existingItem) {
         const { error } = await supabase
@@ -131,6 +147,7 @@ export function ProductDetail() {
             user_id: user.id,
             product_id: product.id,
             quantity: quantity,
+            variation_sku: selectedVariation || null,
           }]);
 
         if (error) throw error;
@@ -140,6 +157,9 @@ export function ProductDetail() {
       
       // カートに追加完了のフィードバック
       notify.success('カートに追加しました！');
+      
+      // エラーをクリア
+      setVariationError('');
     } catch (error) {
       logger.error('Error adding to cart:', error);
       notify.error('カートへの追加に失敗しました。');
@@ -205,6 +225,31 @@ export function ProductDetail() {
     setShowImageModal(true);
   };
 
+  // スワイプ処理
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(0); // リセット
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50; // 右から左へのスワイプ（次の画像）
+    const isRightSwipe = distance < -50; // 左から右へのスワイプ（前の画像）
+    
+    if (isLeftSwipe && productImages.length > 0) {
+      nextImage();
+    }
+    if (isRightSwipe && productImages.length > 0) {
+      prevImage();
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -245,17 +290,32 @@ export function ProductDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* 商品画像 */}
         <div className="space-y-4">
-          <div className="relative">
+          <div 
+            className="relative"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             {productImages.length > 0 ? (
-              <img
-                src={productImages[currentImageIndex].url}
-                alt={product.name}
-                className="w-full h-96 object-cover rounded-lg shadow-lg cursor-pointer"
-                onClick={() => openImageModal(currentImageIndex)}
-                onError={(e) => {
-                  e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
-                }}
-              />
+              <>
+                <img
+                  src={productImages[currentImageIndex].url}
+                  alt={product.name}
+                  className="w-full h-96 object-cover rounded-lg shadow-lg cursor-pointer"
+                  onClick={() => openImageModal(currentImageIndex)}
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
+                  }}
+                />
+                {/* ページネーション表示 */}
+                {productImages.length > 1 && (
+                  <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+                    <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+                      {currentImageIndex + 1}/{productImages.length}
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="w-full h-96 bg-gray-200 rounded-lg flex items-center justify-center">
                 <Package className="w-16 h-16 text-gray-400" />
@@ -297,24 +357,31 @@ export function ProductDetail() {
             )}
           </div>
           
-          {/* サムネイル画像 */}
+          {/* サムネイル画像（最大10枚対応・横スクロール） */}
           {productImages.length > 1 && (
-            <div className="grid grid-cols-6 gap-2">
-              {productImages.map((image, index) => (
-                <div 
-                  key={index}
-                  className={`h-16 rounded-lg overflow-hidden cursor-pointer border-2 ${
-                    index === currentImageIndex ? 'border-green-500' : 'border-transparent'
-                  }`}
-                  onClick={() => setCurrentImageIndex(index)}
-                >
-                  <img
-                    src={image.url}
-                    alt={`${product.name} - サムネイル ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
+            <div className="w-full">
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {productImages.slice(0, 10).map((image, index) => (
+                  <div 
+                    key={index}
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
+                      index === currentImageIndex 
+                        ? 'border-green-500 shadow-md' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setCurrentImageIndex(index)}
+                  >
+                    <img
+                      src={image.url}
+                      alt={`${product.name} - ${index + 1}/${productImages.length}`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -402,6 +469,40 @@ export function ProductDetail() {
                 </div>
               )}
             </div>
+
+            {/* バリエーション選択 */}
+            {(product as any).has_variations && (product as any).variations && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {(product as any).variation_type || 'バリエーション'} <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {JSON.parse((product as any).variations || '[]').map((variation: any, index: number) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        setSelectedVariation(variation.sku);
+                        setVariationError('');
+                      }}
+                      className={`p-3 border rounded-lg text-left transition-all ${
+                        selectedVariation === variation.sku
+                          ? 'border-green-500 bg-green-50 text-green-700'
+                          : 'border-gray-300 hover:border-green-400'
+                      }`}
+                    >
+                      <div className="font-medium">{variation.name}</div>
+                      <div className="text-sm text-gray-500">SKU: {variation.sku}</div>
+                    </button>
+                  ))}
+                </div>
+                {variationError && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center">
+                    <AlertTriangle className="w-4 h-4 mr-1" />
+                    {variationError}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* 数量選択 */}
             {product.stock_quantity > 0 && (
@@ -548,41 +649,64 @@ export function ProductDetail() {
         </div>
       </div>
 
-      {/* 画像モーダル */}
+      {/* 画像モーダル（スワイプ対応） */}
       {showImageModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           <button
             onClick={() => setShowImageModal(false)}
-            className="absolute top-4 right-4 text-gray-800 bg-white bg-opacity-90 shadow-lg rounded-full p-2 hover:bg-opacity-100 transition-all"
+            className="absolute top-4 right-4 text-white bg-black bg-opacity-50 shadow-lg rounded-full p-3 hover:bg-opacity-70 transition-all z-10"
           >
             <X className="w-6 h-6" />
           </button>
           
-          <button
-            onClick={prevImage}
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-800 bg-white bg-opacity-90 shadow-lg rounded-full p-2 hover:bg-opacity-100 transition-all"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          
-          <button
-            onClick={nextImage}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-800 bg-white bg-opacity-90 shadow-lg rounded-full p-2 hover:bg-opacity-100 transition-all"
-          >
-            <ChevronRight className="w-6 h-6" />
-          </button>
+          {/* デスクトップ用ナビゲーションボタン */}
+          {productImages.length > 1 && (
+            <>
+              <button
+                onClick={prevImage}
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white bg-black bg-opacity-50 shadow-lg rounded-full p-3 hover:bg-opacity-70 transition-all hidden md:block"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              
+              <button
+                onClick={nextImage}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white bg-black bg-opacity-50 shadow-lg rounded-full p-3 hover:bg-opacity-70 transition-all hidden md:block"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </>
+          )}
           
           <img
             src={productImages[currentImageIndex].url}
             alt={product.name}
-            className="max-h-[80vh] max-w-full"
+            className="max-h-[85vh] max-w-[95vw] object-contain"
+            onError={(e) => {
+              e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
+            }}
           />
           
-          <div className="absolute bottom-4 left-0 right-0 text-center">
-            <p className="text-white text-sm">
+          {/* 画像ページネーション表示 */}
+          <div className="absolute bottom-6 left-0 right-0 text-center">
+            <div className="bg-black bg-opacity-60 text-white px-4 py-2 rounded-full text-sm inline-block">
               {currentImageIndex + 1} / {productImages.length}
-            </p>
+            </div>
           </div>
+          
+          {/* スワイプヒント（モバイル用） */}
+          {productImages.length > 1 && (
+            <div className="absolute top-6 left-0 right-0 text-center md:hidden">
+              <div className="bg-black bg-opacity-60 text-white px-3 py-1 rounded-full text-xs inline-block">
+                ← スワイプして画像を切り替え →
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
