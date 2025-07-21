@@ -30,7 +30,7 @@ export function OwnerDashboard() {
   const [selectedFacility, setSelectedFacility] = useState<PetFacility | null>(null);
   const [showFacilityModal, setShowFacilityModal] = useState(false);
   const [isUpdatingFacility, setIsUpdatingFacility] = useState(false);
-  const [facilityImages, setFacilityImages] = useState<FacilityImage[]>([]);
+  const [_facilityImages, _setFacilityImages] = useState<FacilityImage[]>([]);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreview, setImagePreview] = useState<string[]>([]);
   const [facilityFormData, setFacilityFormData] = useState({
@@ -83,14 +83,25 @@ export function OwnerDashboard() {
       }
 
       setFacilities(data || []);
-    } catch (error) {
-      console.error('Error fetching facilities:', error);
+    } catch (_error) {
       setError('ペット施設の取得に失敗しました');
     }
   };
 
+  // データリフレッシュ関数
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([fetchParks(), fetchFacilities()]);
+    } catch (_error) {
+      setError('データの更新に失敗しました');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // 施設編集ハンドラー
-  const handleEditFacility = (facility: any) => {
+  const handleEditFacility = (facility: PetFacility) => {
     setSelectedFacility(facility);
     setFacilityFormData({
       name: facility.name,
@@ -224,18 +235,7 @@ export function OwnerDashboard() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'first_stage_passed': return 'bg-blue-100 text-blue-800';
-      case 'second_stage_waiting': return 'bg-orange-100 text-orange-800';
-      case 'second_stage_review': return 'bg-purple-100 text-purple-800';
-      case 'smart_lock_testing': return 'bg-indigo-100 text-indigo-800';
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+
 
   const handleDeletePark = async (parkId: string) => {
     try {
@@ -372,167 +372,6 @@ export function OwnerDashboard() {
       subscription.unsubscribe();
     };
   }, [user, navigate]);
-
-  const getStatusInfo = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return {
-          icon: Clock,
-          label: '第一審査中',
-          description: '申請内容を審査中です。しばらくお待ちください。',
-          color: 'bg-yellow-100 text-yellow-800'
-        };
-      case 'first_stage_passed':
-        return {
-          icon: CheckCircle,
-          label: '第一審査通過（旧）',
-          description: '第一審査を通過しました。（旧システム）',
-          color: 'bg-blue-100 text-blue-800'
-        };
-      case 'second_stage_waiting':
-        return {
-          icon: AlertTriangle,
-          label: '二次審査申し込み',
-          description: '第一審査通過！スマートロックを購入し、第二審査を提出してください。',
-          color: 'bg-orange-100 text-orange-800',
-          showSmartLockPurchase: true
-        };
-      case 'second_stage_review':
-        return {
-          icon: FileText,
-          label: '第二審査中',
-          description: '第二審査を実施中です。審査結果をお待ちください。',
-          color: 'bg-purple-100 text-purple-800'
-        };
-      case 'smart_lock_testing':
-        return {
-          icon: Shield,
-          label: 'スマートロック認証待ち',
-          description: 'スマートロックの動作確認を行ってください。',
-          color: 'bg-indigo-100 text-indigo-800'
-        };
-      case 'approved':
-        return {
-          icon: CheckCircle,
-          label: '承認済み・公開可能',
-          description: 'ドッグランの運営を開始できます！',
-          color: 'bg-green-100 text-green-800'
-        };
-      case 'rejected':
-        return {
-          icon: AlertTriangle,
-          label: '却下',
-          description: '申請が却下されました。詳細をご確認ください。',
-          color: 'bg-red-100 text-red-800'
-        };
-      default:
-        return {
-          icon: Clock,
-          label: '不明',
-          description: 'ステータスが不明です。',
-          color: 'bg-gray-100 text-gray-800'
-        };
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'first_stage_passed': return 'bg-blue-100 text-blue-800';
-      case 'second_stage_waiting': return 'bg-orange-100 text-orange-800';
-      case 'second_stage_review': return 'bg-purple-100 text-purple-800';
-      case 'smart_lock_testing': return 'bg-indigo-100 text-indigo-800';
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const handleDeletePark = async (parkId: string) => {
-    try {
-      setIsDeleting(true);
-      setError('');
-
-      // First, check if there are any related facility images
-      const { data: facilityImages } = await supabase
-        .from('dog_park_facility_images')
-        .select('id')
-        .eq('park_id', parkId);
-
-
-      // If there are facility images, delete them first
-      if (facilityImages && facilityImages.length > 0) {
-        const { error: deleteImagesError } = await supabase
-          .from('dog_park_facility_images')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (deleteImagesError) {
-
-          throw new Error('施設画像の削除に失敗しました。');
-        }
-      }
-
-      // Check for review stages
-      const { data: reviewStages } = await supabase
-        .from('dog_park_review_stages')
-        .select('id')
-        .eq('park_id', parkId);
-
-
-      // Delete review stages if they exist
-      if (reviewStages && reviewStages.length > 0) {
-        const { error: deleteStagesError } = await supabase
-          .from('dog_park_review_stages')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (deleteStagesError) {
-
-          throw new Error('審査ステージの削除に失敗しました。');
-        }
-      }
-
-      // Now delete the park
-      const { error } = await supabase
-        .from('dog_parks')
-        .delete()
-        .eq('id', parkId)
-        .eq('owner_id', user?.id); // Ensure the user owns the park
-
-      if (error) {
-
-        throw error;
-      }
-
-      // Update the parks list by refetching
-      await fetchParks();
-      setShowConfirmDelete(null);
-      setConfirmDelete(false);
-
-      // Get park name for success message
-      const deletedPark = parks.find(p => p.id === parkId);
-      const parkName = deletedPark?.name || 'ドッグラン';
-      setSuccess(`${parkName}の申請を完全に削除しました。再度ご利用の際は新規申請が必要です。`);
-
-
-      // Clear success message after 5 seconds (longer for important message)
-      setTimeout(() => {
-        setSuccess('');
-      }, 5000);
-
-    } catch (err) {
-
-      setError((err as Error).message || 'エラーが発生しました');
-
-      // Clear error message after 3 seconds
-      setTimeout(() => {
-        setError('');
-      }, 3000);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
 
   if (isLoading) {
     return (

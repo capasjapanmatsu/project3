@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AnimatedElement, { FadeIn, SlideUp } from '../components/accessibility/AnimatedElement';
+import { DogInfoSection } from '../components/home/DogInfoSection';
 import { FeaturesSection } from '../components/home/FeaturesSection';
 import { HeroSection } from '../components/home/HeroSection';
 import { MarqueeDogsSection } from '../components/home/MarqueeDogsSection';
@@ -9,21 +10,26 @@ import { OwnerRecruitmentBanner } from '../components/home/OwnerRecruitmentBanne
 import { UsageRulesSection } from '../components/home/UsageRulesSection';
 import useAuth from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
-import type { Dog } from '../types';
+import type { Dog, NewsAnnouncement } from '../types';
 import { logger } from '../utils/logger';
 import { supabase } from '../utils/supabase';
+
+interface CacheData<T = unknown> {
+  data: T;
+  timestamp: number;
+}
 
 export function Home() {
   const { user } = useAuth();
   const [recentDogs, setRecentDogs] = useState<Dog[]>([]);
-  const [news, setNews] = useState<any[]>([]);
+  const [news, setNews] = useState<NewsAnnouncement[]>([]);
   const [isOffline, setIsOffline] = useState(false);
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isNewsLoading, setIsNewsLoading] = useState(true); // 新着情報専用のローディング状態
 
   // レスポンシブフック
-  const { isMobile, isTablet, prefersReducedMotion } = useResponsive();
+  const { isMobile, prefersReducedMotion } = useResponsive();
 
   // Critical contentのプリロード
   useEffect(() => {
@@ -33,7 +39,8 @@ export function Home() {
     link.rel = 'preload';
     link.href = heroImageUrl;
     link.as = 'image';
-    link.fetchPriority = 'high';
+    // fetchPriority is not yet in TypeScript types, so we use setAttribute
+    link.setAttribute('fetchpriority', 'high');
     document.head.appendChild(link);
 
     // 重要なフォントをプリロード
@@ -45,6 +52,7 @@ export function Home() {
     fontLink.crossOrigin = 'anonymous';
     document.head.appendChild(fontLink);
 
+    // クリーンアップ関数
     return () => {
       document.head.removeChild(link);
       document.head.removeChild(fontLink);
@@ -79,9 +87,9 @@ export function Home() {
 
   // キャッシュ関数 (10分間キャッシュに延長)
   const cacheTimeout = 10 * 60 * 1000; // 10分
-  const cache = useMemo(() => new Map<string, { data: any; timestamp: number }>(), []);
+  const cache = useMemo(() => new Map<string, CacheData>(), []);
 
-  const getCachedData = useCallback((key: string) => {
+  const getCachedData = useCallback((key: string): unknown => {
     const cached = cache.get(key);
     if (cached && Date.now() - cached.timestamp < cacheTimeout) {
       return cached.data;
@@ -93,7 +101,7 @@ export function Home() {
     return null;
   }, [cache, cacheTimeout]);
 
-  const setCachedData = useCallback((key: string, data: any) => {
+  const setCachedData = useCallback((key: string, data: unknown): void => {
     cache.set(key, { data, timestamp: Date.now() });
     // ローカルストレージにも保存（セッション間でキャッシュを維持）
     try {
@@ -111,26 +119,39 @@ export function Home() {
     try {
       const cachedDogs = localStorage.getItem('dogpark_cache_recentDogs');
       if (cachedDogs) {
-        const parsed = JSON.parse(cachedDogs);
-        if (Date.now() - parsed.timestamp < cacheTimeout) {
-          cache.set('recentDogs', parsed);
-          setRecentDogs(parsed.data);
+        const parsed = JSON.parse(cachedDogs) as { data: unknown; timestamp: number };
+        if (Date.now() - parsed.timestamp < cacheTimeout && Array.isArray(parsed.data)) {
+          const dogData = parsed.data as Dog[];
+          const cacheEntry: CacheData<Dog[]> = { data: dogData, timestamp: parsed.timestamp };
+          cache.set('recentDogs', cacheEntry);
+          setRecentDogs(dogData);
           setIsLoading(false);
-          logger.info('✅ ローカルストレージからキャッシュを復元:', parsed.data.length, '匹');
+        }
+      }
+
+      const cachedNews = localStorage.getItem('dogpark_cache_news');
+      if (cachedNews) {
+        const parsed = JSON.parse(cachedNews) as { data: unknown; timestamp: number };
+        if (Date.now() - parsed.timestamp < cacheTimeout && Array.isArray(parsed.data)) {
+          const newsData = parsed.data as NewsAnnouncement[];
+          const cacheEntry: CacheData<NewsAnnouncement[]> = { data: newsData, timestamp: parsed.timestamp };
+          cache.set('news', cacheEntry);
+          setNews(newsData);
+          setIsNewsLoading(false);
         }
       }
     } catch (error) {
-      console.warn('Failed to restore cache from localStorage:', error);
+      logger.warn('Failed to restore cache from localStorage:', error);
     }
   }, [cache, cacheTimeout]);
 
-  const fetchRecentDogs = useCallback(async () => {
+  const fetchRecentDogs = useCallback(async (): Promise<Dog[]> => {
     try {
       logger.info('🐕 最近仲間入りしたワンちゃんを取得中...');
 
       // キャッシュから取得を試行
-      const cachedData = getCachedData('recentDogs');
-      if (cachedData) {
+      const cachedData = getCachedData('recentDogs') as Dog[] | null;
+      if (cachedData && Array.isArray(cachedData)) {
         logger.info('✅ キャッシュから最近仲間入りしたワンちゃんを取得:', cachedData.length, '匹');
         setRecentDogs(cachedData);
         setIsLoading(false);
@@ -173,13 +194,13 @@ export function Home() {
     }
   }, [getCachedData, setCachedData]);
 
-  const fetchNews = useCallback(async () => {
+  const fetchNews = useCallback(async (): Promise<NewsAnnouncement[]> => {
     try {
       logger.info('📰 新着情報を取得中...');
 
       // キャッシュから取得を試行
-      const cachedData = getCachedData('news');
-      if (cachedData) {
+      const cachedData = getCachedData('news') as NewsAnnouncement[] | null;
+      if (cachedData && Array.isArray(cachedData)) {
         logger.info('✅ キャッシュから新着情報を取得:', cachedData.length, '件');
         setNews(cachedData);
         return cachedData;
@@ -201,7 +222,7 @@ export function Home() {
       }
 
       logger.info('✅ 新着情報取得成功:', data?.length || 0, '件');
-      const newsData = data || [];
+      const newsData = (data || []) as NewsAnnouncement[];
       setNews(newsData);
       setCachedData('news', newsData);
       return newsData;
@@ -223,7 +244,7 @@ export function Home() {
 
     try {
       // 並列実行とタイムアウト設定
-      const timeoutPromise = new Promise((_, reject) => {
+      const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 8000);
       });
 
@@ -232,17 +253,17 @@ export function Home() {
         fetchNews()
       ]);
 
-      const [dogs, news] = await Promise.race([dataPromises, timeoutPromise]) as [any[], any[]];
+      const [dogs, newsData] = await Promise.race([dataPromises, timeoutPromise]);
 
       const endTime = Date.now();
       logger.info(`✅ 高速データ取得完了: ${endTime - startTime}ms`);
 
-      return { dogs, news };
+      return { dogs, news: newsData };
     } catch (error) {
       logger.error('❌ データ取得エラー:', error);
 
       // エラー時でも部分的に取得できたデータを使用
-      const fallbackData = { dogs: [], news: [] };
+      const fallbackData = { dogs: [] as Dog[], news: [] as NewsAnnouncement[] };
 
       // 個別にデータを取得を試みる
       try {
@@ -253,8 +274,8 @@ export function Home() {
       }
 
       try {
-        const news = await fetchNews();
-        fallbackData.news = news;
+        const newsData = await fetchNews();
+        fallbackData.news = newsData;
       } catch (newsError) {
         logger.warn('ニュースデータの取得に失敗:', newsError);
       }
@@ -292,7 +313,7 @@ export function Home() {
           <NetworkErrorBanner
             isOffline={isOffline}
             networkError={networkError}
-            onRetryConnection={handleRetryConnection}
+            onRetryConnection={() => void handleRetryConnection()}
           />
         </FadeIn>
 
@@ -307,35 +328,6 @@ export function Home() {
             <SlideUp duration={animationDuration} delay={staggerDelay * 0}>
               <HeroSection isLoggedIn={isLoggedIn} />
             </SlideUp>
-          </section>
-
-          {/* 新着情報セクション */}
-          <section
-            id="news-section"
-            aria-labelledby="news-heading"
-            className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
-            tabIndex={-1}
-          >
-            <AnimatedElement
-              animation="slideUp"
-              duration={animationDuration}
-              delay={staggerDelay * 1}
-              respectReducedMotion={true}
-              fallbackAnimation="fadeIn"
-            >
-              <h2
-                id="news-heading"
-                className="sr-only"
-              >
-                新着情報とお知らせ
-              </h2>
-              <NewsSection
-                isOffline={isOffline}
-                onRetryConnection={handleRetryConnection}
-                news={news}
-                isLoading={isNewsLoading}
-              />
-            </AnimatedElement>
           </section>
 
           {/* 最近登録された犬のマーキー */}
@@ -360,6 +352,35 @@ export function Home() {
           </section>
 
           <main id="main-content" className="space-y-12 py-8">
+            {/* 新着情報セクション（一番上に移動）*/}
+            <section
+              id="news-section"
+              aria-labelledby="news-heading"
+              className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
+              tabIndex={-1}
+            >
+              <AnimatedElement
+                animation="slideUp"
+                duration={animationDuration}
+                delay={staggerDelay * 1}
+                respectReducedMotion={true}
+                fallbackAnimation="fadeIn"
+              >
+                <h2
+                  id="news-heading"
+                  className="sr-only"
+                >
+                  新着情報
+                </h2>
+                <NewsSection
+                  isOffline={isOffline}
+                  onRetryConnection={() => void handleRetryConnection()}
+                  news={news}
+                  isLoading={isNewsLoading}
+                />
+              </AnimatedElement>
+            </section>
+
             {/* 機能紹介セクション */}
             <section
               id="features-section"
@@ -370,7 +391,7 @@ export function Home() {
               <AnimatedElement
                 animation="slideUp"
                 duration={animationDuration}
-                delay={staggerDelay * 3}
+                delay={staggerDelay * 2}
                 respectReducedMotion={true}
                 fallbackAnimation="fadeIn"
               >
@@ -388,7 +409,7 @@ export function Home() {
             <AnimatedElement
               animation="slideUp"
               duration={animationDuration}
-              delay={staggerDelay * 4}
+              delay={staggerDelay * 3}
               respectReducedMotion={true}
               fallbackAnimation="fadeIn"
             >
@@ -405,7 +426,7 @@ export function Home() {
               <AnimatedElement
                 animation="slideUp"
                 duration={animationDuration}
-                delay={staggerDelay * 5}
+                delay={staggerDelay * 4}
                 respectReducedMotion={true}
                 fallbackAnimation="fadeIn"
               >
@@ -416,6 +437,30 @@ export function Home() {
                   利用方法と料金について
                 </h2>
                 <UsageRulesSection />
+              </AnimatedElement>
+            </section>
+
+            {/* ワンちゃん情報発信コーナー */}
+            <section
+              id="dog-info-section"
+              aria-labelledby="dog-info-heading"
+              className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
+              tabIndex={-1}
+            >
+              <AnimatedElement
+                animation="slideUp"
+                duration={animationDuration}
+                delay={staggerDelay * 5}
+                respectReducedMotion={true}
+                fallbackAnimation="fadeIn"
+              >
+                <h2
+                  id="dog-info-heading"
+                  className="sr-only"
+                >
+                  ワンちゃんについての情報発信
+                </h2>
+                <DogInfoSection />
               </AnimatedElement>
             </section>
           </main>
