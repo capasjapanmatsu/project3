@@ -151,7 +151,7 @@ export function AdminShopManagement() {
       ingredients: product.ingredients || '',
       age_group: product.age_group || 'all',
       dog_size: product.dog_size || 'all',
-      image_url: product.image_url
+      image_url: product.image_url || ''
     });
     setShowProductModal(true);
   };
@@ -269,7 +269,7 @@ export function AdminShopManagement() {
       setSuccess('');
       
       // 画像アップロード処理
-      let imageUrl = productFormData.image_url; // デフォルトはフォームのURL
+      let imageUrl: string = productFormData.image_url || ''; // デフォルトはフォームのURL
       
       // 複数画像がある場合は1枚目を使用（将来的に複数画像対応予定）
       if (selectedFiles.length > 0 && selectedFiles[0]) {
@@ -305,7 +305,7 @@ export function AdminShopManagement() {
             ingredients: productFormData.ingredients || null,
             age_group: productFormData.age_group || 'all',
             dog_size: productFormData.dog_size || 'all',
-            image_url: imageUrl,
+            image_url: imageUrl || productFormData.image_url || '',
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedProduct.id);
@@ -329,8 +329,7 @@ export function AdminShopManagement() {
             ingredients: productFormData.ingredients || null,
             age_group: productFormData.age_group || 'all',
             dog_size: productFormData.dog_size || 'all',
-            image_url: imageUrl,
-            created_by: user?.id
+            image_url: imageUrl || productFormData.image_url || ''
           }]);
         
         if (error) throw error;
