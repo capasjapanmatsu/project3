@@ -6,6 +6,7 @@ export const directVaccineUpload = async (
   bucket: string = 'vaccine-certs'
 ): Promise<{ success: boolean; url?: string; error?: string }> => {
   try {
+    console.log('ワクチン証明書アップロード開始:', {
       name: file.name,
       type: file.type,
       size: file.size,
@@ -51,6 +52,7 @@ export const directVaccineUpload = async (
 
     // v2 の正しい認証トークン取得方法
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    console.log('認証情報確認:', {
       hasSession: !!session,
       hasAccessToken: !!session?.access_token,
       sessionError,

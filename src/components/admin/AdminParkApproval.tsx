@@ -1,17 +1,17 @@
 import {
-  AlertTriangle,
-  ArrowLeft,
-  Building,
-  CheckCircle,
-  Eye,
-  FileText,
-  Loader,
-  MapPin,
-  Shield,
-  Trash2,
-  User,
-  X,
-  ZoomIn
+    AlertTriangle,
+    ArrowLeft,
+    Building,
+    CheckCircle,
+    Eye,
+    FileText,
+    Loader,
+    MapPin,
+    Shield,
+    Trash2,
+    User,
+    X,
+    ZoomIn
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useAdminApproval } from '../../hooks/useAdminApproval';
@@ -49,6 +49,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
 }) => {
   // デバッグ: 受け取っているparksデータを確認
   pendingParks.forEach((park, index) => {
+    console.log(`Park ${index + 1}:`, {
       id: park.id,
       name: park.name,
       owner_id: park.owner_id,
@@ -94,6 +95,7 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
 
           // verification_dataの中身も確認
           data?.forEach(item => {
+            console.log('Identity verification data:', {
               user_id: item.user_id,
               verification_id: item.verification_id,
               status: item.status,
