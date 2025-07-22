@@ -52,6 +52,14 @@ export const DogInfoSnack = lazy(() => import('../pages/DogInfoSnack'));
 export const DogInfoParasite = lazy(() => import('../pages/DogInfoParasite'));
 export const DogInfoShow = lazy(() => import('../pages/DogInfoShow'));
 
+// New Dog Information Detail Pages (Named Exports)
+export const HealthManagement = lazy(() => import('../pages/dog-info/HealthManagement').then(module => ({ default: module.HealthManagement })));
+export const Training = lazy(() => import('../pages/dog-info/Training').then(module => ({ default: module.Training })));
+export const Walk = lazy(() => import('../pages/dog-info/Walk').then(module => ({ default: module.Walk })));
+export const Food = lazy(() => import('../pages/dog-info/Food').then(module => ({ default: module.Food })));
+export const Care = lazy(() => import('../pages/dog-info/Care').then(module => ({ default: module.Care })));
+export const Breeds = lazy(() => import('../pages/dog-info/Breeds').then(module => ({ default: module.Breeds })));
+
 // Payment System (Named Exports)
 export const PaymentSetup = lazy(() => import('../pages/PaymentSetup').then(module => ({ default: module.PaymentSetup })));
 export const PaymentMethodSettings = lazy(() => import('../pages/PaymentMethodSettings').then(module => ({ default: module.PaymentMethodSettings })));

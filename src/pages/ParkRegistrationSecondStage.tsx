@@ -61,8 +61,8 @@ const IMAGE_TYPES = {
     required: true
   },
   gate: {
-    label: 'ゲート',
-    description: 'ドッグランのゲート（入退場管理）の写真',
+    label: 'スマートロック',
+    description: 'ドッグランのスマートロック（入退場管理）の写真',
     icon: Shield,
     required: true
   },

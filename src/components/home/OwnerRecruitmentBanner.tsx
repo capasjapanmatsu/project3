@@ -1,12 +1,10 @@
+import { Building, Crown, Plus } from 'lucide-react';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Building, Crown, Plus } from 'lucide-react';
-import Button from '../Button';
 import useAuth from '../../context/AuthContext';
+import Button from '../Button';
 
-interface OwnerRecruitmentBannerProps {}
-
-export const OwnerRecruitmentBanner: React.FC<OwnerRecruitmentBannerProps> = () => {
+export const OwnerRecruitmentBanner: React.FC = () => {
   const { user } = useAuth();
 
   // ログイン状態に応じてリンク先を決定
@@ -39,7 +37,7 @@ export const OwnerRecruitmentBanner: React.FC<OwnerRecruitmentBannerProps> = () 
           </div>
           <div className="text-right">
             <Link to={getRegistrationLink()}>
-              <Button className="bg-white hover:bg-gray-100 text-purple-700 font-bold px-6 py-3 text-lg shadow-md">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 text-lg shadow-md border-blue-600">
                 <Plus className="w-5 h-5 mr-2" />
                 {getButtonText()}
               </Button>

@@ -149,6 +149,14 @@ function App() {
             <Route path="/dog-info/snack" element={<LazyComponents.DogInfoSnack />} />
             <Route path="/dog-info/show" element={<LazyComponents.DogInfoShow />} />
             
+            {/* New Dog Information Pages */}
+            <Route path="/dog-info/health" element={<LazyComponents.HealthManagement />} />
+            <Route path="/dog-info/training" element={<LazyComponents.Training />} />
+            <Route path="/dog-info/walk" element={<LazyComponents.Walk />} />
+            <Route path="/dog-info/food" element={<LazyComponents.Food />} />
+            <Route path="/dog-info/care" element={<LazyComponents.Care />} />
+            <Route path="/dog-info/breeds" element={<LazyComponents.Breeds />} />
+            
             {/* Development Tools */}
             <Route path="/netlify-setup-guide" element={<LazyComponents.NetlifySetupGuide />} />
             <Route path="/pwa-setup-guide" element={<LazyComponents.PWASetupGuide />} />

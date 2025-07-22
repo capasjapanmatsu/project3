@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AnimatedElement, { FadeIn, SlideUp } from '../components/accessibility/AnimatedElement';
-import { DogInfoSection } from '../components/home/DogInfoSection';
+import { DogInfoCorner } from '../components/home/DogInfoCorner';
 import { FeaturesSection } from '../components/home/FeaturesSection';
 import { HeroSection } from '../components/home/HeroSection';
 import { MarqueeDogsSection } from '../components/home/MarqueeDogsSection';
@@ -460,7 +460,7 @@ export function Home() {
                 >
                   ワンちゃんについての情報発信
                 </h2>
-                <DogInfoSection />
+                <DogInfoCorner />
               </AnimatedElement>
             </section>
           </main>

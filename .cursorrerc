@@ -1,0 +1,24 @@
+# Cursor高速化設定
+# パフォーマンス最適化設定
+
+# エディタ高速化
+max_tab_count=10
+disable_animations=true
+disable_autocomplete_delay=true
+
+# TypeScript高速化
+typescript_fast_mode=true
+disable_typescript_error_squiggles=false
+typescript_incremental_compilation=true
+
+# メモリ最適化
+max_memory_usage=4096
+garbage_collection_aggressive=true
+
+# ファイル監視最適化
+exclude_patterns=["node_modules/**", "dist/**", "build/**", ".git/**", "*.log"]
+fast_file_watching=true
+
+# 検索最適化
+search_threads=4
+index_excludes=["node_modules", "dist", "build", ".git", "*.sql"]
