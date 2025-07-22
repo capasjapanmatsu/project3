@@ -12,42 +12,25 @@
   "lang": "ja",
   "icons": [
     {
-      "src": "/icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "maskable any"
     },
     {
-      "src": "/icons/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ],
   "screenshots": [
     {
-      "src": "/screenshots/screenshot-desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
+      "src": "/icons/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
       "form_factor": "wide",
       "label": "ドッグパークJP デスクトップ画面"
-    },
-    {
-      "src": "/screenshots/screenshot-mobile.png",
-      "sizes": "375x667",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "ドッグパークJP モバイル画面"
     }
   ],
   "shortcuts": [
@@ -58,9 +41,9 @@
       "url": "/parks",
       "icons": [
         {
-          "src": "/icons/icon-192x192.png",
-          "sizes": "192x192",
-          "type": "image/png"
+          "src": "/icons/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
         }
       ]
     },
@@ -71,9 +54,9 @@
       "url": "/dashboard",
       "icons": [
         {
-          "src": "/icons/icon-192x192.png",
-          "sizes": "192x192",
-          "type": "image/png"
+          "src": "/icons/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
         }
       ]
     }

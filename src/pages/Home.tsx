@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AnimatedElement, { FadeIn, SlideUp } from '../components/accessibility/AnimatedElement';
 import { DogInfoCorner } from '../components/home/DogInfoCorner';
+import { FacilityRecruitmentBanner } from '../components/home/FacilityRecruitmentBanner';
 import { FeaturesSection } from '../components/home/FeaturesSection';
 import { HeroSection } from '../components/home/HeroSection';
 import { MarqueeDogsSection } from '../components/home/MarqueeDogsSection';
@@ -414,6 +415,17 @@ export function Home() {
               fallbackAnimation="fadeIn"
             >
               <OwnerRecruitmentBanner />
+            </AnimatedElement>
+
+            {/* 施設募集バナー */}
+            <AnimatedElement
+              animation="slideUp"
+              duration={animationDuration}
+              delay={staggerDelay * 3.5}
+              respectReducedMotion={true}
+              fallbackAnimation="fadeIn"
+            >
+              <FacilityRecruitmentBanner />
             </AnimatedElement>
 
             {/* 利用方法・料金セクション */}
