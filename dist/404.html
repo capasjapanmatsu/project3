@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - ページが見つかりません | ドッグパークJP</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 3rem;
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        .error-code {
+            font-size: 8rem;
+            font-weight: 900;
+            color: #e53e3e;
+            margin-bottom: 1rem;
+            line-height: 1;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .dog-emoji {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+            animation: shake 2s infinite;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-5px);
+            }
+
+            75% {
+                transform: translateX(5px);
+            }
+        }
+
+        h1 {
+            color: #2d3748;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        p {
+            color: #718096;
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            background: #3182ce;
+            color: white;
+            border: none;
+            padding: 0.875rem 2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            background: #2c5282;
+            transform: translateY(-1px);
+        }
+
+        .btn.secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn.secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .suggestions {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            text-align: left;
+        }
+
+        .suggestions h3 {
+            color: #2d3748;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .suggestions ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .suggestions li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .suggestions li:last-child {
+            border-bottom: none;
+        }
+
+        .suggestions a {
+            color: #3182ce;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .suggestions a:hover {
+            text-decoration: underline;
+        }
+
+        .search-box {
+            margin-top: 2rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 0.875rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: #3182ce;
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+        }
+
+        .search-btn {
+            background: #38a169;
+            color: white;
+            border: none;
+            padding: 0.875rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+
+        .search-btn:hover {
+            background: #2f855a;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 2rem;
+            }
+
+            .error-code {
+                font-size: 6rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .search-box {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="error-code">404</div>
+        <span class="dog-emoji">🐕‍🦺</span>
+        <h1>ページが見つかりません</h1>
+        <p>
+            お探しのページは存在しないか、移動された可能性があります。<br>
+            URLを確認するか、以下のリンクをお試しください。
+        </p>
+
+        <div class="actions">
+            <a href="/" class="btn">
+                🏠 ホームに戻る
+            </a>
+            <button class="btn secondary" onclick="history.back()">
+                ← 前のページに戻る
+            </button>
+        </div>
+
+        <div class="suggestions">
+            <h3>🔍 お探しのページはこちらですか？</h3>
+            <ul>
+                <li><a href="/">🏠 ホームページ</a></li>
+                <li><a href="/parks">🌳 ドッグラン一覧</a></li>
+                <li><a href="/login">🔐 ログイン</a></li>
+                <li><a href="/register">📝 会員登録</a></li>
+                <li><a href="/dashboard">📊 ダッシュボード</a></li>
+                <li><a href="/shop">🛒 ペットショップ</a></li>
+                <li><a href="/news">📰 新着情報</a></li>
+                <li><a href="/contact">📞 お問い合わせ</a></li>
+            </ul>
+        </div>
+
+        <div class="search-box">
+            <input type="text" class="search-input" placeholder="サイト内を検索..." id="searchInput">
+            <button class="search-btn" onclick="performSearch()">🔍 検索</button>
+        </div>
+    </div>
+
+    <script>
+        // 検索機能
+        function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (query) {
+                // 実際のプロジェクトでは、適切な検索エンドポイントまたは検索ページにリダイレクト
+                window.location.href = `/?search=${encodeURIComponent(query)}`;
+            }
+        }
+
+        // Enterキーでの検索
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+
+        // 現在のURLをログに記録（分析用）
+        if (window.location.pathname !== '/404.html') {
+            console.log('404エラー:', window.location.pathname);
+
+            // 実際のプロジェクトでは、エラートラッキングサービスに送信
+            // 例: Google Analytics, Mixpanel, カスタム分析など
+        }
+
+        // 自動的に正しいページにリダイレクト（よくある間違いを修正）
+        const currentPath = window.location.pathname;
+        const redirects = {
+            '/dog-parks': '/parks',
+            '/dogparks': '/parks',
+            '/park-list': '/parks',
+            '/signin': '/login',
+            '/signup': '/register',
+            '/profile': '/dashboard',
+            '/account': '/dashboard',
+            '/petshop': '/shop',
+            '/store': '/shop',
+            '/contact-us': '/contact',
+            '/about-us': '/about',
+            '/help': '/contact'
+        };
+
+        if (redirects[currentPath]) {
+            console.log('自動リダイレクト:', currentPath, '->', redirects[currentPath]);
+            setTimeout(() => {
+                window.location.href = redirects[currentPath];
+            }, 3000);
+
+            // ユーザーに通知
+            const redirectMessage = document.createElement('div');
+            redirectMessage.innerHTML = `
+                <div style="
+                    background: #bee3f8;
+                    color: #2b6cb0;
+                    padding: 1rem;
+                    border-radius: 8px;
+                    margin-top: 1rem;
+                    font-size: 0.9rem;
+                ">
+                    📍 3秒後に正しいページにリダイレクトします...
+                </div>
+            `;
+            document.querySelector('.container').appendChild(redirectMessage);
+        }
+
+        // Service Worker がインストールされている場合の処理
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(registration => {
+                // オフライン時の処理を Service Worker に委任
+                console.log('Service Worker ready for offline handling');
+            });
+        }
+
+        // PWA の場合の特別な処理
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            document.body.style.paddingTop = '20px';
+        }
+    </script>
+</body>
+
+</html>
