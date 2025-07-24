@@ -10,7 +10,6 @@ import {
     Globe,
     Heart,
     MapPin,
-    PlusCircle,
     ShoppingBag,
     User,
     Users
@@ -602,28 +601,16 @@ export function UserDashboard() {
       )}
 
       {/* 管理中のペット関連施設一覧 */}
-      <Card className="p-6 bg-gradient-to-br from-teal-50 to-cyan-50 border-teal-200">
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold flex items-center">
-            <Building className="w-6 h-6 text-teal-600 mr-2" />
-            管理中のペット関連施設 ({facilities.length}施設)
-          </h2>
-          <p className="text-gray-600 mt-1">ペットショップ、動物病院、トリミングサロンなどの施設管理</p>
-        </div>
-
-        {facilities.length === 0 ? (
-          <div className="text-center py-8">
-            <Building className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">まだペット関連施設が登録されていません</h3>
-            <p className="text-gray-600 mb-4">ペット関連施設を登録して、より多くのお客様に知ってもらいましょう</p>
-            <Link to="/facility-registration">
-              <Button className="bg-teal-600 hover:bg-teal-700">
-                <PlusCircle className="w-4 h-4 mr-2" />
-                ペット関連施設を登録する
-              </Button>
-            </Link>
+      {facilities.length > 0 && (
+        <Card className="p-6 bg-gradient-to-br from-teal-50 to-cyan-50 border-teal-200">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold flex items-center">
+              <Building className="w-6 h-6 text-teal-600 mr-2" />
+              管理中のペット関連施設 ({facilities.length}施設)
+            </h2>
+            <p className="text-gray-600 mt-1">ペットショップ、動物病院、トリミングサロンなどの施設管理</p>
           </div>
-        ) : (
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {facilities.map((facility: any) => (
               <Card key={facility.id} className="hover:shadow-lg transition-shadow bg-white border-teal-100">
@@ -710,8 +697,8 @@ export function UserDashboard() {
               </Card>
             ))}
           </div>
-        )}
-      </Card>
+        </Card>
+      )}
 
       {/* Quick Actions Section with Modern CSS Grid */}
       <Card className="p-6">

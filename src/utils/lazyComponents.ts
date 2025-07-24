@@ -19,7 +19,7 @@ export const DogRegistration = lazy(() => import('../pages/DogRegistration').the
 export const DogProfile = lazy(() => import('../pages/DogProfile').then(module => ({ default: module.DogProfile })));
 export const LikedDogs = lazy(() => import('../pages/LikedDogs').then(module => ({ default: module.LikedDogs })));
 
-// Dog Park Features (Named Exports)
+// Park-related components
 export const DogParkList = lazy(() => import('../pages/DogParkList').then(module => ({ default: module.DogParkList })));
 export const DogParkDetail = lazy(() => import('../pages/DogParkDetail').then(module => ({ default: module.DogParkDetail })));
 export const DogParkRules = lazy(() => import('../pages/DogParkRules').then(module => ({ default: module.DogParkRules })));

@@ -149,37 +149,14 @@ export const Navbar = memo(function Navbar() {
     return undefined;
   }, [user, isAdmin, fetchUserName, fetchUnreadNotifications, fetchCartItemCount]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       await logout();
       navigate('/');
     } catch (error) {
       log('error', 'ログアウトエラー', { error });
     }
-  };
-
-  // 緊急ログアウト機能（強制的にリロード）
-  const handleEmergencyLogout = useCallback(() => {
-    try {
-      // ローカルストレージを完全にクリア
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      // Cookieも削除
-      document.cookie.split(";").forEach((c) => {
-        const eqPos = c.indexOf("=");
-        const name = eqPos > -1 ? c.substring(0, eqPos).trim() : c.trim();
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
-      });
-      
-      // 強制リロード
-      window.location.replace('/');
-    } catch (error) {
-      console.error('Emergency logout error:', error);
-      window.location.replace('/');
-    }
-  }, []);
+  }, [logout, navigate]);
 
   return (
     <>
@@ -316,23 +293,14 @@ export const Navbar = memo(function Navbar() {
                   
                   {/* ログアウトボタン */}
                   <button
-                    onClick={() => void handleLogout()}
+                    onClick={() => {
+                      void handleLogout();
+                    }}
                     className="flex items-center space-x-1 text-gray-600 hover:text-red-600 transition-colors"
                     aria-label="ログアウト"
                   >
                     <LogOut className="h-4 w-4" aria-hidden="true" />
                     <span className="hidden md:inline">ログアウト</span>
-                  </button>
-                  
-                  {/* 緊急ログアウトボタン（問題がある場合） */}
-                  <button
-                    onClick={handleEmergencyLogout}
-                    className="flex items-center space-x-1 text-red-600 hover:text-red-800 transition-colors text-xs"
-                    aria-label="緊急ログアウト"
-                    title="ログアウトできない場合の緊急対応"
-                  >
-                    <LogOut className="h-3 w-3" aria-hidden="true" />
-                    <span className="hidden lg:inline">強制</span>
                   </button>
                 </>
               ) : (

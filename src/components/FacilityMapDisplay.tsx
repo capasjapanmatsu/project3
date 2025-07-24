@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
-import { MapPin, Phone, Globe, Star, Clock, AlertCircle } from 'lucide-react';
-import { MapDisplayItem, FACILITY_CATEGORY_LABELS, FACILITY_ICONS, FacilityFilter } from '../types/facilities';
+import { AlertCircle } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { FACILITY_CATEGORY_LABELS, FACILITY_ICONS, FacilityFilter, MapDisplayItem } from '../types/facilities';
 
 interface FacilityMapDisplayProps {
   items: MapDisplayItem[];
@@ -43,8 +43,15 @@ const FacilityMapDisplay: React.FC<FacilityMapDisplayProps> = ({
 
     const initMap = async () => {
       try {
+        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        if (!apiKey) {
+          setMapError('Google Maps API キーが設定されていません');
+          setIsLoading(false);
+          return;
+        }
+
         const loader = new Loader({
-          apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+          apiKey,
           version: 'weekly',
         });
 
@@ -75,12 +82,12 @@ const FacilityMapDisplay: React.FC<FacilityMapDisplayProps> = ({
         setIsLoading(false);
       } catch (error) {
         console.error('Error initializing map:', error);
-        setMapError('地図の読み込みに失敗しました');
+        setMapError('地図の読み込みに失敗しました。APIキーを確認してください。');
         setIsLoading(false);
       }
     };
 
-    initMap();
+    void initMap();
   }, [userLocation]);
 
   // マーカーの更新

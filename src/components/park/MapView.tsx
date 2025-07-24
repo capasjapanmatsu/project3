@@ -1,5 +1,5 @@
 // MapView.tsx - シンプルなマップ表示コンポーネント
-import { ExternalLink, MapPin, Navigation } from 'lucide-react';
+import { MapPin, Navigation } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type DogPark } from '../../types';
 import { type PetFacility } from '../../types/facilities';
@@ -64,10 +64,17 @@ export function MapView({
   useEffect(() => {
     const loadGoogleMaps = async () => {
       try {
+        // Google Maps API キーの確認
+        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        if (!apiKey) {
+          console.warn('Google Maps API キーが設定されていません');
+          return;
+        }
+
         // Google Maps API がまだ読み込まれていない場合
         if (!window.google) {
           const script = document.createElement('script');
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
           script.async = true;
           script.defer = true;
           
@@ -78,7 +85,7 @@ export function MapView({
           });
         }
 
-        if (mapRef.current && window.google) {
+        if (mapRef.current && window.google?.maps) {
           const map = new window.google.maps.Map(mapRef.current, {
             center,
             zoom: 13,
@@ -92,7 +99,7 @@ export function MapView({
           setIsLoaded(true);
         }
       } catch (error) {
-        console.warn('Google Maps の初期化に失敗:', error);
+        console.error('Google Maps の初期化に失敗:', error);
         setIsLoaded(false);
       }
     };
@@ -191,21 +198,18 @@ export function MapView({
 
   // Google Maps API キーが設定されていない場合のフォールバック
   if (!import.meta.env.VITE_GOOGLE_MAPS_API_KEY) {
+    console.warn('Google Maps API キーが設定されていません');
     return (
       <Card className="p-6 text-center">
         <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold mb-2">マップ設定が必要です</h3>
+        <h3 className="text-lg font-semibold mb-2">マップは現在利用できません</h3>
         <p className="text-gray-600 text-sm mb-4">
-          Google Maps API キーが設定されていません
+          Google Maps API キーが設定されていないため、マップ機能を使用できません
         </p>
-        <Button 
-          onClick={() => window.open('https://developers.google.com/maps/documentation/javascript/get-api-key', '_blank')}
-          size="sm"
-          variant="secondary"
-        >
-          <ExternalLink className="w-4 h-4 mr-2" />
-          API キー取得方法
-        </Button>
+        <div className="text-xs text-gray-500">
+          <p>ドッグパーク: {parks.length}件</p>
+          <p>ペット施設: {facilities.length}件</p>
+        </div>
       </Card>
     );
   }
