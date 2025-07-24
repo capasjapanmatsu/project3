@@ -1,32 +1,32 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  MapPin, 
-  Users, 
-  Coins, 
-  CheckCircle, 
-  Heart, 
-  Shield,
-  Star,
-  AlertTriangle,
-  Clock,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Key,
-  RefreshCw
+import {
+    AlertTriangle,
+    CheckCircle,
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    Coins,
+    Heart,
+    Key,
+    MapPin,
+    RefreshCw,
+    Shield,
+    Star,
+    Users,
+    X
 } from 'lucide-react';
-import Card from '../components/Card';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
-import { supabase } from '../utils/supabase';
-import useAuth from '../context/AuthContext';
+import Card from '../components/Card';
 import { DoorLockButton } from '../components/DoorLockButton';
 import { ParkDetailHeader } from '../components/park/ParkDetailHeader';
-import { ParkImageGallery } from '../components/park/ParkImageGallery';
 import { ParkFacilityInfo } from '../components/park/ParkFacilityInfo';
-import { ParkReviewSection } from '../components/park/ParkReviewSection';
+import { ParkImageGallery } from '../components/park/ParkImageGallery';
 import { ParkRentalInfo } from '../components/park/ParkRentalInfo';
-import type { DogPark, DogParkReview, UserParkReview, Dog, Reservation, Profile, ReviewImage } from '../types';
+import { ParkReviewSection } from '../components/park/ParkReviewSection';
+import useAuth from '../context/AuthContext';
+import type { Dog, DogPark, DogParkReview, Profile, Reservation, UserParkReview } from '../types';
+import { supabase } from '../utils/supabase';
 
 interface ParkImage {
   id: string;
@@ -587,7 +587,7 @@ export function DogParkDetail() {
                       予約不可
                     </Button>
                   ) : (
-                    <Link to={`/parks/${park.id}/reserve`}>
+                    <Link to={`/reservation/${park.id}`}>
                       <Button className="bg-blue-600 hover:bg-blue-700">
                         予約する
                       </Button>
@@ -864,7 +864,7 @@ export function DogParkDetail() {
             <div className="space-y-6">
               {/* 予約ボタン */}
               <Card className="p-4">
-                <Link to={`/parks/${park.id}/reserve`}>
+                <Link to={`/reservation/${park.id}`}>
                   <Button className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-3">
                     予約する
                   </Button>

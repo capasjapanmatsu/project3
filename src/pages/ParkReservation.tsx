@@ -362,7 +362,7 @@ export function ParkReservation() {
           priceId: dayPassProduct.priceId,
           mode: 'payment',
           successUrl: `${window.location.origin}/payment-confirmation?success=true&type=day_pass&order_number=${orderNumber}`,
-          cancelUrl: `${window.location.origin}/parks/${parkId}/reserve?canceled=true`,
+          cancelUrl: `${window.location.origin}/reservation/${parkId}?canceled=true`,
           customParams: {
             reservation_data: JSON.stringify(reservationData),
             order_number: orderNumber
@@ -384,7 +384,7 @@ export function ParkReservation() {
           priceId: subscriptionProduct.priceId,
           mode: 'subscription',
           successUrl: `${window.location.origin}/payment-confirmation?success=true&type=subscription`,
-          cancelUrl: `${window.location.origin}/parks/${parkId}/reserve?canceled=true`,
+          cancelUrl: `${window.location.origin}/reservation/${parkId}?canceled=true`,
         });
         return;
       }
@@ -405,7 +405,7 @@ export function ParkReservation() {
           priceId: 'price_placeholder', // 実際には使用されない
           mode: 'payment',
           successUrl: `${window.location.origin}/payment-confirmation?success=true&order_number=${orderNumber}`,
-          cancelUrl: `${window.location.origin}/parks/${parkId}/reserve`,
+          cancelUrl: `${window.location.origin}/reservation/${parkId}`,
           customAmount: calculateFacilityPrice(),
           customName: `${park.name} 施設貸し切り ${formData.date} ${formData.selectedTimeSlot}〜${parseInt(formData.selectedTimeSlot) + parseInt(formData.duration)}:00`,
           customParams: {

@@ -196,7 +196,7 @@ export function DogParkCard({ park, userLocation, distance }: DogParkCardProps) 
             </Button>
           </Link>
           {isCurrentlyOpen && park.current_occupancy < park.max_capacity && (
-            <Link to={`/parks/${park.id}/reserve`} className="flex-1">
+                            <Link to={`/reservation/${park.id}`} className="flex-1">
               <Button className="w-full">
                 予約する
               </Button>

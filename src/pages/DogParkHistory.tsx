@@ -1,28 +1,27 @@
-import { useEffect, useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  MapPin, 
-  Clock, 
-  PawPrint, 
-  Search,
-  Download,
-  CheckCircle,
-  QrCode,
-  Building,
-  Users,
-  Heart,
-  Star,
-  X,
-  AlertTriangle
+import {
+    AlertTriangle,
+    ArrowLeft,
+    Building,
+    Calendar,
+    CheckCircle,
+    Clock,
+    Download,
+    Heart,
+    MapPin,
+    PawPrint,
+    Search,
+    Star,
+    Users,
+    X
 } from 'lucide-react';
-import Card from '../components/Card';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import Card from '../components/Card';
 import Input from '../components/Input';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
-import type { Reservation, Dog, DogPark } from '../types';
+import type { Dog, DogPark, Reservation } from '../types';
+import { supabase } from '../utils/supabase';
 
 interface ReservationWithDetails extends Reservation {
   dog_park: DogPark;
@@ -525,7 +524,7 @@ export function DogParkHistory() {
                         施設詳細
                       </Button>
                     </Link>
-                    <Link to={`/parks/${reservation.park_id}/reserve`}>
+                    <Link to={`/reservation/${reservation.park_id}`}>
                       <Button size="sm">
                         <Calendar className="w-4 h-4 mr-1" />
                         再予約

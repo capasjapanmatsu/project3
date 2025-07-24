@@ -165,7 +165,7 @@ function App() {
             <Route path="/park-management" element={<ProtectedRoute><LazyComponents.ParkManagement /></ProtectedRoute>} />
             <Route path="/register-park" element={<ProtectedRoute><LazyComponents.ParkRegistration /></ProtectedRoute>} />
             <Route path="/facility-registration" element={<ProtectedRoute><LazyComponents.FacilityRegistration /></ProtectedRoute>} />
-            <Route path="/park-publishing-setup" element={<ProtectedRoute><LazyComponents.ParkPublishingSetup /></ProtectedRoute>} />
+            <Route path="/park-publishing-setup" element={<ProtectedRoute><LazyComponents.ParkManagement /></ProtectedRoute>} />
             
             {/* Community & Social */}
             <Route path="/community" element={<ProtectedRoute><LazyComponents.Community /></ProtectedRoute>} />
@@ -173,7 +173,7 @@ function App() {
             {/* Reservations & Access */}
             <Route path="/access-control" element={<ProtectedRoute><LazyComponents.AccessControl /></ProtectedRoute>} />
             <Route path="/reservation/:parkId" element={<ProtectedRoute><LazyComponents.ParkReservation /></ProtectedRoute>} />
-            <Route path="/reservation-history" element={<ProtectedRoute><LazyComponents.ReservationHistory /></ProtectedRoute>} />
+            <Route path="/reservation-history" element={<ProtectedRoute><LazyComponents.OrderHistory /></ProtectedRoute>} />
             
             {/* Store & Payments */}
             <Route path="/cart" element={<ProtectedRoute><LazyComponents.Cart /></ProtectedRoute>} />
@@ -208,7 +208,7 @@ function App() {
             <Route path="/deployment-history" element={<ProtectedRoute><LazyComponents.DeploymentHistory /></ProtectedRoute>} />
             
             {/* 404 */}
-            <Route path="*" element={<LazyComponents.NotFound />} />
+            <Route path="*" element={<LazyComponents.Home />} />
           </Routes>
         </Suspense>
       </Layout>
