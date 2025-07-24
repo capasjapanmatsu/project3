@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase';
+import { useEffect, useState } from 'react';
 import { safeGetItem } from '../utils/safeStorage';
+import { supabase } from '../utils/supabase';
 
 export function ForgotPassword() {
   const [email, setEmail] = useState('');

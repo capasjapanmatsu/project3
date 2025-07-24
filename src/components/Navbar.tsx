@@ -1,13 +1,13 @@
 import {
-  Bell,
-  Download,
-  LogOut,
-  PawPrint,
-  Settings,
-  Shield,
-  ShoppingCart
+    Bell,
+    Download,
+    LogOut,
+    PawPrint,
+    Settings,
+    Shield,
+    ShoppingCart
 } from 'lucide-react';
-import { memo, useCallback, useEffect, useState, lazy, Suspense } from 'react';
+import { Suspense, lazy, memo, useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
@@ -158,6 +158,29 @@ export const Navbar = memo(function Navbar() {
     }
   };
 
+  // 緊急ログアウト機能（強制的にリロード）
+  const handleEmergencyLogout = useCallback(() => {
+    try {
+      // ローカルストレージを完全にクリア
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Cookieも削除
+      document.cookie.split(";").forEach((c) => {
+        const eqPos = c.indexOf("=");
+        const name = eqPos > -1 ? c.substring(0, eqPos).trim() : c.trim();
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
+      });
+      
+      // 強制リロード
+      window.location.replace('/');
+    } catch (error) {
+      console.error('Emergency logout error:', error);
+      window.location.replace('/');
+    }
+  }, []);
+
   return (
     <>
       <nav className="bg-white shadow-lg sticky top-0 z-50">
@@ -299,6 +322,17 @@ export const Navbar = memo(function Navbar() {
                   >
                     <LogOut className="h-4 w-4" aria-hidden="true" />
                     <span className="hidden md:inline">ログアウト</span>
+                  </button>
+                  
+                  {/* 緊急ログアウトボタン（問題がある場合） */}
+                  <button
+                    onClick={handleEmergencyLogout}
+                    className="flex items-center space-x-1 text-red-600 hover:text-red-800 transition-colors text-xs"
+                    aria-label="緊急ログアウト"
+                    title="ログアウトできない場合の緊急対応"
+                  >
+                    <LogOut className="h-3 w-3" aria-hidden="true" />
+                    <span className="hidden lg:inline">強制</span>
                   </button>
                 </>
               ) : (

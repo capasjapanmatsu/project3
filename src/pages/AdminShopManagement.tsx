@@ -384,27 +384,27 @@ export function AdminShopManagement() {
 
       if (selectedProduct) {
         // 既存商品の更新
-        const { error } = await supabase
-          .from('products')
-          .update({
-            name: productFormData.name,
-            description: productFormData.description,
-            price: productFormData.price,
-            category: productFormData.category,
-            stock_quantity: productFormData.stock_quantity,
-            is_active: productFormData.is_active,
+      const { error } = await supabase
+        .from('products')
+        .update({
+          name: productFormData.name,
+          description: productFormData.description,
+          price: productFormData.price,
+          category: productFormData.category,
+          stock_quantity: productFormData.stock_quantity,
+          is_active: productFormData.is_active,
             image_url: imageUrl,
             // バリエーション機能を有効化
             delivery_days: productFormData.delivery_days,
             has_variations: productFormData.has_variations,
             variation_type: productFormData.has_variations ? productFormData.variation_type : null,
             variations: productFormData.has_variations ? productFormData.variations : [],
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', selectedProduct.id);
-        
-        if (error) throw error;
-        setSuccess('商品情報を更新しました');
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedProduct.id);
+      
+      if (error) throw error;
+      setSuccess('商品情報を更新しました');
       } else {
         // 新規商品の作成
         let insertResult;
@@ -534,7 +534,7 @@ export function AdminShopManagement() {
               lastModified: Date.now()
             });
             resolve(resizedFile);
-          } else {
+      } else {
             resolve(file); // フォールバック
           }
         }, file.type);
@@ -564,7 +564,7 @@ export function AdminShopManagement() {
               lastModified: Date.now()
             });
             resolve(compressedFile);
-          } else {
+      } else {
             resolve(file); // フォールバック
           }
         }, 'image/jpeg', quality);
@@ -1436,7 +1436,7 @@ export function AdminShopManagement() {
                               </button>
                               <div className="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
                                 URL画像
-                              </div>
+                  </div>
                             </div>
                           )}
                           
@@ -1465,8 +1465,8 @@ export function AdminShopManagement() {
                         {/* 画像枚数表示 */}
                         <div className="mt-2 text-sm text-gray-600">
                           選択中: {imagePreviews.length + (productFormData.image_url && imagePreviews.length === 0 ? 1 : 0)}枚 / 最大10枚
-                        </div>
-                      </div>
+                  </div>
+                </div>
                     )}
                     
                     {/* ファイル選択ボタン */}
@@ -1481,9 +1481,9 @@ export function AdminShopManagement() {
                           className="hidden"
                           multiple // 複数ファイル選択を許可
                         />
-                        <Button
-                          type="button"
-                          variant="secondary"
+                  <Button
+                    type="button"
+                    variant="secondary"
                           onClick={() => document.getElementById('product-images')?.click()}
                           className="w-full"
                           disabled={imagePreviews.length >= 10}
@@ -1495,7 +1495,7 @@ export function AdminShopManagement() {
                               ? `画像を追加 (${imagePreviews.length}/10)`
                               : 'ファイルを選択 (最大10枚)'
                           }
-                        </Button>
+                  </Button>
                       </div>
                       
                       <div className="flex-1">
@@ -1507,7 +1507,7 @@ export function AdminShopManagement() {
                           onChange={handleMultipleFileSelect}
                           className="hidden"
                         />
-                        <Button
+                  <Button
                           type="button"
                           variant="secondary"
                           onClick={() => document.getElementById('product-camera')?.click()}
@@ -1516,9 +1516,9 @@ export function AdminShopManagement() {
                         >
                           <Camera className="w-4 h-4 mr-2" />
                           {imagePreviews.length >= 10 ? '上限達成' : '写真を撮る'}
-                        </Button>
-                      </div>
-                    </div>
+                  </Button>
+                </div>
+            </div>
                     
                     {/* URLでの入力も可能 */}
                     <div className="mt-3">
@@ -1528,7 +1528,7 @@ export function AdminShopManagement() {
                         onChange={(e) => setProductFormData({ ...productFormData, image_url: e.target.value })}
                         placeholder="https://example.com/image.jpg"
                       />
-                    </div>
+          </div>
                     
                     {/* ファイル選択状態の表示 */}
                     {selectedFiles.length > 0 && (
@@ -1543,9 +1543,9 @@ export function AdminShopManagement() {
                             ))}
                           </div>
                         )}
-                      </div>
-                    )}
-                    
+        </div>
+      )}
+
                     {/* 10枚制限の警告 */}
                     {imagePreviews.length >= 8 && imagePreviews.length < 10 && (
                       <p className="text-sm text-yellow-600 mt-2">
@@ -1558,8 +1558,8 @@ export function AdminShopManagement() {
                         ⚠️ 画像は最大10枚までです。追加したい場合は既存の画像を削除してください。
                       </p>
                     )}
-                  </div>
-                  
+              </div>
+
                   {/* バリエーション機能を有効化 */}
                   <Input
                     label="お届けまでの目安（日）"
@@ -1599,8 +1599,8 @@ export function AdminShopManagement() {
                   
                   {/* 商品有効化チェックボックスを復元 */}
                   <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
+                      <input
+                        type="checkbox"
                       id="is_active"
                       checked={productFormData.is_active}
                       onChange={(e) => setProductFormData({ ...productFormData, is_active: e.target.checked })}
@@ -1608,13 +1608,13 @@ export function AdminShopManagement() {
                     />
                     <label htmlFor="is_active" className="text-sm text-gray-700">
                       商品を有効にする（オンにすると商品が表示されます）
-                    </label>
+                      </label>
                   </div>
                   
                   {/* バリエーション設定フォーム */}
                   {productFormData.has_variations && (
                     <>
-                      <Input
+                  <Input
                         label="バリエーションの種類（例：カラー、サイズ）"
                         value={productFormData.variation_type}
                         onChange={(e) => setProductFormData({ ...productFormData, variation_type: e.target.value })}
@@ -1629,7 +1629,7 @@ export function AdminShopManagement() {
                           {productFormData.variations.map((variation, index) => (
                             <div key={index} className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg">
                               <div className="flex-1">
-                                <Input
+                  <Input
                                   label={`${productFormData.variation_type || 'バリエーション'}${index + 1}`}
                                   value={variation.name}
                                   onChange={(e) => updateVariation(index, 'name', e.target.value)}
@@ -1642,30 +1642,30 @@ export function AdminShopManagement() {
                                   value={variation.sku}
                                   onChange={(e) => updateVariation(index, 'sku', e.target.value)}
                                   placeholder="A000001"
-                                />
-                              </div>
+                  />
+                </div>
                               {productFormData.variations.length > 1 && (
-                                <Button
-                                  type="button"
-                                  variant="secondary"
+                  <Button
+                    type="button"
+                    variant="secondary"
                                   onClick={() => removeVariation(index)}
                                   className="mt-6 bg-red-100 text-red-700 border-red-300 hover:bg-red-200"
-                                >
+                  >
                                   削除
-                                </Button>
+                  </Button>
                               )}
                             </div>
                           ))}
-                          <Button
+                  <Button
                             type="button"
                             variant="secondary"
                             onClick={addVariation}
                             className="w-full bg-green-100 text-green-700 border-green-300 hover:bg-green-200"
                           >
                             + バリエーションを追加
-                          </Button>
-                        </div>
-                      </div>
+                  </Button>
+                </div>
+            </div>
                     </>
                   )}
                 </div>
@@ -1684,23 +1684,23 @@ export function AdminShopManagement() {
                         商品を削除
                       </Button>
                     )}
-                  </div>
-                  
+              </div>
+
                   {/* 右側：キャンセル・更新ボタン */}
                   <div className="flex space-x-3">
-                    <Button
-                      type="button"
-                      variant="secondary"
+                  <Button
+                    type="button"
+                    variant="secondary"
                       onClick={closeProductModal}
-                    >
-                      キャンセル
-                    </Button>
-                    <Button
-                      type="submit"
-                      isLoading={isUpdating}
-                    >
+                  >
+                    キャンセル
+                  </Button>
+                  <Button
+                    type="submit"
+                    isLoading={isUpdating}
+                  >
                       {selectedProduct ? '更新する' : '登録する'}
-                    </Button>
+                  </Button>
                   </div>
                 </div>
               </form>

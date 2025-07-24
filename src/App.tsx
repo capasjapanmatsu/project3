@@ -64,41 +64,11 @@ const AuthCallback = () => {
 };
 
 function App() {
-  // Performance monitoring and network state
+  // Performance monitoring and network state - 無効化して安定性を向上
   useEffect(() => {
-    if (import.meta.env.PROD) {
-      // Network state monitoring
-      const handleOnline = () => console.log('🌐 Network: Online');
-      const handleOffline = () => console.warn('🔌 Network: Offline');
-      
-      window.addEventListener('online', handleOnline);
-      window.addEventListener('offline', handleOffline);
-      
-      // Performance monitoring
-      const reportWebVitals = () => {
-        if ('PerformanceObserver' in window) {
-          const observer = new PerformanceObserver((list) => {
-            list.getEntries().forEach((entry) => {
-              if (entry.entryType === 'measure') {
-                console.log(`📊 Performance: ${entry.name} - ${entry.duration.toFixed(2)}ms`);
-              }
-            });
-          });
-          
-          try {
-            observer.observe({ entryTypes: ['measure', 'navigation'] });
-          } catch (e) {
-            // Ignore browser support issues
-          }
-        }
-      };
-      
-      reportWebVitals();
-      
-      return () => {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
-      };
+    // 開発環境でのみ最小限の監視
+    if (import.meta.env.DEV) {
+      console.log('App initialized');
     }
   }, []);
 

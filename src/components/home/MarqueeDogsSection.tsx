@@ -1,9 +1,6 @@
-import React, { useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { PawPrint } from 'lucide-react';
-import { getDogHonorific } from '../dashboard/DogCard';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { Dog } from '../../types';
-import { useState } from 'react';
 
 interface MarqueeDogsSectionProps {
   recentDogs: Dog[];
@@ -16,12 +13,6 @@ export const MarqueeDogsSection: React.FC<MarqueeDogsSectionProps> = React.memo(
   isOffline,
   isLoading = false,
 }) => {
-  // デバッグ情報
-  console.log('MarqueeDogsSection - recentDogs:', recentDogs);
-  console.log('MarqueeDogsSection - isOffline:', isOffline);
-  console.log('MarqueeDogsSection - isLoading:', isLoading);
-  console.log('MarqueeDogsSection - recentDogs.length:', recentDogs.length);
-  
   // データを重複させて継続的なスクロール効果を作成 (メモ化)
   const duplicatedDogs = useMemo(() => [...recentDogs, ...recentDogs], [recentDogs]);
   
@@ -81,10 +72,6 @@ export const MarqueeDogsSection: React.FC<MarqueeDogsSectionProps> = React.memo(
                   登録されたワンちゃんがいません
                 </p>
               )}
-              {/* デバッグ情報 */}
-              <div className="text-xs text-gray-400 mt-2">
-                Debug: dogs={recentDogs?.length || 0}, offline={isOffline ? 'true' : 'false'}, loading={isLoading ? 'true' : 'false'}
-              </div>
             </div>
           </div>
         )}
@@ -146,11 +133,12 @@ const DogCard = React.memo(({ dog }: { dog: Dog }) => {
   
   // 画像のpreload
   useEffect(() => {
-    if (optimizedImageUrl) {
+    if (optimizedImageUrl && !imageLoaded && !imageError) {
       const img = new Image();
       img.src = optimizedImageUrl;
+      // プリロードが完了してもstateは更新しない（不要な再レンダリングを防ぐ）
     }
-  }, [optimizedImageUrl]);
+  }, [optimizedImageUrl]); // imageLoaded, imageErrorを依存関係から除外
   
   return (
     <div className="inline-block mx-4 text-center" style={{ width: 100, flexShrink: 0 }}>

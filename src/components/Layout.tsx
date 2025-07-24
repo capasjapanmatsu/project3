@@ -1,13 +1,13 @@
 import { ReactNode, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Navbar } from './Navbar';
-import { Footer } from './Footer';
-import { BottomNavigation } from './BottomNavigation';
 import { HelmetProvider } from 'react-helmet-async';
-import { SEO } from './SEO';
-import { useMaintenance } from '../context/MaintenanceContext';
-import MaintenanceScreen from './MaintenanceScreen';
+import { useLocation } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
+import { useMaintenance } from '../context/MaintenanceContext';
+import { BottomNavigation } from './BottomNavigation';
+import { Footer } from './Footer';
+import MaintenanceScreen from './MaintenanceScreen';
+import { Navbar } from './Navbar';
+import { SEO } from './SEO';
 
 interface LayoutProps {
   children: ReactNode;
@@ -18,8 +18,12 @@ const Layout = ({ children }: LayoutProps) => {
   const { isMaintenanceActive, loading, isIPWhitelisted, clientIP } = useMaintenance();
   const { isAdmin, user } = useAuth();
 
-  // Scroll to top on route change
+  // Scroll to top on route change (only for actual navigation, not re-renders)
   useEffect(() => {
+    // ホームページでのスクロールリセットを無効化
+    if (location.pathname === '/') {
+      return;
+    }
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
@@ -33,7 +37,7 @@ const Layout = ({ children }: LayoutProps) => {
   }
 
   // 管理者権限のデバッグ情報を出力
-  console.log('Layout - isMaintenanceActive:', isMaintenanceActive, 'isAdmin:', isAdmin, 'user:', user?.email, 'clientIP:', clientIP, 'isIPWhitelisted:', isIPWhitelisted);
+  // console.log('Layout - isMaintenanceActive:', isMaintenanceActive, 'isAdmin:', isAdmin, 'user:', user?.email, 'clientIP:', clientIP, 'isIPWhitelisted:', isIPWhitelisted);
 
   // メンテナンス判定ロジック
   const shouldShowMaintenance = () => {

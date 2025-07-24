@@ -40,13 +40,13 @@ export const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
 
   // すべての処理をスキップして即座に正常状態を返す
   const refreshMaintenanceStatus = useCallback(async () => {
-    console.log('MaintenanceContext: スキップ（無効化中）');
+    // console.log('MaintenanceContext: スキップ（無効化中）'); // ログを削除
     return Promise.resolve();
   }, []);
 
   // メンテナンス機能が無効化されていることをログ出力
   useEffect(() => {
-    console.log('🚨 MaintenanceContext: 緊急対応により完全無効化されています');
+    // console.log('🚨 MaintenanceContext: 緊急対応により完全無効化されています'); // ログを削除
   }, []);
 
   const value: MaintenanceContextType = {

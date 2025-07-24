@@ -195,14 +195,14 @@
   [plugins.inputs]
     output_path = "reports/lighthouse.html"
     
-[[plugins]]
-  package = "netlify-plugin-submit-sitemap"
-  
-  [plugins.inputs]
-    baseUrl = "https://your-site.netlify.app"
-    sitemapPath = "/sitemap.xml"
-    providers = [
-      "google",
-      "bing",
-      "yandex"
-    ] 
+# [[plugins]]
+#   package = "netlify-plugin-submit-sitemap"
+#   
+#   [plugins.inputs]
+#     baseUrl = "https://your-site.netlify.app"
+#     sitemapPath = "/sitemap.xml"
+#     providers = [
+#       "google",
+#       "bing",
+#       "yandex"
+#     ] 

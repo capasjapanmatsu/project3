@@ -1,0 +1,167 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Dog } from '../types';
+import { supabase } from '../utils/supabase';
+
+interface UseRealtimeDogsOptions {
+  initialDogs?: Dog[];
+  limit?: number;
+}
+
+export const useRealtimeDogs = ({ initialDogs = [], limit = 8 }: UseRealtimeDogsOptions = {}) => {
+  const [dogs, setDogs] = useState<Dog[]>(initialDogs);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const lastFetchTime = useRef<number>(0);
+  const FETCH_COOLDOWN = 1000; // 1秒のクールダウン
+
+  // 初期データの取得
+  const fetchDogs = useCallback(async () => {
+    // クールダウン期間中は実行しない
+    const now = Date.now();
+    if (now - lastFetchTime.current < FETCH_COOLDOWN) {
+      console.log('🐕 Dogs fetch skipped due to cooldown');
+      return;
+    }
+    lastFetchTime.current = now;
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const { data, error: fetchError } = await supabase
+        .from('dogs')
+        .select('id, owner_id, name, breed, birth_date, gender, image_url, created_at')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      setDogs(data || []);
+      console.log('🐕 Dogs data fetched:', data?.length || 0, 'dogs');
+    } catch (err) {
+      console.warn('Failed to fetch dogs:', err);
+      setError(String(err));
+      // エラーが発生した場合は初期データを使用
+      setDogs(initialDogs);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [limit]);
+
+  // リアルタイム購読の設定
+  useEffect(() => {
+    let isMounted = true;
+
+    // 初回データ取得
+    void fetchDogs();
+
+    // リアルタイム購読を設定
+    const subscription = supabase
+      .channel('dogs_realtime_channel')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'dogs'
+        },
+        (payload) => {
+          console.log('🐕 新しいワンちゃんが登録されました:', payload.new);
+          
+          if (!isMounted) return;
+
+          const newDog = payload.new as Dog;
+          
+          // 新しい犬を先頭に追加し、制限数を超えた場合は末尾を削除
+          setDogs(prevDogs => {
+            const updatedDogs = [newDog, ...prevDogs];
+            return updatedDogs.slice(0, limit);
+          });
+
+          // 新着通知（オプション）
+          if ('Notification' in window && Notification.permission === 'granted') {
+            void new Notification('新しい仲間が登録されました！', {
+              body: `${newDog.name}（${newDog.breed}）が仲間入りしました`,
+              icon: newDog.image_url || '/favicon.svg',
+              tag: 'new-dog'
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'dogs'
+        },
+        (payload) => {
+          console.log('🐕 ワンちゃん情報が更新されました:', payload.new);
+          
+          if (!isMounted) return;
+
+          const updatedDog = payload.new as Dog;
+          
+          setDogs(prevDogs => 
+            prevDogs.map(dog => 
+              dog.id === updatedDog.id ? updatedDog : dog
+            )
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'dogs'
+        },
+        (payload) => {
+          console.log('🐕 ワンちゃんが削除されました:', payload.old);
+          
+          if (!isMounted) return;
+
+          const deletedDogId = payload.old.id;
+          
+          setDogs(prevDogs => 
+            prevDogs.filter(dog => dog.id !== deletedDogId)
+          );
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔄 Dogs realtime subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ リアルタイム機能が有効になりました！');
+        }
+      });
+
+    // 通知許可をリクエスト（初回のみ）
+    if ('Notification' in window && Notification.permission === 'default') {
+      void Notification.requestPermission().then(permission => {
+        console.log('通知許可:', permission);
+      });
+    }
+
+    // クリーンアップ
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [limit, fetchDogs]);
+
+  // 手動更新
+  const refreshDogs = useCallback(() => {
+    void fetchDogs();
+  }, [fetchDogs]);
+
+  return {
+    dogs,
+    isLoading,
+    error,
+    refreshDogs
+  };
+};
+
+export default useRealtimeDogs; 
