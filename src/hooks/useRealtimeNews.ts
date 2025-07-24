@@ -17,62 +17,6 @@ export const useRealtimeNews = ({ initialNews = [], limit = 5 }: UseRealtimeNews
   
   // AuthContextからセッション情報を取得
   const { loading: authLoading, session } = useAuth();
-
-  const fetchNews = useCallback(async () => {
-    // AuthContextのローディングが完了するまで待つ
-    if (authLoading) {
-      console.log('📢 Waiting for auth initialization...');
-      return;
-    }
-
-    const now = Date.now();
-    if (now - lastFetchTime.current < FETCH_COOLDOWN) {
-      console.log('📢 News fetch skipped due to cooldown');
-      return;
-    }
-    lastFetchTime.current = now;
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // 認証状態をデバッグ
-      console.log('🔐 News auth session:', {
-        user: session?.user?.id,
-        isAuthenticated: !!session,
-        email: session?.user?.email,
-        authLoading
-      });
-
-      const { data, error: fetchError } = await supabase
-        .from('news_announcements')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      console.log('📢 News query response:', { data: data?.length, error: fetchError });
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      setNews(data || []);
-      console.log('📢 News data fetched:', data?.length || 0, 'items');
-    } catch (err) {
-      console.error('❌ Failed to fetch news - DETAILED:', {
-        error: err,
-        message: (err as any)?.message,
-        code: (err as any)?.code,
-        details: (err as any)?.details
-      });
-      setError(String(err));
-      // エラーが発生した場合は初期データを使用
-      setNews(initialNews);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [limit, authLoading, session, initialNews]);
-
   // リアルタイム購読の設定
   useEffect(() => {
     let isMounted = true;
@@ -83,8 +27,47 @@ export const useRealtimeNews = ({ initialNews = [], limit = 5 }: UseRealtimeNews
       return;
     }
 
+    // 初期データ取得をインライン定義
+    const fetchInitialData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        console.log('📢 初期ニュースデータ取得を開始...');
+
+        const { data, error: fetchError } = await supabase
+          .from('news_announcements')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(limit);
+
+        if (fetchError) {
+          console.error('📢 ニュースデータ取得エラー:', fetchError);
+          throw fetchError;
+        }
+
+        if (isMounted) {
+          setNews(data || []);
+          console.log('📢 初期ニュースデータ取得完了:', data?.length || 0, 'items');
+          // 初回取得時にクールダウンタイマーを設定
+          lastFetchTime.current = Date.now();
+        }
+      } catch (err) {
+        console.warn('📢 初期ニュースデータ取得失敗:', err);
+        if (isMounted) {
+          setError(String(err));
+          // エラーが発生した場合は初期データを使用
+          setNews(initialNews);
+          console.log('📢 フォールバックニュースデータを使用:', initialNews.length, 'items');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
     // 初回データ取得
-    void fetchNews();
+    void fetchInitialData();
 
     // リアルタイム購読を設定
     const subscription = supabase
@@ -177,12 +160,43 @@ export const useRealtimeNews = ({ initialNews = [], limit = 5 }: UseRealtimeNews
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchNews, authLoading]);
+  }, [limit, initialNews, authLoading]); // 必要な依存関係を統合
 
   // 手動更新
-  const refreshNews = useCallback(() => {
-    void fetchNews();
-  }, [fetchNews]);
+  const refreshNews = useCallback(async () => {
+    // クールダウン期間中は実行しない
+    const now = Date.now();
+    if (now - lastFetchTime.current < FETCH_COOLDOWN) {
+      console.log('📢 News refresh skipped due to cooldown');
+      return;
+    }
+    lastFetchTime.current = now;
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const { data, error: fetchError } = await supabase
+        .from('news_announcements')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      setNews(data || []);
+      console.log('📢 News data refreshed:', data?.length || 0, 'items');
+    } catch (err) {
+      console.warn('Failed to refresh news:', err);
+      setError(String(err));
+      // エラーが発生した場合は初期データを使用
+      setNews(initialNews);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [limit, initialNews]);
 
   return {
     news,

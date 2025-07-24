@@ -17,62 +17,6 @@ export const useRealtimeDogs = ({ initialDogs = [], limit = 8 }: UseRealtimeDogs
   
   // AuthContextからセッション情報を取得
   const { loading: authLoading, session } = useAuth();
-
-  const fetchDogs = useCallback(async () => {
-    // AuthContextのローディングが完了するまで待つ
-    if (authLoading) {
-      console.log('🐕 Waiting for auth initialization...');
-      return;
-    }
-
-    const now = Date.now();
-    if (now - lastFetchTime.current < FETCH_COOLDOWN) {
-      console.log('🐕 Dogs fetch skipped due to cooldown');
-      return;
-    }
-    lastFetchTime.current = now;
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // 認証状態をデバッグ
-      console.log('🔐 Current auth session:', {
-        user: session?.user?.id,
-        isAuthenticated: !!session,
-        email: session?.user?.email,
-        authLoading
-      });
-
-      const { data, error: fetchError } = await supabase
-        .from('dogs')
-        .select('id, owner_id, name, breed, birth_date, gender, image_url, created_at')
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      console.log('🐕 Supabase query response:', { data: data?.length, error: fetchError });
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      setDogs(data || []);
-      console.log('🐕 Dogs data fetched:', data?.length || 0, 'dogs');
-    } catch (err) {
-      console.error('❌ Failed to fetch dogs - DETAILED:', {
-        error: err,
-        message: (err as any)?.message,
-        code: (err as any)?.code,
-        details: (err as any)?.details
-      });
-      setError(String(err));
-      // エラーが発生した場合は初期データを使用
-      setDogs(initialDogs);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [limit, authLoading, session, initialDogs]);
-
   // リアルタイム購読の設定
   useEffect(() => {
     let isMounted = true;
@@ -83,8 +27,47 @@ export const useRealtimeDogs = ({ initialDogs = [], limit = 8 }: UseRealtimeDogs
       return;
     }
 
+    // 初期データ取得をインライン定義
+    const fetchInitialData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        console.log('🐕 初期データ取得を開始...');
+
+        const { data, error: fetchError } = await supabase
+          .from('dogs')
+          .select('id, owner_id, name, breed, birth_date, gender, image_url, created_at')
+          .order('created_at', { ascending: false })
+          .limit(limit);
+
+        if (fetchError) {
+          console.error('🐕 データ取得エラー:', fetchError);
+          throw fetchError;
+        }
+
+        if (isMounted) {
+          setDogs(data || []);
+          console.log('🐕 初期データ取得完了:', data?.length || 0, 'dogs');
+          // 初回取得時にクールダウンタイマーを設定
+          lastFetchTime.current = Date.now();
+        }
+      } catch (err) {
+        console.warn('🐕 初期データ取得失敗:', err);
+        if (isMounted) {
+          setError(String(err));
+          // エラーが発生した場合は初期データを使用
+          setDogs(initialDogs);
+          console.log('🐕 フォールバックデータを使用:', initialDogs.length, 'dogs');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
     // 初回データ取得
-    void fetchDogs();
+    void fetchInitialData();
 
     // リアルタイム購読を設定
     const subscription = supabase
@@ -177,12 +160,43 @@ export const useRealtimeDogs = ({ initialDogs = [], limit = 8 }: UseRealtimeDogs
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchDogs, authLoading]);
+  }, [limit, initialDogs, authLoading]); // 必要な依存関係を統合
 
   // 手動更新
-  const refreshDogs = useCallback(() => {
-    void fetchDogs();
-  }, [fetchDogs]);
+  const refreshDogs = useCallback(async () => {
+    // クールダウン期間中は実行しない
+    const now = Date.now();
+    if (now - lastFetchTime.current < FETCH_COOLDOWN) {
+      console.log('🐕 Dogs refresh skipped due to cooldown');
+      return;
+    }
+    lastFetchTime.current = now;
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const { data, error: fetchError } = await supabase
+        .from('dogs')
+        .select('id, owner_id, name, breed, birth_date, gender, image_url, created_at')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      setDogs(data || []);
+      console.log('🐕 Dogs data refreshed:', data?.length || 0, 'dogs');
+    } catch (err) {
+      console.warn('Failed to refresh dogs:', err);
+      setError(String(err));
+      // エラーが発生した場合は初期データを使用
+      setDogs(initialDogs);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [limit, initialDogs]);
 
   return {
     dogs,
