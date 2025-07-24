@@ -1,5 +1,5 @@
 import { Suspense, useEffect } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Route, Routes, useNavigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import NotificationContainer from './components/NotificationContainer';
 import PWAManager from './components/PWAManager';
@@ -35,20 +35,32 @@ const LoadingSpinner = ({ message = 'ロード中...' }: { message?: string }) =
   );
 };
 
-// Protected route component
+// Protected route component - 無限ループを防止
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated, loading } = useAuth();
+  const navigate = useNavigate();
   
+  // セッション初期化完了後に一度だけ認証チェック
+  useEffect(() => {
+    if (loading) return; // ローディング中は何もしない
+    
+    if (!user || !isAuthenticated) {
+      console.log('🔐 ProtectedRoute: No auth, redirecting to login');
+      navigate('/login', { 
+        state: { from: window.location.pathname },
+        replace: true 
+      });
+    }
+  }, [loading, user, isAuthenticated]); // navigateを依存配列から削除
+
+  // ローディング中
   if (loading) {
-    return <LoadingSpinner />;
+    return <LoadingSpinner message="認証確認中..." />;
   }
 
-  if (!user) {
-    return <Navigate to="/login" state={{ from: window.location.pathname }} replace />;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: window.location.pathname }} replace />;
+  // 認証済みでない場合は何も表示しない（useEffectでリダイレクト処理中）
+  if (!user || !isAuthenticated) {
+    return <LoadingSpinner message="リダイレクト中..." />;
   }
 
   return <>{children}</>;
@@ -149,67 +161,59 @@ function App() {
             <Route path="/register-dog" element={<ProtectedRoute><LazyComponents.DogRegistration /></ProtectedRoute>} />
             <Route path="/dog-management" element={<ProtectedRoute><LazyComponents.DogManagement /></ProtectedRoute>} />
             
-            {/* Park Features */}
-            <Route path="/parks/:parkId/reserve" element={<ProtectedRoute><LazyComponents.ParkReservation /></ProtectedRoute>} />
-            <Route path="/parks/:parkId/manage" element={<ProtectedRoute><LazyComponents.ParkManagement /></ProtectedRoute>} />
-            <Route path="/parks/:parkId/second-stage" element={<ProtectedRoute><LazyComponents.ParkRegistrationSecondStage /></ProtectedRoute>} />
-            <Route path="/park-registration-agreement" element={<ProtectedRoute><LazyComponents.ParkRegistrationAgreement /></ProtectedRoute>} />
+            {/* Park Management */}
+            <Route path="/park-management" element={<ProtectedRoute><LazyComponents.ParkManagement /></ProtectedRoute>} />
             <Route path="/register-park" element={<ProtectedRoute><LazyComponents.ParkRegistration /></ProtectedRoute>} />
-            <Route path="/dogpark-history" element={<ProtectedRoute><LazyComponents.DogParkHistory /></ProtectedRoute>} />
+            <Route path="/facility-registration" element={<ProtectedRoute><LazyComponents.FacilityRegistration /></ProtectedRoute>} />
+            <Route path="/park-publishing-setup" element={<ProtectedRoute><LazyComponents.ParkPublishingSetup /></ProtectedRoute>} />
             
-            {/* Community */}
+            {/* Community & Social */}
             <Route path="/community" element={<ProtectedRoute><LazyComponents.Community /></ProtectedRoute>} />
             
-            {/* E-commerce */}
+            {/* Reservations & Access */}
+            <Route path="/access-control" element={<ProtectedRoute><LazyComponents.AccessControl /></ProtectedRoute>} />
+            <Route path="/reservation/:parkId" element={<ProtectedRoute><LazyComponents.ParkReservation /></ProtectedRoute>} />
+            <Route path="/reservation-history" element={<ProtectedRoute><LazyComponents.ReservationHistory /></ProtectedRoute>} />
+            
+            {/* Store & Payments */}
             <Route path="/cart" element={<ProtectedRoute><LazyComponents.Cart /></ProtectedRoute>} />
             <Route path="/checkout" element={<ProtectedRoute><LazyComponents.Checkout /></ProtectedRoute>} />
-            <Route path="/orders" element={<ProtectedRoute><LazyComponents.OrderHistory /></ProtectedRoute>} />
-            
-            {/* Payments */}
-            <Route path="/payment-setup" element={<ProtectedRoute><LazyComponents.PaymentSetup /></ProtectedRoute>} />
-            <Route path="/payment-method-settings" element={<ProtectedRoute><LazyComponents.PaymentMethodSettings /></ProtectedRoute>} />
+            <Route path="/order-history" element={<ProtectedRoute><LazyComponents.OrderHistory /></ProtectedRoute>} />
             <Route path="/subscription" element={<ProtectedRoute><LazyComponents.Subscription /></ProtectedRoute>} />
             
-            {/* Owner Features */}
+            {/* Owner Dashboard */}
             <Route path="/owner-dashboard" element={<ProtectedRoute><LazyComponents.OwnerDashboard /></ProtectedRoute>} />
             <Route path="/owner-payment-system" element={<ProtectedRoute><LazyComponents.OwnerPaymentSystem /></ProtectedRoute>} />
             
-            {/* Admin Panel */}
+            {/* Admin Routes */}
             <Route path="/admin" element={<ProtectedRoute><LazyComponents.AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/users" element={<ProtectedRoute><LazyComponents.AdminUserManagement /></ProtectedRoute>} />
-            <Route path="/admin/users/:userId" element={<ProtectedRoute><LazyComponents.AdminUserDetail /></ProtectedRoute>} />
             <Route path="/admin/parks" element={<ProtectedRoute><LazyComponents.AdminParkManagement /></ProtectedRoute>} />
-            <Route path="/admin/reservations" element={<ProtectedRoute><LazyComponents.AdminReservationManagement /></ProtectedRoute>} />
-            <Route path="/admin/sales" element={<ProtectedRoute><LazyComponents.AdminSalesManagement /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute><LazyComponents.AdminUserManagement /></ProtectedRoute>} />
+            <Route path="/admin/facilities" element={<ProtectedRoute><LazyComponents.AdminFacilityApproval /></ProtectedRoute>} />
+            <Route path="/admin/vaccines" element={<ProtectedRoute><LazyComponents.AdminVaccineApproval /></ProtectedRoute>} />
             <Route path="/admin/management" element={<ProtectedRoute><LazyComponents.AdminManagement /></ProtectedRoute>} />
-            <Route path="/admin/tasks" element={<ProtectedRoute><LazyComponents.AdminTasks /></ProtectedRoute>} />
-            <Route path="/admin/shop" element={<ProtectedRoute><LazyComponents.AdminShopManagement /></ProtectedRoute>} />
-            <Route path="/admin/revenue" element={<ProtectedRoute><LazyComponents.AdminRevenueReport /></ProtectedRoute>} />
             <Route path="/admin/news" element={<ProtectedRoute><LazyComponents.AdminNewsManagement /></ProtectedRoute>} />
-            <Route path="/admin/vaccine-approval" element={<ProtectedRoute><LazyComponents.AdminVaccineApproval /></ProtectedRoute>} />
-            <Route path="/admin/facility-approval" element={<ProtectedRoute><LazyComponents.AdminFacilityApproval /></ProtectedRoute>} />
+            <Route path="/admin/reservations" element={<ProtectedRoute><LazyComponents.AdminReservationManagement /></ProtectedRoute>} />
+            <Route path="/admin/revenue-report" element={<ProtectedRoute><LazyComponents.AdminRevenueReport /></ProtectedRoute>} />
+            <Route path="/admin/sales" element={<ProtectedRoute><LazyComponents.AdminSalesManagement /></ProtectedRoute>} />
+            <Route path="/admin/shop" element={<ProtectedRoute><LazyComponents.AdminShopManagement /></ProtectedRoute>} />
+            <Route path="/admin/tasks" element={<ProtectedRoute><LazyComponents.AdminTasks /></ProtectedRoute>} />
+            <Route path="/admin/user/:userId" element={<ProtectedRoute><LazyComponents.AdminUserDetail /></ProtectedRoute>} />
             
-            {/* Facility Registration */}
-            <Route path="/facility-registration" element={<ProtectedRoute><LazyComponents.FacilityRegistration /></ProtectedRoute>} />
+            {/* 2FA Route */}
+            <Route path="/verify-2fa" element={<LazyComponents.TwoFactorVerify />} />
             
-            {/* Security */}
-            <Route path="/two-factor-setup" element={<ProtectedRoute><LazyComponents.TwoFactorSetup /></ProtectedRoute>} />
-            <Route path="/two-factor-verify" element={<ProtectedRoute><LazyComponents.TwoFactorVerify /></ProtectedRoute>} />
-            <Route path="/access-control" element={<ProtectedRoute><LazyComponents.AccessControl /></ProtectedRoute>} />
-            
-            {/* Development */}
+            {/* Development & Deployment */}
             <Route path="/deploy" element={<ProtectedRoute><LazyComponents.Deploy /></ProtectedRoute>} />
             <Route path="/deployment-history" element={<ProtectedRoute><LazyComponents.DeploymentHistory /></ProtectedRoute>} />
             
-            {/* 404 Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* 404 */}
+            <Route path="*" element={<LazyComponents.NotFound />} />
           </Routes>
         </Suspense>
       </Layout>
-      
-      {/* Global Components */}
-      <PWAManager />
       <NotificationContainer />
+      <PWAManager />
     </>
   );
 }

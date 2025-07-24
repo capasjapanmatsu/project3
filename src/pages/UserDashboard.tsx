@@ -233,13 +233,9 @@ export function UserDashboard() {
     }
   };
 
-  // 🚦 Authentication & Navigation
+  // 🚦 Data Loading (認証チェックはProtectedRouteが担当)
   useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-
+    console.log('🔐 UserDashboard: User authenticated, fetching data');
     // Data fetching
     fetchDashboardData();
 
@@ -259,7 +255,7 @@ export function UserDashboard() {
         setSuccess('');
       }, 5000);
     }
-  }, [user, navigate, location]);
+  }, [location]);
 
   // 🐕 Dog Management Handlers  
   const handleDogSelect = (dog: Dog) => {

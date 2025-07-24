@@ -82,45 +82,38 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const initializeAuth = async () => {
       try {
+        console.log('🔐 AuthContext: Starting simplified initialization...');
         
-        // シンプルなセッション取得
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // より簡単な方法でセッション状態を確認
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        console.log('🔐 AuthContext: User retrieved', { user: !!user, error: error?.message });
         
         if (error) {
-          console.warn('❌ Session retrieval error:', error.message);
+          console.warn('❌ User retrieval error:', error.message);
           if (isMounted) {
             setSession(null);
             setUser(null);
             setIsAuthenticated(false);
             setUserProfile(null);
             setIsAdmin(false);
-            setLoading(false);
           }
           return;
         }
 
-        if (session && session.user && isMounted) {
+        if (user && isMounted) {
+          console.log('🔐 AuthContext: User found, setting up basic auth...');
           
-          setSession(session);
-          setUser(session.user);
+          // セッションを簡単に構築
+          setUser(user);
           setIsAuthenticated(true);
           
-          // 認証されたユーザーのみプロファイルを取得
-          try {
-            const profile = await fetchUserProfile(session.user.id, session.user.email);
-            if (isMounted) {
-              setUserProfile(profile);
-              setIsAdmin(checkAdminStatus(session.user, profile));
-            }
-          } catch (profileError) {
-            console.warn('Profile fetch failed:', profileError);
-            // プロファイル取得に失敗してもログイン状態は維持
-            if (isMounted) {
-              setUserProfile(null);
-              setIsAdmin(checkAdminStatus(session.user, null));
-            }
-          }
+          // プロフィール取得は一旦スキップ
+          console.log('🔐 AuthContext: Skipping profile fetch for now');
+          setUserProfile(null);
+          setIsAdmin(user.email === 'capasjapan@gmail.com');
         } else {
+          console.log('🔐 AuthContext: No user found');
           if (isMounted) {
             setSession(null);
             setUser(null);
@@ -141,16 +134,18 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       } finally {
         if (isMounted) {
+          console.log('🔐 AuthContext: Simplified initialization complete, setting loading: false');
           setLoading(false);
         }
       }
     };
 
+    // 初期化実行
     initializeAuth();
 
-    // 認証状態の変更を監視
+    // 認証状態の変更を監視（簡素化）
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // console.log('🔄 Auth state changed:', event, session?.user?.email); // ログを削除
+      console.log('🔄 Auth state changed:', event);
       
       if (!isMounted) return;
 
@@ -160,47 +155,22 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(false);
         setUserProfile(null);
         setIsAdmin(false);
-        setLoading(false);
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        // 既に同じセッションが設定されている場合はスキップ
-        if (session && user && session.user.id === user.id && isAuthenticated) {
-          return;
-        }
-        
+      } else if (event === 'SIGNED_IN' && session) {
         setSession(session);
         setUser(session.user);
         setIsAuthenticated(true);
-        
-        // プロファイルが既に取得済みの場合はスキップ
-        if (userProfile && userProfile.id === session.user.id) {
-          // console.log('🔄 Profile already loaded, skipping fetch...'); // ログを削除
-          setLoading(false);
-          return;
-        }
-        
-        // 認証されたユーザーのみプロファイルを取得
-        try {
-          const profile = await fetchUserProfile(session.user.id, session.user.email);
-          if (isMounted) {
-            setUserProfile(profile);
-            setIsAdmin(checkAdminStatus(session.user, profile));
-          }
-        } catch (profileError) {
-          console.warn('Profile fetch failed during auth change:', profileError);
-          if (isMounted) {
-            setUserProfile(null);
-            setIsAdmin(checkAdminStatus(session.user, null));
-          }
-        }
-        setLoading(false);
+        setUserProfile(null); // プロフィール取得を一旦スキップ
+        setIsAdmin(session.user.email === 'capasjapan@gmail.com');
       }
+      setLoading(false);
     });
 
+    // クリーンアップ
     return () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []); // 依存関係を空にして無限ループを防ぐ
+  }, []); // 依存配列を空に戻す
 
   const signInWithMagicLink = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
     try {
