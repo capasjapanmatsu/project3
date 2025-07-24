@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import type { Dog } from '../types';
 import { supabase } from '../utils/supabase';
 
@@ -13,10 +14,17 @@ export const useRealtimeDogs = ({ initialDogs = [], limit = 8 }: UseRealtimeDogs
   const [error, setError] = useState<string | null>(null);
   const lastFetchTime = useRef<number>(0);
   const FETCH_COOLDOWN = 1000; // 1秒のクールダウン
+  
+  // AuthContextからセッション情報を取得
+  const { loading: authLoading, session } = useAuth();
 
-  // 初期データの取得
   const fetchDogs = useCallback(async () => {
-    // クールダウン期間中は実行しない
+    // AuthContextのローディングが完了するまで待つ
+    if (authLoading) {
+      console.log('🐕 Waiting for auth initialization...');
+      return;
+    }
+
     const now = Date.now();
     if (now - lastFetchTime.current < FETCH_COOLDOWN) {
       console.log('🐕 Dogs fetch skipped due to cooldown');
@@ -28,11 +36,21 @@ export const useRealtimeDogs = ({ initialDogs = [], limit = 8 }: UseRealtimeDogs
       setIsLoading(true);
       setError(null);
 
+      // 認証状態をデバッグ
+      console.log('🔐 Current auth session:', {
+        user: session?.user?.id,
+        isAuthenticated: !!session,
+        email: session?.user?.email,
+        authLoading
+      });
+
       const { data, error: fetchError } = await supabase
         .from('dogs')
         .select('id, owner_id, name, breed, birth_date, gender, image_url, created_at')
         .order('created_at', { ascending: false })
         .limit(limit);
+
+      console.log('🐕 Supabase query response:', { data: data?.length, error: fetchError });
 
       if (fetchError) {
         throw fetchError;
@@ -41,18 +59,29 @@ export const useRealtimeDogs = ({ initialDogs = [], limit = 8 }: UseRealtimeDogs
       setDogs(data || []);
       console.log('🐕 Dogs data fetched:', data?.length || 0, 'dogs');
     } catch (err) {
-      console.warn('Failed to fetch dogs:', err);
+      console.error('❌ Failed to fetch dogs - DETAILED:', {
+        error: err,
+        message: (err as any)?.message,
+        code: (err as any)?.code,
+        details: (err as any)?.details
+      });
       setError(String(err));
       // エラーが発生した場合は初期データを使用
       setDogs(initialDogs);
     } finally {
       setIsLoading(false);
     }
-  }, [limit]);
+  }, [limit, authLoading, session, initialDogs]);
 
   // リアルタイム購読の設定
   useEffect(() => {
     let isMounted = true;
+
+    // 認証初期化完了を待つ
+    if (authLoading) {
+      console.log('🐕 Auth still loading, waiting...');
+      return;
+    }
 
     // 初回データ取得
     void fetchDogs();
@@ -80,12 +109,11 @@ export const useRealtimeDogs = ({ initialDogs = [], limit = 8 }: UseRealtimeDogs
             return updatedDogs.slice(0, limit);
           });
 
-          // 新着通知（オプション）
+          // 通知を表示（ブラウザがサポートしている場合）
           if ('Notification' in window && Notification.permission === 'granted') {
-            void new Notification('新しい仲間が登録されました！', {
-              body: `${newDog.name}（${newDog.breed}）が仲間入りしました`,
-              icon: newDog.image_url || '/favicon.svg',
-              tag: 'new-dog'
+            new Notification('新しいワンちゃんが仲間入り！', {
+              body: `${newDog.name}ちゃんが登録されました`,
+              icon: newDog.image_url || '/icons/icon.svg'
             });
           }
         }
@@ -149,7 +177,7 @@ export const useRealtimeDogs = ({ initialDogs = [], limit = 8 }: UseRealtimeDogs
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [limit, fetchDogs]);
+  }, [fetchDogs, authLoading]);
 
   // 手動更新
   const refreshDogs = useCallback(() => {

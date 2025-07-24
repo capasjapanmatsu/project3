@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import type { NewsAnnouncement } from '../types';
 import { supabase } from '../utils/supabase';
 
@@ -13,10 +14,17 @@ export const useRealtimeNews = ({ initialNews = [], limit = 5 }: UseRealtimeNews
   const [error, setError] = useState<string | null>(null);
   const lastFetchTime = useRef<number>(0);
   const FETCH_COOLDOWN = 1000; // 1秒のクールダウン
+  
+  // AuthContextからセッション情報を取得
+  const { loading: authLoading, session } = useAuth();
 
-  // 初期データの取得
   const fetchNews = useCallback(async () => {
-    // クールダウン期間中は実行しない
+    // AuthContextのローディングが完了するまで待つ
+    if (authLoading) {
+      console.log('📢 Waiting for auth initialization...');
+      return;
+    }
+
     const now = Date.now();
     if (now - lastFetchTime.current < FETCH_COOLDOWN) {
       console.log('📢 News fetch skipped due to cooldown');
@@ -28,11 +36,21 @@ export const useRealtimeNews = ({ initialNews = [], limit = 5 }: UseRealtimeNews
       setIsLoading(true);
       setError(null);
 
+      // 認証状態をデバッグ
+      console.log('🔐 News auth session:', {
+        user: session?.user?.id,
+        isAuthenticated: !!session,
+        email: session?.user?.email,
+        authLoading
+      });
+
       const { data, error: fetchError } = await supabase
         .from('news_announcements')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(limit);
+
+      console.log('📢 News query response:', { data: data?.length, error: fetchError });
 
       if (fetchError) {
         throw fetchError;
@@ -41,18 +59,29 @@ export const useRealtimeNews = ({ initialNews = [], limit = 5 }: UseRealtimeNews
       setNews(data || []);
       console.log('📢 News data fetched:', data?.length || 0, 'items');
     } catch (err) {
-      console.warn('Failed to fetch news:', err);
+      console.error('❌ Failed to fetch news - DETAILED:', {
+        error: err,
+        message: (err as any)?.message,
+        code: (err as any)?.code,
+        details: (err as any)?.details
+      });
       setError(String(err));
       // エラーが発生した場合は初期データを使用
       setNews(initialNews);
     } finally {
       setIsLoading(false);
     }
-  }, [limit]); // initialNewsを依存関係から削除
+  }, [limit, authLoading, session, initialNews]);
 
   // リアルタイム購読の設定
   useEffect(() => {
     let isMounted = true;
+
+    // 認証初期化完了を待つ
+    if (authLoading) {
+      console.log('📢 Auth still loading, waiting...');
+      return;
+    }
 
     // 初回データ取得
     void fetchNews();
@@ -68,24 +97,23 @@ export const useRealtimeNews = ({ initialNews = [], limit = 5 }: UseRealtimeNews
           table: 'news_announcements'
         },
         (payload) => {
-          console.log('📢 新しいお知らせが投稿されました:', payload.new);
+          console.log('📢 新しいお知らせが追加されました:', payload.new);
           
           if (!isMounted) return;
 
           const newNews = payload.new as NewsAnnouncement;
           
-          // 新しいお知らせを先頭に追加し、制限数を超えた場合は末尾を削除
+          // 新しいニュースを先頭に追加し、制限数を超えた場合は末尾を削除
           setNews(prevNews => {
             const updatedNews = [newNews, ...prevNews];
             return updatedNews.slice(0, limit);
           });
 
-          // 新着通知（オプション）
-          if ('Notification' in window && Notification.permission === 'granted') {
-            void new Notification('新しいお知らせ', {
+          // 重要なお知らせの場合は通知を表示
+          if (newNews.is_important && 'Notification' in window && Notification.permission === 'granted') {
+            new Notification('重要なお知らせ', {
               body: newNews.title,
-              icon: '/favicon.svg',
-              tag: 'new-news'
+              icon: '/icons/icon.svg'
             });
           }
         }
@@ -105,8 +133,8 @@ export const useRealtimeNews = ({ initialNews = [], limit = 5 }: UseRealtimeNews
           const updatedNews = payload.new as NewsAnnouncement;
           
           setNews(prevNews => 
-            prevNews.map(news => 
-              news.id === updatedNews.id ? updatedNews : news
+            prevNews.map(newsItem => 
+              newsItem.id === updatedNews.id ? updatedNews : newsItem
             )
           );
         }
@@ -123,10 +151,10 @@ export const useRealtimeNews = ({ initialNews = [], limit = 5 }: UseRealtimeNews
           
           if (!isMounted) return;
 
-          const deletedNewsId = (payload.old as NewsAnnouncement).id;
+          const deletedNewsId = payload.old.id;
           
           setNews(prevNews => 
-            prevNews.filter(news => news.id !== deletedNewsId)
+            prevNews.filter(newsItem => newsItem.id !== deletedNewsId)
           );
         }
       )
@@ -140,7 +168,7 @@ export const useRealtimeNews = ({ initialNews = [], limit = 5 }: UseRealtimeNews
     // 通知許可をリクエスト（初回のみ）
     if ('Notification' in window && Notification.permission === 'default') {
       void Notification.requestPermission().then(permission => {
-        console.log('通知許可:', permission);
+        console.log('ニュース通知許可:', permission);
       });
     }
 
@@ -149,7 +177,7 @@ export const useRealtimeNews = ({ initialNews = [], limit = 5 }: UseRealtimeNews
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [limit, fetchNews]);
+  }, [fetchNews, authLoading]);
 
   // 手動更新
   const refreshNews = useCallback(() => {
