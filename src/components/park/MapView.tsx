@@ -35,13 +35,41 @@ export function MapView({
   userLocation,
   className = '' 
 }: MapViewProps) {
-  // マップの中心位置を決定（現在地 > 指定されたcenter > デフォルト）
-  const mapCenter = userLocation || center || DEFAULT_CENTER;
-
   const mapRef = useRef<HTMLDivElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(userLocation || null);
+  
+  // マップの中心位置を決定（現在地 > 指定されたcenter > デフォルト）
+  const mapCenter = currentLocation || center || DEFAULT_CENTER;
 
-  // 現在地を取得
+  // 現在地を自動取得
+  useEffect(() => {
+    if (!currentLocation && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          setCurrentLocation(location);
+          // 親コンポーネントに位置情報を通知
+          if (onLocationSelect) {
+            onLocationSelect(location);
+          }
+        },
+        (error) => {
+          console.warn('位置情報の取得に失敗:', error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 600000
+        }
+      );
+    }
+  }, [currentLocation, onLocationSelect]);
+
+  // 現在地を手動取得
   const getCurrentLocation = useCallback(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -50,6 +78,7 @@ export function MapView({
             lat: position.coords.latitude,
             lng: position.coords.longitude
           };
+          setCurrentLocation(location);
           // 親コンポーネントに位置情報を通知
           if (onLocationSelect) {
             onLocationSelect(location);
@@ -95,7 +124,7 @@ export function MapView({
         if (mapRef.current && window.google?.maps) {
           const map = new window.google.maps.Map(mapRef.current, {
             center: mapCenter,
-            zoom: userLocation ? 14 : 13, // 現在地がある場合はズームを大きく
+            zoom: currentLocation ? 15 : 13, // 現在地がある場合はズームを大きく
             mapTypeControl: false,
             streetViewControl: false,
             fullscreenControl: false,
@@ -116,17 +145,25 @@ export function MapView({
       if (activeView === 'dogparks' || activeView === 'facilities') {
         parks.forEach(park => {
           if (park.latitude && park.longitude) {
+            // 犬の足跡SVGパス（シンプルで大きめサイズ）
+            const pawPath = 'M10,4 C12,4 14,6 14,8 C14,10 12,12 10,12 C8,12 6,10 6,8 C6,6 8,4 10,4 Z ' +
+                           'M6,12 C7,12 8,13 8,14 C8,15 7,16 6,16 C5,16 4,15 4,14 C4,13 5,12 6,12 Z ' +
+                           'M14,12 C15,12 16,13 16,14 C16,15 15,16 14,16 C13,16 12,15 12,14 C12,13 13,12 14,12 Z ' +
+                           'M8,16 C9,16 10,17 10,18 C10,19 9,20 8,20 C7,20 6,19 6,18 C6,17 7,16 8,16 Z ' +
+                           'M12,16 C13,16 14,17 14,18 C14,19 13,20 12,20 C11,20 10,19 10,18 C10,17 11,16 12,16 Z';
+            
             const marker = new window.google.maps.Marker({
               position: { lat: Number(park.latitude), lng: Number(park.longitude) },
               map,
               title: park.name,
               icon: {
-                path: window.google.maps.SymbolPath.CIRCLE,
-                scale: 8,
+                path: pawPath,
+                scale: 1.5,
                 fillColor: '#3B82F6',
-                fillOpacity: 1,
+                fillOpacity: 0.8,
                 strokeWeight: 2,
                 strokeColor: '#FFFFFF',
+                anchor: new window.google.maps.Point(12, 16)
               }
             });
 
@@ -183,25 +220,33 @@ export function MapView({
       }
 
       // ユーザーの現在地マーカー
-      if (userLocation) {
+      if (currentLocation) {
+        // 現在地用の足跡アイコン（赤色）
+        const currentLocationPawPath = 'M10,4 C12,4 14,6 14,8 C14,10 12,12 10,12 C8,12 6,10 6,8 C6,6 8,4 10,4 Z ' +
+                                      'M6,12 C7,12 8,13 8,14 C8,15 7,16 6,16 C5,16 4,15 4,14 C4,13 5,12 6,12 Z ' +
+                                      'M14,12 C15,12 16,13 16,14 C16,15 15,16 14,16 C13,16 12,15 12,14 C12,13 13,12 14,12 Z ' +
+                                      'M8,16 C9,16 10,17 10,18 C10,19 9,20 8,20 C7,20 6,19 6,18 C6,17 7,16 8,16 Z ' +
+                                      'M12,16 C13,16 14,17 14,18 C14,19 13,20 12,20 C11,20 10,19 10,18 C10,17 11,16 12,16 Z';
+        
         new window.google.maps.Marker({
-          position: userLocation,
+          position: currentLocation,
           map,
           title: '現在地',
           icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 6,
+            path: currentLocationPawPath,
+            scale: 1.8,
             fillColor: '#EF4444',
-            fillOpacity: 1,
+            fillOpacity: 0.9,
             strokeWeight: 2,
             strokeColor: '#FFFFFF',
+            anchor: new window.google.maps.Point(10, 20)
           }
         });
       }
     };
 
     void loadGoogleMaps();
-  }, [parks, facilities, activeView, center, userLocation, mapCenter]);
+  }, [parks, facilities, activeView, center, currentLocation, mapCenter]);
 
   // Google Maps API キーが設定されていない場合のフォールバック
   if (!import.meta.env.VITE_GOOGLE_MAPS_API_KEY) {
@@ -254,7 +299,7 @@ export function MapView({
                 <span>ペット施設</span>
               </div>
             )}
-            {userLocation && (
+            {currentLocation && (
               <div className="flex items-center">
                 <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
                 <span>現在地</span>
