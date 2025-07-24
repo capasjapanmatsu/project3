@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DogParkCard } from '../components/park/DogParkCard';
 import { EmptyState } from '../components/park/EmptyState';
 import { FacilityCard } from '../components/park/FacilityCard';
@@ -15,19 +15,116 @@ const CATEGORY_LABELS: { [key: string]: string } = {
   'pet_cafe': 'ペットカフェ',
   'pet_restaurant': 'ペット同伴レストラン',
   'pet_shop': 'ペットショップ',
-  'pet_accommodation': 'ペット同伴宿泊'
+  'pet_accommodation': 'ペット同伴宿泊',
+  'dog_training': 'しつけ教室',
+  'pet_friendly_other': 'その他ワンちゃん同伴可能施設'
+};
+
+// 距離計算関数（Haversine formula）
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371; // 地球の半径（km）
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
+// カテゴリアイコン取得関数
+const getCategoryIcon = (categoryId: string): string => {
+  const icons: { [key: string]: string } = {
+    'pet_hotel': '🏨',
+    'pet_salon': '✂️',
+    'veterinary': '🏥',
+    'pet_cafe': '☕',
+    'pet_restaurant': '🍽️',
+    'pet_shop': '🛍️',
+    'pet_accommodation': '🏠',
+    'dog_training': '🎓',
+    'pet_friendly_other': '🌟'
+  };
+  return icons[categoryId] || '🏢';
 };
 
 export function DogParkList() {
   const [activeView, setActiveView] = useState<'dogparks' | 'facilities'>('dogparks');
   const [debugInfo, setDebugInfo] = useState<Record<string, unknown> | null>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(Object.keys(CATEGORY_LABELS));
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   
   const { user, isAuthenticated } = useAuth();
   
   // データ管理
   const { parks, isLoading: parksLoading, error: parksError, fetchParkData } = useParkData();
   const { facilities, facilitiesLoading, error: facilityError, fetchFacilities } = useFacilityData();
+
+  // 位置情報取得
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.log('位置情報の取得に失敗しました:', error);
+        }
+      );
+    }
+  }, []);
+
+  // カテゴリフィルター機能
+  const filteredFacilities = useMemo(() => {
+    let filtered = facilities.filter(facility => 
+      selectedCategories.includes(facility.category)
+    );
+
+    // 距離順でソート（位置情報がある場合）
+    if (userLocation && filtered.length > 0) {
+      filtered = filtered.sort((a, b) => {
+        const distanceA = calculateDistance(
+          userLocation.lat, 
+          userLocation.lng, 
+          a.latitude || 0, 
+          a.longitude || 0
+        );
+        const distanceB = calculateDistance(
+          userLocation.lat, 
+          userLocation.lng, 
+          b.latitude || 0, 
+          b.longitude || 0
+        );
+        return distanceA - distanceB;
+      });
+    }
+
+    return filtered;
+  }, [facilities, selectedCategories, userLocation]);
+
+  // カテゴリ選択の処理
+  const handleCategoryToggle = (categoryId: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+  // 全選択/全解除の処理
+  const handleSelectAll = () => {
+    setSelectedCategories(Object.keys(CATEGORY_LABELS));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedCategories([]);
+  };
 
   // デバッグ情報取得
   const fetchDebugInfo = async () => {
@@ -313,11 +410,71 @@ export function DogParkList() {
 
       {/* メインコンテンツ */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* カテゴリフィルター（施設表示時のみ） */}
+        {activeView === 'facilities' && (
+          <div className="mb-4 bg-white rounded-lg shadow-sm border">
+            {/* フィルターヘッダー（クリックで開閉） */}
+            <button
+              onClick={() => setShowCategoryFilter(!showCategoryFilter)}
+              className="w-full px-3 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">🏢 カテゴリフィルター</span>
+                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
+                  {selectedCategories.length} / {Object.keys(CATEGORY_LABELS).length}
+                </span>
+                {userLocation && (
+                  <span className="text-xs text-green-600">📍 距離順</span>
+                )}
+              </div>
+              <span className={`text-gray-400 transition-transform ${showCategoryFilter ? 'rotate-180' : ''}`}>
+                ▼
+              </span>
+            </button>
+            
+            {/* フィルター内容（折りたたみ可能） */}
+            {showCategoryFilter && (
+              <div className="px-3 pb-3 border-t border-gray-100">
+                <div className="flex flex-wrap items-center gap-2 mb-3 pt-3">
+                  <button
+                    onClick={handleSelectAll}
+                    className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                  >
+                    全選択
+                  </button>
+                  <button
+                    onClick={handleDeselectAll}
+                    className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                  >
+                    全解除
+                  </button>
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(CATEGORY_LABELS).map(([categoryId, categoryName]) => (
+                    <button
+                      key={categoryId}
+                      onClick={() => handleCategoryToggle(categoryId)}
+                      className={`px-3 py-2 text-sm rounded-full border transition-all ${
+                        selectedCategories.includes(categoryId)
+                          ? 'bg-blue-500 text-white border-blue-500 shadow-md'
+                          : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                      }`}
+                    >
+                      {getCategoryIcon(categoryId)} {categoryName}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Google Map */}
         <div className="mb-8">
           <MapView 
             parks={parks}
-            facilities={facilities}
+            facilities={activeView === 'facilities' ? filteredFacilities : facilities}
             activeView={activeView}
           />
         </div>
@@ -344,14 +501,17 @@ export function DogParkList() {
         {activeView === 'facilities' && (
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">ワンちゃんと行ける施設</h2>
-            {facilities.length === 0 ? (
+
+            {filteredFacilities.length === 0 ? (
               <EmptyState
                 title="施設が見つかりません"
-                description="現在登録されている施設がありません。"
+                description={selectedCategories.length === 0 
+                  ? "カテゴリを選択してください。" 
+                  : "選択したカテゴリの施設が登録されていません。"}
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {facilities.map((facility) => (
+                {filteredFacilities.map((facility) => (
                   <FacilityCard key={facility.id} facility={facility} />
                 ))}
               </div>

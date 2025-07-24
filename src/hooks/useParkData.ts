@@ -147,21 +147,20 @@ export function useFacilityData() {
       setFacilitiesLoading(true);
       setError(null);
 
+      console.log('🏢 Fetching facilities from database...');
+
       const { data, error: queryError } = await supabase
         .from('pet_facilities')
-        .select(`
-          *,
-          facility_categories (
-            name,
-            name_ja
-          )
-        `)
+        .select('*')
         .eq('status', 'approved')
         .order('name');
 
       if (queryError) {
+        console.error('Database query error:', queryError);
         throw queryError;
       }
+
+      console.log('🏢 Database response:', data);
 
       // データの型安全性を確保
       const facilitiesData: PetFacility[] = (data as PetFacilityResponse[] || []).map((facility) => ({
@@ -179,78 +178,26 @@ export function useFacilityData() {
         category_name: facility.facility_categories?.name_ja || '',
       }));
 
+      console.log(`✅ Successfully fetched ${facilitiesData.length} facilities`);
       setFacilities(facilitiesData);
+      
+      // 開発環境でのデバッグ情報
+      if (import.meta.env.DEV) {
+        console.log('取得した施設一覧:', facilitiesData.map(f => ({ 
+          id: f.id, 
+          name: f.name, 
+          category: f.category, 
+          address: f.address 
+        })));
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '施設データの取得に失敗しました';
       setError(errorMessage);
       
-      // 開発環境ではサンプルデータを提供
-      if (import.meta.env.DEV) {
-        console.warn('🔥 Facility data fetch error:', err);
-        
-        // フォールバックサンプル施設データ
-        const sampleFacilities: PetFacility[] = [
-          {
-            id: 'facility-1',
-            name: '渋谷ペットクリニック',
-            description: '24時間対応の動物病院。緊急時も安心です。',
-            category: 'veterinary',
-            address: '東京都渋谷区渋谷2-1-1',
-            latitude: 35.6587,
-            longitude: 139.7016,
-            phone: '03-1234-5678',
-            website: 'https://shibuya-pet-clinic.com',
-            status: 'approved',
-            created_at: new Date().toISOString(),
-            category_name: '動物病院',
-          },
-          {
-            id: 'facility-2',
-            name: '新宿ペットホテル＆サロン',
-            description: 'トリミングとホテルのフルサービス施設。',
-            category: 'pet_hotel',
-            address: '東京都新宿区新宿3-2-2',
-            latitude: 35.6918,
-            longitude: 139.7046,
-            phone: '03-2345-6789',
-            website: 'https://shinjuku-pet-hotel.com',
-            status: 'approved',
-            created_at: new Date().toISOString(),
-            category_name: 'ペットホテル',
-          },
-          {
-            id: 'facility-3',
-            name: '品川ペットカフェ',
-            description: 'かわいい子犬と触れ合えるペットカフェ。',
-            category: 'pet_cafe',
-            address: '東京都港区品川4-3-3',
-            latitude: 35.6264,
-            longitude: 139.7397,
-            phone: '03-3456-7890',
-            website: 'https://shinagawa-pet-cafe.com',
-            status: 'approved',
-            created_at: new Date().toISOString(),
-            category_name: 'ペットカフェ',
-          },
-          {
-            id: 'facility-4',
-            name: '池袋ペットショップ',
-            description: 'ペット用品とフードの専門店。豊富な品揃え。',
-            category: 'pet_shop',
-            address: '東京都豊島区池袋5-4-4',
-            latitude: 35.7285,
-            longitude: 139.7119,
-            phone: '03-4567-8901',
-            website: 'https://ikebukuro-pet-shop.com',
-            status: 'approved',
-            created_at: new Date().toISOString(),
-            category_name: 'ペットショップ',
-          }
-        ];
-        
-        setFacilities(sampleFacilities);
-        setError(null); // サンプルデータを表示するためエラーをクリア
-      }
+      console.error('🔥 Facility data fetch error:', err);
+      
+      // エラー時は空配列を設定（実際のデータが取得できない場合）
+      setFacilities([]);
     } finally {
       setFacilitiesLoading(false);
     }
