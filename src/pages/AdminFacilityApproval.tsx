@@ -45,6 +45,15 @@ interface FacilityApplication {
   owner_name?: string;
   owner_email?: string;
   category_name?: string;
+  images?: FacilityImage[];
+}
+
+interface FacilityImage {
+  id: string;
+  image_url: string;
+  image_type: 'main' | 'additional';
+  display_order: number;
+  alt_text?: string;
 }
 
 const CATEGORY_NAMES: { [key: string]: string } = {
@@ -54,7 +63,9 @@ const CATEGORY_NAMES: { [key: string]: string } = {
   pet_cafe: 'ペットカフェ',
   pet_restaurant: 'ペット同伴レストラン',
   pet_shop: 'ペットショップ',
-  pet_accommodation: 'ペット同伴宿泊'
+  pet_accommodation: 'ペット同伴宿泊',
+  dog_training: 'しつけ教室',
+  pet_friendly_other: 'その他ワンちゃん同伴可能施設'
 };
 
 export default function AdminFacilityApproval() {
@@ -79,6 +90,7 @@ export default function AdminFacilityApproval() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'created_at' | 'category_id'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
   useEffect(() => {    
     if (!isAdmin) {
@@ -102,6 +114,47 @@ export default function AdminFacilityApproval() {
     setTimeout(() => setError(''), 8000);
   };
 
+  // 施設画像を取得する関数
+  const fetchFacilityImages = async (facilityIds: string[]): Promise<Map<string, FacilityImage[]>> => {
+    if (facilityIds.length === 0) return new Map();
+
+    try {
+      const { data: imagesData, error: imagesError } = await supabase
+        .from('pet_facility_images')
+        .select('*')
+        .in('facility_id', facilityIds)
+        .order('display_order', { ascending: true });
+
+      if (imagesError) {
+        console.error('画像取得エラー:', imagesError);
+        return new Map();
+      }
+
+      const imagesMap = new Map<string, FacilityImage[]>();
+      
+      if (imagesData) {
+        imagesData.forEach((image: any) => {
+          const facilityId = image.facility_id;
+          if (!imagesMap.has(facilityId)) {
+            imagesMap.set(facilityId, []);
+          }
+          imagesMap.get(facilityId)!.push({
+            id: image.id,
+            image_url: image.image_url,
+            image_type: image.image_type,
+            display_order: image.display_order,
+            alt_text: image.alt_text
+          });
+        });
+      }
+
+      return imagesMap;
+    } catch (error) {
+      console.error('画像取得処理エラー:', error);
+      return new Map();
+    }
+  };
+
   const fetchApplications = async () => {
     try {
       setIsLoading(true);
@@ -109,10 +162,17 @@ export default function AdminFacilityApproval() {
 
       console.log('📋 施設データ取得開始');
 
-      // 申請中の施設を取得（AdminDashboardと同じ方法）
+      // 申請中の施設を取得（JOINでprofilesテーブルから申請者情報も取得）
       const { data: pendingData, error: pendingError } = await supabase
         .from('pet_facilities')
-        .select('*')
+        .select(`
+          *,
+          profiles!pet_facilities_owner_id_fkey (
+            id,
+            name,
+            email
+          )
+        `)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
@@ -124,7 +184,14 @@ export default function AdminFacilityApproval() {
       // 承認済みの施設を取得
       const { data: approvedData, error: approvedError } = await supabase
         .from('pet_facilities')
-        .select('*')
+        .select(`
+          *,
+          profiles!pet_facilities_owner_id_fkey (
+            id,
+            name,
+            email
+          )
+        `)
         .eq('status', 'approved')
         .order('created_at', { ascending: false });
 
@@ -148,8 +215,8 @@ export default function AdminFacilityApproval() {
           status: facility.status,
           created_at: facility.created_at,
           owner_id: facility.owner_id,
-          owner_name: '取得中...', 
-          owner_email: '取得中...',
+          owner_name: facility.profiles?.name || '不明', 
+          owner_email: facility.profiles?.email || '不明',
           category_name: CATEGORY_NAMES[facility.category_id] || facility.category_id,
         }));
       };
@@ -157,13 +224,21 @@ export default function AdminFacilityApproval() {
       const pendingApplications = formatFacilities(pendingData || []);
       const approvedApplications = formatFacilities(approvedData || []);
 
+      // 画像を取得
+      const facilityIds = [...pendingApplications, ...approvedApplications].map(f => f.id);
+      const imagesMap = await fetchFacilityImages(facilityIds);
 
+      // 画像を施設データに追加
+      const facilitiesWithImages = [...pendingApplications, ...approvedApplications].map(facility => ({
+        ...facility,
+        images: imagesMap.get(facility.id) || []
+      }));
 
       // 状態更新
-      setApplications(pendingApplications);
-      setApprovedFacilities(approvedApplications);
-      setFilteredApplications(pendingApplications);
-      setFilteredFacilities(approvedApplications);
+      setApplications(facilitiesWithImages.filter(f => f.status === 'pending'));
+      setApprovedFacilities(facilitiesWithImages.filter(f => f.status === 'approved'));
+      setFilteredApplications(facilitiesWithImages.filter(f => f.status === 'pending'));
+      setFilteredFacilities(facilitiesWithImages.filter(f => f.status === 'approved'));
 
     } catch (err) {
       console.error('データフェッチエラー:', err);
@@ -833,6 +908,27 @@ export default function AdminFacilityApproval() {
                   </div>
                 </div>
 
+                {/* 施設画像 */}
+                {selectedApplication.images && selectedApplication.images.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-4">施設画像</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {selectedApplication.images.map((image, index) => (
+                        <div key={image.id} className="relative group cursor-pointer" onClick={() => setEnlargedImage(image.image_url)}>
+                          <img
+                            src={image.image_url}
+                            alt={image.alt_text || '施設画像'}
+                            className="w-full h-32 object-cover rounded-md"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <Eye className="w-8 h-8 text-white" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* 操作ボタン */}
                 <div className="flex space-x-4 pt-6 border-t">
                   {/* 削除ボタン（常に表示） */}
@@ -869,6 +965,27 @@ export default function AdminFacilityApproval() {
                     </>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 画像拡大モーダル */}
+        {enlargedImage && (
+          <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
+            <div className="max-w-4xl max-h-[90vh] w-full overflow-y-auto">
+              <div className="relative">
+                <img
+                  src={enlargedImage}
+                  alt="拡大画像"
+                  className="w-full h-auto"
+                />
+                <button
+                  onClick={() => setEnlargedImage(null)}
+                  className="absolute top-4 right-4 p-2 bg-white rounded-full hover:bg-gray-200"
+                >
+                  <X className="w-6 h-6 text-gray-700" />
+                </button>
               </div>
             </div>
           </div>

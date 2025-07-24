@@ -293,6 +293,8 @@ export default function FacilityRegistration() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('=== 申請開始 ===');
+    
     // バリデーション
     if (!formData.name || !formData.category_id || !formData.address) {
       setError('必須項目を入力してください');
@@ -308,9 +310,12 @@ export default function FacilityRegistration() {
     try {
       setIsLoading(true);
       setError('');
+      
+      console.log('1. バリデーション完了');
 
       // 1. 施設データを先に挿入（画像URL無しで）
       const facilityData = {
+        owner_id: user?.id, // 現在のユーザーIDを設定
         name: formData.name,
         category_id: formData.category_id,
         address: formData.address,
@@ -320,29 +325,40 @@ export default function FacilityRegistration() {
         status: 'pending'
       };
 
+      console.log('2. 施設データ準備完了:', facilityData);
+
       const { data: facilityResponse, error: insertError } = await supabase
         .from('pet_facilities')
         .insert([facilityData])
         .select()
         .single();
 
+      console.log('3. 施設登録レスポンス:', { facilityResponse, insertError });
+
       if (insertError || !facilityResponse) {
+        console.error('施設登録エラー:', insertError);
         throw insertError || new Error('施設の登録に失敗しました');
       }
 
       const facilityId = facilityResponse.id;
+      console.log('4. 施設ID取得:', facilityId);
 
       // 2. 画像をStorageにアップロード
+      console.log('5. 画像アップロード開始');
       const imageUploads: Promise<{ url: string; type: 'main' | 'additional'; order: number }>[] = [];
 
       // メイン画像をアップロード
       if (formData.mainImageFile) {
+        console.log('6. メイン画像アップロード準備');
         imageUploads.push(
-          uploadImageToStorage(formData.mainImageFile, facilityId, 'main').then(url => ({
-            url,
-            type: 'main' as const,
-            order: 0
-          }))
+          uploadImageToStorage(formData.mainImageFile, facilityId, 'main').then(url => {
+            console.log('7. メイン画像アップロード完了:', url);
+            return {
+              url,
+              type: 'main' as const,
+              order: 0
+            };
+          })
         );
       }
 
@@ -350,22 +366,29 @@ export default function FacilityRegistration() {
       if (formData.additionalImageFiles) {
         formData.additionalImageFiles.forEach((file, index) => {
           if (file) {
+            console.log(`8. 追加画像${index + 1}アップロード準備`);
             imageUploads.push(
-              uploadImageToStorage(file, facilityId, 'additional', index).then(url => ({
-                url,
-                type: 'additional' as const,
-                order: index + 1
-              }))
+              uploadImageToStorage(file, facilityId, 'additional', index).then(url => {
+                console.log(`9. 追加画像${index + 1}アップロード完了:`, url);
+                return {
+                  url,
+                  type: 'additional' as const,
+                  order: index + 1
+                };
+              })
             );
           }
         });
       }
 
+      console.log('10. 全画像アップロード実行中...');
       // 全ての画像アップロードを並行実行
       const uploadedImages = await Promise.all(imageUploads);
+      console.log('11. 全画像アップロード完了:', uploadedImages);
 
       // 3. 画像情報をDBに保存
       if (uploadedImages.length > 0) {
+        console.log('12. 画像情報DB保存開始');
         const imageRecords = uploadedImages.map(img => ({
           facility_id: facilityId,
           image_url: img.url,
@@ -374,9 +397,13 @@ export default function FacilityRegistration() {
           alt_text: `${formData.name} - ${img.type === 'main' ? 'メイン画像' : `追加画像${img.order}`}`
         }));
 
+        console.log('13. 画像レコード準備完了:', imageRecords);
+
         const { error: imageInsertError } = await supabase
           .from('pet_facility_images')
           .insert(imageRecords);
+
+        console.log('14. 画像DB保存結果:', { imageInsertError });
 
         if (imageInsertError) {
           console.error('Image records insert error:', imageInsertError);
@@ -384,6 +411,7 @@ export default function FacilityRegistration() {
         }
       }
 
+      console.log('15. 申請完了処理開始');
       setSuccessMessage('施設の申請が完了しました。審査完了までお待ちください。');
       
       // フォームリセット
@@ -400,15 +428,39 @@ export default function FacilityRegistration() {
         additionalImageFiles: []
       });
 
+      console.log('16. フォームリセット完了');
+
       // 3秒後にリダイレクト
       setTimeout(() => {
+        console.log('17. リダイレクト実行');
         navigate('/dashboard');
       }, 3000);
 
+      console.log('=== 申請処理完了 ===');
+
     } catch (err) {
-      console.error('Submission error:', err);
-      setError(err instanceof Error ? err.message : '申請の送信に失敗しました');
+      console.error('=== 申請エラー ===', err);
+      
+      // より詳細なエラーメッセージを表示
+      let errorMessage = '申請の送信に失敗しました';
+      
+      if (err && typeof err === 'object' && 'message' in err) {
+        errorMessage = (err as Error).message;
+      } else if (err && typeof err === 'object' && 'error' in err) {
+        const supabaseError = err as any;
+        if (supabaseError.error?.message) {
+          errorMessage = `データベースエラー: ${supabaseError.error.message}`;
+        }
+      }
+      
+      // RLSエラーの場合の特別な処理
+      if (errorMessage.includes('row-level security policy') || errorMessage.includes('RLS')) {
+        errorMessage = 'データベースのアクセス権限に問題があります。管理者にお問い合わせください。';
+      }
+      
+      setError(errorMessage);
     } finally {
+      console.log('=== finally ブロック実行 ===');
       setIsLoading(false);
     }
   };
