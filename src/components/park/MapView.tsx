@@ -19,6 +19,7 @@ interface MapViewProps {
   activeView?: 'dogparks' | 'facilities';
   onLocationSelect?: (location: { lat: number; lng: number }) => void;
   center?: { lat: number; lng: number };
+  userLocation?: { lat: number; lng: number } | null;
   className?: string;
 }
 
@@ -30,12 +31,15 @@ export function MapView({
   facilities = [], 
   activeView = 'dogparks',
   onLocationSelect, 
-  center = DEFAULT_CENTER,
+  center,
+  userLocation,
   className = '' 
 }: MapViewProps) {
+  // マップの中心位置を決定（現在地 > 指定されたcenter > デフォルト）
+  const mapCenter = userLocation || center || DEFAULT_CENTER;
+
   const mapRef = useRef<HTMLDivElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   // 現在地を取得
   const getCurrentLocation = useCallback(() => {
@@ -46,7 +50,10 @@ export function MapView({
             lat: position.coords.latitude,
             lng: position.coords.longitude
           };
-          setUserLocation(location);
+          // 親コンポーネントに位置情報を通知
+          if (onLocationSelect) {
+            onLocationSelect(location);
+          }
         },
         (error) => {
           console.warn('位置情報の取得に失敗:', error);
@@ -58,7 +65,7 @@ export function MapView({
         }
       );
     }
-  }, []);
+  }, [onLocationSelect]);
 
   // Google Maps の初期化
   useEffect(() => {
@@ -87,8 +94,8 @@ export function MapView({
 
         if (mapRef.current && window.google?.maps) {
           const map = new window.google.maps.Map(mapRef.current, {
-            center,
-            zoom: 13,
+            center: mapCenter,
+            zoom: userLocation ? 14 : 13, // 現在地がある場合はズームを大きく
             mapTypeControl: false,
             streetViewControl: false,
             fullscreenControl: false,
@@ -194,7 +201,7 @@ export function MapView({
     };
 
     void loadGoogleMaps();
-  }, [parks, facilities, activeView, center, userLocation]);
+  }, [parks, facilities, activeView, center, userLocation, mapCenter]);
 
   // Google Maps API キーが設定されていない場合のフォールバック
   if (!import.meta.env.VITE_GOOGLE_MAPS_API_KEY) {

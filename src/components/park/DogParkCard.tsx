@@ -2,11 +2,11 @@
 import {
     AlertTriangle,
     CheckCircle,
-    Clock,
     Coins,
     ExternalLink,
     Heart,
     MapPin,
+    Navigation,
     Users
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -15,22 +15,43 @@ import Button from '../Button';
 
 interface DogParkCardProps {
   park: DogPark;
+  userLocation?: { lat: number; lng: number } | null;
+  distance?: number; // km単位
 }
 
-export function DogParkCard({ park }: DogParkCardProps) {
-  // 営業状況の判定
+// 距離計算関数（Haversine formula）
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371; // 地球の半径（km）
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
+// 距離をフォーマット
+const formatDistance = (distance: number): string => {
+  if (distance < 1) {
+    return `${Math.round(distance * 1000)}m`;
+  }
+  return `${distance.toFixed(1)}km`;
+};
+
+export function DogParkCard({ park, userLocation, distance }: DogParkCardProps) {
+  // 距離を計算（propsで渡されていない場合）
+  const calculatedDistance = distance || (
+    userLocation && park.latitude && park.longitude
+      ? calculateDistance(userLocation.lat, userLocation.lng, Number(park.latitude), Number(park.longitude))
+      : null
+  );
+
+  // 営業状況の判定（簡易版 - 型にopening_hoursがないため）
   const isOpen = () => {
-    const now = new Date();
-    const currentTime = now.getHours() * 100 + now.getMinutes();
-    
-    if (park.opening_hours && park.closing_hours) {
-      const opening = parseInt(park.opening_hours.replace(':', ''), 10);
-      const closing = parseInt(park.closing_hours.replace(':', ''), 10);
-      
-      return currentTime >= opening && currentTime <= closing;
-    }
-    
-    return true; // デフォルトは営業中として扱う
+    // 実際の営業時間データがないため、常に営業中として扱う
+    return true;
   };
 
   // 混雑状況の表示
@@ -100,27 +121,29 @@ export function DogParkCard({ park }: DogParkCardProps) {
           </div>
         </div>
 
-        {/* 住所 */}
-        {park.address && (
-          <div className="flex items-center text-gray-600 text-sm mb-2">
-            <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
-            <span className="truncate">{park.address}</span>
-          </div>
-        )}
-
-        {/* 営業時間 */}
-        {park.opening_hours && park.closing_hours && (
-          <div className="flex items-center text-gray-600 text-sm mb-2">
-            <Clock className="w-4 h-4 mr-1" />
-            <span>{park.opening_hours} - {park.closing_hours}</span>
-          </div>
-        )}
+        {/* 住所と距離 */}
+        <div className="space-y-2 mb-2">
+          {park.address && (
+            <div className="flex items-center text-gray-600 text-sm">
+              <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
+              <span className="truncate">{park.address}</span>
+            </div>
+          )}
+          
+          {/* 距離表示 */}
+          {calculatedDistance && (
+            <div className="flex items-center text-blue-600 text-sm font-medium">
+              <Navigation className="w-4 h-4 mr-1" />
+              <span>現在地から {formatDistance(calculatedDistance)}</span>
+            </div>
+          )}
+        </div>
 
         {/* 料金情報 */}
-        {park.price_per_hour && (
+        {park.price && (
           <div className="flex items-center text-gray-600 text-sm mb-3">
             <Coins className="w-4 h-4 mr-1" />
-            <span>¥{park.price_per_hour}/時間</span>
+            <span>¥{park.price}/時間</span>
           </div>
         )}
 

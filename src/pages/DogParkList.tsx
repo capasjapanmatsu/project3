@@ -68,17 +68,47 @@ export function DogParkList() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserLocation({
+          const location = {
             lat: position.coords.latitude,
             lng: position.coords.longitude
-          });
+          };
+          setUserLocation(location);
+          console.log('位置情報を取得しました:', location);
         },
         (error) => {
           console.log('位置情報の取得に失敗しました:', error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 600000
         }
       );
     }
   }, []);
+
+  // ドッグパークを距離順でソート
+  const sortedParks = useMemo(() => {
+    if (!userLocation || parks.length === 0) {
+      return parks;
+    }
+
+    return [...parks].sort((a, b) => {
+      const distanceA = calculateDistance(
+        userLocation.lat, 
+        userLocation.lng, 
+        Number(a.latitude) || 0, 
+        Number(a.longitude) || 0
+      );
+      const distanceB = calculateDistance(
+        userLocation.lat, 
+        userLocation.lng, 
+        Number(b.latitude) || 0, 
+        Number(b.longitude) || 0
+      );
+      return distanceA - distanceB;
+    });
+  }, [parks, userLocation]);
 
   // カテゴリフィルター機能
   const filteredFacilities = useMemo(() => {
@@ -473,9 +503,10 @@ export function DogParkList() {
         {/* Google Map */}
         <div className="mb-8">
           <MapView 
-            parks={parks}
+            parks={sortedParks}
             facilities={activeView === 'facilities' ? filteredFacilities : facilities}
             activeView={activeView}
+            userLocation={userLocation}
           />
         </div>
 
@@ -490,9 +521,26 @@ export function DogParkList() {
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {parks.map((park) => (
-                  <DogParkCard key={park.id} park={park} />
-                ))}
+                {sortedParks.map((park) => {
+                  // 現在地からの距離を計算
+                  const distance = userLocation && park.latitude && park.longitude
+                    ? calculateDistance(
+                        userLocation.lat, 
+                        userLocation.lng, 
+                        Number(park.latitude), 
+                        Number(park.longitude)
+                      )
+                    : undefined;
+
+                  return (
+                    <DogParkCard 
+                      key={park.id} 
+                      park={park} 
+                      userLocation={userLocation}
+                      {...(distance !== undefined && { distance })}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>
@@ -511,9 +559,26 @@ export function DogParkList() {
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredFacilities.map((facility) => (
-                  <FacilityCard key={facility.id} facility={facility} />
-                ))}
+                {filteredFacilities.map((facility) => {
+                  // 現在地からの距離を計算
+                  const distance = userLocation && facility.latitude && facility.longitude
+                    ? calculateDistance(
+                        userLocation.lat, 
+                        userLocation.lng, 
+                        facility.latitude, 
+                        facility.longitude
+                      )
+                    : undefined;
+
+                  return (
+                    <FacilityCard 
+                      key={facility.id} 
+                      facility={facility} 
+                      showDistance={!!userLocation}
+                      {...(distance !== undefined && { distance })}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>
