@@ -20,17 +20,10 @@ export const useRealtimeNews = ({ initialNews = [], limit = 5 }: UseRealtimeNews
 
     // 初期データ取得をインライン定義
     const fetchInitialData = async () => {
-      // クールダウン期間中は実行しない
-      const now = Date.now();
-      if (now - lastFetchTime.current < FETCH_COOLDOWN) {
-        console.log('📢 News fetch skipped due to cooldown');
-        return;
-      }
-      lastFetchTime.current = now;
-
       try {
         setIsLoading(true);
         setError(null);
+        console.log('📢 初期ニュースデータ取得を開始...');
 
         const { data, error: fetchError } = await supabase
           .from('news_announcements')
@@ -39,19 +32,23 @@ export const useRealtimeNews = ({ initialNews = [], limit = 5 }: UseRealtimeNews
           .limit(limit);
 
         if (fetchError) {
+          console.error('📢 ニュースデータ取得エラー:', fetchError);
           throw fetchError;
         }
 
         if (isMounted) {
           setNews(data || []);
-          console.log('📢 News data fetched:', data?.length || 0, 'items');
+          console.log('📢 初期ニュースデータ取得完了:', data?.length || 0, 'items');
+          // 初回取得時にクールダウンタイマーを設定
+          lastFetchTime.current = Date.now();
         }
       } catch (err) {
-        console.warn('Failed to fetch news:', err);
+        console.warn('📢 初期ニュースデータ取得失敗:', err);
         if (isMounted) {
           setError(String(err));
           // エラーが発生した場合は初期データを使用
           setNews(initialNews);
+          console.log('📢 フォールバックニュースデータを使用:', initialNews.length, 'items');
         }
       } finally {
         if (isMounted) {

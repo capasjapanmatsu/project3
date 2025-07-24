@@ -20,17 +20,10 @@ export const useRealtimeDogs = ({ initialDogs = [], limit = 8 }: UseRealtimeDogs
 
     // 初期データ取得をインライン定義
     const fetchInitialData = async () => {
-      // クールダウン期間中は実行しない
-      const now = Date.now();
-      if (now - lastFetchTime.current < FETCH_COOLDOWN) {
-        console.log('🐕 Dogs fetch skipped due to cooldown');
-        return;
-      }
-      lastFetchTime.current = now;
-
       try {
         setIsLoading(true);
         setError(null);
+        console.log('🐕 初期データ取得を開始...');
 
         const { data, error: fetchError } = await supabase
           .from('dogs')
@@ -39,19 +32,23 @@ export const useRealtimeDogs = ({ initialDogs = [], limit = 8 }: UseRealtimeDogs
           .limit(limit);
 
         if (fetchError) {
+          console.error('🐕 データ取得エラー:', fetchError);
           throw fetchError;
         }
 
         if (isMounted) {
           setDogs(data || []);
-          console.log('🐕 Dogs data fetched:', data?.length || 0, 'dogs');
+          console.log('🐕 初期データ取得完了:', data?.length || 0, 'dogs');
+          // 初回取得時にクールダウンタイマーを設定
+          lastFetchTime.current = Date.now();
         }
       } catch (err) {
-        console.warn('Failed to fetch dogs:', err);
+        console.warn('🐕 初期データ取得失敗:', err);
         if (isMounted) {
           setError(String(err));
           // エラーが発生した場合は初期データを使用
           setDogs(initialDogs);
+          console.log('🐕 フォールバックデータを使用:', initialDogs.length, 'dogs');
         }
       } finally {
         if (isMounted) {
