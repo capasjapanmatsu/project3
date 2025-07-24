@@ -14,48 +14,54 @@ export const useRealtimeDogs = ({ initialDogs = [], limit = 8 }: UseRealtimeDogs
   const lastFetchTime = useRef<number>(0);
   const FETCH_COOLDOWN = 1000; // 1秒のクールダウン
 
-  // 初期データの取得
-  const fetchDogs = useCallback(async () => {
-    // クールダウン期間中は実行しない
-    const now = Date.now();
-    if (now - lastFetchTime.current < FETCH_COOLDOWN) {
-      console.log('🐕 Dogs fetch skipped due to cooldown');
-      return;
-    }
-    lastFetchTime.current = now;
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const { data, error: fetchError } = await supabase
-        .from('dogs')
-        .select('id, owner_id, name, breed, birth_date, gender, image_url, created_at')
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      setDogs(data || []);
-      console.log('🐕 Dogs data fetched:', data?.length || 0, 'dogs');
-    } catch (err) {
-      console.warn('Failed to fetch dogs:', err);
-      setError(String(err));
-      // エラーが発生した場合は初期データを使用
-      setDogs(initialDogs);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [limit]);
-
   // リアルタイム購読の設定
   useEffect(() => {
     let isMounted = true;
 
+    // 初期データ取得をインライン定義
+    const fetchInitialData = async () => {
+      // クールダウン期間中は実行しない
+      const now = Date.now();
+      if (now - lastFetchTime.current < FETCH_COOLDOWN) {
+        console.log('🐕 Dogs fetch skipped due to cooldown');
+        return;
+      }
+      lastFetchTime.current = now;
+
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const { data, error: fetchError } = await supabase
+          .from('dogs')
+          .select('id, owner_id, name, breed, birth_date, gender, image_url, created_at')
+          .order('created_at', { ascending: false })
+          .limit(limit);
+
+        if (fetchError) {
+          throw fetchError;
+        }
+
+        if (isMounted) {
+          setDogs(data || []);
+          console.log('🐕 Dogs data fetched:', data?.length || 0, 'dogs');
+        }
+      } catch (err) {
+        console.warn('Failed to fetch dogs:', err);
+        if (isMounted) {
+          setError(String(err));
+          // エラーが発生した場合は初期データを使用
+          setDogs(initialDogs);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
     // 初回データ取得
-    void fetchDogs();
+    void fetchInitialData();
 
     // リアルタイム購読を設定
     const subscription = supabase
@@ -149,12 +155,43 @@ export const useRealtimeDogs = ({ initialDogs = [], limit = 8 }: UseRealtimeDogs
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [limit, fetchDogs]);
+  }, [limit, initialDogs]); // 必要な依存関係のみ
 
   // 手動更新
-  const refreshDogs = useCallback(() => {
-    void fetchDogs();
-  }, [fetchDogs]);
+  const refreshDogs = useCallback(async () => {
+    // クールダウン期間中は実行しない
+    const now = Date.now();
+    if (now - lastFetchTime.current < FETCH_COOLDOWN) {
+      console.log('🐕 Dogs refresh skipped due to cooldown');
+      return;
+    }
+    lastFetchTime.current = now;
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const { data, error: fetchError } = await supabase
+        .from('dogs')
+        .select('id, owner_id, name, breed, birth_date, gender, image_url, created_at')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      setDogs(data || []);
+      console.log('🐕 Dogs data refreshed:', data?.length || 0, 'dogs');
+    } catch (err) {
+      console.warn('Failed to refresh dogs:', err);
+      setError(String(err));
+      // エラーが発生した場合は初期データを使用
+      setDogs(initialDogs);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [limit, initialDogs]);
 
   return {
     dogs,
