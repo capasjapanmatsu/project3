@@ -143,45 +143,60 @@ export function MapView({
     const addMarkers = (map: any) => {
       // ドッグパークのマーカー
       if (activeView === 'dogparks' || activeView === 'facilities') {
-        parks.forEach(park => {
-          if (park.latitude && park.longitude) {
-            // 犬の足跡SVGパス（シンプルで大きめサイズ）
-            const pawPath = 'M10,4 C12,4 14,6 14,8 C14,10 12,12 10,12 C8,12 6,10 6,8 C6,6 8,4 10,4 Z ' +
-                           'M6,12 C7,12 8,13 8,14 C8,15 7,16 6,16 C5,16 4,15 4,14 C4,13 5,12 6,12 Z ' +
-                           'M14,12 C15,12 16,13 16,14 C16,15 15,16 14,16 C13,16 12,15 12,14 C12,13 13,12 14,12 Z ' +
-                           'M8,16 C9,16 10,17 10,18 C10,19 9,20 8,20 C7,20 6,19 6,18 C6,17 7,16 8,16 Z ' +
-                           'M12,16 C13,16 14,17 14,18 C14,19 13,20 12,20 C11,20 10,19 10,18 C10,17 11,16 12,16 Z';
-            
-            const marker = new window.google.maps.Marker({
-              position: { lat: Number(park.latitude), lng: Number(park.longitude) },
-              map,
-              title: park.name,
-              icon: {
-                path: pawPath,
-                scale: 1.5,
-                fillColor: '#3B82F6',
-                fillOpacity: 0.8,
-                strokeWeight: 2,
-                strokeColor: '#FFFFFF',
-                anchor: new window.google.maps.Point(12, 16)
-              }
-            });
+        if (window.google?.maps && parks.length > 0) {
+          // 肉球アイコンのSVGデータを定義（favicon.svgと同じデザイン）
+          const pawIconSvg = `
+            <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="16" cy="16" r="16" fill="url(#paint0_linear)" />
+              <path d="M22.4 10.4C22.4 11.7255 21.3255 12.8 20 12.8C18.6745 12.8 17.6 11.7255 17.6 10.4C17.6 9.07452 18.6745 8 20 8C21.3255 8 22.4 9.07452 22.4 10.4Z" fill="white"/>
+              <path d="M14.4 10.4C14.4 11.7255 13.3255 12.8 12 12.8C10.6745 12.8 9.6 11.7255 9.6 10.4C9.6 9.07452 10.6745 8 12 8C13.3255 8 14.4 9.07452 14.4 10.4Z" fill="white"/>
+              <path d="M22.4 18.4C22.4 19.7255 21.3255 20.8 20 20.8C18.6745 20.8 17.6 19.7255 17.6 18.4C17.6 17.0745 18.6745 16 20 16C21.3255 16 22.4 17.0745 22.4 18.4Z" fill="white"/>
+              <path d="M14.4 18.4C14.4 19.7255 13.3255 20.8 12 20.8C10.6745 20.8 9.6 19.7255 9.6 18.4C9.6 17.0745 10.6745 16 12 16C13.3255 16 14.4 17.0745 14.4 18.4Z" fill="white"/>
+              <path d="M18.4 14.4C19.7255 14.4 20.8 13.3255 20.8 12C20.8 10.6745 19.7255 9.6 18.4 9.6C17.0745 9.6 16 10.6745 16 12C16 13.3255 17.0745 14.4 18.4 14.4Z" fill="white"/>
+              <path d="M18.4 22.4C19.7255 22.4 20.8 21.3255 20.8 20C20.8 18.6745 19.7255 17.6 18.4 17.6C17.0745 17.6 16 18.6745 16 20C16 21.3255 17.0745 22.4 18.4 22.4Z" fill="white"/>
+              <path d="M10.4 14.4C11.7255 14.4 12.8 13.3255 12.8 12C12.8 10.6745 11.7255 9.6 10.4 9.6C9.07452 9.6 8 10.6745 8 12C8 13.3255 9.07452 14.4 10.4 14.4Z" fill="white"/>
+              <path d="M10.4 22.4C11.7255 22.4 12.8 21.3255 12.8 20C12.8 18.6745 11.7255 17.6 10.4 17.6C9.07452 17.6 8 18.6745 8 20C8 21.3255 9.07452 22.4 10.4 22.4Z" fill="white"/>
+              <defs>
+                <linearGradient id="paint0_linear" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#3B82F6"/>
+                  <stop offset="1" stop-color="#10B981"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          `;
 
-            const infoWindow = new window.google.maps.InfoWindow({
-              content: `
-                <div style="padding: 8px; max-width: 200px;">
-                  <h3 style="font-weight: bold; margin-bottom: 4px; color: #1F2937;">${park.name}</h3>
-                  ${park.address ? `<p style="font-size: 12px; color: #6B7280; margin-bottom: 8px;">${park.address}</p>` : ''}
-                  ${park.price ? `<p style="font-size: 12px; color: #6B7280;">料金: ¥${park.price}/時間</p>` : ''}
-                </div>
-              `
-            });
+          // SVGをData URIに変換
+          const pawIconDataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(pawIconSvg);
 
-            marker.addListener('click', () => {
-              infoWindow.open(map, marker);
-            });
-          }
-        });
+          parks.forEach(park => {
+            if (park.latitude && park.longitude) {
+              const marker = new window.google.maps.Marker({
+                position: { lat: Number(park.latitude), lng: Number(park.longitude) },
+                map,
+                title: park.name,
+                icon: {
+                  url: pawIconDataUri,
+                  scaledSize: new window.google.maps.Size(32, 32),
+                  anchor: new window.google.maps.Point(16, 16)
+                }
+              });
+
+              const infoWindow = new window.google.maps.InfoWindow({
+                content: `
+                  <div style="padding: 8px; max-width: 200px;">
+                    <h3 style="font-weight: bold; margin-bottom: 4px; color: #1F2937;">${park.name}</h3>
+                    ${park.address ? `<p style="font-size: 12px; color: #6B7280; margin-bottom: 8px;">${park.address}</p>` : ''}
+                    ${park.price ? `<p style="font-size: 12px; color: #6B7280;">料金: ¥${park.price}/時間</p>` : ''}
+                  </div>
+                `
+              });
+
+              marker.addListener('click', () => {
+                infoWindow.open(map, marker);
+              });
+            }
+          });
+        }
       }
 
       // ペット施設のマーカー
