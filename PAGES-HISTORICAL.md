@@ -249,6 +249,65 @@
 
 ## 🔧 修正履歴・重要な技術的注意点
 
+### 2024年1月 - Googleマップのユーザー位置アイコンを愛犬の画像で表示
+
+**機能**: Googleマップでユーザーの現在地を愛犬のアイコンで表示する機能を実装
+
+**実装内容**:
+1. **複数犬登録時**: 1頭目の犬の画像を円形マーカーで表示
+2. **未登録時**: デフォルトの犬イラストを表示
+3. **画像処理**: 犬の画像を円形にトリミングし、赤い枠線で囲む
+
+**技術的な実装**:
+```typescript
+// 犬データの取得
+const { data: dogs } = await supabase
+  .from('dogs')
+  .select('id, name, image_url')
+  .eq('user_id', user.id)
+  .order('created_at', { ascending: true });
+
+// 円形マーカーアイコンの生成
+const createDogMarkerIcon = (imageUrl: string): string => {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
+    <svg width="40" height="40" viewBox="0 0 40 40">
+      <circle cx="20" cy="20" r="19" fill="white" stroke="#EF4444" stroke-width="2"/>
+      <image href="${imageUrl}" x="2" y="2" width="36" height="36" clip-path="url(#clip)"/>
+      <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(239, 68, 68, 0.8)" stroke-width="3"/>
+    </svg>
+  `)}`;
+};
+
+// マーカーの設定
+new window.google.maps.Marker({
+  position: currentLocation,
+  title: userDogs.length > 0 ? `現在地 (${userDogs[0]?.name})` : '現在地',
+  icon: {
+    url: markerIcon,
+    scaledSize: new window.google.maps.Size(40, 40),
+    anchor: new window.google.maps.Point(20, 20)
+  },
+  zIndex: 1000
+});
+```
+
+**影響**: 
+- ✅ ユーザー体験の大幅向上（愛犬との一体感）
+- ✅ パーソナライゼーション機能の強化
+- ✅ 犬登録促進効果
+- ✅ アプリの差別化要素として機能
+
+**表示パターン**:
+- **犬登録済み**: 1頭目の犬の写真を円形で表示
+- **犬未登録**: 可愛い犬のイラストを表示
+- **画像なし**: デフォルト犬アイコンを表示
+
+**注意点**: 
+- 犬の画像は円形にクリッピング処理される
+- 赤い枠線でユーザー位置であることを明確化
+- 他のマーカーより前面に表示（zIndex: 1000）
+- リアルタイムで犬データの変更に対応
+
 ### 2024年1月 - ペットショップの詳細表示とカートに追加ボタンの認証対応修正
 
 **問題**: 

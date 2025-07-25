@@ -1,8 +1,10 @@
 // MapView.tsx - シンプルなマップ表示コンポーネント
 import { MapPin, Navigation } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import useAuth from '../../context/AuthContext';
 import { type DogPark } from '../../types';
 import { type PetFacility } from '../../types/facilities';
+import { supabase } from '../../utils/supabase';
 import Button from '../Button';
 import Card from '../Card';
 
@@ -11,6 +13,13 @@ declare global {
   interface Window {
     google: any;
   }
+}
+
+// 犬のデータ型
+interface Dog {
+  id: string;
+  name: string;
+  image_url?: string;
 }
 
 interface MapViewProps {
@@ -38,7 +47,80 @@ export function MapView({
   const mapRef = useRef<HTMLDivElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(userLocation || null);
+  const [mapError, setMapError] = useState<string>('');
+  const [isLocating, setIsLocating] = useState(false);
   
+  // 認証とユーザーの犬データ
+  const { user } = useAuth();
+  const [userDogs, setUserDogs] = useState<Dog[]>([]);
+  const [userDogIcon, setUserDogIcon] = useState<string>('');
+
+  // デフォルトの犬アイコン（SVG）
+  const defaultDogIcon = `
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="16" cy="16" r="15" fill="#EF4444" stroke="white" stroke-width="2"/>
+      <path d="M10 12c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm8 0c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zM8 18c0-2.2 3.6-4 8-4s8 1.8 8 4c0 1.1-3.6 2-8 2s-8-.9-8-2z" fill="white"/>
+      <path d="M14 16h4v2h-4z" fill="#EF4444"/>
+    </svg>
+  `;
+
+  // ユーザーの犬データを取得
+  useEffect(() => {
+    const fetchUserDogs = async () => {
+      if (!user) return;
+      
+      try {
+        const { data: dogs, error } = await supabase
+          .from('dogs')
+          .select('id, name, image_url')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        
+        if (dogs && dogs.length > 0) {
+          setUserDogs(dogs);
+          // 1頭目の犬の画像を使用
+          const firstDog = dogs[0];
+          if (firstDog.image_url) {
+            setUserDogIcon(firstDog.image_url);
+          } else {
+            setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
+          }
+        } else {
+          // 犬が未登録の場合はデフォルトアイコン
+          setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
+        }
+      } catch (error) {
+        console.error('Error fetching user dogs:', error);
+        setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
+      }
+    };
+
+    fetchUserDogs();
+  }, [user]);
+
+  // 犬の画像を円形マーカー用に変換
+  const createDogMarkerIcon = (imageUrl: string): string => {
+    if (imageUrl.startsWith('data:image/svg+xml')) {
+      return imageUrl; // SVGの場合はそのまま使用
+    }
+    
+    // 犬の画像を円形にトリミングしたSVGを生成
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
+      <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <clipPath id="clip">
+            <circle cx="20" cy="20" r="18"/>
+          </clipPath>
+        </defs>
+        <circle cx="20" cy="20" r="19" fill="white" stroke="#EF4444" stroke-width="2"/>
+        <image href="${imageUrl}" x="2" y="2" width="36" height="36" clip-path="url(#clip)" preserveAspectRatio="xMidYMid slice"/>
+        <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(239, 68, 68, 0.8)" stroke-width="3"/>
+      </svg>
+    `)}`;
+  };
+
   // マップの中心位置を決定（現在地 > 指定されたcenter > デフォルト）
   const mapCenter = currentLocation || center || DEFAULT_CENTER;
 
@@ -279,33 +361,26 @@ export function MapView({
       }
 
       // ユーザーの現在地マーカー
-      if (currentLocation) {
-        // 現在地用の足跡アイコン（赤色）
-        const currentLocationPawPath = 'M10,4 C12,4 14,6 14,8 C14,10 12,12 10,12 C8,12 6,10 6,8 C6,6 8,4 10,4 Z ' +
-                                      'M6,12 C7,12 8,13 8,14 C8,15 7,16 6,16 C5,16 4,15 4,14 C4,13 5,12 6,12 Z ' +
-                                      'M14,12 C15,12 16,13 16,14 C16,15 15,16 14,16 C13,16 12,15 12,14 C12,13 13,12 14,12 Z ' +
-                                      'M8,16 C9,16 10,17 10,18 C10,19 9,20 8,20 C7,20 6,19 6,18 C6,17 7,16 8,16 Z ' +
-                                      'M12,16 C13,16 14,17 14,18 C14,19 13,20 12,20 C11,20 10,19 10,18 C10,17 11,16 12,16 Z';
+      if (currentLocation && userDogIcon) {
+        // 犬のアイコンでユーザー位置を表示
+        const markerIcon = createDogMarkerIcon(userDogIcon);
         
         new window.google.maps.Marker({
           position: currentLocation,
           map,
-          title: '現在地',
+          title: userDogs.length > 0 ? `現在地 (${userDogs[0]?.name || 'あなた'})` : '現在地',
           icon: {
-            path: currentLocationPawPath,
-            scale: 1.8,
-            fillColor: '#EF4444',
-            fillOpacity: 0.9,
-            strokeWeight: 2,
-            strokeColor: '#FFFFFF',
-            anchor: new window.google.maps.Point(10, 20)
-          }
+            url: markerIcon,
+            scaledSize: new window.google.maps.Size(40, 40),
+            anchor: new window.google.maps.Point(20, 20)
+          },
+          zIndex: 1000 // 他のマーカーより前面に表示
         });
       }
     };
 
     void loadGoogleMaps();
-  }, [parks, facilities, activeView, center, currentLocation, mapCenter]);
+  }, [parks, facilities, activeView, center, currentLocation, mapCenter, userDogIcon, userDogs]);
 
   // Google Maps API キーが設定されていない場合のフォールバック
   if (!import.meta.env.VITE_GOOGLE_MAPS_API_KEY) {
