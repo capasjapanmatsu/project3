@@ -183,10 +183,32 @@ export function MapView({
 
               const infoWindow = new window.google.maps.InfoWindow({
                 content: `
-                  <div style="padding: 8px; max-width: 200px;">
-                    <h3 style="font-weight: bold; margin-bottom: 4px; color: #1F2937;">${park.name}</h3>
-                    ${park.address ? `<p style="font-size: 12px; color: #6B7280; margin-bottom: 8px;">${park.address}</p>` : ''}
-                    ${park.price ? `<p style="font-size: 12px; color: #6B7280;">料金: ¥${park.price}/時間</p>` : ''}
+                  <div style="padding: 12px; max-width: 250px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                    <h3 style="font-weight: bold; margin-bottom: 8px; color: #1F2937; font-size: 16px;">${park.name}</h3>
+                    ${park.address ? `<p style="font-size: 12px; color: #6B7280; margin-bottom: 6px; line-height: 1.4;">${park.address}</p>` : ''}
+                    ${park.price ? `<p style="font-size: 12px; color: #6B7280; margin-bottom: 12px;">料金: ¥${park.price}/時間</p>` : ''}
+                    <div style="text-align: center; margin-top: 12px;">
+                      <a 
+                        href="/parks/${park.id}" 
+                        target="_blank"
+                        style="
+                          display: inline-block;
+                          background: linear-gradient(135deg, #3B82F6, #10B981);
+                          color: white;
+                          padding: 8px 16px;
+                          border-radius: 6px;
+                          text-decoration: none;
+                          font-size: 13px;
+                          font-weight: 500;
+                          transition: all 0.2s;
+                          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        "
+                        onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';"
+                      >
+                        🐾 詳細を見る
+                      </a>
+                    </div>
                   </div>
                 `
               });
@@ -219,10 +241,32 @@ export function MapView({
 
             const infoWindow = new window.google.maps.InfoWindow({
               content: `
-                <div style="padding: 8px; max-width: 200px;">
-                  <h3 style="font-weight: bold; margin-bottom: 4px; color: #1F2937;">${facility.name}</h3>
-                  ${facility.address ? `<p style="font-size: 12px; color: #6B7280; margin-bottom: 8px;">${facility.address}</p>` : ''}
-                  ${facility.phone ? `<p style="font-size: 12px; color: #6B7280;">TEL: ${facility.phone}</p>` : ''}
+                <div style="padding: 12px; max-width: 250px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                  <h3 style="font-weight: bold; margin-bottom: 8px; color: #1F2937; font-size: 16px;">${facility.name}</h3>
+                  ${facility.address ? `<p style="font-size: 12px; color: #6B7280; margin-bottom: 6px; line-height: 1.4;">${facility.address}</p>` : ''}
+                  ${facility.phone ? `<p style="font-size: 12px; color: #6B7280; margin-bottom: 12px;">📞 ${facility.phone}</p>` : ''}
+                  <div style="text-align: center; margin-top: 12px;">
+                    <a 
+                      href="/facilities/${facility.id}" 
+                      target="_blank"
+                      style="
+                        display: inline-block;
+                        background: linear-gradient(135deg, #10B981, #3B82F6);
+                        color: white;
+                        padding: 8px 16px;
+                        border-radius: 6px;
+                        text-decoration: none;
+                        font-size: 13px;
+                        font-weight: 500;
+                        transition: all 0.2s;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                      "
+                      onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';"
+                      onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';"
+                    >
+                      🏢 詳細を見る
+                    </a>
+                  </div>
                 </div>
               `
             });
