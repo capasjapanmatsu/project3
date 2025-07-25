@@ -52,9 +52,10 @@ interface MaintenanceInfo {
 }
 
 export function DogParkDetail() {
-  const { parkId } = useParams();
+  const { id: parkId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  
   const [park, setPark] = useState<DogPark | null>(null);
   const [reviews, setReviews] = useState<DogParkReview[]>([]);
   const [userReview, setUserReview] = useState<UserParkReview | null>(null);
@@ -295,6 +296,7 @@ export function DogParkDetail() {
         setCurrentMaintenance(activeMaintenance || null);
       }
     } catch (error) {
+      console.error('Error occurred:', error);
       setError((error as Error).message || 'エラーが発生しました');
       navigate('/parks');
     } finally {

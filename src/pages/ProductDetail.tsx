@@ -30,7 +30,7 @@ interface ProductImage {
 }
 
 export function ProductDetail() {
-  const { productId } = useParams();
+  const { id: productId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);

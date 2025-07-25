@@ -1,11 +1,17 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Home, Search, ArrowLeft, PawPrint } from 'lucide-react';
+import { ArrowLeft, Home, PawPrint, Search } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
+import { Link } from 'react-router-dom';
+import useAuth from '../context/AuthContext';
 
 export function NotFound() {
+  const { isAuthenticated } = useAuth();
+  
   const handleGoBack = () => {
-    window.history.length > 1 ? window.history.back() : window.location.href = '/';
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = '/';
+    }
   };
 
   return (
@@ -92,28 +98,28 @@ export function NotFound() {
             <h3 className="text-sm font-medium text-gray-700 mb-3">よく利用されるページ</h3>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <Link
-                to="/register-dog"
+                to={isAuthenticated ? "/dog-registration" : "/login"}
                 className="text-blue-600 hover:text-blue-800 hover:underline py-1"
                 aria-label="ワンちゃん登録ページへ"
               >
                 ワンちゃん登録
               </Link>
               <Link
-                to="/subscription"
+                to={isAuthenticated ? "/subscription" : "/login"}
                 className="text-blue-600 hover:text-blue-800 hover:underline py-1"
                 aria-label="サブスクリプションページへ"
               >
                 サブスクリプション
               </Link>
               <Link
-                to="/shop"
+                to="/petshop"
                 className="text-blue-600 hover:text-blue-800 hover:underline py-1"
                 aria-label="ペットショップページへ"
               >
                 ペットショップ
               </Link>
               <Link
-                to="/community"
+                to={isAuthenticated ? "/community" : "/login"}
                 className="text-blue-600 hover:text-blue-800 hover:underline py-1"
                 aria-label="コミュニティページへ"
               >

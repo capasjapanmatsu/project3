@@ -12,7 +12,7 @@ import {
     Truck
 } from 'lucide-react';
 import { startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
@@ -24,6 +24,7 @@ import { supabase } from '../utils/supabase';
 
 export function PetShop() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,7 +88,10 @@ export function PetShop() {
   };
 
   const addToCart = async (productId: string, quantity: number = 1) => {
-    if (!user) return;
+    if (!user) {
+      navigate('/login');
+      return;
+    }
 
     try {
       // 既存のカートアイテムをチェック
@@ -106,7 +110,7 @@ export function PetShop() {
         const { error } = await supabase
           .from('cart_items')
           .insert([{
-            user_id: user.id,
+            user_id: user?.id,
             product_id: productId,
             quantity: quantity,
           }]);
@@ -530,7 +534,7 @@ export function PetShop() {
                       </Button>
                     )}
                     
-                    <Link to={`/shop/product/${product.id}`}>
+                    <Link to={`/products/${product.id}`}>
                       <Button variant="secondary" className="w-full">
                         詳細を見る
                       </Button>
