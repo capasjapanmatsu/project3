@@ -7,7 +7,7 @@ import useAuth from './context/AuthContext';
 import { Footer } from './components/Footer';
 import { Navbar } from './components/Navbar';
 import { SEO } from './components/SEO';
-// import ScrollToTop from './components/ScrollToTop';
+import ScrollToTop from './components/ScrollToTop';
 
 // シンプルなローディングスピナー
 const LoadingSpinner = ({ message = 'ロード中...' }: { message?: string }) => (
@@ -162,7 +162,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 const App: React.FC = () => {
   return (
     <Layout>
-      {/* <ScrollToTop /> */}
+      <ScrollToTop />
       <Suspense fallback={<LoadingSpinner message="ページを読み込み中..." />}>
         <Routes>
           {/* 公開ページ */}
