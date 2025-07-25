@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import useAuth from './context/AuthContext';
 
 // レイアウトコンポーネント
+import { BottomNavigation } from './components/BottomNavigation';
 import { Footer } from './components/Footer';
 import { Navbar } from './components/Navbar';
 import { SEO } from './components/SEO';
@@ -95,6 +96,7 @@ const DogInfoWalk = React.lazy(() => import('./pages/dog-info/Walk').then(module
 // コミュニティ関連ページ
 const Community = React.lazy(() => import('./pages/Community').then(module => ({ default: module.Community })));
 const Contact = React.lazy(() => import('./pages/Contact').then(module => ({ default: module.Contact })));
+const AccessControl = React.lazy(() => import('./pages/AccessControl').then(module => ({ default: module.AccessControl })));
 
 // その他のページ
 const TermsOfService = React.lazy(() => import('./pages/TermsOfService').then(module => ({ default: module.TermsOfService })));
@@ -154,6 +156,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           {children}
         </main>
         <Footer />
+        <BottomNavigation />
       </div>
     </HelmetProvider>
   );
@@ -205,6 +208,11 @@ const App: React.FC = () => {
           <Route path="/privacy" element={<PrivacyPolicy />} />
           
           {/* 保護されたページ */}
+          <Route path="/access-control" element={
+            <ProtectedRoute>
+              <AccessControl />
+            </ProtectedRoute>
+          } />
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <UserDashboard />
