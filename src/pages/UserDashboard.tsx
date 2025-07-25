@@ -671,6 +671,8 @@ export function UserDashboard() {
                       size="sm"
                       variant="secondary"
                       className="flex items-center text-xs"
+                      disabled={true}
+                      title="施設の修正機能は準備中です"
                     >
                       <Edit className="w-3 h-3 mr-1" />
                       修正
@@ -680,6 +682,7 @@ export function UserDashboard() {
                         size="sm"
                         variant="secondary"
                         className="flex items-center text-xs"
+                        onClick={() => navigate(`/parks?view=facilities&facility=${facility.id}`)}
                       >
                         <Eye className="w-3 h-3 mr-1" />
                         公開ページ

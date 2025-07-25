@@ -1067,7 +1067,7 @@ export function OwnerDashboard() {
                       <Button
                         size="sm"
                         variant="secondary"
-                        onClick={() => window.open(`/facility/${facility.id}`, '_blank')}
+                        onClick={() => navigate(`/parks?view=facilities&facility=${facility.id}`)}
                         className="flex items-center"
                       >
                         <Eye className="w-4 h-4 mr-1" />

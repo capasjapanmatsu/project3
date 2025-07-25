@@ -7,7 +7,7 @@ import useAuth from './context/AuthContext';
 import { Footer } from './components/Footer';
 import { Navbar } from './components/Navbar';
 import { SEO } from './components/SEO';
-import ScrollToTop from './components/ScrollToTop';
+// import ScrollToTop from './components/ScrollToTop';
 
 // シンプルなローディングスピナー
 const LoadingSpinner = ({ message = 'ロード中...' }: { message?: string }) => (
@@ -114,6 +114,10 @@ const LikedDogs = React.lazy(() => import('./pages/LikedDogs').then(module => ({
 const ParkRegistration = React.lazy(() => import('./pages/ParkRegistration').then(module => ({ default: module.ParkRegistration })));
 const ParkRegistrationAgreement = React.lazy(() => import('./pages/ParkRegistrationAgreement').then(module => ({ default: module.ParkRegistrationAgreement })));
 const ParkRegistrationSecondStage = React.lazy(() => import('./pages/ParkRegistrationSecondStage').then(module => ({ default: module.ParkRegistrationSecondStage })));
+const ParkManagement = React.lazy(() => import('./pages/ParkManagement').then(module => ({ default: module.ParkManagement })));
+const ParkPublishingSetup = React.lazy(() => import('./pages/ParkPublishingSetup').then(module => ({ default: module.ParkPublishingSetup })));
+const FacilityRegistration = React.lazy(() => import('./pages/FacilityRegistration'));
+const OwnerPaymentSystem = React.lazy(() => import('./pages/OwnerPaymentSystem').then(module => ({ default: module.OwnerPaymentSystem })));
 
 // 管理者ページ
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
@@ -158,7 +162,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 const App: React.FC = () => {
   return (
     <Layout>
-      <ScrollToTop />
+      {/* <ScrollToTop /> */}
       <Suspense fallback={<LoadingSpinner message="ページを読み込み中..." />}>
         <Routes>
           {/* 公開ページ */}
@@ -254,6 +258,36 @@ const App: React.FC = () => {
           <Route path="/park-registration-agreement" element={
             <ProtectedRoute>
               <ParkRegistrationAgreement />
+            </ProtectedRoute>
+          } />
+          <Route path="/parks/:id/second-stage" element={
+            <ProtectedRoute>
+              <ParkRegistrationSecondStage />
+            </ProtectedRoute>
+          } />
+          <Route path="/parks/:id/manage" element={
+            <ProtectedRoute>
+              <ParkManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/parks/:id/reserve" element={
+            <ProtectedRoute>
+              <ParkReservation />
+            </ProtectedRoute>
+          } />
+          <Route path="/parks/:id/publish-setup" element={
+            <ProtectedRoute>
+              <ParkPublishingSetup />
+            </ProtectedRoute>
+          } />
+          <Route path="/facility-registration" element={
+            <ProtectedRoute>
+              <FacilityRegistration />
+            </ProtectedRoute>
+          } />
+          <Route path="/owner-payment-system" element={
+            <ProtectedRoute>
+              <OwnerPaymentSystem />
             </ProtectedRoute>
           } />
                      <Route path="/register-park" element={
