@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
-import Card from '../components/Card';
+import { AlertTriangle, ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import Card from '../components/Card';
 import Input from '../components/Input';
-import { Mail, Lock, AlertTriangle, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import useAuth from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../utils/supabase';
 import { logger } from '../utils/logger';
 import { notify } from '../utils/notification';
 
@@ -15,9 +14,14 @@ export function Login() {
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isPasswordLogin, setIsPasswordLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // URLクエリパラメータに基づいてログイン方法を決定
+  const searchParams = new URLSearchParams(location.search);
+  const loginMethod = searchParams.get('method');
+  const [isPasswordLogin, setIsPasswordLogin] = useState(loginMethod !== 'magic');
 
   // ローカルストレージからメールアドレスを取得して自動入力（開発環境のみ）
   useEffect(() => {

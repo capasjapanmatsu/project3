@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import useAuth from '../../context/AuthContext';
 import Button from '../Button';
 import Card from '../Card';
 
@@ -19,7 +20,7 @@ const dogInfoCards: DogInfoCard[] = [
     description: 'ワクチン接種、定期検診、病気の予防について詳しく解説します。',
     icon: '🏥',
     category: 'health',
-    link: '/dog-info/vaccine',
+    link: '/dog-info/health',
     color: 'bg-red-50 border-red-200 hover:bg-red-100'
   },
   {
@@ -70,6 +71,8 @@ const dogInfoCards: DogInfoCard[] = [
 ];
 
 export function DogInfoCorner() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <section className="py-12 bg-gradient-to-br from-blue-50 to-indigo-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -177,43 +180,16 @@ export function DogInfoCorner() {
               情報交換やお散歩仲間を見つけませんか？
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/community">
+              <Link to={isAuthenticated ? "/community" : "/login"}>
                 <Button className="bg-pink-600 text-white hover:bg-pink-700 border-pink-600">
                   コミュニティに参加
                 </Button>
               </Link>
-              <Link to="/dog-park-list">
+              <Link to="/parks">
                 <Button variant="outline" className="border-white text-white hover:bg-white hover:text-purple-600">
                   近くのドッグパークを探す
                 </Button>
               </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* ニュースレター登録 */}
-        <div className="mt-8 bg-white rounded-2xl shadow-lg p-8">
-          <div className="text-center">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              📧 最新情報をお届け
-            </h3>
-            <p className="text-gray-600 mb-6">
-              ワンちゃんの健康やしつけの最新情報をメールでお届けします
-            </p>
-            <div className="max-w-md mx-auto">
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  placeholder="メールアドレスを入力"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  登録
-                </Button>
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                プライバシーポリシーに同意の上、登録してください
-              </p>
             </div>
           </div>
         </div>

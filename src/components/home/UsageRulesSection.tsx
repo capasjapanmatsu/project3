@@ -1,6 +1,6 @@
+import { FileText } from 'lucide-react';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FileText } from 'lucide-react';
 import Button from '../Button';
 
 export const UsageRulesSection: React.FC = () => {
@@ -13,7 +13,7 @@ export const UsageRulesSection: React.FC = () => {
           <p className="text-blue-800 mb-4">
             安全で楽しいドッグラン利用のため、利用ルールをご確認ください
           </p>
-          <Link to="/parks/rules">
+          <Link to="/rules">
             <Button className="bg-blue-600 hover:bg-blue-700">
               <FileText className="w-4 h-4 mr-2" />
               ドッグラン利用ルールを確認

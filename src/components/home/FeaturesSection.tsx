@@ -1,6 +1,6 @@
+import { Calendar, MapPin, ShoppingBag, Users } from 'lucide-react';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Users, Calendar, ShoppingBag } from 'lucide-react';
 
 interface FeaturesSectionProps {
   isLoggedIn: boolean;
@@ -33,7 +33,7 @@ export const FeaturesSection: React.FC<FeaturesSectionProps> = ({ isLoggedIn }) 
       icon: <ShoppingBag className="h-12 w-12 text-green-600 mx-auto mb-4 group-hover:scale-110 transition-transform" />,
       title: 'ペットショップ',
       description: 'ペット用品をワンタッチで簡単注文',
-      linkTo: '/shop',
+      linkTo: '/petshop',
       color: 'text-green-600'
     }
   ];

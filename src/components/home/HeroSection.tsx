@@ -49,7 +49,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ isLoggedIn }) => {
           無料で始める
         </Link>
         <Link
-          to="/magic-link"
+          to="/login?method=magic"
           className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium"
         >
           Magic Linkで簡単ログイン
