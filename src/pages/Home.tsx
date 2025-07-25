@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import AnimatedElement, { FadeIn, SlideUp } from '../components/accessibility/AnimatedElement';
 import { DogInfoCorner } from '../components/home/DogInfoCorner';
 import { FacilityRecruitmentBanner } from '../components/home/FacilityRecruitmentBanner';
@@ -10,75 +10,9 @@ import { NewsSection } from '../components/home/NewsSection';
 import { OwnerRecruitmentBanner } from '../components/home/OwnerRecruitmentBanner';
 import { UsageRulesSection } from '../components/home/UsageRulesSection';
 import useAuth from '../context/AuthContext';
-import { useRealtimeDogs } from '../hooks/useRealtimeDogs';
-import { useRealtimeNews } from '../hooks/useRealtimeNews';
 import { useResponsive } from '../hooks/useResponsive';
 import type { Dog, NewsAnnouncement } from '../types';
-
-// 静的なフォールバックデータ（コンポーネント外で定義）
-const staticDogs: Dog[] = [
-  {
-    id: '1',
-    owner_id: 'owner1',
-    name: 'ポチ',
-    breed: '柴犬',
-    birth_date: '2020-01-01',
-    gender: 'オス',
-    image_url: '',
-    created_at: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: '2',
-    owner_id: 'owner2',
-    name: 'ハナ',
-    breed: 'トイプードル',
-    birth_date: '2021-06-15',
-    gender: 'メス',
-    image_url: '',
-    created_at: '2024-01-02T00:00:00Z'
-  },
-  {
-    id: '3',
-    owner_id: 'owner3',
-    name: 'マロン',
-    breed: 'ゴールデンレトリバー',
-    birth_date: '2019-09-20',
-    gender: 'オス',
-    image_url: '',
-    created_at: '2024-01-03T00:00:00Z'
-  },
-  {
-    id: '4',
-    owner_id: 'owner4',
-    name: 'ココ',
-    breed: 'チワワ',
-    birth_date: '2022-03-10',
-    gender: 'メス',
-    image_url: '',
-    created_at: '2024-01-04T00:00:00Z'
-  }
-];
-
-const staticNews: NewsAnnouncement[] = [
-  {
-    id: '1',
-    title: 'テスト営業中',
-    content: '現在こちらのアプリは開発中です。オープンまで暫くお待ちください。',
-    category: 'announcement',
-    is_important: true,
-    created_at: '2025-07-12T00:00:00Z',
-    updated_at: '2025-07-12T00:00:00Z'
-  },
-  {
-    id: '2',
-    title: 'サービス準備中',
-    content: 'ドッグパーク予約システムの準備を進めています。',
-    category: 'news',
-    is_important: false,
-    created_at: '2025-07-10T00:00:00Z',
-    updated_at: '2025-07-10T00:00:00Z'
-  }
-];
+import { supabase } from '../utils/supabase';
 
 export function Home() {
   const { user } = useAuth();
@@ -86,37 +20,105 @@ export function Home() {
   // レスポンシブフック
   const { isMobile, prefersReducedMotion } = useResponsive();
 
-  // リアルタイムHookを使用（フォールバックデータ付き）
-  const { 
-    dogs: recentDogs, 
-    isLoading: isDogsLoading, 
-    error: dogsError,
-    refreshDogs 
-  } = useRealtimeDogs({ 
-    initialDogs: staticDogs, 
-    limit: 8 
-  });
+  // ローカル状態管理（リアルタイム機能を一時無効化）
+  const [recentDogs, setRecentDogs] = useState<Dog[]>([]);
+  const [news, setNews] = useState<NewsAnnouncement[]>([]);
+  const [isDogsLoading, setIsDogsLoading] = useState(true);
+  const [isNewsLoading, setIsNewsLoading] = useState(true);
+  const [dogsError, setDogsError] = useState<string | null>(null);
+  const [newsError, setNewsError] = useState<string | null>(null);
 
-  const { 
-    news, 
-    isLoading: isNewsLoading, 
-    error: newsError,
-    refreshNews 
-  } = useRealtimeNews({ 
-    initialNews: staticNews, 
-    limit: 5 
-  });
+  // データ取得関数
+  const fetchDogs = useCallback(async () => {
+    try {
+      setIsDogsLoading(true);
+      setDogsError(null);
+      console.log('🐕 犬データを取得中...');
+
+      const { data, error } = await supabase
+        .from('dogs')
+        .select('id, owner_id, name, breed, birth_date, gender, image_url, created_at')
+        .order('created_at', { ascending: false })
+        .limit(8);
+
+      if (error) {
+        throw error;
+      }
+
+      setRecentDogs(data || []);
+      console.log('🐕 犬データ取得完了:', data?.length || 0, 'dogs');
+    } catch (error) {
+      console.error('🐕 犬データ取得エラー:', error);
+      setDogsError(error instanceof Error ? error.message : 'データ取得に失敗しました');
+    } finally {
+      setIsDogsLoading(false);
+    }
+  }, []);
+
+  const fetchNews = useCallback(async () => {
+    try {
+      setIsNewsLoading(true);
+      setNewsError(null);
+      console.log('📢 ニュースデータを取得中...');
+
+      const { data, error } = await supabase
+        .from('news_announcements')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) {
+        throw error;
+      }
+
+      setNews(data || []);
+      console.log('📢 ニュースデータ取得完了:', data?.length || 0, 'items');
+    } catch (error) {
+      console.error('📢 ニュースデータ取得エラー:', error);
+      setNewsError(error instanceof Error ? error.message : 'データ取得に失敗しました');
+    } finally {
+      setIsNewsLoading(false);
+    }
+  }, []);
+
+  // 初期データ取得
+  useEffect(() => {
+    void fetchDogs();
+    void fetchNews();
+  }, [fetchDogs, fetchNews]);
+
+  // データの安定化処理
+  const stableNews = useMemo(() => {
+    if (isNewsLoading && news.length === 0) {
+      return [
+        {
+          id: 'loading',
+          title: '新着情報を読み込み中...',
+          content: 'データベースから最新の情報を取得しています。',
+          category: 'news' as const,
+          is_important: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ];
+    }
+    return news;
+  }, [news, isNewsLoading]);
+
+  const stableDogs = useMemo(() => {
+    return recentDogs || [];
+  }, [recentDogs]);
 
   // ネットワークエラーの状態管理
   const isOffline = !!(dogsError || newsError);
   const networkError = dogsError || newsError;
 
   // 再接続ハンドラー
-  const handleRetryConnection = () => {
+  const handleRetryConnection = useCallback(() => {
     console.log('🔄 データを再取得中...');
-    refreshDogs();
-    refreshNews();
-  };
+    void fetchDogs();
+    void fetchNews();
+  }, [fetchDogs, fetchNews]);
 
   // アニメーション設定をレスポンシブに調整
   const animationDuration = isMobile ? 'fast' : 'normal';
@@ -125,17 +127,23 @@ export function Home() {
   // isLoggedInをメモ化
   const isLoggedIn = useMemo(() => !!user, [user]);
 
+  // ローディング状態の安定化
+  const isDataLoading = isDogsLoading || isNewsLoading;
+  const hasAnyData = stableDogs.length > 0 || stableNews.length > 0;
+
   return (
     <>
       <div className="min-h-screen bg-gray-50" role="main">
         {/* ネットワークエラーバナー */}
-        <FadeIn duration="fast">
-          <NetworkErrorBanner
-            isOffline={isOffline}
-            networkError={networkError}
-            onRetryConnection={handleRetryConnection}
-          />
-        </FadeIn>
+        {isOffline && (
+          <FadeIn duration="fast">
+            <NetworkErrorBanner 
+              isOffline={isOffline}
+              networkError={networkError}
+              onRetryConnection={handleRetryConnection}
+            />
+          </FadeIn>
+        )}
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* ヒーローセクション */}
@@ -150,7 +158,7 @@ export function Home() {
             </SlideUp>
           </section>
 
-          {/* 最近登録された犬のマーキー - リアルタイム更新 */}
+          {/* 最近登録された犬のマーキー - 安定版 */}
           <section
             aria-label="最近登録された愛犬たち"
             className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
@@ -159,20 +167,20 @@ export function Home() {
             <AnimatedElement
               animation="slideUp"
               duration={animationDuration}
-              delay={staggerDelay * 2}
+              delay={staggerDelay * 1}
               respectReducedMotion={true}
               fallbackAnimation="fadeIn"
             >
               <MarqueeDogsSection
-                recentDogs={recentDogs}
+                recentDogs={stableDogs}
                 isOffline={isOffline}
-                isLoading={isDogsLoading}
+                isLoading={isDogsLoading && stableDogs.length === 0}
               />
             </AnimatedElement>
           </section>
 
           <main id="main-content" className="space-y-12 py-8">
-            {/* 新着情報セクション - リアルタイム更新 */}
+            {/* 新着情報セクション - 安定版 */}
             <section
               id="news-section"
               aria-labelledby="news-heading"
@@ -182,7 +190,7 @@ export function Home() {
               <AnimatedElement
                 animation="slideUp"
                 duration={animationDuration}
-                delay={staggerDelay * 1}
+                delay={staggerDelay * 2}
                 respectReducedMotion={true}
                 fallbackAnimation="fadeIn"
               >
@@ -195,8 +203,8 @@ export function Home() {
                 <NewsSection
                   isOffline={isOffline}
                   onRetryConnection={handleRetryConnection}
-                  news={news}
-                  isLoading={isNewsLoading}
+                  news={stableNews}
+                  isLoading={isNewsLoading && stableNews.length === 0}
                 />
               </AnimatedElement>
             </section>
@@ -211,7 +219,7 @@ export function Home() {
               <AnimatedElement
                 animation="slideUp"
                 duration={animationDuration}
-                delay={staggerDelay * 2}
+                delay={staggerDelay * 3}
                 respectReducedMotion={true}
                 fallbackAnimation="fadeIn"
               >
@@ -229,7 +237,7 @@ export function Home() {
             <AnimatedElement
               animation="slideUp"
               duration={animationDuration}
-              delay={staggerDelay * 3}
+              delay={staggerDelay * 4}
               respectReducedMotion={true}
               fallbackAnimation="fadeIn"
             >
@@ -240,7 +248,7 @@ export function Home() {
             <AnimatedElement
               animation="slideUp"
               duration={animationDuration}
-              delay={staggerDelay * 3.5}
+              delay={staggerDelay * 5}
               respectReducedMotion={true}
               fallbackAnimation="fadeIn"
             >
@@ -257,7 +265,7 @@ export function Home() {
               <AnimatedElement
                 animation="slideUp"
                 duration={animationDuration}
-                delay={staggerDelay * 4}
+                delay={staggerDelay * 6}
                 respectReducedMotion={true}
                 fallbackAnimation="fadeIn"
               >
@@ -281,7 +289,7 @@ export function Home() {
               <AnimatedElement
                 animation="slideUp"
                 duration={animationDuration}
-                delay={staggerDelay * 5}
+                delay={staggerDelay * 7}
                 respectReducedMotion={true}
                 fallbackAnimation="fadeIn"
               >
@@ -307,8 +315,7 @@ export function Home() {
       >
         {isOffline && 'オフラインモードです。'}
         {networkError && 'ネットワークエラーが発生しています。'}
-        {isDogsLoading && 'ワンちゃん情報を読み込んでいます。'}
-        {isNewsLoading && '新着情報を読み込んでいます。'}
+        {isDataLoading && !hasAnyData && 'データを読み込んでいます。'}
       </div>
 
       {/* アナウンスリージョン（重要な通知用） */}

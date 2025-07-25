@@ -1,221 +1,325 @@
-import { Suspense, useEffect } from 'react';
-import { Route, Routes, useNavigate } from 'react-router-dom';
-import Layout from './components/Layout';
-import NotificationContainer from './components/NotificationContainer';
-import PWAManager from './components/PWAManager';
+import React, { Suspense } from 'react';
+import { HelmetProvider } from 'react-helmet-async';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import useAuth from './context/AuthContext';
 
-// Import all lazy components from centralized file
-import * as LazyComponents from './utils/lazyComponents';
+// レイアウトコンポーネント
+import { Footer } from './components/Footer';
+import { Navbar } from './components/Navbar';
+import { SEO } from './components/SEO';
+import ScrollToTop from './components/ScrollToTop';
 
-// Direct imports for pages that need to be immediately available
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-
-// Optimized loading component with payment flow detection
-const LoadingSpinner = ({ message = 'ロード中...' }: { message?: string }) => {
-  const isPaymentFlow = window.location.pathname.includes('/payment') || 
-                       window.location.pathname.includes('/checkout') ||
-                       window.location.pathname.includes('/subscription') ||
-                       window.location.search.includes('success=true') ||
-                       window.location.search.includes('canceled=true');
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600 mb-2">{message}</p>
-        {isPaymentFlow && (
-          <p className="text-sm text-gray-500">
-            決済後の処理を行っています...
-          </p>
-        )}
-      </div>
+// シンプルなローディングスピナー
+const LoadingSpinner = ({ message = 'ロード中...' }: { message?: string }) => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p className="text-gray-600">{message}</p>
     </div>
-  );
-};
+  </div>
+);
 
-// Protected route component - 無限ループを防止
+// 保護されたルートコンポーネント
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated, loading } = useAuth();
-  const navigate = useNavigate();
   
-  // セッション初期化完了後に一度だけ認証チェック
-  useEffect(() => {
-    if (loading) return; // ローディング中は何もしない
-    
-    if (!user || !isAuthenticated) {
-      console.log('🔐 ProtectedRoute: No auth, redirecting to login');
-      navigate('/login', { 
-        state: { from: window.location.pathname },
-        replace: true 
-      });
-    }
-  }, [loading, user, isAuthenticated]); // navigateを依存配列から削除
-
-  // ローディング中
   if (loading) {
     return <LoadingSpinner message="認証確認中..." />;
   }
-
-  // 認証済みでない場合は何も表示しない（useEffectでリダイレクト処理中）
+  
   if (!user || !isAuthenticated) {
-    return <LoadingSpinner message="リダイレクト中..." />;
+    return <Navigate to="/login" replace />;
   }
-
+  
   return <>{children}</>;
 };
 
-// Auth callback handler component
-const AuthCallback = () => {
-  useEffect(() => {
-    window.location.href = `/magic-link${window.location.hash}`;
-  }, []);
+// 管理者専用の保護ルートコンポーネント
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isAuthenticated, isAdmin, loading } = useAuth();
   
-  return <LoadingSpinner />;
+  if (loading) {
+    return <LoadingSpinner message="認証確認中..." />;
+  }
+  
+  if (!user || !isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">アクセス拒否</h1>
+          <p className="text-gray-600 mb-4">管理者権限が必要です。</p>
+          <Navigate to="/dashboard" replace />
+        </div>
+      </div>
+    );
+  }
+  
+  return <>{children}</>;
 };
 
-function App() {
-  // Performance monitoring and network state - 無効化して安定性を向上
-  useEffect(() => {
-    // 開発環境でのみ最小限の監視
-    if (import.meta.env.DEV) {
-      console.log('App initialized');
-    }
-  }, []);
+// named exportを使用した遅延読み込み - 公開ページ
+const Home = React.lazy(() => import('./pages/Home').then(module => ({ default: module.Home })));
+const Login = React.lazy(() => import('./pages/Login').then(module => ({ default: module.Login })));
+const Register = React.lazy(() => import('./pages/Register').then(module => ({ default: module.Register })));
+const ForgotPassword = React.lazy(() => import('./pages/ForgotPassword').then(module => ({ default: module.ForgotPassword })));
+const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
 
+// ドッグパーク関連ページ
+const DogParkList = React.lazy(() => import('./pages/DogParkList').then(module => ({ default: module.DogParkList })));
+const DogParkDetail = React.lazy(() => import('./pages/DogParkDetail').then(module => ({ default: module.DogParkDetail })));
+const DogParkRules = React.lazy(() => import('./pages/DogParkRules').then(module => ({ default: module.DogParkRules })));
+
+// ショッピング関連ページ
+const PetShop = React.lazy(() => import('./pages/PetShop').then(module => ({ default: module.PetShop })));
+const Cart = React.lazy(() => import('./pages/Cart').then(module => ({ default: module.Cart })));
+const Checkout = React.lazy(() => import('./pages/Checkout').then(module => ({ default: module.Checkout })));
+const ProductDetail = React.lazy(() => import('./pages/ProductDetail').then(module => ({ default: module.ProductDetail })));
+
+// ニュース関連ページ
+const News = React.lazy(() => import('./pages/News').then(module => ({ default: module.News })));
+const NewsDetail = React.lazy(() => import('./pages/NewsDetail').then(module => ({ default: module.NewsDetail })));
+
+// ワンちゃん情報ページ
+const DogInfo = React.lazy(() => import('./pages/DogInfo'));
+const DogInfoBreeds = React.lazy(() => import('./pages/dog-info/Breeds').then(module => ({ default: module.Breeds })));
+const DogInfoCare = React.lazy(() => import('./pages/dog-info/Care').then(module => ({ default: module.Care })));
+const DogInfoFood = React.lazy(() => import('./pages/dog-info/Food').then(module => ({ default: module.Food })));
+const DogInfoTraining = React.lazy(() => import('./pages/dog-info/Training').then(module => ({ default: module.Training })));
+const DogInfoHealthManagement = React.lazy(() => import('./pages/dog-info/HealthManagement').then(module => ({ default: module.HealthManagement })));
+const DogInfoWalk = React.lazy(() => import('./pages/dog-info/Walk').then(module => ({ default: module.Walk })));
+
+// コミュニティ関連ページ
+const Community = React.lazy(() => import('./pages/Community').then(module => ({ default: module.Community })));
+const Contact = React.lazy(() => import('./pages/Contact').then(module => ({ default: module.Contact })));
+
+// その他のページ
+const TermsOfService = React.lazy(() => import('./pages/TermsOfService').then(module => ({ default: module.TermsOfService })));
+const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy').then(module => ({ default: module.PrivacyPolicy })));
+const NotFound = React.lazy(() => import('./pages/NotFound').then(module => ({ default: module.NotFound })));
+
+// 保護されたページ
+const UserDashboard = React.lazy(() => import('./pages/UserDashboard').then(module => ({ default: module.UserDashboard })));
+const DogRegistration = React.lazy(() => import('./pages/DogRegistration').then(module => ({ default: module.DogRegistration })));
+const DogManagement = React.lazy(() => import('./pages/DogManagement').then(module => ({ default: module.DogManagement })));
+const DogProfile = React.lazy(() => import('./pages/DogProfile').then(module => ({ default: module.DogProfile })));
+const ProfileSettings = React.lazy(() => import('./pages/ProfileSettings').then(module => ({ default: module.ProfileSettings })));
+const ParkReservation = React.lazy(() => import('./pages/ParkReservation').then(module => ({ default: module.ParkReservation })));
+const DogParkHistory = React.lazy(() => import('./pages/DogParkHistory').then(module => ({ default: module.DogParkHistory })));
+const OrderHistory = React.lazy(() => import('./pages/OrderHistory').then(module => ({ default: module.OrderHistory })));
+const LikedDogs = React.lazy(() => import('./pages/LikedDogs').then(module => ({ default: module.LikedDogs })));
+const ParkRegistration = React.lazy(() => import('./pages/ParkRegistration').then(module => ({ default: module.ParkRegistration })));
+const ParkRegistrationAgreement = React.lazy(() => import('./pages/ParkRegistrationAgreement').then(module => ({ default: module.ParkRegistrationAgreement })));
+const ParkRegistrationSecondStage = React.lazy(() => import('./pages/ParkRegistrationSecondStage').then(module => ({ default: module.ParkRegistrationSecondStage })));
+
+// 管理者ページ
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
+const AdminUserManagement = React.lazy(() => import('./pages/AdminUserManagement').then(module => ({ default: module.AdminUserManagement })));
+const AdminParkManagement = React.lazy(() => import('./pages/AdminParkManagement').then(module => ({ default: module.AdminParkManagement })));
+const AdminReservationManagement = React.lazy(() => import('./pages/AdminReservationManagement').then(module => ({ default: module.AdminReservationManagement })));
+const AdminSalesManagement = React.lazy(() => import('./pages/AdminSalesManagement').then(module => ({ default: module.AdminSalesManagement })));
+const AdminVaccineApproval = React.lazy(() => import('./pages/AdminVaccineApproval'));
+const AdminFacilityApproval = React.lazy(() => import('./pages/AdminFacilityApproval'));
+const AdminShopManagement = React.lazy(() => import('./pages/AdminShopManagement').then(module => ({ default: module.AdminShopManagement })));
+const AdminRevenueReport = React.lazy(() => import('./pages/AdminRevenueReport').then(module => ({ default: module.AdminRevenueReport })));
+const AdminNewsManagement = React.lazy(() => import('./pages/AdminNewsManagement').then(module => ({ default: module.AdminNewsManagement })));
+
+// シンプルなフォールバックページ
+const SimplePage = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div className="min-h-screen bg-gray-50">
+    <div className="max-w-4xl mx-auto py-12 px-4">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">{title}</h1>
+        {children}
+      </div>
+    </div>
+  </div>
+);
+
+// メインレイアウトコンポーネント
+const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <>
-      <Layout>
-        <Suspense fallback={<LoadingSpinner message="ページを読み込み中..." />}>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<LazyComponents.Home />} />
-            <Route path="/login" element={<LazyComponents.Login />} />
-            <Route path="/register" element={<LazyComponents.Register />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            
-            {/* Dog Park Routes */}
-            <Route path="/parks" element={<LazyComponents.DogParkList />} />
-            <Route path="/parks/:parkId" element={<LazyComponents.DogParkDetail />} />
-            <Route path="/parks/rules" element={<LazyComponents.DogParkRules />} />
-            
-            {/* Shop Routes */}
-            <Route path="/shop" element={<LazyComponents.PetShop />} />
-            <Route path="/shop/product/:productId" element={<LazyComponents.ProductDetail />} />
-            
-            {/* Info & Legal */}
-            <Route path="/privacy" element={<LazyComponents.PrivacyPolicy />} />
-            <Route path="/terms" element={<LazyComponents.TermsOfService />} />
-            <Route path="/contact" element={<LazyComponents.Contact />} />
-            <Route path="/magic-link" element={<LazyComponents.MagicLink />} />
-            <Route path="/payment-confirmation" element={<LazyComponents.PaymentConfirmation />} />
-            <Route path="/business-information" element={<LazyComponents.BusinessInformation />} />
-            
-            {/* News & Community */}
-            <Route path="/news" element={<LazyComponents.News />} />
-            <Route path="/news/:newsId" element={<LazyComponents.NewsDetail />} />
-            <Route path="/news/park/:parkId" element={<LazyComponents.NewParkDetail />} />
-            
-            {/* Dog Profiles */}
-            <Route path="/dog/:id" element={<LazyComponents.DogProfile />} />
-            <Route path="/dog-profile/:dogId" element={<LazyComponents.DogProfile />} />
-            
-            {/* Dog Information */}
-            <Route path="/dog-info" element={<LazyComponents.DogInfo />} />
-            <Route path="/dog-info/foods" element={<LazyComponents.DogInfoFoods />} />
-            <Route path="/dog-info/vaccine" element={<LazyComponents.DogInfoVaccine />} />
-            <Route path="/dog-info/breeds" element={<LazyComponents.DogInfoBreeds />} />
-            <Route path="/dog-info/parasite" element={<LazyComponents.DogInfoParasite />} />
-            <Route path="/dog-info/snack" element={<LazyComponents.DogInfoSnack />} />
-            <Route path="/dog-info/show" element={<LazyComponents.DogInfoShow />} />
-            
-            {/* New Dog Information Pages */}
-            <Route path="/dog-info/health" element={<LazyComponents.HealthManagement />} />
-            <Route path="/dog-info/training" element={<LazyComponents.Training />} />
-            <Route path="/dog-info/walk" element={<LazyComponents.Walk />} />
-            <Route path="/dog-info/food" element={<LazyComponents.Food />} />
-            <Route path="/dog-info/care" element={<LazyComponents.Care />} />
-            <Route path="/dog-info/breeds" element={<LazyComponents.Breeds />} />
-            
-            {/* Development Tools */}
-            <Route path="/netlify-setup-guide" element={<LazyComponents.NetlifySetupGuide />} />
-            <Route path="/pwa-setup-guide" element={<LazyComponents.PWASetupGuide />} />
-            <Route path="/pwa-implementation-guide" element={<LazyComponents.PWAImplementationGuide />} />
-            <Route path="/pwa-documentation" element={<LazyComponents.PWADocumentation />} />
-            <Route path="/pwa-testing-suite" element={<LazyComponents.PWATestingSuite />} />
-            <Route path="/pwa-lighthouse-audit" element={<LazyComponents.PWALighthouseAudit />} />
-            <Route path="/pwa-deployment-guide" element={<LazyComponents.PWADeploymentGuide />} />
-            
-            {/* Auth Callback */}
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            
-            {/* PROTECTED ROUTES */}
-            {/* User Dashboard */}
-            <Route path="/dashboard" element={<ProtectedRoute><LazyComponents.UserDashboard /></ProtectedRoute>} />
-            <Route path="/profile-settings" element={<ProtectedRoute><LazyComponents.ProfileSettings /></ProtectedRoute>} />
-            
-            {/* Dog Management */}
-            <Route path="/liked-dogs" element={<ProtectedRoute><LazyComponents.LikedDogs /></ProtectedRoute>} />
-            <Route path="/register-dog" element={<ProtectedRoute><LazyComponents.DogRegistration /></ProtectedRoute>} />
-            <Route path="/dog-management" element={<ProtectedRoute><LazyComponents.DogManagement /></ProtectedRoute>} />
-            
-            {/* Park Management */}
-            <Route path="/park-management" element={<ProtectedRoute><LazyComponents.ParkManagement /></ProtectedRoute>} />
-            <Route path="/register-park" element={<ProtectedRoute><LazyComponents.ParkRegistration /></ProtectedRoute>} />
-            <Route path="/facility-registration" element={<ProtectedRoute><LazyComponents.FacilityRegistration /></ProtectedRoute>} />
-            <Route path="/park-publishing-setup" element={<ProtectedRoute><LazyComponents.ParkManagement /></ProtectedRoute>} />
-            
-            {/* Community & Social */}
-            <Route path="/community" element={<ProtectedRoute><LazyComponents.Community /></ProtectedRoute>} />
-            
-            {/* Reservations & Access */}
-            <Route path="/access-control" element={<ProtectedRoute><LazyComponents.AccessControl /></ProtectedRoute>} />
-            <Route path="/reservation/:parkId" element={<ProtectedRoute><LazyComponents.ParkReservation /></ProtectedRoute>} />
-            <Route path="/reservation-history" element={<ProtectedRoute><LazyComponents.OrderHistory /></ProtectedRoute>} />
-            
-            {/* Store & Payments */}
-            <Route path="/cart" element={<ProtectedRoute><LazyComponents.Cart /></ProtectedRoute>} />
-            <Route path="/checkout" element={<ProtectedRoute><LazyComponents.Checkout /></ProtectedRoute>} />
-            <Route path="/order-history" element={<ProtectedRoute><LazyComponents.OrderHistory /></ProtectedRoute>} />
-            <Route path="/subscription" element={<ProtectedRoute><LazyComponents.Subscription /></ProtectedRoute>} />
-            
-            {/* Owner Dashboard */}
-            <Route path="/owner-dashboard" element={<ProtectedRoute><LazyComponents.OwnerDashboard /></ProtectedRoute>} />
-            <Route path="/owner-payment-system" element={<ProtectedRoute><LazyComponents.OwnerPaymentSystem /></ProtectedRoute>} />
-            
-            {/* Admin Routes */}
-            <Route path="/admin" element={<ProtectedRoute><LazyComponents.AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/parks" element={<ProtectedRoute><LazyComponents.AdminParkManagement /></ProtectedRoute>} />
-            <Route path="/admin/users" element={<ProtectedRoute><LazyComponents.AdminUserManagement /></ProtectedRoute>} />
-            <Route path="/admin/facilities" element={<ProtectedRoute><LazyComponents.AdminFacilityApproval /></ProtectedRoute>} />
-            <Route path="/admin/vaccines" element={<ProtectedRoute><LazyComponents.AdminVaccineApproval /></ProtectedRoute>} />
-            <Route path="/admin/management" element={<ProtectedRoute><LazyComponents.AdminManagement /></ProtectedRoute>} />
-            <Route path="/admin/news" element={<ProtectedRoute><LazyComponents.AdminNewsManagement /></ProtectedRoute>} />
-            <Route path="/admin/reservations" element={<ProtectedRoute><LazyComponents.AdminReservationManagement /></ProtectedRoute>} />
-            <Route path="/admin/revenue-report" element={<ProtectedRoute><LazyComponents.AdminRevenueReport /></ProtectedRoute>} />
-            <Route path="/admin/sales" element={<ProtectedRoute><LazyComponents.AdminSalesManagement /></ProtectedRoute>} />
-            <Route path="/admin/shop" element={<ProtectedRoute><LazyComponents.AdminShopManagement /></ProtectedRoute>} />
-            <Route path="/admin/tasks" element={<ProtectedRoute><LazyComponents.AdminTasks /></ProtectedRoute>} />
-            <Route path="/admin/user/:userId" element={<ProtectedRoute><LazyComponents.AdminUserDetail /></ProtectedRoute>} />
-            
-            {/* 2FA Route */}
-            <Route path="/verify-2fa" element={<LazyComponents.TwoFactorVerify />} />
-            
-            {/* Development & Deployment */}
-            <Route path="/deploy" element={<ProtectedRoute><LazyComponents.Deploy /></ProtectedRoute>} />
-            <Route path="/deployment-history" element={<ProtectedRoute><LazyComponents.DeploymentHistory /></ProtectedRoute>} />
-            
-            {/* 404 */}
-            <Route path="*" element={<LazyComponents.Home />} />
-          </Routes>
-        </Suspense>
-      </Layout>
-      <NotificationContainer />
-      <PWAManager />
-    </>
+    <HelmetProvider>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <SEO />
+        <Navbar />
+        <main className="flex-1">
+          {children}
+        </main>
+        <Footer />
+      </div>
+    </HelmetProvider>
   );
-}
+};
+
+const App: React.FC = () => {
+  return (
+    <Layout>
+      <ScrollToTop />
+      <Suspense fallback={<LoadingSpinner message="ページを読み込み中..." />}>
+        <Routes>
+          {/* 公開ページ */}
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          
+          {/* ドッグパーク関連 */}
+          <Route path="/parks" element={<DogParkList />} />
+          <Route path="/parks/:id" element={<DogParkDetail />} />
+          <Route path="/rules" element={<DogParkRules />} />
+          
+          {/* ショッピング関連 */}
+          <Route path="/petshop" element={<PetShop />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/products/:id" element={<ProductDetail />} />
+          
+          {/* ニュース関連 */}
+          <Route path="/news" element={<News />} />
+          <Route path="/news/:id" element={<NewsDetail />} />
+          
+          {/* ワンちゃん情報コーナー */}
+          <Route path="/dog-info" element={<DogInfo />} />
+          <Route path="/dog-info/breeds" element={<DogInfoBreeds />} />
+          <Route path="/dog-info/care" element={<DogInfoCare />} />
+          <Route path="/dog-info/food" element={<DogInfoFood />} />
+          <Route path="/dog-info/training" element={<DogInfoTraining />} />
+          <Route path="/dog-info/health" element={<DogInfoHealthManagement />} />
+          <Route path="/dog-info/walk" element={<DogInfoWalk />} />
+          
+          {/* コミュニティ関連 */}
+          <Route path="/community" element={<Community />} />
+          <Route path="/contact" element={<Contact />} />
+          
+          {/* その他のページ */}
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          
+          {/* 保護されたページ */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <UserDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/dog-registration" element={
+            <ProtectedRoute>
+              <DogRegistration />
+            </ProtectedRoute>
+          } />
+          <Route path="/dog-management" element={
+            <ProtectedRoute>
+              <DogManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/dog-profile/:id" element={
+            <ProtectedRoute>
+              <DogProfile />
+            </ProtectedRoute>
+          } />
+          <Route path="/profile-settings" element={
+            <ProtectedRoute>
+              <ProfileSettings />
+            </ProtectedRoute>
+          } />
+          <Route path="/reservation/:parkId" element={
+            <ProtectedRoute>
+              <ParkReservation />
+            </ProtectedRoute>
+          } />
+          <Route path="/park-history" element={
+            <ProtectedRoute>
+              <DogParkHistory />
+            </ProtectedRoute>
+          } />
+          <Route path="/order-history" element={
+            <ProtectedRoute>
+              <OrderHistory />
+            </ProtectedRoute>
+          } />
+          <Route path="/liked-dogs" element={
+            <ProtectedRoute>
+              <LikedDogs />
+            </ProtectedRoute>
+          } />
+          <Route path="/park-registration" element={
+            <ProtectedRoute>
+              <ParkRegistration />
+            </ProtectedRoute>
+          } />
+          <Route path="/park-registration-agreement" element={
+            <ProtectedRoute>
+              <ParkRegistrationAgreement />
+            </ProtectedRoute>
+          } />
+                     <Route path="/register-park" element={
+             <ProtectedRoute>
+               <ParkRegistration />
+             </ProtectedRoute>
+           } />
+          
+          {/* 管理者専用ページ */}
+          <Route path="/admin" element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          } />
+          <Route path="/admin/users" element={
+            <AdminRoute>
+              <AdminUserManagement />
+            </AdminRoute>
+          } />
+          <Route path="/admin/parks" element={
+            <AdminRoute>
+              <AdminParkManagement />
+            </AdminRoute>
+          } />
+          <Route path="/admin/reservations" element={
+            <AdminRoute>
+              <AdminReservationManagement />
+            </AdminRoute>
+          } />
+          <Route path="/admin/sales" element={
+            <AdminRoute>
+              <AdminSalesManagement />
+            </AdminRoute>
+          } />
+                     <Route path="/admin/vaccine-approval" element={
+             <AdminRoute>
+               <AdminVaccineApproval />
+             </AdminRoute>
+           } />
+           <Route path="/admin/facility-approval" element={
+             <AdminRoute>
+               <AdminFacilityApproval />
+             </AdminRoute>
+           } />
+           <Route path="/admin/shop" element={
+             <AdminRoute>
+               <AdminShopManagement />
+             </AdminRoute>
+           } />
+          <Route path="/admin/revenue" element={
+            <AdminRoute>
+              <AdminRevenueReport />
+            </AdminRoute>
+          } />
+          <Route path="/admin/news" element={
+            <AdminRoute>
+              <AdminNewsManagement />
+            </AdminRoute>
+          } />
+          
+          {/* 404ページ */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </Layout>
+  );
+};
 
 export default App;
