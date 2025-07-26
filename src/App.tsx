@@ -104,6 +104,7 @@ const ProfileSettings = React.lazy(() => import('./pages/ProfileSettings').then(
 const ParkReservation = React.lazy(() => import('./pages/ParkReservation').then(module => ({ default: module.ParkReservation })));
 const DogParkHistory = React.lazy(() => import('./pages/DogParkHistory').then(module => ({ default: module.DogParkHistory })));
 const OrderHistory = React.lazy(() => import('./pages/OrderHistory').then(module => ({ default: module.OrderHistory })));
+const PaymentMethodSettings = React.lazy(() => import('./pages/PaymentMethodSettings').then(module => ({ default: module.PaymentMethodSettings })));
 const LikedDogs = React.lazy(() => import('./pages/LikedDogs').then(module => ({ default: module.LikedDogs })));
 const ParkRegistration = React.lazy(() => import('./pages/ParkRegistration').then(module => ({ default: module.ParkRegistration })));
 const ParkRegistrationAgreement = React.lazy(() => import('./pages/ParkRegistrationAgreement').then(module => ({ default: module.ParkRegistrationAgreement })));
@@ -124,6 +125,10 @@ const AdminFacilityApproval = React.lazy(() => import('./pages/AdminFacilityAppr
 const AdminShopManagement = React.lazy(() => import('./pages/AdminShopManagement').then(module => ({ default: module.AdminShopManagement })));
 const AdminRevenueReport = React.lazy(() => import('./pages/AdminRevenueReport').then(module => ({ default: module.AdminRevenueReport })));
 const AdminNewsManagement = React.lazy(() => import('./pages/AdminNewsManagement').then(module => ({ default: module.AdminNewsManagement })));
+
+// オーナー・運営関連
+const MyParksManagement = React.lazy(() => import('./pages/MyParksManagement').then(module => ({ default: module.MyParksManagement })));
+const MyFacilitiesManagement = React.lazy(() => import('./pages/MyFacilitiesManagement').then(module => ({ default: module.MyFacilitiesManagement })));
 
 // シンプルなフォールバックページ
 const SimplePage = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -298,11 +303,32 @@ const App: React.FC = () => {
           </Suspense>
         } />
         
+        {/* 💳 決済・サブスクリプション */}
+        <Route path="/subscription-intro" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <SubscriptionIntro />
+          </Suspense>
+        } />
+        
         {/* 🔐 保護されたページ（ダッシュボードSkeleton） */}
         <Route path="/access-control" element={
           <ProtectedRoute>
             <Suspense fallback={<DashboardSkeleton />}>
               <AccessControl />
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/my-parks-management" element={
+          <ProtectedRoute>
+            <Suspense fallback={<PageSkeleton />}>
+              <MyParksManagement />
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/my-facilities-management" element={
+          <ProtectedRoute>
+            <Suspense fallback={<PageSkeleton />}>
+              <MyFacilitiesManagement />
             </Suspense>
           </ProtectedRoute>
         } />
@@ -341,17 +367,24 @@ const App: React.FC = () => {
             </Suspense>
           </ProtectedRoute>
         } />
+        <Route path="/payment-method-settings" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
+              <PaymentMethodSettings />
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/dogpark-history" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
+              <DogParkHistory />
+            </Suspense>
+          </ProtectedRoute>
+        } />
         <Route path="/reservation/:parkId" element={
           <ProtectedRoute>
             <Suspense fallback={<DashboardSkeleton />}>
               <ParkReservation />
-            </Suspense>
-          </ProtectedRoute>
-        } />
-        <Route path="/park-history" element={
-          <ProtectedRoute>
-            <Suspense fallback={<DashboardSkeleton />}>
-              <DogParkHistory />
             </Suspense>
           </ProtectedRoute>
         } />
@@ -503,6 +536,22 @@ const App: React.FC = () => {
               <AdminNewsManagement />
             </Suspense>
           </AdminRoute>
+        } />
+        
+        {/* オーナー・運営関連 */}
+        <Route path="/my-parks" element={
+          <ProtectedRoute>
+            <Suspense fallback={<PageSkeleton />}>
+              <MyParksManagement />
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/my-facilities" element={
+          <ProtectedRoute>
+            <Suspense fallback={<PageSkeleton />}>
+              <MyFacilitiesManagement />
+            </Suspense>
+          </ProtectedRoute>
         } />
         
         {/* 404ページ */}

@@ -6,7 +6,6 @@ import {
     Clock,
     Crown,
     Edit,
-    Eye,
     Globe,
     Heart,
     MapPin,
@@ -20,7 +19,6 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import { DogManagementSection } from '../components/dashboard/DogManagementSection';
 import { NotificationSection } from '../components/dashboard/NotificationSection';
-import { ParkCard } from '../components/dashboard/ParkCard';
 import { ParkModal } from '../components/dashboard/ParkModal';
 import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
@@ -575,41 +573,79 @@ export function UserDashboard() {
       />
 
       {/* Owned Parks Management Section with Modern Styling */}
-      {ownedParks.length > 0 && (
-        <Card className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold flex items-center">
-              <Building className="w-6 h-6 text-green-600 mr-2" />
-              管理中のドッグラン ({ownedParks.length}施設)
-            </h2>
+      <Card className="p-6 bg-gradient-to-br from-green-50 to-blue-50 border-green-200">
+        <div className="mb-4 flex justify-between items-center">
+          <h2 className="text-xl font-semibold flex items-center">
+            <Building className="w-6 h-6 text-green-600 mr-2" />
+            管理中のドッグラン ({ownedParks.length}施設)
+          </h2>
+          <Link to="/my-parks-management">
+            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+              <Edit className="w-4 h-4 mr-1" />
+              一覧・管理
+            </Button>
+          </Link>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {ownedParks.slice(0, 6).map((park) => (
+            <div key={park.id} className="p-4 bg-white rounded-lg border border-gray-200">
+              <h3 className="font-semibold mb-1">{park.name}</h3>
+              <p className="text-sm text-gray-600 mb-2">{park.address}</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    park.status === 'approved' 
+                      ? 'bg-green-100 text-green-800'
+                      : park.status === 'pending'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {park.status === 'approved' && '公開中'}
+                    {park.status === 'pending' && '審査中'}
+                    {park.status === 'rejected' && '却下'}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500">
+                  料金: ¥{park.price_per_hour}/時間
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {ownedParks.length > 6 && (
+          <div className="mt-4 text-center">
+            <Link to="/my-parks-management">
+              <Button variant="secondary" size="sm">
+                すべて表示 ({ownedParks.length}施設)
+              </Button>
+            </Link>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ownedParks.map((park) => (
-              <ParkCard
-                key={park.id}
-                park={park}
-                onSelect={handleParkSelect}
-              />
-            ))}
-          </div>
-        </Card>
-      )}
+        )}
+      </Card>
 
       {/* 管理中のペット関連施設一覧 */}
       {facilities.length > 0 && (
         <Card className="p-6 bg-gradient-to-br from-teal-50 to-cyan-50 border-teal-200">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold flex items-center">
-              <Building className="w-6 h-6 text-teal-600 mr-2" />
-              管理中のペット関連施設 ({facilities.length}施設)
-            </h2>
-            <p className="text-gray-600 mt-1">ペットショップ、動物病院、トリミングサロンなどの施設管理</p>
+          <div className="mb-6 flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-semibold flex items-center">
+                <Building className="w-6 h-6 text-teal-600 mr-2" />
+                管理中のペット関連施設 ({facilities.length}施設)
+              </h2>
+              <p className="text-gray-600 mt-1">ペットショップ、動物病院、トリミングサロンなどの施設管理</p>
+            </div>
+            <Link to="/my-facilities-management">
+              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">
+                <Edit className="w-4 h-4 mr-1" />
+                一覧・管理
+              </Button>
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {facilities.map((facility: any) => (
-              <Card key={facility.id} className="hover:shadow-lg transition-shadow bg-white border-teal-100">
+            {facilities.slice(0, 4).map((facility: any) => (
+              <div key={facility.id} className="p-4 bg-white rounded-lg border border-teal-100">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold mb-2">{facility.name}</h3>
@@ -666,36 +702,22 @@ export function UserDashboard() {
                 </div>
 
                 <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="flex items-center text-xs"
-                      disabled={true}
-                      title="施設の修正機能は準備中です"
-                    >
-                      <Edit className="w-3 h-3 mr-1" />
-                      修正
-                    </Button>
-                    {facility.status === 'approved' && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="flex items-center text-xs"
-                        onClick={() => navigate(`/parks?view=facilities&facility=${facility.id}`)}
-                      >
-                        <Eye className="w-3 h-3 mr-1" />
-                        公開ページ
-                      </Button>
-                    )}
-                  </div>
                   <div className="text-xs text-gray-500">
                     {facility.category_name || 'その他施設'}
                   </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
+          {facilities.length > 4 && (
+            <div className="mt-4 text-center">
+              <Link to="/my-facilities-management">
+                <Button variant="secondary" size="sm">
+                  すべて表示 ({facilities.length}施設)
+                </Button>
+              </Link>
+            </div>
+          )}
         </Card>
       )}
 

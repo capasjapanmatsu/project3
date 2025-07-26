@@ -120,7 +120,9 @@
 | ページ名（画面） | ファイルパス | ルーティング | 説明・備考 |
 |---|---|---|---|
 | ユーザーダッシュボード | `src/pages/UserDashboard.tsx` | `/dashboard` | 🔐 メインダッシュボード |
-| プロフィール設定 | `src/pages/ProfileSettings.tsx` | `/profile-settings` | 🔐 個人情報編集 |
+| 管理中ドッグラン一覧 | `src/pages/MyParksManagement.tsx` | `/my-parks-management` | 🔐 ドッグラン管理専用ページ |
+| 管理中施設一覧 | `src/pages/MyFacilitiesManagement.tsx` | `/my-facilities-management` | 🔐 ペット関連施設管理専用ページ |
+| プロフィール設定 | `src/pages/ProfileSettings.tsx` | `/profile-settings` | 🔐 ユーザー情報変更 |
 | ワンちゃん登録 | `src/pages/DogRegistration.tsx` | `/register-dog` | 🔐 新しい犬の登録 |
 | ワンちゃん管理 | `src/pages/DogManagement.tsx` | `/dog-management` | 🔐 登録済み犬の管理 |
 | ワンちゃんプロフィール | `src/pages/DogProfile.tsx` | `/dog/:id` または `/dog-profile/:dogId` | 🔐 個別犬の詳細情報 |
@@ -448,6 +450,67 @@ const { id: parkId } = useParams();
 - ルート定義のパラメータ名（`:id`）とuseParams()での取得名は一致させる必要がある
 - この問題は開発時のデバッグログ追加により特定された
 - 類似の問題を避けるため、他のページでも同様のチェックが推奨される
+
+### プロフィール・設定
+
+- `ProfileSettings.tsx` - プロフィール設定ページ（**サブスクリプション管理機能追加済み**）
+  - 基本情報編集
+  - パスワード変更
+  - **サブスクリプション一時停止・再開・退会機能**
+  - 支払い方法、利用履歴、注文履歴へのクイックリンク
+  - アカウント削除機能
+- `PaymentMethodSettings.tsx` - 支払い方法設定
+
+---
+
+## 📋 **最新の変更履歴・実装状況**
+
+### **2024年最新追加・修正項目**
+
+#### **💳 決済・サブスクリプション関連**
+- **追加**: `SubscriptionIntro.tsx` - サブスクリプション紹介ページ
+  - 機能: サブスクの特典紹介、初月無料キャンペーン、不正利用防止対策
+  - 不正防止: デバイスフィンガープリンティング、カードフィンガープリンティング、IP制限
+  - ルート: `/subscription-intro`
+- **削除**: `Subscription.tsx` - 古いサブスクリプションページ（混乱防止のため）
+- **修正**: 全てのサブスクリプション関連リンクを`/subscription`から`/subscription-intro`に統一
+
+#### **👤 プロフィール・アカウント管理**
+- **追加**: `ProfileSettings.tsx`にサブスクリプション管理機能
+  - 機能: サブスクの一時停止・再開・退会
+  - UI: アカウント削除の上部に配置、紫色カードデザイン
+  - API連携: Stripe Edge Functions (`stripe-pause-subscription`, `stripe-resume-subscription`, `stripe-cancel-subscription`)
+
+#### **🏢 ドッグラン管理機能**
+- **追加**: `MyParksManagement.tsx` - 管理中ドッグラン専用管理ページ
+  - 機能: 実際のDBからowner_idベースでドッグラン一覧取得
+  - 統計: リアルタイム利用者数、月間収益、総予約数表示
+  - 修正: UserDashboardと同じ`owner_id`キーでのデータ取得に統一
+  - リンク: `/my-parks-management`
+- **追加**: `MyFacilitiesManagement.tsx` - ペット関連施設専用管理ページ
+  - 機能: 管理中ペット施設の一覧・編集
+  - リンク: `/my-facilities-management`
+- **軽量化**: `UserDashboard.tsx`から管理系ボタン削除、専用ページへのリンク追加
+
+#### **🔗 リンク・ルート修正**
+- **修正**: ProfileSettingsページの404エラーリンク復旧
+  - 支払い方法: `/payment-method-settings` ✅
+  - 利用履歴: `/dogpark-history` ✅  
+  - 注文履歴: `/order-history` ✅
+  - 削除: ショップボタン（不要なため）
+
+#### **⚙️ 技術的改善**
+- **追加**: 不正利用防止システム
+  - `deviceFingerprint.ts` - デバイス識別
+  - `cardFraudPrevention.ts` - カード不正防止
+  - `FraudPreventionTerms.tsx` - 利用規約コンポーネント
+- **修正**: App.tsxルート定義の整理・統一
+- **修正**: 開発サーバー競合解決（複数プロセス強制終了対応）
+
+### **🚨 重要な修正項目**
+1. **my-parks-management**: `user_id` → `owner_id`への修正でデータ表示問題解決
+2. **subscription-intro**: ルート定義欠落による404エラー解決
+3. **profile-settings**: サブスクリプション管理機能の完全実装
 
 ---
 

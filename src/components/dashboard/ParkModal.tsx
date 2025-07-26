@@ -1,8 +1,7 @@
-import { BarChart4, CheckCircle, Clock, Edit, Eye, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { DogPark } from '../../types';
 import Button from '../Button';
-import { getStatusBadge } from './ParkCard';
 
 interface ParkModalProps {
   park: DogPark;
@@ -10,6 +9,45 @@ interface ParkModalProps {
 }
 
 export function ParkModal({ park, onClose }: ParkModalProps) {
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      approved: { 
+        bg: 'bg-green-100', 
+        text: 'text-green-800', 
+        label: '公開中',
+        icon: CheckCircle 
+      },
+      pending: { 
+        bg: 'bg-yellow-100', 
+        text: 'text-yellow-800', 
+        label: '審査中',
+        icon: Clock 
+      },
+      rejected: { 
+        bg: 'bg-red-100', 
+        text: 'text-red-800', 
+        label: '却下',
+        icon: AlertTriangle 
+      },
+      second_stage_waiting: { 
+        bg: 'bg-orange-100', 
+        text: 'text-orange-800', 
+        label: '詳細情報待ち',
+        icon: Clock 
+      }
+    };
+
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    const IconComponent = config.icon;
+
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${config.bg} ${config.text}`}>
+        <IconComponent className="w-3 h-3" />
+        <span>{config.label}</span>
+      </span>
+    );
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">

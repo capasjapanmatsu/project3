@@ -3,6 +3,7 @@ import {
     ArrowLeft,
     CheckCircle,
     CreditCard,
+    Crown,
     History,
     Home,
     Key,
@@ -11,12 +12,14 @@ import {
     Mail,
     MapPin,
     Package,
+    Pause,
     Phone,
+    Play,
     Save,
     Shield,
-    ShoppingBag,
     Trash2,
     User,
+    UserX,
     X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -25,6 +28,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
 import useAuth from '../context/AuthContext';
+import { useSubscription } from '../hooks/useSubscription';
 import { formatAddress, lookupPostalCode } from '../utils/postalCodeLookup';
 import { supabase } from '../utils/supabase';
 
@@ -32,6 +36,7 @@ import { supabase } from '../utils/supabase';
 export function ProfileSettings() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { subscription, loading: subscriptionLoading, isActive: hasSubscription } = useSubscription();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -67,6 +72,13 @@ export function ProfileSettings() {
   const [deleteError, setDeleteError] = useState('');
   const [isLookingUpPostalCode, setIsLookingUpPostalCode] = useState(false);
   const [postalCodeError, setPostalCodeError] = useState('');
+  
+  // サブスクリプション管理関連のstate
+  const [subscriptionAction, setSubscriptionAction] = useState<'pause' | 'resume' | 'cancel' | null>(null);
+  const [isProcessingSubscription, setIsProcessingSubscription] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState('');
+  const [subscriptionSuccess, setSubscriptionSuccess] = useState('');
+  
   // 2FA関連のstateは一時的にコメントアウト
   // const [mfaFactors, setMfaFactors] = useState<any[]>([]);
   // const [mfaStatus, setMfaStatus] = useState<'enabled' | 'disabled' | 'loading'>('loading');
@@ -378,6 +390,127 @@ export function ProfileSettings() {
     }
   };
 
+  // サブスクリプション管理ハンドラー
+  const handlePauseSubscription = async () => {
+    if (!subscription?.subscription_id) return;
+    
+    setIsProcessingSubscription(true);
+    setSubscriptionError('');
+    setSubscriptionSuccess('');
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-pause-subscription`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          subscription_id: subscription.subscription_id
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'サブスクリプションの一時停止に失敗しました');
+      }
+
+      setSubscriptionSuccess('サブスクリプションを一時停止しました。再開はいつでも可能です。');
+      setSubscriptionAction(null);
+      
+      // データを再取得
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error pausing subscription:', error);
+      setSubscriptionError(error instanceof Error ? error.message : 'サブスクリプションの一時停止に失敗しました');
+    } finally {
+      setIsProcessingSubscription(false);
+    }
+  };
+
+  const handleResumeSubscription = async () => {
+    if (!subscription?.subscription_id) return;
+    
+    setIsProcessingSubscription(true);
+    setSubscriptionError('');
+    setSubscriptionSuccess('');
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-resume-subscription`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          subscription_id: subscription.subscription_id
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'サブスクリプションの再開に失敗しました');
+      }
+
+      setSubscriptionSuccess('サブスクリプションを再開しました。');
+      setSubscriptionAction(null);
+      
+      // データを再取得
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error resuming subscription:', error);
+      setSubscriptionError(error instanceof Error ? error.message : 'サブスクリプションの再開に失敗しました');
+    } finally {
+      setIsProcessingSubscription(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!subscription?.subscription_id) return;
+    
+    setIsProcessingSubscription(true);
+    setSubscriptionError('');
+    setSubscriptionSuccess('');
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-cancel-subscription`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          subscription_id: subscription.subscription_id
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'サブスクリプションの退会に失敗しました');
+      }
+
+      setSubscriptionSuccess('サブスクリプションを退会しました。現在の期間終了まで利用可能です。');
+      setSubscriptionAction(null);
+      
+      // データを再取得
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error canceling subscription:', error);
+      setSubscriptionError(error instanceof Error ? error.message : 'サブスクリプションの退会に失敗しました');
+    } finally {
+      setIsProcessingSubscription(false);
+    }
+  };
+
   const handleAccountDelete = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsDeleting(true);
@@ -452,16 +585,10 @@ export function ProfileSettings() {
             利用履歴
           </Button>
         </Link>
-        <Link to="/orders">
+        <Link to="/order-history">
           <Button variant="secondary" size="sm">
             <Package className="w-4 h-4 mr-2" />
             注文履歴
-          </Button>
-        </Link>
-        <Link to="/shop">
-          <Button variant="secondary" size="sm">
-            <ShoppingBag className="w-4 h-4 mr-2" />
-            ショップ
           </Button>
         </Link>
       </div>
@@ -614,6 +741,111 @@ export function ProfileSettings() {
               <Key className="w-4 h-4 mr-2" />
               パスワードを変更
             </Button>
+          </div>
+
+          {/* サブスクリプション管理セクション */}        
+          <div className="p-4 bg-white rounded-lg border border-purple-200">
+            <div className="flex items-center mb-3">
+              <Crown className="w-5 h-5 text-purple-600 mr-2" />
+              <h3 className="font-semibold">サブスクリプション管理</h3>
+            </div>
+            
+            {subscriptionLoading ? (
+              <div className="flex items-center space-x-2">
+                <Loader className="w-4 h-4 animate-spin" />
+                <span className="text-sm text-gray-600">読み込み中...</span>
+              </div>
+            ) : hasSubscription && subscription ? (
+              <div className="space-y-3">
+                <div className="text-sm text-gray-600">
+                  <p>現在のプラン: <span className="font-medium text-purple-600">月額サブスクリプション</span></p>
+                  <p>ステータス: <span className={`font-medium ${
+                    subscription.subscription_status === 'active' ? 'text-green-600' : 
+                    subscription.subscription_status === 'paused' ? 'text-yellow-600' : 
+                    'text-red-600'
+                  }`}>
+                    {subscription.subscription_status === 'active' ? '利用中' : 
+                     subscription.subscription_status === 'paused' ? '一時停止中' : 
+                     subscription.subscription_status === 'canceled' ? '退会済み' : subscription.subscription_status}
+                  </span></p>
+                  {subscription.current_period_end && (
+                    <p>次回更新日: {new Date(subscription.current_period_end * 1000).toLocaleDateString()}</p>
+                  )}
+                </div>
+
+                {subscriptionError && (
+                  <div className="p-3 bg-red-50 rounded-lg">
+                    <div className="flex items-start space-x-2">
+                      <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5" />
+                      <p className="text-sm text-red-800">{subscriptionError}</p>
+                    </div>
+                  </div>
+                )}
+
+                {subscriptionSuccess && (
+                  <div className="p-3 bg-green-50 rounded-lg">
+                    <div className="flex items-start space-x-2">
+                      <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
+                      <p className="text-sm text-green-800">{subscriptionSuccess}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  {subscription.subscription_status === 'active' && (
+                    <>
+                      <Button 
+                        variant="secondary" 
+                        size="sm"
+                        onClick={() => setSubscriptionAction('pause')}
+                        disabled={isProcessingSubscription}
+                      >
+                        <Pause className="w-4 h-4 mr-1" />
+                        利用を一時停止
+                      </Button>
+                      <Button 
+                        variant="secondary" 
+                        size="sm"
+                        className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
+                        onClick={() => setSubscriptionAction('cancel')}
+                        disabled={isProcessingSubscription}
+                      >
+                        <UserX className="w-4 h-4 mr-1" />
+                        退会する
+                      </Button>
+                    </>
+                  )}
+                  
+                  {subscription.subscription_status === 'paused' && (
+                    <Button 
+                      variant="secondary" 
+                      size="sm"
+                      className="text-green-600 hover:text-green-700 border-green-300 hover:border-green-400"
+                      onClick={() => setSubscriptionAction('resume')}
+                      disabled={isProcessingSubscription}
+                    >
+                      <Play className="w-4 h-4 mr-1" />
+                      利用を再開
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600">
+                  現在サブスクリプションに加入していません。
+                </p>
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  className="text-purple-600 hover:text-purple-700 border-purple-300 hover:border-purple-400"
+                  onClick={() => navigate('/subscription-intro')}
+                >
+                  <Crown className="w-4 h-4 mr-1" />
+                  サブスクリプションに加入
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="p-4 bg-white rounded-lg border border-gray-200">
@@ -850,6 +1082,130 @@ export function ProfileSettings() {
         </div>
       )}
 
+      {/* サブスクリプション管理モーダル */}
+      {subscriptionAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-purple-600">
+                {subscriptionAction === 'pause' && 'サブスクリプション一時停止'}
+                {subscriptionAction === 'resume' && 'サブスクリプション再開'}
+                {subscriptionAction === 'cancel' && 'サブスクリプション退会'}
+              </h3>
+              <button
+                onClick={() => {
+                  setSubscriptionAction(null);
+                  setSubscriptionError('');
+                  setSubscriptionSuccess('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {subscriptionAction === 'pause' && (
+                <>
+                  <div className="p-4 bg-yellow-50 rounded-lg">
+                    <div className="flex items-start space-x-2">
+                      <Pause className="w-5 h-5 text-yellow-600 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-yellow-800 mb-1">一時停止について</p>
+                        <p className="text-sm text-yellow-700">
+                          サブスクリプションを一時停止すると、次回の請求が停止されます。
+                          いつでも再開することができます。
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    一時停止中も現在の期間終了まではサービスをご利用いただけます。
+                  </p>
+                </>
+              )}
+
+              {subscriptionAction === 'resume' && (
+                <>
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    <div className="flex items-start space-x-2">
+                      <Play className="w-5 h-5 text-green-600 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-green-800 mb-1">再開について</p>
+                        <p className="text-sm text-green-700">
+                          サブスクリプションを再開すると、通常の請求サイクルが復活します。
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    再開後は全ての機能をご利用いただけます。
+                  </p>
+                </>
+              )}
+
+              {subscriptionAction === 'cancel' && (
+                <>
+                  <div className="p-4 bg-red-50 rounded-lg">
+                    <div className="flex items-start space-x-2">
+                      <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-red-800 mb-1">退会について</p>
+                        <p className="text-sm text-red-700">
+                          退会すると、現在の期間終了後にサブスクリプションが終了します。
+                          いつでも再度加入することができます。
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    退会後も現在の期間終了まではサービスをご利用いただけます。
+                  </p>
+                </>
+              )}
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setSubscriptionAction(null);
+                    setSubscriptionError('');
+                    setSubscriptionSuccess('');
+                  }}
+                  disabled={isProcessingSubscription}
+                >
+                  キャンセル
+                </Button>
+                <Button
+                  type="button"
+                  isLoading={isProcessingSubscription}
+                  className={
+                    subscriptionAction === 'cancel' 
+                      ? "bg-red-600 hover:bg-red-700" 
+                      : subscriptionAction === 'resume'
+                      ? "bg-green-600 hover:bg-green-700"
+                      : "bg-yellow-600 hover:bg-yellow-700"
+                  }
+                  onClick={() => {
+                    if (subscriptionAction === 'pause') {
+                      void handlePauseSubscription();
+                    } else if (subscriptionAction === 'resume') {
+                      void handleResumeSubscription();
+                    } else if (subscriptionAction === 'cancel') {
+                      void handleCancelSubscription();
+                    }
+                  }}
+                >
+                  {subscriptionAction === 'pause' && '一時停止する'}
+                  {subscriptionAction === 'resume' && '再開する'}
+                  {subscriptionAction === 'cancel' && '退会する'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
