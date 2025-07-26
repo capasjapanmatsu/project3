@@ -180,206 +180,24 @@ export function MapView({
 
   // Google Maps の初期化
   useEffect(() => {
-    const loadGoogleMaps = async () => {
-      try {
-        // Google Maps API キーの確認
-        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-        if (!apiKey) {
-          console.warn('Google Maps API キーが設定されていません');
-          return;
-        }
+    const initializeMap = () => {
+      if (mapRef.current && window.google?.maps) {
+        const map = new window.google.maps.Map(mapRef.current, {
+          center: mapCenter,
+          zoom: currentLocation ? 15 : 13, // 現在地がある場合はズームを大きく
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+        });
 
-        // Google Maps API がまだ読み込まれていない場合
-        if (!window.google) {
-          const script = document.createElement('script');
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-          script.async = true;
-          script.defer = true;
-          
-          await new Promise<void>((resolve, reject) => {
-            script.onload = () => resolve();
-            script.onerror = () => reject(new Error('Google Maps API の読み込みに失敗しました'));
-            document.head.appendChild(script);
-          });
-        }
-
-        if (mapRef.current && window.google?.maps) {
-          const map = new window.google.maps.Map(mapRef.current, {
-            center: mapCenter,
-            zoom: currentLocation ? 15 : 13, // 現在地がある場合はズームを大きく
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: false,
-          });
-
-          // マーカーを追加
-          addMarkers(map);
-          setIsLoaded(true);
-        }
-      } catch (error) {
-        console.error('Google Maps の初期化に失敗:', error);
-        setIsLoaded(false);
+        // マーカーを追加
+        addMarkers(map);
+        setIsLoaded(true);
       }
     };
 
-    const addMarkers = (map: any) => {
-      // ドッグパークのマーカー
-      if (activeView === 'dogparks' || activeView === 'facilities') {
-        if (window.google?.maps && parks.length > 0) {
-          // 肉球アイコンのSVGデータを定義（favicon.svgと同じデザイン）
-          const pawIconSvg = `
-            <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="16" cy="16" r="16" fill="url(#paint0_linear)" />
-              <path d="M22.4 10.4C22.4 11.7255 21.3255 12.8 20 12.8C18.6745 12.8 17.6 11.7255 17.6 10.4C17.6 9.07452 18.6745 8 20 8C21.3255 8 22.4 9.07452 22.4 10.4Z" fill="white"/>
-              <path d="M14.4 10.4C14.4 11.7255 13.3255 12.8 12 12.8C10.6745 12.8 9.6 11.7255 9.6 10.4C9.6 9.07452 10.6745 8 12 8C13.3255 8 14.4 9.07452 14.4 10.4Z" fill="white"/>
-              <path d="M22.4 18.4C22.4 19.7255 21.3255 20.8 20 20.8C18.6745 20.8 17.6 19.7255 17.6 18.4C17.6 17.0745 18.6745 16 20 16C21.3255 16 22.4 17.0745 22.4 18.4Z" fill="white"/>
-              <path d="M14.4 18.4C14.4 19.7255 13.3255 20.8 12 20.8C10.6745 20.8 9.6 19.7255 9.6 18.4C9.6 17.0745 10.6745 16 12 16C13.3255 16 14.4 17.0745 14.4 18.4Z" fill="white"/>
-              <path d="M18.4 14.4C19.7255 14.4 20.8 13.3255 20.8 12C20.8 10.6745 19.7255 9.6 18.4 9.6C17.0745 9.6 16 10.6745 16 12C16 13.3255 17.0745 14.4 18.4 14.4Z" fill="white"/>
-              <path d="M18.4 22.4C19.7255 22.4 20.8 21.3255 20.8 20C20.8 18.6745 19.7255 17.6 18.4 17.6C17.0745 17.6 16 18.6745 16 20C16 21.3255 17.0745 22.4 18.4 22.4Z" fill="white"/>
-              <path d="M10.4 14.4C11.7255 14.4 12.8 13.3255 12.8 12C12.8 10.6745 11.7255 9.6 10.4 9.6C9.07452 9.6 8 10.6745 8 12C8 13.3255 9.07452 14.4 10.4 14.4Z" fill="white"/>
-              <path d="M10.4 22.4C11.7255 22.4 12.8 21.3255 12.8 20C12.8 18.6745 11.7255 17.6 10.4 17.6C9.07452 17.6 8 18.6745 8 20C8 21.3255 9.07452 22.4 10.4 22.4Z" fill="white"/>
-              <defs>
-                <linearGradient id="paint0_linear" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-                  <stop stop-color="#3B82F6"/>
-                  <stop offset="1" stop-color="#10B981"/>
-                </linearGradient>
-              </defs>
-            </svg>
-          `;
-
-          // SVGをData URIに変換
-          const pawIconDataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(pawIconSvg);
-
-          parks.forEach(park => {
-            if (park.latitude && park.longitude) {
-              const marker = new window.google.maps.Marker({
-                position: { lat: Number(park.latitude), lng: Number(park.longitude) },
-                map,
-                title: park.name,
-                icon: {
-                  url: pawIconDataUri,
-                  scaledSize: new window.google.maps.Size(32, 32),
-                  anchor: new window.google.maps.Point(16, 16)
-                }
-              });
-
-              const infoWindow = new window.google.maps.InfoWindow({
-                content: `
-                  <div style="padding: 12px; max-width: 250px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                    <h3 style="font-weight: bold; margin-bottom: 8px; color: #1F2937; font-size: 16px;">${park.name}</h3>
-                    ${park.address ? `<p style="font-size: 12px; color: #6B7280; margin-bottom: 6px; line-height: 1.4;">${park.address}</p>` : ''}
-                    ${park.price ? `<p style="font-size: 12px; color: #6B7280; margin-bottom: 12px;">料金: ¥${park.price}/時間</p>` : ''}
-                    <div style="text-align: center; margin-top: 12px;">
-                      <a 
-                        href="/parks/${park.id}" 
-                        target="_blank"
-                        style="
-                          display: inline-block;
-                          background: linear-gradient(135deg, #3B82F6, #10B981);
-                          color: white;
-                          padding: 8px 16px;
-                          border-radius: 6px;
-                          text-decoration: none;
-                          font-size: 13px;
-                          font-weight: 500;
-                          transition: all 0.2s;
-                          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                        "
-                        onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';"
-                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';"
-                      >
-                        🐾 詳細を見る
-                      </a>
-                    </div>
-                  </div>
-                `
-              });
-
-              marker.addListener('click', () => {
-                infoWindow.open(map, marker);
-              });
-            }
-          });
-        }
-      }
-
-      // ペット施設のマーカー
-      if (activeView === 'facilities' || activeView === 'dogparks') {
-        facilities.forEach(facility => {
-          if (facility.latitude && facility.longitude) {
-            const marker = new window.google.maps.Marker({
-              position: { lat: Number(facility.latitude), lng: Number(facility.longitude) },
-              map,
-              title: facility.name,
-              icon: {
-                path: window.google.maps.SymbolPath.CIRCLE,
-                scale: 6,
-                fillColor: '#10B981',
-                fillOpacity: 1,
-                strokeWeight: 2,
-                strokeColor: '#FFFFFF',
-              }
-            });
-
-            const infoWindow = new window.google.maps.InfoWindow({
-              content: `
-                <div style="padding: 12px; max-width: 250px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                  <h3 style="font-weight: bold; margin-bottom: 8px; color: #1F2937; font-size: 16px;">${facility.name}</h3>
-                  ${facility.address ? `<p style="font-size: 12px; color: #6B7280; margin-bottom: 6px; line-height: 1.4;">${facility.address}</p>` : ''}
-                  ${facility.phone ? `<p style="font-size: 12px; color: #6B7280; margin-bottom: 12px;">📞 ${facility.phone}</p>` : ''}
-                  <div style="text-align: center; margin-top: 12px;">
-                    <a 
-                      href="/facilities/${facility.id}" 
-                      target="_blank"
-                      style="
-                        display: inline-block;
-                        background: linear-gradient(135deg, #10B981, #3B82F6);
-                        color: white;
-                        padding: 8px 16px;
-                        border-radius: 6px;
-                        text-decoration: none;
-                        font-size: 13px;
-                        font-weight: 500;
-                        transition: all 0.2s;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                      "
-                      onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';"
-                      onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';"
-                    >
-                      🏢 詳細を見る
-                    </a>
-                  </div>
-                </div>
-              `
-            });
-
-            marker.addListener('click', () => {
-              infoWindow.open(map, marker);
-            });
-          }
-        });
-      }
-
-      // ユーザーの現在地マーカー
-      if (currentLocation && userDogIcon) {
-        // 犬のアイコンでユーザー位置を表示
-        const markerIcon = createDogMarkerIcon(userDogIcon);
-        
-        new window.google.maps.Marker({
-          position: currentLocation,
-          map,
-          title: userDogs.length > 0 ? `現在地 (${userDogs[0]?.name || 'あなた'})` : '現在地',
-          icon: {
-            url: markerIcon,
-            scaledSize: new window.google.maps.Size(40, 40),
-            anchor: new window.google.maps.Point(20, 20)
-          },
-          zIndex: 1000 // 他のマーカーより前面に表示
-        });
-      }
-    };
-
-    void loadGoogleMaps();
+    // GoogleMapsProviderが読み込み完了したら地図を初期化
+    initializeMap();
   }, [parks, facilities, activeView, center, currentLocation, mapCenter, userDogIcon, userDogs]);
 
   // Google Maps API キーが設定されていない場合のフォールバック

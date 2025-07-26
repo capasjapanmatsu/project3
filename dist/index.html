@@ -5,6 +5,23 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
+  <!-- 🚀 重要リソースのpreload（最優先）-->
+  <link rel="preload" href="/favicon.svg" as="image" />
+  
+  <!-- 🎯 フォント最適化 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  
+  <!-- 📡 外部API最適化 -->
+  <link rel="preconnect" href="https://maps.googleapis.com" />
+  <link rel="dns-prefetch" href="https://supabase.co" />
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+  
+  <!-- 🎨 重要なページのprefetch（ユーザーが次に訪問する可能性が高い）-->
+  <link rel="prefetch" href="/login" />
+  <link rel="prefetch" href="/parks" />
+  <link rel="prefetch" href="/dashboard" />
+  
   <!-- Critical CSS for above-the-fold content -->
   <style>
     /* Critical styles for initial paint */
@@ -105,15 +122,15 @@
   <meta name="twitter:description" content="愛犬とのお散歩をもっと楽しく。全国のドッグランを簡単に検索・予約できるサービスです。" />
   <meta name="twitter:image" content="https://dogparkjp.com/og-image.jpg" />
   
-  <title>ドッグパークJP</title>
-  <script type="module" crossorigin src="/assets/js/index-DRdQ3V_A.js"></script>
+  <title>DogPark JP - 愛犬と楽しむドッグラン検索・予約サイト</title>
+  <script type="module" crossorigin src="/assets/js/index-8XfBzcIg.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/js/react-vendor-cniURDpR.js">
   <link rel="modulepreload" crossorigin href="/assets/js/motion-CuO0nkIV.js">
   <link rel="modulepreload" crossorigin href="/assets/js/heavy-features-BIdEME4r.js">
   <link rel="modulepreload" crossorigin href="/assets/js/router-9ZtQ8-Nn.js">
   <link rel="modulepreload" crossorigin href="/assets/js/supabase-hyP6cfTu.js">
   <link rel="modulepreload" crossorigin href="/assets/js/ui-basic-y2lB0SIY.js">
-  <link rel="stylesheet" crossorigin href="/assets/css/index-DZOjyJAu.css">
+  <link rel="stylesheet" crossorigin href="/assets/css/index-DNRiW6wk.css">
 </head>
 <body>
   <a href="#main-content" id="skip-to-content">コンテンツにスキップ</a>
@@ -137,19 +154,19 @@
   
   <!-- Critical path: Load app immediately -->
   
-  <!-- Non-critical: Service Worker registration -->
+  <!-- Non-critical: Service Worker registration (一時的に無効化) -->
   <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js')
-          .then(function(registration) {
-            console.log('SW registered: ', registration);
-          })
-          .catch(function(registrationError) {
-            console.log('SW registration failed: ', registrationError);
-          });
-      });
-    }
+    // if ('serviceWorker' in navigator) {
+    //   window.addEventListener('load', function() {
+    //     navigator.serviceWorker.register('/sw.js')
+    //       .then(function(registration) {
+    //         console.log('SW registered: ', registration);
+    //       })
+    //       .catch(function(registrationError) {
+    //         console.log('SW registration failed: ', registrationError);
+    //       });
+    //   });
+    // }
   </script>
 </body>
 </html>

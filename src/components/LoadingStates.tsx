@@ -3,7 +3,7 @@ import React from 'react';
 
 // ✨ Skeleton Loading Components
 export const SkeletonCard: React.FC = () => (
-  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 animate-scale-in">
     <div className="animate-pulse">
       <div className="flex items-center space-x-4">
         <div className="w-16 h-16 bg-gray-200 rounded-full"></div>
@@ -23,45 +23,45 @@ export const SkeletonCard: React.FC = () => (
 
 // 🏠 ページ全体のSkeleton UI
 export const PageSkeleton: React.FC = () => (
-  <div className="min-h-screen bg-gray-50 animate-pulse">
-    <div className="max-w-7xl mx-auto p-4 space-y-6">
+  <div className="min-h-screen bg-gray-50 animate-fade-in">
+    <div className="container mx-auto px-4 py-8">
       {/* ヘッダー部分 */}
-      <div className="h-16 bg-gray-200 rounded-lg"></div>
+      <div className="mb-8 animate-slide-up">
+        <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+        <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+      </div>
       
       {/* メインコンテンツ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <SkeletonCard key={i} />
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="animate-scale-in" style={{ animationDelay: `${i * 100}ms` }}>
+            <SkeletonCard />
+          </div>
         ))}
       </div>
     </div>
   </div>
 );
 
-// 📝 ダッシュボード専用Skeleton
-export const DashboardSkeleton: React.FC = () => (
-  <div className="min-h-screen bg-gray-50 animate-pulse p-4">
-    <div className="max-w-6xl mx-auto space-y-8">
-      {/* ユーザー情報バー */}
-      <div className="flex items-center space-x-4">
-        <div className="w-16 h-16 bg-gray-200 rounded-full"></div>
-        <div className="space-y-2">
-          <div className="h-6 bg-gray-200 rounded w-32"></div>
-          <div className="h-4 bg-gray-200 rounded w-24"></div>
-        </div>
+// 🛒 ショップ専用Skeleton UI
+export const ShopSkeleton: React.FC = () => (
+  <div className="min-h-screen bg-gray-50 animate-fade-in">
+    <div className="container mx-auto px-4 py-6">
+      {/* ショップヘッダー */}
+      <div className="mb-6 animate-slide-up">
+        <div className="h-6 bg-gray-200 rounded w-1/4 mb-2"></div>
+        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
       </div>
       
-      {/* ダッシュボードカード群 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {Array.from({ length: 9 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="space-y-4">
-              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-              <div className="h-8 bg-gray-200 rounded"></div>
-              <div className="flex space-x-2">
-                <div className="h-8 bg-gray-200 rounded w-20"></div>
-                <div className="h-8 bg-gray-200 rounded w-20"></div>
-              </div>
+      {/* 商品グリッド */}
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="bg-white rounded-lg p-4 shadow-sm animate-scale-in" style={{ animationDelay: `${i * 80}ms` }}>
+            <div className="animate-pulse">
+              <div className="h-32 bg-gray-200 rounded mb-3"></div>
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2 mb-3"></div>
+              <div className="h-6 bg-gray-200 rounded w-1/3"></div>
             </div>
           </div>
         ))}
@@ -70,23 +70,38 @@ export const DashboardSkeleton: React.FC = () => (
   </div>
 );
 
-// 🛒 ショップ専用Skeleton
-export const ShopSkeleton: React.FC = () => (
-  <div className="min-h-screen bg-gray-50 animate-pulse p-4">
-    <div className="max-w-7xl mx-auto space-y-6">
-      {/* 検索バー */}
-      <div className="h-12 bg-gray-200 rounded-lg"></div>
+// 🔐 ダッシュボード専用Skeleton UI
+export const DashboardSkeleton: React.FC = () => (
+  <div className="min-h-screen bg-gray-50 animate-fade-in">
+    <div className="container mx-auto px-4 py-6">
+      {/* ダッシュボードヘッダー */}
+      <div className="mb-8 animate-slide-up">
+        <div className="flex items-center space-x-4 mb-4">
+          <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+          <div className="flex-1">
+            <div className="h-6 bg-gray-200 rounded w-1/3 mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          </div>
+        </div>
+      </div>
       
-      {/* 商品グリッド */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="h-48 bg-gray-200 rounded-t-xl"></div>
-            <div className="p-4 space-y-2">
-              <div className="h-4 bg-gray-200 rounded"></div>
-              <div className="h-6 bg-gray-200 rounded w-20"></div>
-              <div className="h-8 bg-gray-200 rounded"></div>
+      {/* 統計カード */}
+      <div className="grid gap-4 md:grid-cols-3 mb-8">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="bg-white rounded-xl p-6 shadow-sm animate-scale-in" style={{ animationDelay: `${i * 150}ms` }}>
+            <div className="animate-pulse">
+              <div className="h-8 bg-gray-200 rounded w-1/2 mb-3"></div>
+              <div className="h-12 bg-gray-200 rounded w-3/4"></div>
             </div>
+          </div>
+        ))}
+      </div>
+      
+      {/* メインコンテンツ */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="animate-scale-in" style={{ animationDelay: `${(i + 3) * 120}ms` }}>
+            <SkeletonCard />
           </div>
         ))}
       </div>
