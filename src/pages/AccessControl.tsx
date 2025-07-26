@@ -1,22 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  MapPin, 
-  Users, 
-  CheckCircle, 
-  AlertTriangle,
-  PawPrint,
-  Key
+import {
+    AlertTriangle,
+    ArrowLeft,
+    CheckCircle,
+    Clock,
+    Key,
+    MapPin,
+    PawPrint,
+    Shield
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import VaccineBadge, { getVaccineStatusFromDog } from '../components/VaccineBadge';
 import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
-import { PinCodeEntry } from '../components/PinCodeEntry';
+import type { Dog, DogPark, SmartLock } from '../types';
 import { supabase } from '../utils/supabase';
-import type { Dog, SmartLock, DogPark } from '../types';
-import VaccineBadge, { getVaccineStatusFromDog } from '../components/VaccineBadge';
 
 export function AccessControl() {
   const { user } = useAuth();
@@ -30,8 +30,52 @@ export function AccessControl() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [pinCode, setPinCode] = useState<string | null>(null);
+  const [pinExpiresAt, setPinExpiresAt] = useState<string | null>(null);
+  const [isGeneratingPin, setIsGeneratingPin] = useState(false);
 
   const MAX_DOGS = 3; // 最大3頭まで選択可能
+
+  // PIN生成機能
+  const generatePin = async () => {
+    if (!selectedLock || selectedDogs.length === 0) return;
+
+    setIsGeneratingPin(true);
+    setError('');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('ttlock-generate-pin', {
+        body: {
+          userId: user?.id,
+          lockId: selectedLock.lock_id,
+          purpose: 'entry',
+          expiryMinutes: 5
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setPinCode(data.pin_code);
+        setPinExpiresAt(data.expires_at);
+        setSuccess('PINコードが生成されました');
+      } else {
+        throw new Error(data.error || 'PIN生成に失敗しました');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'PIN生成中にエラーが発生しました';
+      setError(errorMessage);
+    } finally {
+      setIsGeneratingPin(false);
+    }
+  };
+
+  const formatExpiryTime = (expiresAt: string) => {
+    const expiry = new Date(expiresAt);
+    const now = new Date();
+    const diffMinutes = Math.floor((expiry.getTime() - now.getTime()) / (1000 * 60));
+    return `${diffMinutes}分後`;
+  };
 
   useEffect(() => {
     const fetchUserDogs = async () => {
@@ -133,25 +177,7 @@ export function AccessControl() {
       .join('、');
   };
 
-  // PINコード生成成功時の処理
-  const handlePinSuccess = (result: any) => {
-    setSuccess(`PINコードを生成しました`);
-    
-    // 3秒後に成功メッセージを消す
-    setTimeout(() => {
-      setSuccess('');
-    }, 3000);
-  };
 
-  // PINコード生成エラー時の処理
-  const handlePinError = (errorMessage: string) => {
-    setError(errorMessage);
-    
-    // 5秒後にエラーメッセージを消す
-    setTimeout(() => {
-      setError('');
-    }, 5000);
-  };
 
   // 犬の性別に応じた敬称を取得する関数
   const getDogHonorific = (gender: string) => {
@@ -344,13 +370,60 @@ export function AccessControl() {
             </h2>
             
             {selectedLock && selectedDogs.length > 0 ? (
-              <PinCodeEntry
-                lockId={selectedLock.lock_id}
-                parkName={parks.find(p => p.id === selectedLock.park_id)?.name || 'ドッグパーク'}
-                purpose="entry"
-                onSuccess={handlePinSuccess}
-                onError={handlePinError}
-              />
+              <div className="space-y-4">
+                {pinCode ? (
+                  <div className="space-y-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-center mb-2">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                        <span className="text-green-800 font-medium">PIN生成完了</span>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-green-800 mb-2 tracking-wider">
+                          {pinCode}
+                        </div>
+                        <div className="flex items-center justify-center text-sm text-green-700">
+                          <Clock className="w-4 h-4 mr-1" />
+                          <span>有効期限: {pinExpiresAt && formatExpiryTime(pinExpiresAt)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-start">
+                        <Shield className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm text-blue-800">
+                          <p className="font-medium mb-1">ご利用方法</p>
+                          <p>ドッグランの入り口でこのPINコードを入力してください。</p>
+                          <p>このPINは一度のみ使用可能で、{pinExpiresAt && formatExpiryTime(pinExpiresAt)}に期限切れとなります。</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={() => {
+                        setPinCode(null);
+                        setPinExpiresAt(null);
+                        setSuccess('');
+                      }}
+                      className="w-full"
+                      variant="secondary"
+                    >
+                      新しいPINを生成
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={generatePin}
+                    isLoading={isGeneratingPin}
+                    className="w-full"
+                    disabled={isGeneratingPin}
+                  >
+                    <Key className="w-4 h-4 mr-2" />
+                    PINコードを生成
+                  </Button>
+                )}
+              </div>
             ) : (
               <div className="text-center py-8">
                 <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />

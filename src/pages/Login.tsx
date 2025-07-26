@@ -139,7 +139,7 @@ export function Login() {
               onChange={(e) => setEmail(e.target.value)}
               required
               icon={<Mail className="w-4 h-4 text-gray-500" />}
-              placeholder="capasjapan@gmail.com"
+              placeholder="dog@dogparkjp.com"
             />
             <div className="relative">
               <Input
@@ -200,7 +200,7 @@ export function Login() {
               onChange={(e) => setEmail(e.target.value)}
               required
               icon={<Mail className="w-4 h-4 text-gray-500" />}
-              placeholder="example@example.com"
+              placeholder="dog@dogparkjp.com"
             />
             <Button
               type="submit"
