@@ -6,26 +6,17 @@ import useAuth from './context/AuthContext';
 // レイアウトコンポーネント
 import { BottomNavigation } from './components/BottomNavigation';
 import { Footer } from './components/Footer';
+import { DashboardSkeleton, PageSkeleton, ShopSkeleton } from './components/LoadingStates';
 import { Navbar } from './components/Navbar';
 import { SEO } from './components/SEO';
 import ScrollToTop from './components/ScrollToTop';
-
-// シンプルなローディングスピナー
-const LoadingSpinner = ({ message = 'ロード中...' }: { message?: string }) => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50">
-    <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-      <p className="text-gray-600">{message}</p>
-    </div>
-  </div>
-);
 
 // 保護されたルートコンポーネント
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated, loading } = useAuth();
   
   if (loading) {
-    return <LoadingSpinner message="認証確認中..." />;
+    return <PageSkeleton />;
   }
   
   if (!user || !isAuthenticated) {
@@ -40,7 +31,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated, isAdmin, loading } = useAuth();
   
   if (loading) {
-    return <LoadingSpinner message="認証確認中..." />;
+    return <PageSkeleton />;
   }
   
   if (!user || !isAuthenticated) {
@@ -166,200 +157,360 @@ const App: React.FC = () => {
   return (
     <Layout>
       <ScrollToTop />
-      <Suspense fallback={<LoadingSpinner message="ページを読み込み中..." />}>
-        <Routes>
-          {/* 公開ページ */}
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          
-          {/* ドッグパーク関連 */}
-          <Route path="/parks" element={<DogParkList />} />
-          <Route path="/parks/:id" element={<DogParkDetail />} />
-          <Route path="/rules" element={<DogParkRules />} />
-          
-          {/* ショッピング関連 */}
-          <Route path="/petshop" element={<PetShop />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/products/:id" element={<ProductDetail />} />
-          
-          {/* ニュース関連 */}
-          <Route path="/news" element={<News />} />
-          <Route path="/news/:id" element={<NewsDetail />} />
-          
-          {/* ワンちゃん情報コーナー */}
-          <Route path="/dog-info" element={<DogInfo />} />
-          <Route path="/dog-info/breeds" element={<DogInfoBreeds />} />
-          <Route path="/dog-info/care" element={<DogInfoCare />} />
-          <Route path="/dog-info/food" element={<DogInfoFood />} />
-          <Route path="/dog-info/training" element={<DogInfoTraining />} />
-          <Route path="/dog-info/health" element={<DogInfoHealthManagement />} />
-          <Route path="/dog-info/walk" element={<DogInfoWalk />} />
-          
-          {/* コミュニティ関連 */}
-          <Route path="/community" element={<Community />} />
-          <Route path="/contact" element={<Contact />} />
-          
-          {/* その他のページ */}
-          <Route path="/terms" element={<TermsOfService />} />
-          <Route path="/privacy" element={<PrivacyPolicy />} />
-          
-          {/* 保護されたページ */}
-          <Route path="/access-control" element={
-            <ProtectedRoute>
+      <Routes>
+        {/* 🏠 公開ページ（高速表示） */}
+        <Route path="/" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <Home />
+          </Suspense>
+        } />
+        <Route path="/login" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <Login />
+          </Suspense>
+        } />
+        <Route path="/register" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <Register />
+          </Suspense>
+        } />
+        <Route path="/forgot-password" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <ForgotPassword />
+          </Suspense>
+        } />
+        <Route path="/reset-password" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <ResetPassword />
+          </Suspense>
+        } />
+        
+        {/* 🗺️ ドッグパーク関連（地図対応Skeleton） */}
+        <Route path="/parks" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <DogParkList />
+          </Suspense>
+        } />
+        <Route path="/parks/:id" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <DogParkDetail />
+          </Suspense>
+        } />
+        <Route path="/rules" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <DogParkRules />
+          </Suspense>
+        } />
+        
+        {/* 🛒 ショッピング関連（商品グリッドSkeleton） */}
+        <Route path="/petshop" element={
+          <Suspense fallback={<ShopSkeleton />}>
+            <PetShop />
+          </Suspense>
+        } />
+        <Route path="/cart" element={
+          <Suspense fallback={<ShopSkeleton />}>
+            <Cart />
+          </Suspense>
+        } />
+        <Route path="/checkout" element={
+          <Suspense fallback={<ShopSkeleton />}>
+            <Checkout />
+          </Suspense>
+        } />
+        <Route path="/products/:id" element={
+          <Suspense fallback={<ShopSkeleton />}>
+            <ProductDetail />
+          </Suspense>
+        } />
+        
+        {/* 📰 ニュース関連 */}
+        <Route path="/news" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <News />
+          </Suspense>
+        } />
+        <Route path="/news/:id" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <NewsDetail />
+          </Suspense>
+        } />
+        
+        {/* 🐕 ワンちゃん情報コーナー */}
+        <Route path="/dog-info" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <DogInfo />
+          </Suspense>
+        } />
+        <Route path="/dog-info/breeds" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <DogInfoBreeds />
+          </Suspense>
+        } />
+        <Route path="/dog-info/care" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <DogInfoCare />
+          </Suspense>
+        } />
+        <Route path="/dog-info/food" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <DogInfoFood />
+          </Suspense>
+        } />
+        <Route path="/dog-info/training" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <DogInfoTraining />
+          </Suspense>
+        } />
+        <Route path="/dog-info/health" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <DogInfoHealthManagement />
+          </Suspense>
+        } />
+        <Route path="/dog-info/walk" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <DogInfoWalk />
+          </Suspense>
+        } />
+        
+        {/* 👥 コミュニティ関連 */}
+        <Route path="/community" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <Community />
+          </Suspense>
+        } />
+        <Route path="/contact" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <Contact />
+          </Suspense>
+        } />
+        
+        {/* その他のページ */}
+        <Route path="/terms" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <TermsOfService />
+          </Suspense>
+        } />
+        <Route path="/privacy" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <PrivacyPolicy />
+          </Suspense>
+        } />
+        
+        {/* 🔐 保護されたページ（ダッシュボードSkeleton） */}
+        <Route path="/access-control" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <AccessControl />
-            </ProtectedRoute>
-          } />
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <UserDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/dog-registration" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/dog-registration" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <DogRegistration />
-            </ProtectedRoute>
-          } />
-          <Route path="/dog-management" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/dog-management" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <DogManagement />
-            </ProtectedRoute>
-          } />
-          <Route path="/dog-profile/:id" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/dog-profile/:id" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <DogProfile />
-            </ProtectedRoute>
-          } />
-          <Route path="/profile-settings" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/profile-settings" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <ProfileSettings />
-            </ProtectedRoute>
-          } />
-          <Route path="/reservation/:parkId" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/reservation/:parkId" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <ParkReservation />
-            </ProtectedRoute>
-          } />
-          <Route path="/park-history" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/park-history" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <DogParkHistory />
-            </ProtectedRoute>
-          } />
-          <Route path="/order-history" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/order-history" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <OrderHistory />
-            </ProtectedRoute>
-          } />
-          <Route path="/liked-dogs" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/liked-dogs" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <LikedDogs />
-            </ProtectedRoute>
-          } />
-          <Route path="/park-registration" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/park-registration" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <ParkRegistration />
-            </ProtectedRoute>
-          } />
-          <Route path="/park-registration-agreement" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/park-registration-agreement" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <ParkRegistrationAgreement />
-            </ProtectedRoute>
-          } />
-          <Route path="/parks/:id/second-stage" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/parks/:id/second-stage" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <ParkRegistrationSecondStage />
-            </ProtectedRoute>
-          } />
-          <Route path="/parks/:id/manage" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/parks/:id/manage" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <ParkManagement />
-            </ProtectedRoute>
-          } />
-          <Route path="/parks/:id/reserve" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/parks/:id/reserve" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <ParkReservation />
-            </ProtectedRoute>
-          } />
-          <Route path="/parks/:id/publish-setup" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/parks/:id/publish-setup" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <ParkPublishingSetup />
-            </ProtectedRoute>
-          } />
-          <Route path="/facility-registration" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/facility-registration" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <FacilityRegistration />
-            </ProtectedRoute>
-          } />
-          <Route path="/owner-payment-system" element={
-            <ProtectedRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/owner-payment-system" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <OwnerPaymentSystem />
-            </ProtectedRoute>
-          } />
-                     <Route path="/register-park" element={
-             <ProtectedRoute>
-               <ParkRegistration />
-             </ProtectedRoute>
-           } />
-          
-          {/* 管理者専用ページ */}
-          <Route path="/admin" element={
-            <AdminRoute>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/register-park" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
+              <ParkRegistration />
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        
+        {/* 👑 管理者専用ページ（管理画面Skeleton） */}
+        <Route path="/admin" element={
+          <AdminRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <AdminDashboard />
-            </AdminRoute>
-          } />
-          <Route path="/admin/users" element={
-            <AdminRoute>
+            </Suspense>
+          </AdminRoute>
+        } />
+        <Route path="/admin/users" element={
+          <AdminRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <AdminUserManagement />
-            </AdminRoute>
-          } />
-          <Route path="/admin/parks" element={
-            <AdminRoute>
+            </Suspense>
+          </AdminRoute>
+        } />
+        <Route path="/admin/parks" element={
+          <AdminRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <AdminParkManagement />
-            </AdminRoute>
-          } />
-          <Route path="/admin/reservations" element={
-            <AdminRoute>
+            </Suspense>
+          </AdminRoute>
+        } />
+        <Route path="/admin/reservations" element={
+          <AdminRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <AdminReservationManagement />
-            </AdminRoute>
-          } />
-          <Route path="/admin/sales" element={
-            <AdminRoute>
+            </Suspense>
+          </AdminRoute>
+        } />
+        <Route path="/admin/sales" element={
+          <AdminRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <AdminSalesManagement />
-            </AdminRoute>
-          } />
-                     <Route path="/admin/vaccine-approval" element={
-             <AdminRoute>
-               <AdminVaccineApproval />
-             </AdminRoute>
-           } />
-           <Route path="/admin/facility-approval" element={
-             <AdminRoute>
-               <AdminFacilityApproval />
-             </AdminRoute>
-           } />
-           <Route path="/admin/shop" element={
-             <AdminRoute>
-               <AdminShopManagement />
-             </AdminRoute>
-           } />
-          <Route path="/admin/revenue" element={
-            <AdminRoute>
+            </Suspense>
+          </AdminRoute>
+        } />
+        <Route path="/admin/vaccine-approval" element={
+          <AdminRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
+              <AdminVaccineApproval />
+            </Suspense>
+          </AdminRoute>
+        } />
+        <Route path="/admin/facility-approval" element={
+          <AdminRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
+              <AdminFacilityApproval />
+            </Suspense>
+          </AdminRoute>
+        } />
+        <Route path="/admin/shop" element={
+          <AdminRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
+              <AdminShopManagement />
+            </Suspense>
+          </AdminRoute>
+        } />
+        <Route path="/admin/revenue" element={
+          <AdminRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <AdminRevenueReport />
-            </AdminRoute>
-          } />
-          <Route path="/admin/news" element={
-            <AdminRoute>
+            </Suspense>
+          </AdminRoute>
+        } />
+        <Route path="/admin/news" element={
+          <AdminRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
               <AdminNewsManagement />
-            </AdminRoute>
-          } />
-          
-          {/* 404ページ */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Suspense>
+            </Suspense>
+          </AdminRoute>
+        } />
+        
+        {/* 404ページ */}
+        <Route path="*" element={
+          <Suspense fallback={<PageSkeleton />}>
+            <NotFound />
+          </Suspense>
+        } />
+      </Routes>
     </Layout>
   );
 };

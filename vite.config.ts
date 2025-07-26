@@ -68,40 +68,52 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          // 1. 基本ライブラリ（最重要・初期ロード）
-          'core-vendor': [
+          // 1. 最小限のReact核心部分（初期ロード必須）
+          'react-vendor': [
             'react', 
-            'react-dom', 
+            'react-dom'
+          ],
+          
+          // 2. ルーティング（ページ遷移時）
+          'router': [
             'react-router-dom'
           ],
           
-          // 2. データ管理ライブラリ（初期ロード必要）
-          'data-vendor': [
-            '@supabase/supabase-js',
-            '@tanstack/react-query'
+          // 3. データベース（認証・データアクセス時）
+          'supabase': [
+            '@supabase/supabase-js'
           ],
           
-          // 3. UI関連ライブラリ（初期ロード必要）
-          'ui-vendor': [
+          // 4. UI基本ライブラリ（表示時）
+          'ui-basic': [
             'lucide-react',
-            'react-helmet-async',
+            'react-helmet-async'
+          ],
+          
+          // 5. フォーム関連（フォームページ時）
+          'forms': [
             'react-hook-form',
             '@hookform/resolvers',
             'zod'
           ],
           
-          // 4. 外部API（遅延ロード可能）
-          'external-vendor': [
+          // 6. アニメーション・日付（使用ページ時）
+          'motion': [
+            'framer-motion',
+            'date-fns'
+          ],
+          
+          // 7. 外部API（機能使用時）
+          'external-api': [
             '@stripe/stripe-js',
             '@googlemaps/js-api-loader'
           ],
           
-          // 5. 重いライブラリ（遅延ロード）
-          'heavy-vendor': [
-            'framer-motion',
-            'date-fns',
+          // 8. 重い機能ライブラリ（機能使用時）
+          'heavy-features': [
             'browser-image-compression',
-            'qrcode.react'
+            'qrcode.react',
+            '@tanstack/react-query'
           ]
         },
         // チャンクファイル名最適化

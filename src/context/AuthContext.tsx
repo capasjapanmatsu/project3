@@ -1,5 +1,5 @@
 import { Session, User } from '@supabase/supabase-js';
-import { ReactNode, createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../utils/supabase';
 
 interface UserProfile {
@@ -82,59 +82,45 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const initializeAuth = async () => {
       try {
-        console.log('🔐 AuthContext: Starting simplified initialization...');
-        
-        // より簡単な方法でセッション状態を確認
+        // 初期認証状態の確認（ログ削除）
         const { data: { user }, error } = await supabase.auth.getUser();
         
-        console.log('🔐 AuthContext: User retrieved', { user: !!user, error: error?.message });
-        
         if (error) {
-          console.warn('❌ User retrieval error:', error.message);
           if (isMounted) {
             setSession(null);
             setUser(null);
             setIsAuthenticated(false);
             setUserProfile(null);
             setIsAdmin(false);
+            setLoading(false);
           }
           return;
         }
 
         if (user && isMounted) {
-          console.log('🔐 AuthContext: User found, setting up basic auth...');
-          
-          // セッションを簡単に構築
+          // 初期状態設定
           setUser(user);
           setIsAuthenticated(true);
-          
-          // プロフィール取得は一旦スキップ
-          console.log('🔐 AuthContext: Skipping profile fetch for now');
-          setUserProfile(null);
+          setUserProfile(null); // プロフィール取得スキップ
           setIsAdmin(user.email === 'capasjapan@gmail.com');
+          setLoading(false);
         } else {
-          console.log('🔐 AuthContext: No user found');
           if (isMounted) {
             setSession(null);
             setUser(null);
             setIsAuthenticated(false);
             setUserProfile(null);
             setIsAdmin(false);
+            setLoading(false);
           }
         }
       } catch (err) {
-        console.error('❌ Auth initialization error:', err);
-        
         if (isMounted) {
           setSession(null);
           setUser(null);
           setIsAuthenticated(false);
           setUserProfile(null);
           setIsAdmin(false);
-        }
-      } finally {
-        if (isMounted) {
-          console.log('🔐 AuthContext: Simplified initialization complete, setting loading: false');
           setLoading(false);
         }
       }
@@ -143,26 +129,31 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     // 初期化実行
     initializeAuth();
 
-    // 認証状態の変更を監視（簡素化）
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 Auth state changed:', event);
-      
+    // 認証状態の変更を監視（SIGNED_INイベント処理を復元）
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
 
-      if (event === 'SIGNED_OUT' || !session) {
+      if (event === 'SIGNED_OUT') {
         setSession(null);
         setUser(null);
         setIsAuthenticated(false);
         setUserProfile(null);
         setIsAdmin(false);
+        setLoading(false);
       } else if (event === 'SIGNED_IN' && session) {
+        // ログイン成功時の即座の状態更新
         setSession(session);
         setUser(session.user);
         setIsAuthenticated(true);
-        setUserProfile(null); // プロフィール取得を一旦スキップ
+        setUserProfile(null); // プロフィール取得スキップ
         setIsAdmin(session.user.email === 'capasjapan@gmail.com');
+        setLoading(false);
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        // トークン更新時
+        setSession(session);
+        setUser(session.user);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     // クリーンアップ
@@ -311,7 +302,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     session,
     loading,
@@ -323,7 +314,19 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsTrustedDevice,
     isAdmin,
     userProfile,
-  };
+  }), [
+    user,
+    session,
+    loading,
+    logout,
+    isAuthenticated,
+    signInWithMagicLink,
+    signInWithPassword,
+    verify2FA,
+    setIsTrustedDevice,
+    isAdmin,
+    userProfile,
+  ]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Download, 
-  Wifi, 
-  WifiOff, 
-  RefreshCw, 
-  X, 
-  CheckCircle,
-  Smartphone,
-  Bell
+import {
+    Bell,
+    CheckCircle,
+    Download,
+    RefreshCw,
+    Smartphone,
+    X
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 interface PWAStatus {
   isInstalled: boolean;
@@ -129,10 +127,10 @@ const PWAManager: React.FC = () => {
           }
         });
 
-        // 定期的な更新チェック
-        setInterval(() => {
-          registration.update();
-        }, 60000); // 1分ごと
+        // 定期的な更新チェック（一時的に無効化）
+        // setInterval(() => {
+        //   registration.update();
+        // }, 60000); // 1分ごと
 
       } catch (error) {
         console.error('Service Worker の監視でエラーが発生しました:', error);
