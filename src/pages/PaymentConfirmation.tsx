@@ -335,7 +335,7 @@ export function PaymentConfirmation() {
                     >
                       <Button 
                         variant="secondary"
-                        onClick={() => navigate('/subscription')}
+                        onClick={() => navigate('/subscription-intro')}
                         className="w-full"
                       >
                         サブスクリプションを検討する

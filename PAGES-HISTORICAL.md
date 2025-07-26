@@ -142,7 +142,7 @@
 ### 💳 決済・サブスクリプション
 | ページ名（画面） | ファイルパス | ルーティング | 説明・備考 |
 |---|---|---|---|
-| サブスクリプション | `src/pages/Subscription.tsx` | `/subscription` | 🔐 月額プラン管理 |
+| サブスクリプション紹介 | `src/pages/SubscriptionIntro.tsx` | `/subscription-intro` | サブスク加入紹介・メリット説明 |
 | 決済設定 | `src/pages/PaymentSetup.tsx` | `/payment-setup` | 🔐 初回決済情報設定 |
 | 決済方法設定 | `src/pages/PaymentMethodSettings.tsx` | `/payment-method-settings` | 🔐 クレカ・決済方法変更 |
 | 決済確認 | `src/pages/PaymentConfirmation.tsx` | `/payment-confirmation` | 🔐 決済完了画面 |

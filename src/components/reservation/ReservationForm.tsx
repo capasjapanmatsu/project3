@@ -1,7 +1,7 @@
-import { MapPin, Building, Calculator, Crown, PawPrint, Info, CheckCircle, AlertTriangle, CreditCard } from 'lucide-react';
-import Card from '../Card';
+import { AlertCircle, AlertTriangle, Building, Calculator, Calendar, CheckCircle, CreditCard, Crown, Info, MapPin, PawPrint } from 'lucide-react';
+import type { Dog, DogPark } from '../../types';
 import Button from '../Button';
-import type { DogPark, Dog } from '../../types';
+import Card from '../Card';
 import Input from '../Input';
 import VaccineBadge, { getVaccineStatusFromDog } from '../VaccineBadge';
 
@@ -195,15 +195,73 @@ export function ReservationForm({
           )}
         </div>
         
-        <Input
-          label="日付"
-          type="date"
-          value={formData.date}
-          onChange={(e) => setFormData({ date: e.target.value, selectedTimeSlot: '' })}
-          min={new Date().toISOString().split('T')[0]}
-          required
-        />
-
+        {/* 日付選択セクション - 目立つデザイン */}
+        <div className={`${
+          formData.paymentType === 'subscription' 
+            ? 'bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 opacity-60' 
+            : 'bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200'
+        } rounded-xl p-6 mb-6`}>
+          <div className="flex items-center mb-4">
+            <Calendar className={`w-6 h-6 ${
+              formData.paymentType === 'subscription' ? 'text-purple-600' : 'text-blue-600'
+            } mr-3`} />
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {formData.paymentType === 'subscription' 
+                  ? 'サブスクリプション会員'
+                  : '利用日を選択してください'
+                }
+                {formData.paymentType !== 'subscription' && (
+                  <span className="text-red-500 ml-2 text-sm">※必須</span>
+                )}
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                {formData.paymentType === 'subscription' 
+                  ? 'サブスクリプション会員は日付選択不要です。決済完了後すぐに全国のドッグランをご利用いただけます。'
+                  : 'ご希望の利用日を選択してください。本日以降の日付が選択可能です。'
+                }
+              </p>
+            </div>
+          </div>
+          
+          {formData.paymentType !== 'subscription' && (
+            <>
+              <div className="relative">
+                <Input
+                  label=""
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ date: e.target.value, selectedTimeSlot: '' })}
+                  min={new Date().toISOString().split('T')[0]}
+                  required
+                />
+              </div>
+              
+              {!formData.date && (
+                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center">
+                    <AlertCircle className="w-4 h-4 text-yellow-600 mr-2" />
+                    <p className="text-sm text-yellow-800">
+                      利用日の選択が必要です。日付を選択してから時間を選んでください。
+                    </p>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+          
+          {formData.paymentType === 'subscription' && (
+            <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+              <div className="flex items-center">
+                <CheckCircle className="w-4 h-4 text-purple-600 mr-2" />
+                <p className="text-sm text-purple-800">
+                  サブスクリプション加入後は、全国どこのドッグランでも予約なしでご利用いただけます。
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+        
         {/* 支払い方法（ラジオボタン形式） */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-3">

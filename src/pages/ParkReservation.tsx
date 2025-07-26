@@ -22,7 +22,7 @@ interface TimeSlot {
 }
 
 export function ParkReservation() {
-  const { parkId } = useParams();
+  const { id: parkId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isActive: hasSubscription } = useSubscription();
@@ -72,9 +72,14 @@ export function ParkReservation() {
       navigate('/login');
       return;
     }
+
+    if (!parkId) {
+      setError('施設IDが取得できませんでした。');
+      return;
+    }
     
     async function fetchData() {
-      if (!user) return;
+      if (!user || !parkId) return;
       
       try {
         const [dogsResponse, parkResponse] = await Promise.all([
@@ -105,6 +110,7 @@ export function ParkReservation() {
         setPark(parkResponse.data);
       } catch (error) {
         console.error('Error fetching data:', error);
+        setError('データの取得に失敗しました。ページを再読み込みしてください。');
       }
     }
 
@@ -300,6 +306,15 @@ export function ParkReservation() {
     setError('');
     
     try {
+      // サブスクリプション選択時は日付チェックをスキップ
+      if (formData.paymentType !== 'subscription') {
+        if (!formData.date) {
+          setError('利用日を選択してください。');
+          setIsLoading(false);
+          return;
+        }
+      }
+
       if (formData.paymentType === 'facility_rental' && !formData.selectedTimeSlot) {
         setError('施設貸し切りの場合は時間を選択してください。');
         setIsLoading(false);

@@ -636,7 +636,7 @@ export function ProductDetail() {
                     <p>• 送料無料</p>
                     <p>• ドッグラン使い放題</p>
                   </div>
-                  <Link to="/subscription">
+                  <Link to="/subscription-intro">
                     <Button size="sm" className="w-full bg-purple-600 hover:bg-purple-700">
                       <Crown className="w-3 h-3 mr-1" />
                       詳細を見る

@@ -411,7 +411,7 @@ export function PinCodeGenerator({
                           whileTap="tap"
                         >
                           <Button
-                            onClick={() => window.location.href = '/subscription'}
+                            onClick={() => window.location.href = '/subscription-intro'}
                             className="w-full bg-purple-600 hover:bg-purple-700"
                           >
                             <CreditCard className="w-4 h-4 mr-2" />

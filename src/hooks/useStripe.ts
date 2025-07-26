@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
-import { supabase } from '../utils/supabase';
 import { loadStripe } from '@stripe/stripe-js';
+import { useCallback, useState } from 'react';
+import { supabase } from '../utils/supabase';
 
 interface CheckoutParams {
   priceId?: string;
@@ -11,6 +11,7 @@ interface CheckoutParams {
   customName?: string;
   customParams?: Record<string, unknown>;
   cartItems?: string[];
+  trialPeriodDays?: number; // 初月無料のためのトライアル期間（日数）
 }
 
 
@@ -28,6 +29,7 @@ export function useStripe() {
     customName,
     customParams,
     cartItems,
+    trialPeriodDays,
   }: CheckoutParams) => {
     setLoading(true);
     setError(null);
@@ -56,6 +58,11 @@ export function useStripe() {
       // priceIdが指定されている場合は追加
       if (priceId) {
         requestBody.price_id = priceId;
+      }
+
+      // Add trial period for subscriptions (初月無料)
+      if (trialPeriodDays && mode === 'subscription') {
+        requestBody.trial_period_days = trialPeriodDays;
       }
 
       // Add custom amount and name if provided (for facility rental)

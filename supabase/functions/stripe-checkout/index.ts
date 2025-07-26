@@ -1,6 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import Stripe from 'npm:stripe@17.7.0';
 import { createClient } from 'npm:@supabase/supabase-js@2.49.1';
+import Stripe from 'npm:stripe@17.7.0';
 
 const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
 const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY')!;
@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     }
 
     const requestData = await req.json();
-    const { price_id, success_url, cancel_url, mode, custom_amount, custom_name, cart_items, reservation_data, ...customParams } = requestData;
+    const { price_id, success_url, cancel_url, mode, custom_amount, custom_name, cart_items, reservation_data, trial_period_days, ...customParams } = requestData;
 
     if (!success_url || !cancel_url || !mode) {
       return corsResponse({ error: 'Missing required parameters' }, 400);
@@ -176,6 +176,13 @@ Deno.serve(async (req) => {
       cancel_url,
       metadata: customParams,
     };
+
+    // サブスクリプションモードの場合、トライアル期間を設定
+    if (mode === 'subscription' && trial_period_days && trial_period_days > 0) {
+      sessionParams.subscription_data = {
+        trial_period_days: trial_period_days,
+      };
+    }
 
     // If the customer has saved payment methods, use them
     if (paymentMethods.data.length > 0) {

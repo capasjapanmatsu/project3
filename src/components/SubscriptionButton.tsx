@@ -1,9 +1,9 @@
+import { Crown } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Crown } from 'lucide-react';
-import Button from './Button';
 import { useStripe } from '../hooks/useStripe';
 import { products } from '../stripe-config';
+import Button from './Button';
 
 interface SubscriptionButtonProps {
   hasSubscription?: boolean;
@@ -44,7 +44,7 @@ export function SubscriptionButton({
 
   if (hasSubscription) {
     return (
-      <Link to="/subscription">
+              <Link to="/subscription-intro">
         <Button 
           variant={variant} 
           size={size}

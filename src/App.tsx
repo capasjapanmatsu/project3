@@ -88,6 +88,7 @@ const DogInfoWalk = React.lazy(() => import('./pages/dog-info/Walk').then(module
 const Community = React.lazy(() => import('./pages/Community').then(module => ({ default: module.Community })));
 const Contact = React.lazy(() => import('./pages/Contact').then(module => ({ default: module.Contact })));
 const AccessControl = React.lazy(() => import('./pages/AccessControl').then(module => ({ default: module.AccessControl })));
+const SubscriptionIntro = React.lazy(() => import('./pages/SubscriptionIntro').then(module => ({ default: module.SubscriptionIntro })));
 
 // その他のページ
 const TermsOfService = React.lazy(() => import('./pages/TermsOfService').then(module => ({ default: module.TermsOfService })));

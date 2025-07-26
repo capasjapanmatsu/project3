@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import Button from './Button';
+import { AlertTriangle, Calendar, CheckCircle, CreditCard, Key, Loader } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import useAuth from '../context/AuthContext';
-import { AlertTriangle, CheckCircle, Loader, Key, CreditCard, Calendar } from 'lucide-react';
-import { supabase } from '../utils/supabase';
 import type { Reservation } from '../types';
+import { supabase } from '../utils/supabase';
+import Button from './Button';
 
 interface DoorLockButtonProps {
   lockId: string;
@@ -224,7 +224,7 @@ export function DoorLockButton({
               
               <div className="space-y-2">
                 <Button
-                  onClick={() => window.location.href = '/subscription'}
+                  onClick={() => window.location.href = '/subscription-intro'}
                   size="sm"
                   className="w-full bg-purple-600 hover:bg-purple-700"
                 >

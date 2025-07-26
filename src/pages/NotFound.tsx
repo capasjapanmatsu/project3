@@ -105,7 +105,7 @@ export function NotFound() {
                 ワンちゃん登録
               </Link>
               <Link
-                to={isAuthenticated ? "/subscription" : "/login"}
+                to={isAuthenticated ? "/subscription-intro" : "/login"}
                 className="text-blue-600 hover:text-blue-800 hover:underline py-1"
                 aria-label="サブスクリプションページへ"
               >

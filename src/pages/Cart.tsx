@@ -356,7 +356,7 @@ export function Cart() {
                 <span className="font-semibold">サブスクリプションでもっとお得に！</span>
               </div>
               <p className="text-sm mb-3">全商品10%OFF + 送料無料</p>
-              <Link to="/subscription">
+              <Link to="/subscription-intro">
                 <Button size="sm" className="bg-white text-purple-600 hover:bg-gray-100">
                   詳細を見る
                 </Button>

@@ -47,7 +47,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to={isAuthenticated ? "/subscription" : "/login"} className="text-gray-400 hover:text-white transition-colors">
+                <Link to={isAuthenticated ? "/subscription-intro" : "/login"} className="text-gray-400 hover:text-white transition-colors">
                   サブスクリプション
                 </Link>
               </li>
