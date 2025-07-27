@@ -5,104 +5,47 @@ export function MapDebug() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const runDiagnostics = async () => {
+    const runDiagnostics = () => {
       const results: string[] = [];
       
       try {
         // 1. 環境変数の確認
-        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
-        results.push(`APIキー設定: ${apiKey ? `${String(apiKey).substring(0, 10)}...` : '未設定'}`);
+        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        results.push(`APIキー設定: ${apiKey ? 'あり（最初6文字: ' + String(apiKey).substring(0, 6) + '...)' : 'なし'}`);
         
         // 2. 環境変数の詳細
         results.push(`NODE_ENV: ${import.meta.env.NODE_ENV}`);
         results.push(`DEV: ${import.meta.env.DEV}`);
         results.push(`PROD: ${import.meta.env.PROD}`);
         
-        // 3. 全環境変数の確認（VITE_で始まるもの）
-        const viteEnvs = Object.keys(import.meta.env).filter(key => key.startsWith('VITE_'));
-        results.push(`VITE環境変数: ${viteEnvs.join(', ')}`);
+        // 3. Google Maps APIの状態確認
+        const hasWindowGoogle = !!(window as any).google;
+        const hasGoogleMaps = hasWindowGoogle && !!(window as any).google.maps;
+        results.push(`window.google: ${hasWindowGoogle}`);
+        results.push(`window.google.maps: ${hasGoogleMaps}`);
         
-        // 4. Google Maps APIの状態確認
-        const googleObj = (window as any).google as any;
-        results.push(`window.google: ${!!googleObj}`);
-        results.push(`window.google.maps: ${!!(googleObj?.maps)}`);
-        
-        // 5. Google Maps APIキーをテスト
-        if (apiKey) {
-          results.push('Google Maps APIキーのテスト開始...');
-          
-          const testScript = document.createElement('script');
-          testScript.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-          testScript.async = true;
-          
-          const loadPromise = new Promise<void>((resolve, reject) => {
-            testScript.onload = () => {
-              results.push('✅ Google Maps API正常読み込み完了');
-              const googleObjAfterLoad = (window as any).google as any;
-              if (googleObjAfterLoad?.maps) {
-                results.push('✅ Google Maps APIオブジェクト確認済み');
-              } else {
-                results.push('❌ Google Maps APIオブジェクトが見つかりません');
-              }
-              resolve();
-            };
-            
-            testScript.onerror = (error) => {
-              const errorMsg = error instanceof ErrorEvent ? error.message : 'Unknown error';
-              results.push(`❌ Google Maps API読み込みエラー: ${errorMsg}`);
-              reject(new Error(errorMsg));
-            };
-            
-            setTimeout(() => {
-              results.push('❌ Google Maps API読み込みタイムアウト（10秒）');
-              reject(new Error('Timeout'));
-            }, 10000);
-          });
-          
-          document.head.appendChild(testScript);
-          
-          try {
-            await loadPromise;
-          } catch (error) {
-            const errorMsg = error instanceof Error ? error.message : String(error);
-            results.push(`Google Maps API テストエラー: ${errorMsg}`);
-          }
-        }
-        
-        // 6. ネットワーク状態の確認
+        // 4. ネットワーク状態の確認
         results.push(`Navigator online: ${navigator.onLine}`);
-        const navigatorConnection = (navigator as any).connection as any;
-        results.push(`Connection type: ${navigatorConnection?.effectiveType || '不明'}`);
         
-        // 7. 位置情報の確認
+        // 5. 位置情報の確認
         if (navigator.geolocation) {
-          results.push('✅ 位置情報API利用可能');
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              results.push(`✅ 位置情報取得成功: ${position.coords.latitude}, ${position.coords.longitude}`);
-              setTestResults([...results]);
-            },
-            (error) => {
-              results.push(`❌ 位置情報取得エラー: ${error.message}`);
-              setTestResults([...results]);
-            }
-          );
+          results.push('位置情報API: 利用可能');
         } else {
-          results.push('❌ 位置情報API利用不可');
+          results.push('位置情報API: 利用不可');
         }
         
         setTestResults(results);
         
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        results.push(`診断エラー: ${errorMsg}`);
+        results.push(`診断エラー: ${String(error)}`);
         setTestResults(results);
       } finally {
         setIsLoading(false);
       }
     };
 
-    void runDiagnostics();
+    // すぐに実行
+    runDiagnostics();
   }, []);
 
   return (
@@ -129,6 +72,43 @@ export function MapDebug() {
         </div>
         
         <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Google Maps スクリプトテスト</h2>
+          <button 
+            onClick={() => {
+              const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+              if (!apiKey) {
+                setTestResults(prev => [...prev, 'エラー: Google Maps APIキーが設定されていません']);
+                return;
+              }
+              
+              setTestResults(prev => [...prev, 'Google Maps APIスクリプト読み込み開始...']);
+              
+              const script = document.createElement('script');
+              script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+              script.async = true;
+              
+              script.onload = () => {
+                setTestResults(prev => [...prev, '✅ Google Maps APIスクリプト読み込み成功']);
+                if ((window as any).google && (window as any).google.maps) {
+                  setTestResults(prev => [...prev, '✅ Google Maps APIオブジェクト確認済み']);
+                } else {
+                  setTestResults(prev => [...prev, '❌ Google Maps APIオブジェクトが見つかりません']);
+                }
+              };
+              
+              script.onerror = () => {
+                setTestResults(prev => [...prev, '❌ Google Maps APIスクリプト読み込み失敗']);
+              };
+              
+              document.head.appendChild(script);
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Google Maps APIをテスト読み込み
+          </button>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-4">簡易マップテスト</h2>
           <div 
             id="simple-map" 
@@ -139,24 +119,29 @@ export function MapDebug() {
           <button 
             onClick={() => {
               const mapContainer = document.getElementById('simple-map');
-              if (mapContainer && (window as any).google?.maps) {
-                try {
-                  new (window as any).google.maps.Map(mapContainer, {
-                    center: { lat: 35.6812, lng: 139.7671 },
-                    zoom: 10
-                  });
-                  setTestResults(prev => [...prev, '✅ 簡易マップ表示成功']);
-                } catch (error) {
-                  const errorMsg = error instanceof Error ? error.message : String(error);
-                  setTestResults(prev => [...prev, `❌ 簡易マップ表示エラー: ${errorMsg}`]);
-                }
-              } else {
-                setTestResults(prev => [...prev, '❌ Google Maps API未読み込み']);
+              if (!mapContainer) {
+                setTestResults(prev => [...prev, '❌ マップコンテナが見つかりません']);
+                return;
+              }
+              
+              if (!(window as any).google || !(window as any).google.maps) {
+                setTestResults(prev => [...prev, '❌ Google Maps API未読み込み（上のボタンでスクリプトを読み込んでください）']);
+                return;
+              }
+              
+              try {
+                new (window as any).google.maps.Map(mapContainer, {
+                  center: { lat: 35.6812, lng: 139.7671 },
+                  zoom: 10
+                });
+                setTestResults(prev => [...prev, '✅ 簡易マップ表示成功']);
+              } catch (error) {
+                setTestResults(prev => [...prev, `❌ 簡易マップ表示エラー: ${String(error)}`]);
               }
             }}
-            className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="mt-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
           >
-            簡易マップをテスト
+            簡易マップを表示
           </button>
         </div>
       </div>
