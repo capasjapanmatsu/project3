@@ -183,23 +183,24 @@ export default function ParkRegistration() {
   };
 
   const validateFirstStage = (data: typeof formData) => {
-    // 第一審査の必須項目チェック
-    if (!data.isCurrentlyOperating) {
-      throw new Error('現在の運営状況を選択してください。');
+    // 基本バリデーション
+    if (!data.isCurrentlyOperating || data.isCurrentlyOperating === '') {
+      throw new Error('現在のドッグラン運営状況について選択してください。');
     }
 
+    // 現在運営していない場合の追加バリデーション
     if (data.isCurrentlyOperating === 'no') {
-      if (!data.isOwnedLand) {
-        throw new Error('予定地の所有状況を選択してください。');
+      if (!data.isOwnedLand || data.isOwnedLand === '') {
+        throw new Error('土地の所有状況について選択してください。');
       }
 
-      // 借用地の場合の所有者許可チェック
-      if (data.isOwnedLand === 'no' && !data.hasOwnerPermission) {
+      // 借用地の場合は所有者の許可が必要
+      if (data.isOwnedLand === 'no' && (!data.hasOwnerPermission || data.hasOwnerPermission === '')) {
         throw new Error('土地所有者の許可について選択してください。');
       }
 
       // 近隣住民の理解チェック（所有地・借用地両方で必要）
-      if (!data.hasNeighborConsent) {
+      if (!data.hasNeighborConsent || data.hasNeighborConsent === '') {
         throw new Error('近隣住民の理解について選択してください。');
       }
     }
@@ -209,21 +210,21 @@ export default function ParkRegistration() {
     }
 
     // 反社チェック
-    if (!data.isAntiSocialForces) {
-      throw new Error('反社会的勢力との関係について選択してください。');
+    if (!data.isAntiSocialForces || data.isAntiSocialForces === '') {
+      throw new Error('反社会勢力との関係について選択してください。');
     }
 
     if (data.isAntiSocialForces === 'yes') {
-      throw new Error('反社会的勢力との関係がある場合、ドッグランの登録はできません。');
+      throw new Error('反社会勢力との関係がある場合、ドッグランの登録はできません。');
     }
 
     // 週1回の訪問チェック
-    if (!data.canVisitWeekly) {
+    if (!data.canVisitWeekly || data.canVisitWeekly === '') {
       throw new Error('週1回の訪問可否について選択してください。');
     }
 
     // 緊急時の到着チェック
-    if (!data.canReachQuickly) {
+    if (!data.canReachQuickly || data.canReachQuickly === '') {
       throw new Error('緊急時の到着可否について選択してください。');
     }
 
@@ -264,6 +265,15 @@ export default function ParkRegistration() {
     e.preventDefault();
 
     await executeWithErrorHandling(async () => {
+      // デバッグ: フォームデータの値を確認
+      console.log('Form data before validation:', {
+        isAntiSocialForces: formData.isAntiSocialForces,
+        canVisitWeekly: formData.canVisitWeekly,
+        canReachQuickly: formData.canReachQuickly,
+        isCurrentlyOperating: formData.isCurrentlyOperating,
+        identityDocumentFront: formData.identityDocumentFront?.name || 'null'
+      });
+
       validateFirstStage(formData);
 
       if (!user) {
@@ -273,53 +283,102 @@ export default function ParkRegistration() {
       setIsLoading(true);
 
       try {
+        console.log('Starting identity document upload...');
+        
         // 本人確認書類をアップロード
         if (formData.identityDocumentFront) {
-          // ファイル名例: identity_userId_タイムスタンプ_元ファイル名
-          const fileName = `identity_${user.id}_${Date.now()}_${formData.identityDocumentFront.name}`;
+          const uploads = [];
+          
+          // 表面のアップロード
+          const frontFileName = `identity_front_${user.id}_${Date.now()}_${formData.identityDocumentFront.name}`;
+          console.log('Uploading front file:', frontFileName);
 
-          // vaccine-certsバケットを使用（管理者画面と統一）
-          const { data: uploadData, error: uploadError } = await supabase.storage
+          const frontUpload = supabase.storage
             .from('vaccine-certs')
-            .upload(fileName, formData.identityDocumentFront, { upsert: true });
+            .upload(frontFileName, formData.identityDocumentFront, { upsert: true });
 
-          if (uploadError) {
-            throw new Error(`ファイルアップロードに失敗しました: ${uploadError.message}`);
+          uploads.push(frontUpload);
+
+          // 裏面のアップロード（運転免許証の場合）
+          let backUpload = null;
+          if (formData.identityDocumentType === 'license' && formData.identityDocumentBack) {
+            const backFileName = `identity_back_${user.id}_${Date.now()}_${formData.identityDocumentBack.name}`;
+            console.log('Uploading back file:', backFileName);
+
+            backUpload = supabase.storage
+              .from('vaccine-certs')
+              .upload(backFileName, formData.identityDocumentBack, { upsert: true });
+
+            uploads.push(backUpload);
           }
 
+          // 並行アップロード実行
+          const results = await Promise.all(uploads);
+          const [frontResult, backResult] = results;
 
-          // owner_verificationsテーブルに本人確認書類を保存
-          const dbData = {
-            user_id: user.id,
-            verification_id: uploadData.path, // ファイルパスをverification_idとして使用
-            status: 'pending', // 管理者承認待ち
-            verification_data: {
-              document_url: uploadData.path,
-              uploaded_at: new Date().toISOString(),
-              file_name: formData.identityDocumentFront.name,
-              file_size: formData.identityDocumentFront.size,
-              file_type: formData.identityDocumentFront.type,
-              application_stage: 'first_stage' // 1次審査時の申請であることを明示
-            }
+          if (!frontResult || frontResult.error) {
+            console.error('Front upload error:', frontResult?.error);
+            throw new Error(`表面のアップロードに失敗しました: ${frontResult?.error?.message || 'アップロードエラー'}`);
+          }
+
+          if (backResult && backResult.error) {
+            console.error('Back upload error:', backResult.error);
+            throw new Error(`裏面のアップロードに失敗しました: ${backResult.error.message}`);
+          }
+
+          console.log('Upload successful:', { front: frontResult.data, back: backResult?.data });
+
+          // owner_verificationsテーブルに本人確認書類を保存（両面情報を含む）
+          const verificationData = {
+            document_url_front: frontResult.data.path,
+            file_name_front: formData.identityDocumentFront.name,
+            file_size_front: formData.identityDocumentFront.size,
+            file_type_front: formData.identityDocumentFront.type,
+            document_type: formData.identityDocumentType,
+            uploaded_at: new Date().toISOString(),
+            application_stage: 'first_stage'
           };
 
+          // 裏面が存在する場合は追加
+          if (backResult?.data && formData.identityDocumentBack) {
+            Object.assign(verificationData, {
+              document_url_back: backResult.data.path,
+              file_name_back: formData.identityDocumentBack.name,
+              file_size_back: formData.identityDocumentBack.size,
+              file_type_back: formData.identityDocumentBack.type,
+            });
+          }
+
+          const dbData = {
+            user_id: user.id,
+            verification_id: frontResult.data.path, // 表面のパスをverification_idとして使用
+            status: 'pending', // 管理者承認待ち
+            verification_data: verificationData
+          };
+
+          console.log('Saving to database:', dbData);
 
           const { error: dbError } = await supabase
             .from('owner_verifications')
             .upsert(dbData, { onConflict: 'user_id' });
 
           if (dbError) {
+            console.error('Database error:', dbError);
             throw new Error(`データベース保存に失敗しました: ${dbError.message}`);
           }
 
+          console.log('Database save successful');
         }
 
+        console.log('Moving to step 2...');
         // 基本情報入力ステップに移動
         setCurrentStep(2);
 
         // ページの最上部にスクロール
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        console.log('First stage completed successfully');
       } catch (err) {
+        console.error('Error in handleFirstStageSubmit:', err);
         const errorMessage = err instanceof Error ? err.message : '申込みに失敗しました。';
         throw new Error(errorMessage);
       } finally {
@@ -381,7 +440,7 @@ export default function ParkRegistration() {
 
         // 少し待機してから画面遷移
         setTimeout(() => {
-          navigate('/owner-dashboard');
+          navigate('/dashboard');
         }, 100);
       });
     } catch (error) {

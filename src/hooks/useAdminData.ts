@@ -122,11 +122,21 @@ export const useAdminData = (activeTab: 'parks' | 'vaccines') => {
         // Extract identity document information
         let identityDocumentUrl = '';
         let identityDocumentFilename = '';
+        let verificationDataObject = null;
 
         if (identity && identity.verification_data) {
           if (typeof identity.verification_data === 'object') {
-            identityDocumentUrl = identity.verification_data.document_url || identity.verification_data.file_path || '';
-            identityDocumentFilename = identity.verification_data.file_name || identity.verification_data.filename || '';
+            verificationDataObject = identity.verification_data;
+            
+            // 新しい形式：表面・裏面別々（表面を優先表示、実際のデータは管理者ページで処理）
+            if (identity.verification_data.document_url_front) {
+              identityDocumentUrl = identity.verification_data.document_url_front;
+              identityDocumentFilename = identity.verification_data.file_name_front || '';
+            } else {
+              // 従来の形式：単一URL
+              identityDocumentUrl = identity.verification_data.document_url || identity.verification_data.file_path || '';
+              identityDocumentFilename = identity.verification_data.file_name || identity.verification_data.filename || '';
+            }
           }
         }
 

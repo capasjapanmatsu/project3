@@ -57,19 +57,55 @@ BEGIN
 
   -- 関連データを順次削除
   
-  -- 1. 施設画像を削除
+  -- 1. ニュース・お知らせを削除（park_idカラムが存在する場合のみ）
+  BEGIN
+    -- カラムの存在確認
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_name = 'news_announcements' 
+      AND column_name = 'park_id'
+    ) THEN
+      DELETE FROM news_announcements WHERE park_id = p_park_id;
+    END IF;
+  EXCEPTION
+    WHEN undefined_table THEN
+      -- テーブルが存在しない場合は無視
+      NULL;
+  END;
+
+  -- 2. 新規開園情報を削除（park_idカラムが存在する場合のみ）
+  BEGIN
+    -- カラムの存在確認
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_name = 'new_park_openings' 
+      AND column_name = 'park_id'
+    ) THEN
+      DELETE FROM new_park_openings WHERE park_id = p_park_id;
+    END IF;
+  EXCEPTION
+    WHEN undefined_table THEN
+      -- テーブルが存在しない場合は無視
+      NULL;
+  END;
+
+  -- 3. 施設画像を削除
   DELETE FROM dog_park_facility_images 
   WHERE park_id = p_park_id;
 
-  -- 2. 予約データを削除
+  -- 4. 予約データを削除
   DELETE FROM reservations 
   WHERE dog_park_id = p_park_id;
 
-  -- 3. レビューを削除
-  DELETE FROM reviews 
-  WHERE park_id = p_park_id;
+  -- 5. レビューを削除
+  BEGIN
+    DELETE FROM reviews WHERE park_id = p_park_id;
+  EXCEPTION
+    WHEN undefined_table THEN
+      DELETE FROM dog_park_reviews WHERE park_id = p_park_id;
+  END;
 
-  -- 4. オーナーの銀行口座情報を削除（このドッグラン専用の場合）
+  -- 6. オーナーの銀行口座情報を削除（このドッグラン専用の場合）
   DELETE FROM owner_bank_accounts 
   WHERE owner_id = v_park_record.owner_id 
   AND NOT EXISTS (
@@ -78,11 +114,11 @@ BEGIN
     AND id != p_park_id
   );
 
-  -- 5. スマートロック情報を削除
+  -- 7. スマートロック情報を削除
   DELETE FROM smart_locks 
   WHERE park_id = p_park_id;
 
-  -- 6. メインのドッグランレコードを削除
+  -- 8. メインのドッグランレコードを削除
   DELETE FROM dog_parks 
   WHERE id = p_park_id;
 

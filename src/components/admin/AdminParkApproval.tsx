@@ -293,269 +293,28 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
     if (!confirmDelete) return;
 
     try {
+      // 直接dog_parksテーブルから削除（最もシンプルで安全）
+      const { error: deleteError } = await supabase
+        .from('dog_parks')
+        .delete()
+        .eq('id', parkId);
 
-      // 1. ニュース・お知らせを削除
-      try {
-        const { error: newsError } = await supabase
-          .from('news_announcements')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (newsError) {
-          console.error('❌ ニュース削除エラー:', newsError);
-          onError(`ニュースの削除に失敗しました: ${newsError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ ニュース削除処理エラー:', error);
-        onError('ニュース削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 2. 新規開園情報を削除
-      try {
-        const { error: newParkOpeningsError } = await supabase
-          .from('new_park_openings')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (newParkOpeningsError) {
-          console.error('❌ 新規開園情報削除エラー:', newParkOpeningsError);
-          onError(`新規開園情報の削除に失敗しました: ${newParkOpeningsError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ 新規開園情報削除処理エラー:', error);
-        onError('新規開園情報削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 3. ロックアクセスログを削除（スマートロック経由）
-      try {
-        // まずこのパークのスマートロックIDを取得
-        const { data: lockData } = await supabase
-          .from('smart_locks')
-          .select('lock_id')
-          .eq('park_id', parkId);
-
-        if (lockData && lockData.length > 0) {
-          const lockIds = lockData.map(lock => lock.lock_id);
-
-          const { error: lockAccessError } = await supabase
-            .from('lock_access_logs')
-            .delete()
-            .in('lock_id', lockIds);
-
-          if (lockAccessError) {
-            console.error('❌ ロックアクセスログ削除エラー:', lockAccessError);
-            onError(`ロックアクセスログの削除に失敗しました: ${lockAccessError.message}`);
-            return;
-          }
-        }
-      } catch (error) {
-        console.error('❌ ロックアクセスログ削除処理エラー:', error);
-        onError('ロックアクセスログ削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 4. スマートロックを削除
-      try {
-        const { error: smartLocksError } = await supabase
-          .from('smart_locks')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (smartLocksError) {
-          console.error('❌ スマートロック削除エラー:', smartLocksError);
-          onError(`スマートロックの削除に失敗しました: ${smartLocksError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ スマートロック削除処理エラー:', error);
-        onError('スマートロック削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 5. ユーザーエントリーステータスを削除
-      try {
-        const { error: entryStatusError } = await supabase
-          .from('user_entry_status')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (entryStatusError) {
-          console.error('❌ エントリーステータス削除エラー:', entryStatusError);
-          onError(`エントリーステータスの削除に失敗しました: ${entryStatusError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ エントリーステータス削除処理エラー:', error);
-        onError('エントリーステータス削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 6. 予約を削除
-      try {
-        const { error: reservationsError } = await supabase
-          .from('reservations')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (reservationsError) {
-          console.error('❌ 予約削除エラー:', reservationsError);
-          onError(`予約の削除に失敗しました: ${reservationsError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ 予約削除処理エラー:', error);
-        onError('予約削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 7. 犬の出会い記録を削除
-      try {
-        const { error: encountersError } = await supabase
-          .from('dog_encounters')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (encountersError) {
-          console.error('❌ 出会い記録削除エラー:', encountersError);
-          onError(`出会い記録の削除に失敗しました: ${encountersError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ 出会い記録削除処理エラー:', error);
-        onError('出会い記録削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 8. レビュー画像を削除（レビュー経由）
-      try {
-        // まずこのパークのレビューIDを取得
-        const { data: reviewData } = await supabase
-          .from('dog_park_reviews')
-          .select('id')
-          .eq('park_id', parkId);
-
-        if (reviewData && reviewData.length > 0) {
-          const reviewIds = reviewData.map(review => review.id);
-
-          const { error: reviewImagesError } = await supabase
-            .from('dog_park_review_images')
-            .delete()
-            .in('review_id', reviewIds);
-
-          if (reviewImagesError) {
-            console.error('❌ レビュー画像削除エラー:', reviewImagesError);
-            onError(`レビュー画像の削除に失敗しました: ${reviewImagesError.message}`);
-            return;
-          }
-        }
-      } catch (error) {
-        console.error('❌ レビュー画像削除処理エラー:', error);
-        onError('レビュー画像削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 9. レビューを削除
-      try {
-        const { error: reviewsError } = await supabase
-          .from('dog_park_reviews')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (reviewsError) {
-          console.error('❌ レビュー削除エラー:', reviewsError);
-          onError(`レビューの削除に失敗しました: ${reviewsError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ レビュー削除処理エラー:', error);
-        onError('レビュー削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 10. 施設画像を削除
-      try {
-        const { error: imagesError } = await supabase
-          .from('dog_park_facility_images')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (imagesError) {
-          console.error('❌ 施設画像削除エラー:', imagesError);
-          onError(`施設画像の削除に失敗しました: ${imagesError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ 施設画像削除処理エラー:', error);
-        onError('施設画像削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 11. パーク画像を削除
-      try {
-        const { error: parkImagesError } = await supabase
-          .from('dog_park_images')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (parkImagesError) {
-          console.error('❌ パーク画像削除エラー:', parkImagesError);
-          onError(`パーク画像の削除に失敗しました: ${parkImagesError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ パーク画像削除処理エラー:', error);
-        onError('パーク画像削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 12. レビューステージを削除
-      try {
-        const { error: reviewStagesError } = await supabase
-          .from('dog_park_review_stages')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (reviewStagesError) {
-          console.error('❌ レビューステージ削除エラー:', reviewStagesError);
-          onError(`レビューステージの削除に失敗しました: ${reviewStagesError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ レビューステージ削除処理エラー:', error);
-        onError('レビューステージ削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 13. 最後にドッグラン本体を削除
-      try {
-        const { error: deleteError } = await supabase
-          .from('dog_parks')
-          .delete()
-          .eq('id', parkId);
-
-        if (deleteError) {
-          console.error('❌ ドッグラン削除エラー:', deleteError);
-          onError(`ドッグランの削除に失敗しました: ${deleteError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ ドッグラン削除処理エラー:', error);
-        onError('ドッグラン削除処理でエラーが発生しました。');
+      if (deleteError) {
+        console.error('❌ ドッグラン削除エラー:', deleteError);
+        onError(`ドッグランの削除に失敗しました: ${deleteError.message}`);
         return;
       }
 
       onApprovalComplete('ドッグラン申請を削除しました。');
-
-      // 一覧画面に戻る
-      setSelectedPark(null);
+      
+      // リストからも削除
+      if (onParkUpdate) {
+        onParkUpdate();
+      }
 
     } catch (error) {
-      console.error('❌ ドッグラン削除エラー:', error);
-      onError('ドッグランの削除に失敗しました。');
+      console.error('❌ 削除処理エラー:', error);
+      onError('削除処理でエラーが発生しました。');
     }
   };
 

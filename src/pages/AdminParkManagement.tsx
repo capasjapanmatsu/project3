@@ -184,6 +184,40 @@ export function AdminParkManagement() {
     }
   };
 
+  // 本人確認書類情報を取得する関数
+  const fetchIdentityDocuments = async (ownerIds: string[]) => {
+    if (ownerIds.length === 0) return new Map();
+
+    try {
+      const { data, error } = await supabase
+        .from('owner_verifications')
+        .select(`
+          user_id,
+          verification_id,
+          status,
+          verification_data,
+          created_at
+        `)
+        .in('user_id', ownerIds);
+
+      if (error) {
+        console.error('❌ 本人確認書類取得エラー:', error);
+        return new Map();
+      }
+
+      // user_idをキーとしたマップを作成
+      const identityMap = new Map();
+      (data || []).forEach(identity => {
+        identityMap.set(identity.user_id, identity);
+      });
+
+      return identityMap;
+    } catch (error) {
+      console.error('❌ 本人確認書類取得エラー:', error);
+      return new Map();
+    }
+  };
+
   // 承認済みパークを取得する関数
   const fetchApprovedParks = async () => {
     try {
@@ -278,277 +312,44 @@ export function AdminParkManagement() {
       setError('');
       setSuccess('');
 
-      // 関連するレコードを順番に削除
-
-      // 1. ニュース・お知らせを削除
-      try {
-        const { error: newsError } = await supabase
-          .from('news_announcements')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (newsError) {
-          console.error('❌ ニュース削除エラー:', newsError);
-          showError(`ニュースの削除に失敗しました: ${newsError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ ニュース削除処理エラー:', error);
-        showError('ニュース削除処理でエラーが発生しました。');
+      // 削除される公園の情報を事前に取得（UIログ用）
+      const park = parks.find(p => p.id === parkId) || approvedParks.find(p => p.id === parkId);
+      if (!park) {
+        showError('ドッグラン情報が見つかりません。');
         return;
       }
 
-      // 2. 新規開園情報を削除
-      try {
-        const { error: newParkOpeningsError } = await supabase
-          .from('new_park_openings')
-          .delete()
-          .eq('park_id', parkId);
+      // RPC関数を使用して安全に削除処理を実行
+      const { data: result, error: rpcError } = await supabase
+        .rpc('reject_and_delete_park', {
+          p_park_id: parkId,
+          p_admin_id: user?.id
+        });
 
-        if (newParkOpeningsError) {
-          console.error('❌ 新規開園情報削除エラー:', newParkOpeningsError);
-          showError(`新規開園情報の削除に失敗しました: ${newParkOpeningsError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ 新規開園情報削除処理エラー:', error);
-        showError('新規開園情報削除処理でエラーが発生しました。');
+      if (rpcError) {
+        console.error('❌ RPC関数エラー:', rpcError);
+        showError(`削除処理に失敗しました: ${rpcError.message}`);
         return;
       }
 
-      // 3. ロックアクセスログを削除（スマートロック経由）
-      try {
-        // まずこのパークのスマートロックIDを取得
-        const { data: lockData } = await supabase
-          .from('smart_locks')
-          .select('lock_id')
-          .eq('park_id', parkId);
+      if (result?.success) {
+        showSuccess(`${result.park_name || park.name}を削除しました。`);
 
-        if (lockData && lockData.length > 0) {
-          const lockIds = lockData.map(lock => lock.lock_id);
-
-          const { error: lockAccessError } = await supabase
-            .from('lock_access_logs')
-            .delete()
-            .in('lock_id', lockIds);
-
-          if (lockAccessError) {
-            console.error('❌ ロックアクセスログ削除エラー:', lockAccessError);
-            showError(`ロックアクセスログの削除に失敗しました: ${lockAccessError.message}`);
-            return;
-          }
-        }
-      } catch (error) {
-        console.error('❌ ロックアクセスログ削除処理エラー:', error);
-        showError('ロックアクセスログ削除処理でエラーが発生しました。');
-        return;
+        // リストから削除（UIの更新）
+        setParks(prevParks => prevParks.filter(p => p.id !== parkId));
+        setApprovedParks(prevParks => prevParks.filter(p => p.id !== parkId));
+      } else {
+        showError(result?.message || '削除処理に失敗しました。');
       }
-
-      // 4. スマートロックを削除
-      try {
-        const { error: smartLocksError } = await supabase
-          .from('smart_locks')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (smartLocksError) {
-          console.error('❌ スマートロック削除エラー:', smartLocksError);
-          showError(`スマートロックの削除に失敗しました: ${smartLocksError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ スマートロック削除処理エラー:', error);
-        showError('スマートロック削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 5. ユーザーエントリーステータスを削除
-      try {
-        const { error: entryStatusError } = await supabase
-          .from('user_entry_status')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (entryStatusError) {
-          console.error('❌ エントリーステータス削除エラー:', entryStatusError);
-          showError(`エントリーステータスの削除に失敗しました: ${entryStatusError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ エントリーステータス削除処理エラー:', error);
-        showError('エントリーステータス削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 6. 予約を削除
-      try {
-        const { error: reservationsError } = await supabase
-          .from('reservations')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (reservationsError) {
-          console.error('❌ 予約削除エラー:', reservationsError);
-          showError(`予約の削除に失敗しました: ${reservationsError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ 予約削除処理エラー:', error);
-        showError('予約削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 7. 犬の出会い記録を削除
-      try {
-        const { error: encountersError } = await supabase
-          .from('dog_encounters')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (encountersError) {
-          console.error('❌ 出会い記録削除エラー:', encountersError);
-          showError(`出会い記録の削除に失敗しました: ${encountersError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ 出会い記録削除処理エラー:', error);
-        showError('出会い記録削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 8. レビュー画像を削除（レビュー経由）
-      try {
-        // まずこのパークのレビューIDを取得
-        const { data: reviewData } = await supabase
-          .from('dog_park_reviews')
-          .select('id')
-          .eq('park_id', parkId);
-
-        if (reviewData && reviewData.length > 0) {
-          const reviewIds = reviewData.map(review => review.id);
-
-          const { error: reviewImagesError } = await supabase
-            .from('dog_park_review_images')
-            .delete()
-            .in('review_id', reviewIds);
-
-          if (reviewImagesError) {
-            console.error('❌ レビュー画像削除エラー:', reviewImagesError);
-            showError(`レビュー画像の削除に失敗しました: ${reviewImagesError.message}`);
-            return;
-          }
-        }
-      } catch (error) {
-        console.error('❌ レビュー画像削除処理エラー:', error);
-        showError('レビュー画像削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 9. レビューを削除
-      try {
-        const { error: reviewsError } = await supabase
-          .from('dog_park_reviews')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (reviewsError) {
-          console.error('❌ レビュー削除エラー:', reviewsError);
-          showError(`レビューの削除に失敗しました: ${reviewsError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ レビュー削除処理エラー:', error);
-        showError('レビュー削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 10. 施設画像を削除
-      try {
-        const { error: imagesError } = await supabase
-          .from('dog_park_facility_images')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (imagesError) {
-          console.error('❌ 施設画像削除エラー:', imagesError);
-          showError(`施設画像の削除に失敗しました: ${imagesError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ 施設画像削除処理エラー:', error);
-        showError('施設画像削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 11. パーク画像を削除
-      try {
-        const { error: parkImagesError } = await supabase
-          .from('dog_park_images')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (parkImagesError) {
-          console.error('❌ パーク画像削除エラー:', parkImagesError);
-          showError(`パーク画像の削除に失敗しました: ${parkImagesError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ パーク画像削除処理エラー:', error);
-        showError('パーク画像削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 12. レビューステージを削除
-      try {
-        const { error: reviewStagesError } = await supabase
-          .from('dog_park_review_stages')
-          .delete()
-          .eq('park_id', parkId);
-
-        if (reviewStagesError) {
-          console.error('❌ レビューステージ削除エラー:', reviewStagesError);
-          showError(`レビューステージの削除に失敗しました: ${reviewStagesError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ レビューステージ削除処理エラー:', error);
-        showError('レビューステージ削除処理でエラーが発生しました。');
-        return;
-      }
-
-      // 13. 最後にドッグラン本体を削除
-      try {
-        const { error: deleteError } = await supabase
-          .from('dog_parks')
-          .delete()
-          .eq('id', parkId);
-
-        if (deleteError) {
-          console.error('❌ ドッグラン削除エラー:', deleteError);
-          showError(`ドッグランの削除に失敗しました: ${deleteError.message}`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ ドッグラン削除処理エラー:', error);
-        showError('ドッグラン削除処理でエラーが発生しました。');
-        return;
-      }
-
-
-      // 成功時の処理
-      showSuccess('ドッグラン申請を削除しました。');
-
-      // 削除後にリストを更新
-      setParks(prevParks => prevParks.filter(park => park.id !== parkId));
 
     } catch (error) {
-      console.error('❌ ドッグラン削除エラー:', error);
-      showError('ドッグランの削除に失敗しました。');
+      console.error('❌ 削除処理エラー:', error);
+      showError('削除処理中に予期しないエラーが発生しました。');
     }
   };
 
   // PendingPark型をParkData型に変換する関数
-  const convertPendingParkToParkData = (pendingPark: any, parkDetails?: any, facilityImages?: any[]): ParkData => {
+  const convertPendingParkToParkData = (pendingPark: any, parkDetails?: any, facilityImages?: any[], identityDocument?: any): ParkData => {
     const details = parkDetails || {};
 
     // デバッグログ: 申請者情報の確認
@@ -595,11 +396,11 @@ export function AdminParkManagement() {
       owner_phone: pendingPark.owner_phone_number || '',
       owner_address: pendingPark.owner_address || '',
       facility_images: facilityImages || [],
-      // 本人確認書類の情報を追加
-      identity_document_url: pendingPark.identity_document_url || '',
-      identity_document_filename: pendingPark.identity_document_filename || '',
-      identity_status: pendingPark.identity_status || 'not_submitted',
-      identity_created_at: pendingPark.identity_created_at || ''
+      // 本人確認書類の情報を追加（新しいidentityDocumentデータを優先）
+      identity_document_url: identityDocument ? JSON.stringify(identityDocument.verification_data) : (pendingPark.identity_document_url || ''),
+      identity_document_filename: identityDocument?.verification_data?.file_name_front || identityDocument?.verification_data?.file_name || (pendingPark.identity_document_filename || ''),
+      identity_status: identityDocument?.status || (pendingPark.identity_status || 'not_submitted'),
+      identity_created_at: identityDocument?.created_at || (pendingPark.identity_created_at || '')
     };
   };
 
@@ -621,17 +422,19 @@ export function AdminParkManagement() {
         const parkIds = adminData.pendingParks.map(park => park.id);
 
         // 詳細情報と設備画像を並行して取得
-        const [parkDetailsMap, facilityImagesMap] = await Promise.all([
+        const [parkDetailsMap, facilityImagesMap, identityDocumentsMap] = await Promise.all([
           fetchParkDetails(parkIds),
-          fetchFacilityImages(parkIds)
+          fetchFacilityImages(parkIds),
+          fetchIdentityDocuments(adminData.pendingParks.map(park => park.owner_id))
         ]);
 
         // PendingPark型をParkData型に変換（詳細情報を統合）
         const convertedParks = adminData.pendingParks.map(pendingPark => {
           const parkDetails = parkDetailsMap.get(pendingPark.id);
           const facilityImages = facilityImagesMap.get(pendingPark.id) || [];
+          const identityDocument = identityDocumentsMap.get(pendingPark.owner_id);
 
-          return convertPendingParkToParkData(pendingPark, parkDetails, facilityImages);
+          return convertPendingParkToParkData(pendingPark, parkDetails, facilityImages, identityDocument);
         });
 
         setParks(convertedParks);
@@ -1391,24 +1194,100 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
                           </h4>
                           <div className="bg-blue-50 p-4 rounded-lg">
                             {park.identity_document_url && park.identity_document_url !== '' ? (
-                              <div className="flex items-start space-x-4">
-                                <div className="relative">
-                                  <img
-                                    src={`${supabase.storage.from('vaccine-certs').getPublicUrl(park.identity_document_url || '').data.publicUrl}`}
-                                    alt="本人確認書類"
-                                    className="w-32 h-32 object-cover rounded border shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                                    onClick={() => handleImageClick(
-                                      `${supabase.storage.from('vaccine-certs').getPublicUrl(park.identity_document_url || '').data.publicUrl}`,
-                                      '本人確認書類',
-                                      park.name
-                                    )}
-                                  />
-                                </div>
-                                <div className="flex-1">
-                                  <div className="mb-2">
-                                    <span className="text-sm font-medium text-gray-700">ファイル名:</span>
-                                    <span className="text-sm text-gray-600 ml-2">{park.identity_document_filename || 'identity_document'}</span>
-                                  </div>
+                              <div className="space-y-4">
+                                {/* verification_dataから表面・裏面情報を取得 */}
+                                {(() => {
+                                  try {
+                                    // JSON文字列の場合はパース、オブジェクトの場合はそのまま使用
+                                    const verificationData = typeof park.identity_document_url === 'string' && park.identity_document_url.startsWith('{') 
+                                      ? JSON.parse(park.identity_document_url) 
+                                      : null;
+                                    
+                                    // 新しい形式（表面・裏面別々）の場合
+                                    if (verificationData && (verificationData.document_url_front || verificationData.document_url_back)) {
+                                      return (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                          {/* 表面 */}
+                                          {verificationData.document_url_front && (
+                                            <div className="space-y-2">
+                                              <h5 className="font-medium text-gray-800">表面</h5>
+                                              <div className="relative">
+                                                <img
+                                                  src={`${supabase.storage.from('vaccine-certs').getPublicUrl(verificationData.document_url_front).data.publicUrl}`}
+                                                  alt="本人確認書類（表面）"
+                                                  className="w-full max-w-xs h-auto object-cover rounded border shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                                                  onClick={() => handleImageClick(
+                                                    `${supabase.storage.from('vaccine-certs').getPublicUrl(verificationData.document_url_front).data.publicUrl}`,
+                                                    '本人確認書類（表面）',
+                                                    park.name
+                                                  )}
+                                                />
+                                              </div>
+                                              {verificationData.file_name_front && (
+                                                <div className="text-sm text-gray-600">
+                                                  ファイル名: {verificationData.file_name_front}
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+                                          
+                                          {/* 裏面 */}
+                                          {verificationData.document_url_back && (
+                                            <div className="space-y-2">
+                                              <h5 className="font-medium text-gray-800">裏面</h5>
+                                              <div className="relative">
+                                                <img
+                                                  src={`${supabase.storage.from('vaccine-certs').getPublicUrl(verificationData.document_url_back).data.publicUrl}`}
+                                                  alt="本人確認書類（裏面）"
+                                                  className="w-full max-w-xs h-auto object-cover rounded border shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                                                  onClick={() => handleImageClick(
+                                                    `${supabase.storage.from('vaccine-certs').getPublicUrl(verificationData.document_url_back).data.publicUrl}`,
+                                                    '本人確認書類（裏面）',
+                                                    park.name
+                                                  )}
+                                                />
+                                              </div>
+                                              {verificationData.file_name_back && (
+                                                <div className="text-sm text-gray-600">
+                                                  ファイル名: {verificationData.file_name_back}
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    }
+                                  } catch (e) {
+                                    console.error('Error parsing verification data:', e);
+                                  }
+                                  
+                                  // フォールバック：従来の形式（単一画像）
+                                  return (
+                                    <div className="flex items-start space-x-4">
+                                      <div className="relative">
+                                        <img
+                                          src={`${supabase.storage.from('vaccine-certs').getPublicUrl(park.identity_document_url || '').data.publicUrl}`}
+                                          alt="本人確認書類"
+                                          className="w-32 h-32 object-cover rounded border shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                                          onClick={() => handleImageClick(
+                                            `${supabase.storage.from('vaccine-certs').getPublicUrl(park.identity_document_url || '').data.publicUrl}`,
+                                            '本人確認書類',
+                                            park.name
+                                          )}
+                                        />
+                                      </div>
+                                      <div>
+                                        <div className="mb-2">
+                                          <span className="text-sm font-medium text-gray-700">ファイル名:</span>
+                                          <span className="text-sm text-gray-600 ml-2">{park.identity_document_filename || 'identity_document'}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                                
+                                {/* 審査情報 */}
+                                <div className="mt-4 pt-4 border-t border-blue-200">
                                   <div className="mb-2">
                                     <span className="text-sm font-medium text-gray-700">審査状況:</span>
                                     <span className={`text-sm ml-2 px-2 py-1 rounded-full ${park.identity_status === 'approved' ? 'bg-green-100 text-green-800' :
@@ -1428,15 +1307,11 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
                                       <span className="text-sm text-gray-600 ml-2">{formatDate(park.identity_created_at)}</span>
                                     </div>
                                   )}
-                                  <div className="text-xs text-gray-500 mt-2">
-                                    クリックして拡大表示
-                                  </div>
                                 </div>
                               </div>
                             ) : (
-                              <div className="text-center py-8">
-                                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                                <p className="text-sm text-gray-600">本人確認書類が提出されていません</p>
+                              <div className="text-gray-500 text-sm">
+                                本人確認書類が提出されていません
                               </div>
                             )}
                           </div>
