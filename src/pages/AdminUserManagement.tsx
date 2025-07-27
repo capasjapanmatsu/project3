@@ -1,11 +1,11 @@
 import {
     AlertTriangle,
     ArrowLeft,
+    Ban,
     Calendar,
     CreditCard,
     Crown,
     DogIcon as Dog,
-    DollarSign,
     Eye,
     Monitor,
     Phone,
@@ -13,6 +13,7 @@ import {
     Shield,
     ShieldAlert,
     ShieldCheck,
+    UserMinus,
     Users,
     Wifi,
     X
@@ -23,6 +24,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
 import useAuth from '../context/AuthContext';
+import { BanResult, BanUserParams, forceBanUser } from '../utils/adminBanActions';
 import { UserFraudDetails, getUserFraudDetails } from '../utils/adminFraudDetection';
 import { supabase } from '../utils/supabase';
 
@@ -60,6 +62,15 @@ export function AdminUserManagement() {
   const [showFraudModal, setShowFraudModal] = useState(false);
   const [selectedUserFraud, setSelectedUserFraud] = useState<UserFraudDetails | null>(null);
   const [fraudModalLoading, setFraudModalLoading] = useState(false);
+
+  // 強制退会関連のstate
+  const [showBanModal, setShowBanModal] = useState(false);
+  const [selectedUserForBan, setSelectedUserForBan] = useState<UserData | null>(null);
+  const [banReason, setBanReason] = useState('');
+  const [banType, setBanType] = useState<'fraud_abuse' | 'subscription_abuse' | 'policy_violation' | 'other'>('fraud_abuse');
+  const [confirmBanText, setConfirmBanText] = useState('');
+  const [isBanning, setIsBanning] = useState(false);
+  const [banResult, setBanResult] = useState<BanResult | null>(null);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -296,6 +307,66 @@ export function AdminUserManagement() {
     }
   };
 
+  const handleShowBanModal = (user: UserData) => {
+    setSelectedUserForBan(user);
+    setBanReason('');
+    setBanType('fraud_abuse');
+    setConfirmBanText('');
+    setBanResult(null);
+    setShowBanModal(true);
+  };
+
+  const handleForceBan = async () => {
+    if (!selectedUserForBan || confirmBanText !== selectedUserForBan.name) {
+      setError('ユーザー名が正しく入力されていません。');
+      return;
+    }
+
+    if (!banReason.trim()) {
+      setError('退会理由を入力してください。');
+      return;
+    }
+
+    if (!window.confirm('本当に強制退会させますか？\nこの操作は取り消せません。')) {
+      return;
+    }
+
+    try {
+      setIsBanning(true);
+      setError('');
+
+      const params: BanUserParams = {
+        userId: selectedUserForBan.id,
+        reason: banReason,
+        banType: banType,
+        evidence: {
+          riskScore: selectedUserForBan.fraud_risk_score,
+          detectionCount: selectedUserForBan.fraud_detection_count,
+          adminAction: true
+        }
+      };
+
+      const result = await forceBanUser(params);
+      setBanResult(result);
+
+      if (result.success) {
+        // ユーザーリストを更新
+        await fetchUsers();
+        
+        setTimeout(() => {
+          setShowBanModal(false);
+          setSelectedUserForBan(null);
+        }, 3000);
+      }
+
+    } catch (error) {
+      console.error('Error banning user:', error);
+      setError('強制退会の処理中にエラーが発生しました。');
+    } finally {
+      setIsBanning(false);
+    }
+  };
+
   const getRiskBadge = (riskLevel: string, riskScore: number, detectionCount: number) => {
     if (detectionCount === 0) return null;
     
@@ -410,7 +481,7 @@ export function AdminUserManagement() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="created_at">登録日</option>
-                <option value="name">名前</option>
+                <option value="name">名前</option>  
                 <option value="total_spent">支払い合計</option>
                 <option value="fraud_risk_score">リスクスコア</option>
               </select>
@@ -499,8 +570,8 @@ export function AdminUserManagement() {
                             {user.reservation_count}件
                           </div>
                           <div className="flex items-center">
-                            <DollarSign className="w-4 h-4 text-gray-400 mr-1" />
-                            ¥{user.total_spent.toLocaleString()}
+                            <span className="text-gray-400 mr-1">¥</span>
+                            {user.total_spent.toLocaleString()}
                           </div>
                         </div>
                         {user.subscription_status === 'active' && (
@@ -537,6 +608,16 @@ export function AdminUserManagement() {
                             >
                               <Shield className="w-4 h-4 mr-1" />
                               不正検知
+                            </Button>
+                          )}
+                          {user.fraud_risk_level === 'high' && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleShowBanModal(user)}
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                              <Ban className="w-4 h-4 mr-1" />
+                              強制退会
                             </Button>
                           )}
                         </div>
@@ -697,6 +778,120 @@ export function AdminUserManagement() {
                   閉じる
                 </Button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 強制退会モーダル */}
+        {showBanModal && selectedUserForBan && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="flex items-center mb-4">
+                <UserMinus className="w-6 h-6 text-red-600 mr-3" />
+                <h3 className="text-lg font-semibold text-gray-900">悪質ユーザー強制退会</h3>
+              </div>
+
+              {banResult ? (
+                <div className="text-center py-4">
+                  {banResult.success ? (
+                    <div className="text-green-800">
+                      <div className="text-lg font-semibold mb-2">✅ 強制退会完了</div>
+                      <div className="text-sm">
+                        <p>{banResult.message}</p>
+                        {banResult.bannedEmail && (
+                          <p className="mt-2">対象: {banResult.bannedEmail}</p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-red-800">
+                      <div className="text-lg font-semibold mb-2">❌ 処理失敗</div>
+                      <div className="text-sm">
+                        <p>{banResult.message}</p>
+                        {banResult.error && (
+                          <p className="mt-2 text-gray-600">エラー: {banResult.error}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex">
+                      <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 mr-2" />
+                      <div className="text-sm text-red-800">
+                        <p className="font-medium">警告: この操作は取り消せません</p>
+                        <p className="mt-1">
+                          ユーザー「<span className="font-medium">{selectedUserForBan.name}</span>」を強制退会させます。
+                          関連するすべてのデータが削除・無効化され、再登録も制限されます。
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      退会理由 <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      value={banReason}
+                      onChange={(e) => setBanReason(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                      rows={3}
+                      placeholder="詳細な退会理由を記載してください"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      退会タイプ
+                    </label>
+                    <select
+                      value={banType}
+                      onChange={(e) => setBanType(e.target.value as any)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <option value="fraud_abuse">不正利用・悪用</option>
+                      <option value="subscription_abuse">サブスクリプション悪用</option>
+                      <option value="policy_violation">規約違反</option>
+                      <option value="other">その他</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      確認のため、ユーザー名「<span className="font-medium text-red-600">{selectedUserForBan.name}</span>」を入力してください
+                    </label>
+                    <input
+                      type="text"
+                      value={confirmBanText}
+                      onChange={(e) => setConfirmBanText(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                      placeholder="ユーザー名を入力"
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <Button
+                      onClick={() => setShowBanModal(false)}
+                      variant="secondary"
+                      disabled={isBanning}
+                    >
+                      キャンセル
+                    </Button>
+                    <Button
+                      onClick={handleForceBan}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                      disabled={isBanning || !banReason.trim() || confirmBanText !== selectedUserForBan.name}
+                      isLoading={isBanning}
+                    >
+                      <Ban className="w-4 h-4 mr-2" />
+                      強制退会実行
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
