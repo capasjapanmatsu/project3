@@ -42,89 +42,162 @@ export interface UserFraudDetails {
 }
 
 /**
- * 高リスクユーザーを取得（管理者ダッシュボード用）
+ * 高リスクユーザーのリストを取得
  */
 export async function getHighRiskUsers(): Promise<FraudDetectionResult[]> {
   try {
-    // 不正検知ログから高リスクユーザーを取得
-    const { data: fraudLogs, error: fraudError } = await supabase
-      .from('fraud_detection_logs')
-      .select(`
-        user_id,
-        detection_type,
-        risk_score,
-        details,
-        action_taken,
-        created_at
-      `)
-      .gte('risk_score', 50) // リスクスコア50以上
-      .order('created_at', { ascending: false });
+    // まず、必要なテーブルが存在するかチェック
+    const { data: tablesCheck, error: tablesError } = await supabase
+      .from('information_schema.tables')
+      .select('table_name')
+      .eq('table_schema', 'public')
+      .in('table_name', ['fraud_detection_logs', 'user_device_fingerprints', 'stripe_card_fingerprints']);
 
-    if (fraudError) throw fraudError;
-
-    if (!fraudLogs || fraudLogs.length === 0) {
+    if (tablesError) {
+      console.warn('Could not check table existence:', tablesError);
       return [];
     }
 
-    // ユーザーごとにグループ化
-    const userFraudMap = new Map<string, any[]>();
-    fraudLogs.forEach(log => {
-      if (!userFraudMap.has(log.user_id)) {
-        userFraudMap.set(log.user_id, []);
-      }
-      userFraudMap.get(log.user_id)!.push(log);
-    });
-
-    const userIds = Array.from(userFraudMap.keys());
-
-    // ユーザー情報を取得
-    const { data: profiles, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, name, created_at')
-      .in('id', userIds);
-
-    if (profileError) throw profileError;
-
-    // 認証ユーザー情報を取得
-    const { data: authUsers, error: authError } = await supabase
-      .from('auth.users')
-      .select('id, email, created_at')
-      .in('id', userIds);
-
-    if (authError) {
-      console.warn('Auth users fetch failed:', authError);
+    const existingTables = tablesCheck?.map(t => t.table_name) || [];
+    
+    // 必要なテーブルが存在しない場合は空の結果を返す
+    if (!existingTables.includes('fraud_detection_logs') || 
+        !existingTables.includes('user_device_fingerprints') || 
+        !existingTables.includes('stripe_card_fingerprints')) {
+      console.warn('Fraud detection tables not found. Please run create_blacklist_schema.sql');
+      return [];
     }
 
-    // 結果をマップ
+    // プロファイル情報を取得
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, name, email, created_at, user_type');
+
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
+      return [];
+    }
+
+    if (!profiles || profiles.length === 0) {
+      return [];
+    }
+
+    // 不正検知ログを取得
+    const { data: fraudLogs, error: fraudError } = await supabase
+      .from('fraud_detection_logs')
+      .select('user_id, detection_type, risk_score, action_taken, created_at')
+      .order('created_at', { ascending: false });
+
+    if (fraudError) {
+      console.error('Error fetching fraud logs:', fraudError);
+      return [];
+    }
+
     const results: FraudDetectionResult[] = [];
-    
-    for (const userId of userIds) {
-      const userLogs = userFraudMap.get(userId) || [];
-      const profile = profiles?.find(p => p.id === userId);
-      const authUser = authUsers?.find(u => u.id === userId);
+
+    for (const profile of profiles) {
+      const userFraudLogs = fraudLogs?.filter(log => log.user_id === profile.id) || [];
       
-      const maxRiskScore = Math.max(...userLogs.map(log => log.risk_score));
-      const detectionTypes = [...new Set(userLogs.map(log => log.detection_type))];
-      const lastDetection = userLogs[0]?.created_at;
-      
-      // デバイス・IP・カード重複数を計算
-      const deviceDuplicates = userLogs.filter(log => log.detection_type === 'duplicate_device').length;
-      const ipDuplicates = userLogs.filter(log => log.detection_type === 'duplicate_ip').length;
-      const cardDuplicates = userLogs.filter(log => log.detection_type === 'duplicate_card').length;
-      
+      if (userFraudLogs.length === 0) continue;
+
+      const maxRiskScore = Math.max(...userFraudLogs.map(log => log.risk_score));
+      const riskLevel = maxRiskScore >= 70 ? 'high' : maxRiskScore >= 50 ? 'medium' : 'low';
+
+      // 高リスクまたは中リスクのユーザーのみを含める
+      if (riskLevel === 'low') continue;
+
+      const detectionTypes = Array.from(new Set(userFraudLogs.map(log => log.detection_type)));
+      const lastDetection = userFraudLogs[0]?.created_at || '';
+
+      // デバイス重複数を取得
+      let deviceDuplicates = 0;
+      try {
+        const { data: deviceData } = await supabase
+          .from('user_device_fingerprints')
+          .select('fingerprint')
+          .eq('user_id', profile.id);
+        
+        if (deviceData && deviceData.length > 0) {
+          const { count } = await supabase
+            .from('user_device_fingerprints')
+            .select('user_id', { count: 'exact' })
+            .in('fingerprint', deviceData.map(d => d.fingerprint))
+            .neq('user_id', profile.id);
+          deviceDuplicates = count || 0;
+        }
+      } catch (error) {
+        console.warn('Error fetching device duplicates:', error);
+      }
+
+      // IP重複数を取得
+      let ipDuplicates = 0;
+      try {
+        const { data: ipData } = await supabase
+          .from('user_device_fingerprints')
+          .select('ip_address')
+          .eq('user_id', profile.id)
+          .not('ip_address', 'is', null);
+        
+        if (ipData && ipData.length > 0) {
+          const { count } = await supabase
+            .from('user_device_fingerprints')
+            .select('user_id', { count: 'exact' })
+            .in('ip_address', ipData.map(d => d.ip_address))
+            .neq('user_id', profile.id);
+          ipDuplicates = count || 0;
+        }
+      } catch (error) {
+        console.warn('Error fetching IP duplicates:', error);
+      }
+
+      // カード重複数を取得
+      let cardDuplicates = 0;
+      try {
+        const { data: cardData } = await supabase
+          .from('stripe_card_fingerprints')
+          .select('card_fingerprint')
+          .eq('user_id', profile.id);
+        
+        if (cardData && cardData.length > 0) {
+          const { count } = await supabase
+            .from('stripe_card_fingerprints')
+            .select('user_id', { count: 'exact' })
+            .in('card_fingerprint', cardData.map(c => c.card_fingerprint))
+            .neq('user_id', profile.id);
+          cardDuplicates = count || 0;
+        }
+      } catch (error) {
+        console.warn('Error fetching card duplicates:', error);
+      }
+
       // トライアル悪用チェック
-      const trialAbuse = userLogs.some(log => 
-        log.details && (log.details.trialAbuse || log.details.multipleTrials)
-      );
-      
-      let riskLevel: 'low' | 'medium' | 'high' = 'low';
-      if (maxRiskScore >= 70) riskLevel = 'high';
-      else if (maxRiskScore >= 50) riskLevel = 'medium';
+      let trialAbuse = false;
+      try {
+        const { data: trialData } = await supabase
+          .from('stripe_card_fingerprints')
+          .select('trial_used')
+          .eq('user_id', profile.id)
+          .eq('trial_used', true);
+        trialAbuse = (trialData?.length || 0) > 1;
+      } catch (error) {
+        console.warn('Error checking trial abuse:', error);
+      }
+
+      // auth.usersからメール情報を取得
+      let userEmail = profile.email || '';
+      try {
+        const { data: authUser } = await supabase.auth.admin.getUserById(profile.id);
+        if (authUser.user?.email) {
+          userEmail = authUser.user.email;
+        }
+      } catch (error) {
+        console.warn('Error fetching auth user email:', error);
+      }
 
       results.push({
-        userId,
-        userName: profile?.name || 'Unknown',
-        email: authUser?.email || 'Unknown',
+        userId: profile.id,
+        userName: profile.name || 'Unknown',
+        email: userEmail,
         riskScore: maxRiskScore,
         riskLevel,
         detectionTypes,
@@ -133,7 +206,7 @@ export async function getHighRiskUsers(): Promise<FraudDetectionResult[]> {
         cardDuplicates,
         lastDetection,
         trialAbuse,
-        createdAt: profile?.created_at || authUser?.created_at || ''
+        createdAt: profile?.created_at || ''
       });
     }
 
@@ -225,49 +298,106 @@ export async function getUserFraudDetails(userId: string): Promise<UserFraudDeta
 }
 
 /**
- * 不正検知統計情報を取得（管理者ダッシュボード用）
+ * 不正検知統計情報を取得
  */
 export async function getFraudDetectionStats(): Promise<{
   totalHighRiskUsers: number;
   totalMediumRiskUsers: number;
+  totalLowRiskUsers: number;
   recentDetections: number;
   blockedAttempts: number;
   trialAbuseCount: number;
-}> {
+} | null> {
   try {
-    // 過去30日間の不正検知ログを取得
+    // テーブルの存在確認
+    const { data: tablesCheck, error: tablesError } = await supabase
+      .from('information_schema.tables')
+      .select('table_name')
+      .eq('table_schema', 'public')
+      .in('table_name', ['fraud_detection_logs', 'user_device_fingerprints', 'stripe_card_fingerprints']);
+
+    if (tablesError) {
+      console.warn('Could not check table existence:', tablesError);
+      return null;
+    }
+
+    const existingTables = tablesCheck?.map(t => t.table_name) || [];
+    
+    // 必要なテーブルが存在しない場合はnullを返す
+    if (!existingTables.includes('fraud_detection_logs')) {
+      console.warn('Fraud detection tables not found. Please run create_blacklist_schema.sql');
+      return null;
+    }
+
+    // 過去30日間の統計
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    
-    const { data: recentLogs, error: logsError } = await supabase
+
+    const { data: fraudLogs, error: fraudError } = await supabase
       .from('fraud_detection_logs')
-      .select('risk_score, detection_type, action_taken, details')
-      .gte('created_at', thirtyDaysAgo);
+      .select('user_id, risk_score, detection_type, created_at')
+      .order('created_at', { ascending: false });
 
-    if (logsError) throw logsError;
+    if (fraudError) {
+      console.error('Error fetching fraud logs:', fraudError);
+      return {
+        totalHighRiskUsers: 0,
+        totalMediumRiskUsers: 0,
+        totalLowRiskUsers: 0,
+        recentDetections: 0,
+        blockedAttempts: 0,
+        trialAbuseCount: 0
+      };
+    }
 
-    const logs = recentLogs || [];
-    
-    const highRiskUsers = new Set(
-      logs.filter(log => log.risk_score >= 70).map(log => log.user_id)
-    ).size;
-    
-    const mediumRiskUsers = new Set(
-      logs.filter(log => log.risk_score >= 50 && log.risk_score < 70).map(log => log.user_id)
-    ).size;
-    
-    const recentDetections = logs.length;
-    
-    const blockedAttempts = logs.filter(log => 
-      log.action_taken === 'restriction' || log.action_taken === 'ban'
+    if (!fraudLogs || fraudLogs.length === 0) {
+      return {
+        totalHighRiskUsers: 0,
+        totalMediumRiskUsers: 0,
+        totalLowRiskUsers: 0,
+        recentDetections: 0,
+        blockedAttempts: 0,
+        trialAbuseCount: 0
+      };
+    }
+
+    // ユーザーごとの最高リスクスコアを計算
+    const userRiskScores = new Map<string, number>();
+    fraudLogs.forEach(log => {
+      const currentMax = userRiskScores.get(log.user_id) || 0;
+      if (log.risk_score > currentMax) {
+        userRiskScores.set(log.user_id, log.risk_score);
+      }
+    });
+
+    let totalHighRiskUsers = 0;
+    let totalMediumRiskUsers = 0;
+    let totalLowRiskUsers = 0;
+
+    userRiskScores.forEach(score => {
+      if (score >= 70) totalHighRiskUsers++;
+      else if (score >= 50) totalMediumRiskUsers++;
+      else totalLowRiskUsers++;
+    });
+
+    const recentDetections = fraudLogs.filter(log => 
+      new Date(log.created_at) >= new Date(thirtyDaysAgo)
     ).length;
-    
-    const trialAbuseCount = logs.filter(log =>
-      log.details && (log.details.trialAbuse || log.details.multipleTrials)
+
+    const blockedAttempts = fraudLogs.filter(log => 
+      log.detection_type === 'duplicate_device' || 
+      log.detection_type === 'duplicate_ip' || 
+      log.detection_type === 'duplicate_card'
+    ).length;
+
+    const trialAbuseCount = fraudLogs.filter(log => 
+      log.detection_type === 'subscription_abuse' ||
+      (log.detection_type === 'duplicate_card' && log.risk_score >= 60)
     ).length;
 
     return {
-      totalHighRiskUsers: highRiskUsers,
-      totalMediumRiskUsers: mediumRiskUsers,
+      totalHighRiskUsers,
+      totalMediumRiskUsers,
+      totalLowRiskUsers,
       recentDetections,
       blockedAttempts,
       trialAbuseCount
@@ -278,6 +408,7 @@ export async function getFraudDetectionStats(): Promise<{
     return {
       totalHighRiskUsers: 0,
       totalMediumRiskUsers: 0,
+      totalLowRiskUsers: 0,
       recentDetections: 0,
       blockedAttempts: 0,
       trialAbuseCount: 0

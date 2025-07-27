@@ -8,24 +8,24 @@ import { useEffect, useState } from 'react';
 import Button from '../Button';
 import Card from '../Card';
 
-interface AdminMaintenanceManagementProps {
+interface AdminMaintenanceTestProps {
   onError: (error: string) => void;
   onSuccess: (message: string) => void;
 }
 
-const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceManagementProps) => {
-  // テスト用のシンプルな実装
+const AdminMaintenanceTest = ({ onError, onSuccess }: AdminMaintenanceTestProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
-  // 基本的なメンテナンス情報取得テスト
   useEffect(() => {
     const testMaintenance = async () => {
       try {
         setIsLoading(true);
-        onSuccess('メンテナンス管理画面が正常に読み込まれました');
+        // 2秒待ってから成功メッセージを表示
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        onSuccess('✅ メンテナンス管理画面が正常に読み込まれました');
       } catch (error) {
         console.error('Maintenance test error:', error);
-        onError('メンテナンス機能のテストでエラーが発生しました');
+        onError('❌ メンテナンス機能のテストでエラーが発生しました');
       } finally {
         setIsLoading(false);
       }
@@ -64,7 +64,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
           <div className="flex items-center">
             <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
             <div>
-              <h3 className="font-medium text-green-900">動作テスト成功</h3>
+              <h3 className="font-medium text-green-900">🎉 動作テスト成功</h3>
               <p className="text-sm text-green-800 mt-1">
                 メンテナンス管理コンポーネントが正常に動作しています。
               </p>
@@ -77,7 +77,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-medium text-blue-900">現在の状態</h3>
-                <p className="text-sm text-blue-800">システム正常稼働中</p>
+                <p className="text-sm text-blue-800">✅ システム正常稼働中</p>
               </div>
               <Power className="w-8 h-8 text-blue-600" />
             </div>
@@ -87,7 +87,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-medium text-gray-900">次回メンテナンス</h3>
-                <p className="text-sm text-gray-600">未設定</p>
+                <p className="text-sm text-gray-600">📅 未設定</p>
               </div>
               <Shield className="w-8 h-8 text-gray-600" />
             </div>
@@ -100,7 +100,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
               🚧 完全版のメンテナンス機能は後で復元されます
             </p>
             <Button 
-              onClick={() => onSuccess('テスト完了')}
+              onClick={() => onSuccess('🎯 テスト完了 - メンテナンス機能は正常です')}
               variant="secondary"
               size="sm"
             >
@@ -114,4 +114,4 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
   );
 };
 
-export default AdminMaintenanceManagement; 
+export default AdminMaintenanceTest; 

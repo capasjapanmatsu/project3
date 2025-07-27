@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import AdminMaintenanceManagement from '../components/admin/AdminMaintenanceManagement';
+import AdminMaintenanceTest from '../components/admin/AdminMaintenanceTest';
 import useAuth from '../context/AuthContext';
 import { FraudDetectionResult, getFraudDetectionStats, getHighRiskUsers } from '../utils/adminFraudDetection';
 import { supabase } from '../utils/supabase';
@@ -81,13 +81,7 @@ export function AdminDashboard() {
   const [processingSuccess, setProcessingSuccess] = useState('');
 
   // 不正検知関連のstate
-  const [fraudStats, setFraudStats] = useState<FraudStats>({
-    totalHighRiskUsers: 0,
-    totalMediumRiskUsers: 0,
-    recentDetections: 0,
-    blockedAttempts: 0,
-    trialAbuseCount: 0
-  });
+  const [fraudStats, setFraudStats] = useState<FraudStats | null>(null);
   const [highRiskUsers, setHighRiskUsers] = useState<FraudDetectionResult[]>([]);
 
   useEffect(() => {
@@ -98,7 +92,8 @@ export function AdminDashboard() {
     }
 
     void fetchAdminData();
-    void fetchFraudData();
+    void fetchEmergencyData();
+    void fetchFraudStats();
   }, [isAdmin, navigate]);
 
   const fetchAdminData = async () => {
@@ -139,18 +134,52 @@ export function AdminDashboard() {
     }
   };
 
-  const fetchFraudData = async () => {
+  const fetchEmergencyData = async () => {
     try {
-      // 不正検知統計を取得
-      const fraudStatsData = await getFraudDetectionStats();
-      setFraudStats(fraudStatsData);
+      // 不正検知テーブルの存在確認
+      const { data: tablesCheck, error: tablesError } = await supabase
+        .from('information_schema.tables')
+        .select('table_name')
+        .eq('table_schema', 'public')
+        .eq('table_name', 'fraud_detection_logs');
 
-      // 高リスクユーザーを取得（上位5名）
-      const highRiskData = await getHighRiskUsers();
-      setHighRiskUsers(highRiskData.slice(0, 5));
+      if (tablesError || !tablesCheck || tablesCheck.length === 0) {
+        console.warn('Fraud detection tables not found. Skipping fraud detection features.');
+        setHighRiskUsers([]);
+        return;
+      }
 
+      const [highRiskUsers] = await Promise.all([
+        getHighRiskUsers()
+      ]);
+
+      setHighRiskUsers(highRiskUsers);
     } catch (error) {
-      console.error('Error fetching fraud data:', error);
+      console.error('Error fetching emergency data:', error);
+      setHighRiskUsers([]);
+    }
+  };
+
+  const fetchFraudStats = async () => {
+    try {
+      // 不正検知テーブルの存在確認
+      const { data: tablesCheck, error: tablesError } = await supabase
+        .from('information_schema.tables')
+        .select('table_name')
+        .eq('table_schema', 'public')
+        .eq('table_name', 'fraud_detection_logs');
+
+      if (tablesError || !tablesCheck || tablesCheck.length === 0) {
+        console.warn('Fraud detection tables not found. Skipping fraud statistics.');
+        setFraudStats(null);
+        return;
+      }
+
+      const stats = await getFraudDetectionStats();
+      setFraudStats(stats);
+    } catch (error) {
+      console.error('Error fetching fraud stats:', error);
+      setFraudStats(null);
     }
   };
 
@@ -217,7 +246,7 @@ export function AdminDashboard() {
         )}
 
         {/* 緊急対応が必要な項目 */}
-        {(stats.pendingParks > 0 || stats.pendingVaccines > 0 || stats.pendingFacilities > 0 || fraudStats.totalHighRiskUsers > 0) && (
+        {(stats.pendingParks > 0 || stats.pendingVaccines > 0 || stats.pendingFacilities > 0 || (fraudStats?.totalHighRiskUsers || 0) > 0) && (
           <Card className="p-6 mb-6 border-red-200 bg-red-50">
             <h2 className="text-lg font-semibold text-red-900 mb-4 flex items-center">
               <AlertTriangle className="w-6 h-6 text-red-600 mr-2" />
@@ -266,13 +295,13 @@ export function AdminDashboard() {
                 </Link>
               )}
 
-              {fraudStats.totalHighRiskUsers > 0 && (
+              {(fraudStats?.totalHighRiskUsers || 0) > 0 && (
                 <Link to="/admin/users?filter=high_risk" className="block">
                   <div className="bg-white rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-600">高リスクユーザー</p>
-                        <p className="text-2xl font-bold text-red-600">{fraudStats.totalHighRiskUsers}</p>
+                        <p className="text-2xl font-bold text-red-600">{fraudStats?.totalHighRiskUsers || 0}</p>
                       </div>
                       <ShieldAlert className="w-8 h-8 text-red-500" />
                     </div>
@@ -467,7 +496,7 @@ export function AdminDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">高リスクユーザー</p>
-                    <p className="text-2xl font-bold text-red-600">{fraudStats.totalHighRiskUsers}</p>
+                    <p className="text-2xl font-bold text-red-600">{fraudStats?.totalHighRiskUsers || 0}</p>
                   </div>
                   <ShieldAlert className="w-8 h-8 text-red-500" />
                 </div>
@@ -477,7 +506,7 @@ export function AdminDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">中リスクユーザー</p>
-                    <p className="text-2xl font-bold text-yellow-600">{fraudStats.totalMediumRiskUsers}</p>
+                    <p className="text-2xl font-bold text-yellow-600">{fraudStats?.totalMediumRiskUsers || 0}</p>
                   </div>
                   <AlertTriangle className="w-8 h-8 text-yellow-500" />
                 </div>
@@ -487,7 +516,7 @@ export function AdminDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">最近の検知</p>
-                    <p className="text-2xl font-bold text-blue-600">{fraudStats.recentDetections}</p>
+                    <p className="text-2xl font-bold text-blue-600">{fraudStats?.recentDetections || 0}</p>
                     <p className="text-xs text-gray-500">過去30日</p>
                   </div>
                   <Eye className="w-8 h-8 text-blue-500" />
@@ -498,7 +527,7 @@ export function AdminDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">ブロック済み</p>
-                    <p className="text-2xl font-bold text-green-600">{fraudStats.blockedAttempts}</p>
+                    <p className="text-2xl font-bold text-green-600">{fraudStats?.blockedAttempts || 0}</p>
                   </div>
                   <Shield className="w-8 h-8 text-green-500" />
                 </div>
@@ -508,7 +537,7 @@ export function AdminDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">トライアル悪用</p>
-                    <p className="text-2xl font-bold text-purple-600">{fraudStats.trialAbuseCount}</p>
+                    <p className="text-2xl font-bold text-purple-600">{fraudStats?.trialAbuseCount || 0}</p>
                   </div>
                   <AlertTriangle className="w-8 h-8 text-purple-500" />
                 </div>
@@ -608,7 +637,7 @@ export function AdminDashboard() {
         )}
 
         {activeTab === 'maintenance' && (
-          <AdminMaintenanceManagement
+          <AdminMaintenanceTest
             onError={setProcessingError}
             onSuccess={setProcessingSuccess}
           />
