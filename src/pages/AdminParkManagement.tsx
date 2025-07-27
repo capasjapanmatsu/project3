@@ -76,7 +76,7 @@ interface FacilityImage {
 }
 
 export function AdminParkManagement() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'parks' | 'applications'>('applications');
   const [parks, setParks] = useState<ParkData[]>([]);
@@ -951,56 +951,49 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
 
   // 却下機能
   const handleReject = async (parkId: string) => {
-    const confirmReject = window.confirm('このドッグラン申請を却下してもよろしいですか？');
+    const confirmReject = window.confirm(
+      'このドッグラン申請を却下してもよろしいですか？\n※ 却下されたドッグランはデータベースから完全に削除され、オーナーのマイページからも削除されます。'
+    );
     if (!confirmReject) return;
 
     try {
       setError('');
       setSuccess('');
 
-      const { error: updateError } = await supabase
-        .from('dog_parks')
-        .update({ status: 'rejected' })
-        .eq('id', parkId);
-
-      if (updateError) {
-        console.error('❌ 却下エラー:', updateError);
-        showError('却下の処理に失敗しました。');
+      // 却下される公園の情報を事前に取得（UIログ用）
+      const park = parks.find(p => p.id === parkId);
+      if (!park) {
+        showError('ドッグラン情報が見つかりません。');
         return;
       }
 
-      // 却下された公園の情報を取得
-      const park = parks.find(p => p.id === parkId);
-      if (park) {
-        // 通知を送信
-        await supabase
-          .from('notifications')
-          .insert([
-            {
-              user_id: park.owner_id,
-              title: 'ドッグラン申請却下',
-              message: `${park.name}の申請が却下されました。詳細については管理者までお問い合わせください。`,
-              type: 'park_rejected',
-              created_at: new Date().toISOString(),
-              read: false
-            }
-          ]);
+      // RPC関数を使用して安全に削除処理を実行
+      const { data: result, error: rpcError } = await supabase
+        .rpc('reject_and_delete_park', {
+          p_park_id: parkId,
+          p_admin_id: user?.id
+        });
+
+      if (rpcError) {
+        console.error('❌ RPC関数エラー:', rpcError);
+        showError(`削除処理に失敗しました: ${rpcError.message}`);
+        return;
       }
 
-      showSuccess('ドッグラン申請を却下しました。');
+      if (result?.success) {
+        showSuccess(`${result.park_name || park.name}の申請を却下し、データを削除しました。オーナー（${result.owner_email || park.owner_email}）に通知を送信しました。`);
 
-      // 却下後にリストを更新
-      setParks(prevParks =>
-        prevParks.map(park =>
-          park.id === parkId
-            ? { ...park, status: 'rejected' as const }
-            : park
-        )
-      );
+        // リストから削除（UIの更新）
+        setParks(prevParks => 
+          prevParks.filter(p => p.id !== parkId)
+        );
+      } else {
+        showError(result?.message || '却下処理に失敗しました。');
+      }
 
     } catch (error) {
-      console.error('❌ 却下エラー:', error);
-      showError('却下の処理に失敗しました。');
+      console.error('❌ 却下処理エラー:', error);
+      showError('却下処理中に予期しないエラーが発生しました。');
     }
   };
 

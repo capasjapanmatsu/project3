@@ -1,4 +1,5 @@
 import { ReactNode, createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { supabase } from '../utils/supabase';
 
 interface MaintenanceSchedule {
   id: string;
@@ -30,32 +31,104 @@ const MaintenanceContext = createContext<MaintenanceContextType>({
 });
 
 export const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
-  // 🚨 緊急対応: メンテナンス機能を完全無効化 🚨
-  const [isMaintenanceActive] = useState(false); // 常にfalse
-  const [maintenanceInfo] = useState<MaintenanceSchedule | null>(null); // 常にnull
-  const [loading] = useState(false); // 常にfalse（ローディング無し）
-  const [error] = useState<string | null>(null); // 常にnull
-  const [clientIP] = useState<string | null>('127.0.0.1'); // ダミーIP
-  const [isIPWhitelisted] = useState(true); // 常にtrue
+  const [isMaintenanceActive, setIsMaintenanceActive] = useState(false);
+  const [maintenanceInfo, setMaintenanceInfo] = useState<MaintenanceSchedule | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [clientIP, setClientIP] = useState<string | null>(null);
+  const [isIPWhitelisted, setIsIPWhitelisted] = useState(false);
 
-  // すべての処理をスキップして即座に正常状態を返す
+  // クライアントIPを取得
+  const fetchClientIP = useCallback(async () => {
+    try {
+      // シンプルなローカルホスト環境での処理
+      setClientIP('127.0.0.1');
+      setIsIPWhitelisted(true); // 開発環境では常にホワイトリスト
+    } catch (error) {
+      console.error('Error fetching client IP:', error);
+      setClientIP('127.0.0.1');
+      setIsIPWhitelisted(true);
+    }
+  }, []);
+
+  // メンテナンス状態を確認
+  const checkMaintenanceStatus = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // メンテナンステーブルが存在するかチェック
+      const { data: tableExists } = await supabase
+        .from('information_schema.tables')
+        .select('table_name')
+        .eq('table_schema', 'public')
+        .eq('table_name', 'maintenance_schedules')
+        .single();
+
+      if (!tableExists) {
+        // テーブルが存在しない場合は正常稼働とする
+        setIsMaintenanceActive(false);
+        setMaintenanceInfo(null);
+        return;
+      }
+
+      // 現在アクティブなメンテナンスを取得
+      const now = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('maintenance_schedules')
+        .select('*')
+        .or('end_time.is.null,end_time.gte.' + now)
+        .lte('start_time', now)
+        .eq('is_active', true)
+        .order('is_emergency', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      if (data) {
+        setIsMaintenanceActive(true);
+        setMaintenanceInfo(data);
+      } else {
+        setIsMaintenanceActive(false);
+        setMaintenanceInfo(null);
+      }
+
+    } catch (error) {
+      console.error('Error checking maintenance status:', error);
+      // エラー時は正常稼働とする（フェールセーフ）
+      setIsMaintenanceActive(false);
+      setMaintenanceInfo(null);
+      setError('メンテナンス状態の確認でエラーが発生しましたが、正常稼働します');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const refreshMaintenanceStatus = useCallback(async () => {
-    // console.log('MaintenanceContext: スキップ（無効化中）'); // ログを削除
-    return Promise.resolve();
-  }, []);
+    await checkMaintenanceStatus();
+  }, [checkMaintenanceStatus]);
 
-  // メンテナンス機能が無効化されていることをログ出力
+  // 初期化処理
   useEffect(() => {
-    // console.log('🚨 MaintenanceContext: 緊急対応により完全無効化されています'); // ログを削除
-  }, []);
+    const initialize = async () => {
+      await fetchClientIP();
+      await checkMaintenanceStatus();
+    };
+
+    initialize();
+  }, [fetchClientIP, checkMaintenanceStatus]);
 
   const value: MaintenanceContextType = {
-    isMaintenanceActive, // false
-    maintenanceInfo, // null
-    loading, // false
-    error, // null
-    clientIP, // '127.0.0.1'
-    isIPWhitelisted, // true
+    isMaintenanceActive,
+    maintenanceInfo,
+    loading,
+    error,
+    clientIP,
+    isIPWhitelisted,
     refreshMaintenanceStatus,
   };
 

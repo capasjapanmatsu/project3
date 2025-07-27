@@ -1,14 +1,8 @@
-import React, { useState } from 'react';
-import { Plus, Upload, Trash2, Edit, FileText, Calendar, AlertTriangle, Check, X, Save, Image as ImageIcon } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import React from 'react';
+import type { Dog } from '../../types';
 import Card from '../Card';
-import Button from '../Button';
-import Input from '../Input';
-import { DogCard, DogEditModal, getDogHonorific } from './DogCard';
-import VaccineBadge, { getVaccineStatusFromDog } from '../VaccineBadge';
-import { validateVaccineFile } from '../../utils/vaccineUpload';
-import { handleVaccineUploadFixed } from '../../utils/vaccineUploadFixed';
-import { supabase } from '../../utils/supabase';
-import type { Dog, Profile } from '../../types';
+import { DogCard, DogEditModal } from './DogCard';
 
 interface DogManagementSectionProps {
   dogs: Dog[];
@@ -78,7 +72,7 @@ export const DogManagementSection: React.FC<DogManagementSectionProps> = ({
           登録済みの愛犬
         </h2>
         <a
-          href="/register-dog"
+          href="/dog-registration"
           className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center"
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -94,7 +88,7 @@ export const DogManagementSection: React.FC<DogManagementSectionProps> = ({
             ドッグランを利用するために、愛犬の情報を登録してください
           </p>
           <a
-            href="/register-dog"
+            href="/dog-registration"
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium inline-flex items-center"
           >
             <Plus className="w-4 h-4 mr-2" />

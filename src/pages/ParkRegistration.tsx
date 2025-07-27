@@ -10,7 +10,7 @@ import { retryConfigs, useRetryWithRecovery } from '../hooks/useRetryWithRecover
 import type { DogPark } from '../types';
 import { supabase } from '../utils/supabase';
 
-export function ParkRegistration() {
+export default function ParkRegistration() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);

@@ -21,6 +21,8 @@ export function Login() {
   // URLクエリパラメータに基づいてログイン方法を決定
   const searchParams = new URLSearchParams(location.search);
   const loginMethod = searchParams.get('method');
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
+  const infoMessage = searchParams.get('message');
   const [isPasswordLogin, setIsPasswordLogin] = useState(loginMethod !== 'magic');
 
   // ローカルストレージからメールアドレスを取得して自動入力（開発環境のみ）
@@ -45,12 +47,13 @@ export function Login() {
       if (result.success) {
         localStorage.setItem('lastUsedEmail', email);
         notify.success('ログインリンクを送信しました。メールをご確認ください。');
+        // Magic Linkの場合はメール確認後にリダイレクトされるため、ここでは遷移しない
       } else {
         setError(result.error || 'Magic Linkの送信に失敗しました。もう一度お試しください。');
       }
     } catch (error) {
       logger.error('❌ Magic link error:', error);
-      setError(error instanceof Error ? error.message : 'メールの送信に失敗しました。もう一度お試しください。');
+      setError(error instanceof Error ? error.message : 'Magic Linkの送信に失敗しました。もう一度お試しください。');
     } finally {
       setIsLoading(false);
     }
@@ -66,7 +69,7 @@ export function Login() {
       const result = await signInWithPassword(email, password);
       if (result.success) {
         notify.success('ログインしました。');
-        navigate('/dashboard');
+        navigate(redirectTo);
       } else {
         setError(result.error || 'ログインに失敗しました。もう一度お試しください。');
       }
@@ -81,6 +84,23 @@ export function Login() {
   return (
     <div className="max-w-md mx-auto">
       <h1 className="text-2xl font-bold text-center mb-8">ログイン</h1>
+      
+      {/* サブスクリプション誘導メッセージ */}
+      {infoMessage && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                <ArrowRight className="w-4 h-4 text-blue-600" />
+              </div>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-blue-800">{decodeURIComponent(infoMessage)}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <Card>
         {/* タブ切り替え */}
         <div className="flex mb-6 bg-gray-100 p-1 rounded-lg">

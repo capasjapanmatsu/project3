@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import AdminMaintenanceTest from '../components/admin/AdminMaintenanceTest';
+import AdminMaintenanceManagement from '../components/admin/AdminMaintenanceManagement';
 import useAuth from '../context/AuthContext';
 import { FraudDetectionResult, getFraudDetectionStats, getHighRiskUsers } from '../utils/adminFraudDetection';
 import { supabase } from '../utils/supabase';
@@ -637,7 +637,7 @@ export function AdminDashboard() {
         )}
 
         {activeTab === 'maintenance' && (
-          <AdminMaintenanceTest
+          <AdminMaintenanceManagement
             onError={setProcessingError}
             onSuccess={setProcessingSuccess}
           />

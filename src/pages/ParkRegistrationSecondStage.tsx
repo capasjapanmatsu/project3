@@ -132,7 +132,7 @@ const IMAGE_TYPES = {
 } as const;
 
 export function ParkRegistrationSecondStage() {
-  const { parkId } = useParams<{ parkId: string }>();
+  const { id: parkId } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [park, setPark] = useState<DogPark | null>(null);
@@ -159,17 +159,22 @@ export function ParkRegistrationSecondStage() {
   const [smartLockError, setSmartLockError] = useState('');
 
   useEffect(() => {
+    console.log('🔍 ParkRegistrationSecondStage - parkId:', parkId);
+    console.log('🔍 ParkRegistrationSecondStage - user:', user?.id);
+    
     if (!user || !parkId) {
+      console.log('❌ Missing user or parkId, redirecting...');
       navigate('/owner-dashboard');
       return;
     }
 
-    fetchParkData();
+    void fetchParkData();
   }, [user, parkId, navigate]);
 
   const fetchParkData = async () => {
     try {
       setIsLoading(true);
+      console.log('📡 Fetching park data for parkId:', parkId);
 
       // Fetch park data
       const { data: parkData, error: parkError } = await supabase
@@ -179,13 +184,17 @@ export function ParkRegistrationSecondStage() {
         .eq('owner_id', user?.id)
         .single();
 
+      console.log('📋 Park data response:', { parkData, parkError });
+
       if (parkError) throw parkError;
       if (!parkData) {
+        console.log('❌ No park data found, redirecting...');
         navigate('/owner-dashboard');
         return;
       }
 
       setPark(parkData);
+      console.log('✅ Park data loaded successfully');
 
       // Fetch existing facility images
       const { data: imageData, error: imageError } = await supabase
@@ -418,6 +427,17 @@ export function ParkRegistrationSecondStage() {
       setIsSubmitting(true);
       setError('');
 
+      // 承認済みドッグランの場合は画像更新処理
+      if (park?.status === 'approved') {
+        // 承認済みドッグランの画像更新処理
+        setSuccess('画像とコメントの更新が完了しました。');
+        setTimeout(() => {
+          setSuccess('');
+        }, 3000);
+        return;
+      }
+
+      // 以下は審査中ドッグランの処理
       // Check if smart lock is purchased
       if (!smartLockPurchased) {
         setSmartLockError('スマートロックの購入・設置完了をご確認ください');
@@ -642,7 +662,10 @@ export function ParkRegistrationSecondStage() {
   }
 
   // Check if park is in the correct stage
-  if (park.status !== 'first_stage_passed' && park.status !== 'second_stage_waiting' && park.status !== 'second_stage_review') {
+  if (park.status !== 'first_stage_passed' && 
+      park.status !== 'second_stage_waiting' && 
+      park.status !== 'second_stage_review' && 
+      park.status !== 'approved') {
     return (
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
@@ -654,11 +677,10 @@ export function ParkRegistrationSecondStage() {
 
         <Card className="text-center py-8">
           <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">このドッグランは現在第二審査の対象ではありません</h2>
+          <h2 className="text-2xl font-bold mb-2">このドッグランは現在編集できません</h2>
           <p className="text-gray-600 mb-4">
             {park.status === 'pending' && '第一審査が完了するまでお待ちください。'}
             {park.status === 'smart_lock_testing' && 'スマートロック実証検査中です。管理者からの連絡をお待ちください。'}
-            {park.status === 'approved' && 'このドッグランは既に承認されています。'}
             {park.status === 'rejected' && '審査が却下されました。詳細はダッシュボードでご確認ください。'}
           </p>
           <Link to="/owner-dashboard">
@@ -682,56 +704,61 @@ export function ParkRegistrationSecondStage() {
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-4 flex items-center justify-center">
           <Building className="w-8 h-8 text-blue-600 mr-3" />
-          {park.name}の第二審査
+          {park.status === 'approved' ? `${park.name}の施設情報編集` : `${park.name}の第二審査`}
         </h1>
         <p className="text-lg text-gray-600">
-          施設の詳細画像と振込先情報を登録して審査を完了させましょう
+          {park.status === 'approved' 
+            ? '承認済みの施設でも画像の差し替えやコメントの編集が可能です' 
+            : '施設の詳細画像と振込先情報を登録して審査を完了させましょう'
+          }
         </p>
       </div>
 
       {/* 審査ステータス */}
-      <Card className="bg-blue-50 border-blue-200">
-        <div className="flex items-start space-x-3">
-          <FileText className="w-6 h-6 text-blue-600 mt-1" />
-          <div>
-            <h3 className="font-semibold text-blue-900 mb-2">審査ステータス</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-blue-800">
-              <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">1</div>
-                <div>
-                  <span className="font-medium">第一審査</span>
-                  <p className="text-xs text-green-600">完了</p>
+      {park.status !== 'approved' && (
+        <Card className="bg-blue-50 border-blue-200">
+          <div className="flex items-start space-x-3">
+            <FileText className="w-6 h-6 text-blue-600 mt-1" />
+            <div>
+              <h3 className="font-semibold text-blue-900 mb-2">審査ステータス</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-blue-800">
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">1</div>
+                  <div>
+                    <span className="font-medium">第一審査</span>
+                    <p className="text-xs text-green-600">完了</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className={`w-6 h-6 ${park.status === 'second_stage_review' ? 'bg-green-600' : 'bg-blue-600'} text-white rounded-full flex items-center justify-center text-xs font-bold`}>2</div>
-                <div>
-                  <span className="font-medium">第二審査</span>
-                  <p className="text-xs text-blue-600">
-                    {park.status === 'first_stage_passed' && '画像アップロード中'}
-                    {park.status === 'second_stage_waiting' && '申請準備中'}
-                    {park.status === 'second_stage_review' && '審査中'}
-                  </p>
+                <div className="flex items-center space-x-2">
+                  <div className={`w-6 h-6 ${park.status === 'second_stage_review' ? 'bg-green-600' : 'bg-blue-600'} text-white rounded-full flex items-center justify-center text-xs font-bold`}>2</div>
+                  <div>
+                    <span className="font-medium">第二審査</span>
+                    <p className="text-xs text-blue-600">
+                      {park.status === 'first_stage_passed' && '画像アップロード中'}
+                      {park.status === 'second_stage_waiting' && '申請準備中'}
+                      {park.status === 'second_stage_review' && '審査中'}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-bold">3</div>
-                <div>
-                  <span className="font-medium">QR実証検査</span>
-                  <p className="text-xs text-gray-600">未実施</p>
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-bold">3</div>
+                  <div>
+                    <span className="font-medium">QR実証検査</span>
+                    <p className="text-xs text-gray-600">未実施</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-bold">4</div>
-                <div>
-                  <span className="font-medium">運営開始</span>
-                  <p className="text-xs text-gray-600">未完了</p>
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 bg-gray-400 text-white rounded-full flex items-center justify-center text-xs font-bold">4</div>
+                  <div>
+                    <span className="font-medium">運営開始</span>
+                    <p className="text-xs text-gray-600">未完了</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       {/* エラー・成功メッセージ */}
       {error && (
@@ -749,47 +776,49 @@ export function ParkRegistrationSecondStage() {
       )}
 
       {/* スマートロック購入確認 */}
-      <Card className="bg-orange-50 border-orange-200">
-        <div className="flex items-start space-x-3">
-          <Shield className="w-6 h-6 text-orange-600 mt-1" />
-          <div className="flex-1">
-            <h3 className="font-semibold text-orange-900 mb-2">スマートロック購入確認</h3>
-            <p className="text-sm text-orange-800 mb-4">
-              第二審査に進む前に、スマートロックの購入と設置が完了していることを確認してください。
-            </p>
+      {park.status !== 'approved' && (
+        <Card className="bg-orange-50 border-orange-200">
+          <div className="flex items-start space-x-3">
+            <Shield className="w-6 h-6 text-orange-600 mt-1" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-orange-900 mb-2">スマートロック購入確認</h3>
+              <p className="text-sm text-orange-800 mb-4">
+                第二審査に進む前に、スマートロックの購入と設置が完了していることを確認してください。
+              </p>
 
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  id="smartLockPurchased"
-                  checked={smartLockPurchased}
-                  onChange={(e) => {
-                    setSmartLockPurchased(e.target.checked);
-                    setSmartLockError('');
-                  }}
-                  className="w-5 h-5 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
-                />
-                <label htmlFor="smartLockPurchased" className="text-sm font-medium text-orange-900">
-                  スマートロックを購入し、設置を完了しました
-                </label>
-              </div>
-
-              {smartLockError && (
-                <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-                  {smartLockError}
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="smartLockPurchased"
+                    checked={smartLockPurchased}
+                    onChange={(e) => {
+                      setSmartLockPurchased(e.target.checked);
+                      setSmartLockError('');
+                    }}
+                    className="w-5 h-5 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
+                  />
+                  <label htmlFor="smartLockPurchased" className="text-sm font-medium text-orange-900">
+                    スマートロックを購入し、設置を完了しました
+                  </label>
                 </div>
-              )}
 
-              <div className="text-xs text-orange-700 space-y-1">
-                <p>• スマートロックはペットショップで購入できます</p>
-                <p>• 設置完了後、動作確認を行ってください</p>
-                <p>• 第二審査では実際の設置状況を確認します</p>
+                {smartLockError && (
+                  <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                    {smartLockError}
+                  </div>
+                )}
+
+                <div className="text-xs text-orange-700 space-y-1">
+                  <p>• スマートロックはペットショップで購入できます</p>
+                  <p>• 設置完了後、動作確認を行ってください</p>
+                  <p>• 第二審査では実際の設置状況を確認します</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       {/* タブナビゲーション */}
       <div className="flex space-x-4 border-b">
@@ -1124,11 +1153,13 @@ export function ParkRegistrationSecondStage() {
         <Button
           onClick={handleSubmitReview}
           isLoading={isSubmitting}
-          disabled={park.status === 'second_stage_review'}
+          disabled={park?.status === 'second_stage_review'}
           className="bg-blue-600 hover:bg-blue-700"
         >
-          {park.status === 'second_stage_review'
+          {park?.status === 'second_stage_review'
             ? '審査中です'
+            : park?.status === 'approved'
+            ? '編集する'
             : '第二審査を申請する'}
         </Button>
       </div>

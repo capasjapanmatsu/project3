@@ -17,25 +17,28 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import { SEO } from '../components/SEO';
 import useAuth from '../context/AuthContext';
+import { FACILITY_CATEGORY_LABELS, PetFacility } from '../types/facilities';
 import { supabase } from '../utils/supabase';
 
-interface Facility {
+interface PetFacilityFromDB {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   address: string;
+  latitude?: number;
+  longitude?: number;
   phone?: string;
   website?: string;
   status: 'pending' | 'approved' | 'rejected' | 'suspended';
-  category_name: string;
+  category_id: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export function MyFacilitiesManagement() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [facilities, setFacilities] = useState<PetFacility[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,13 +46,24 @@ export function MyFacilitiesManagement() {
       if (!user) return;
 
       try {
+        // 正しいテーブル名とカラム名でクエリ
         const { data: facilitiesData, error } = await supabase
-          .from('facilities')
+          .from('pet_facilities')
           .select(`
-            *,
-            facility_categories(name)
+            id,
+            name,
+            description,
+            address,
+            latitude,
+            longitude,
+            phone,
+            website,
+            status,
+            category_id,
+            created_at,
+            updated_at
           `)
-          .eq('user_id', user.id)
+          .eq('owner_id', user.id)
           .order('created_at', { ascending: false });
 
         if (error) {
@@ -57,11 +71,13 @@ export function MyFacilitiesManagement() {
           return;
         }
 
-        const processedFacilities = facilitiesData?.map((facility: any) => ({
+        const processedFacilities: PetFacility[] = (facilitiesData as PetFacilityFromDB[])?.map((facility) => ({
           ...facility,
-          category_name: facility.facility_categories?.name || 'その他施設'
+          category: facility.category_id,
+          category_name: FACILITY_CATEGORY_LABELS[facility.category_id as keyof typeof FACILITY_CATEGORY_LABELS] || 'その他施設'
         })) || [];
 
+        console.log('✅ Facilities data:', processedFacilities);
         setFacilities(processedFacilities);
       } catch (error) {
         console.error('Error in fetchFacilities:', error);
@@ -240,13 +256,13 @@ export function MyFacilitiesManagement() {
                     <div>
                       <div className="text-sm text-gray-600">登録日</div>
                       <div className="font-semibold">
-                        {new Date(facility.created_at).toLocaleDateString()}
+                        {facility.created_at ? new Date(facility.created_at).toLocaleDateString() : '不明'}
                       </div>
                     </div>
                     <div>
-                      <div className="text-sm text-gray-600">最終更新</div>
-                      <div className="font-semibold">
-                        {new Date(facility.updated_at).toLocaleDateString()}
+                      <div className="text-sm text-gray-600">ステータス</div>
+                      <div className="mt-1">
+                        {getStatusBadge(facility.status)}
                       </div>
                     </div>
                   </div>

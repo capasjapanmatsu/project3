@@ -606,7 +606,7 @@ export function DogManagement() {
           <h1 className="text-2xl font-bold text-gray-900">ワンちゃん管理</h1>
           <p className="text-gray-600">登録済みのワンちゃんの情報を管理できます</p>
         </div>
-        <Link to="/register-dog">
+        <Link to="/dog-registration">
           <Button>
             <Plus className="w-4 h-4 mr-2" />
             新しいワンちゃんを登録
@@ -641,7 +641,7 @@ export function DogManagement() {
           <div className="text-center py-12">
             <PawPrint className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600 mb-4">まだワンちゃんが登録されていません</p>
-            <Link to="/register-dog">
+            <Link to="/dog-registration">
               <Button>
                 <Plus className="w-4 h-4 mr-2" />
                 ワンちゃんを登録する

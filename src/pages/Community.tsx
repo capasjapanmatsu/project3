@@ -1014,7 +1014,7 @@ export function Community() {
                 <p className="text-gray-600 text-sm mb-3">
                   まだワンちゃんが登録されていません
                 </p>
-                <Link to="/register-dog">
+                <Link to="/dog-registration">
                   <Button size="sm">
                     ワンちゃんを登録
                   </Button>
@@ -1042,7 +1042,7 @@ export function Community() {
                   </div>
                 ))}
                 
-                <Link to="/register-dog">
+                <Link to="/dog-registration">
                   <Button variant="secondary" size="sm" className="w-full">
                     <PawPrint className="w-4 h-4 mr-1" />
                     ワンちゃんを追加

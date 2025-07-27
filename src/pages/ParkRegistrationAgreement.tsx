@@ -1,24 +1,21 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  FileText, 
-  CheckCircle, 
-  AlertTriangle, 
-  Shield, 
-  Building, 
-  DollarSign, 
-  Percent, 
-  Clock, 
-  Lock, 
-  Loader
+import {
+    AlertTriangle,
+    ArrowLeft,
+    Building,
+    Clock,
+    DollarSign,
+    FileText,
+    Lock,
+    Percent
 } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
 
-export function ParkRegistrationAgreement() {
+export default function ParkRegistrationAgreement() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);

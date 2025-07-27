@@ -470,7 +470,7 @@ export function ParkReservation() {
           ドッグランを利用するには、ワクチン接種証明書の承認が必要です。
           まだ証明書を提出していない場合は、ワンちゃんの登録時に提出してください。
         </p>
-        <Button onClick={() => navigate('/register-dog')}>
+        <Button onClick={() => navigate('/dog-registration')}>
           ワンちゃんを登録する
         </Button>
       </Card>

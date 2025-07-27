@@ -373,7 +373,7 @@ export function AccessControl() {
               <div className="text-center py-8">
                 <AlertTriangle className="w-12 h-12 text-yellow-600 mx-auto mb-4" />
                 <p className="text-gray-600 mb-4">ワクチン承認済みのワンちゃんがいません</p>
-                <Button onClick={() => navigate('/register-dog')}>
+                <Button onClick={() => navigate('/dog-registration')}>
                   ワンちゃんを登録する
                 </Button>
               </div>

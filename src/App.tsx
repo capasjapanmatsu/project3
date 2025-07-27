@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import useAuth from './context/AuthContext';
@@ -6,6 +6,7 @@ import { MaintenanceProvider } from './context/MaintenanceContext';
 
 // レイアウトコンポーネント
 import { BottomNavigation } from './components/BottomNavigation';
+import CampaignModal from './components/CampaignModal';
 import { Footer } from './components/Footer';
 import { DashboardSkeleton, PageSkeleton, ShopSkeleton } from './components/LoadingStates';
 import { Navbar } from './components/Navbar';
@@ -107,8 +108,8 @@ const DogParkHistory = React.lazy(() => import('./pages/DogParkHistory').then(mo
 const OrderHistory = React.lazy(() => import('./pages/OrderHistory').then(module => ({ default: module.OrderHistory })));
 const PaymentMethodSettings = React.lazy(() => import('./pages/PaymentMethodSettings').then(module => ({ default: module.PaymentMethodSettings })));
 const LikedDogs = React.lazy(() => import('./pages/LikedDogs').then(module => ({ default: module.LikedDogs })));
-const ParkRegistration = React.lazy(() => import('./pages/ParkRegistration').then(module => ({ default: module.ParkRegistration })));
-const ParkRegistrationAgreement = React.lazy(() => import('./pages/ParkRegistrationAgreement').then(module => ({ default: module.ParkRegistrationAgreement })));
+const ParkRegistration = React.lazy(() => import('./pages/ParkRegistration'));
+const ParkRegistrationAgreement = React.lazy(() => import('./pages/ParkRegistrationAgreement'));
 const ParkRegistrationSecondStage = React.lazy(() => import('./pages/ParkRegistrationSecondStage').then(module => ({ default: module.ParkRegistrationSecondStage })));
 const ParkManagement = React.lazy(() => import('./pages/ParkManagement').then(module => ({ default: module.ParkManagement })));
 const ParkPublishingSetup = React.lazy(() => import('./pages/ParkPublishingSetup').then(module => ({ default: module.ParkPublishingSetup })));
@@ -162,10 +163,33 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App: React.FC = () => {
+  const [showCampaignModal, setShowCampaignModal] = useState(false);
+
+  // 初回訪問時のキャンペーンモーダル表示制御
+  useEffect(() => {
+    const hasVisited = localStorage.getItem('campaignModalShown');
+    if (!hasVisited) {
+      // ページ読み込み後少し遅延させて表示
+      const timer = setTimeout(() => {
+        setShowCampaignModal(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleCampaignModalClose = () => {
+    setShowCampaignModal(false);
+    localStorage.setItem('campaignModalShown', 'true');
+  };
+
   return (
     <MaintenanceProvider>
       <Layout>
         <ScrollToTop />
+        <CampaignModal 
+          isOpen={showCampaignModal} 
+          onClose={handleCampaignModalClose} 
+        />
         <Routes>
           {/* 🏠 公開ページ（高速表示） */}
           <Route path="/" element={
