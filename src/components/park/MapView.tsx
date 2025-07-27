@@ -8,6 +8,8 @@ import { supabase } from '../../utils/supabase';
 import Button from '../Button';
 import Card from '../Card';
 
+// MapView.tsx - シンプルなマップ表示コンポーネント
+
 // Google Maps API の簡単な型定義
 declare global {
   interface Window {
@@ -124,20 +126,10 @@ export function MapView({
       if (activeView === 'dogparks' && parks) {
         parks.forEach(park => {
           if (park.latitude && park.longitude) {
-            new window.google.maps.Marker({
+            new (window as any).google.maps.Marker({
               position: { lat: park.latitude, lng: park.longitude },
               map: map,
               title: park.name,
-              icon: {
-                url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
-                  <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="16" cy="16" r="12" fill="#3B82F6" stroke="white" stroke-width="2"/>
-                    <text x="16" y="20" text-anchor="middle" fill="white" font-size="10" font-weight="bold">🐕</text>
-                  </svg>
-                `)}`,
-                scaledSize: new window.google.maps.Size(32, 32),
-                anchor: new window.google.maps.Point(16, 16),
-              }
             });
           }
         });
@@ -147,20 +139,10 @@ export function MapView({
       if (activeView === 'facilities' && facilities) {
         facilities.forEach(facility => {
           if (facility.latitude && facility.longitude) {
-            new window.google.maps.Marker({
+            new (window as any).google.maps.Marker({
               position: { lat: facility.latitude, lng: facility.longitude },
               map: map,
               title: facility.name,
-              icon: {
-                url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
-                  <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="16" cy="16" r="12" fill="#10B981" stroke="white" stroke-width="2"/>
-                    <text x="16" y="20" text-anchor="middle" fill="white" font-size="10" font-weight="bold">🏪</text>
-                  </svg>
-                `)}`,
-                scaledSize: new window.google.maps.Size(32, 32),
-                anchor: new window.google.maps.Point(16, 16),
-              }
             });
           }
         });
@@ -168,15 +150,10 @@ export function MapView({
 
       // 現在地のマーカーを追加
       if (currentLocation) {
-        new window.google.maps.Marker({
+        new (window as any).google.maps.Marker({
           position: currentLocation,
           map: map,
           title: '現在地',
-          icon: {
-            url: userDogIcon || `data:image/svg+xml;charset=utf-8,${encodeURIComponent(defaultDogIcon)}`,
-            scaledSize: new window.google.maps.Size(40, 40),
-            anchor: new window.google.maps.Point(20, 20),
-          }
         });
       }
     } catch (error) {
@@ -244,18 +221,23 @@ export function MapView({
   // Google Maps の初期化
   useEffect(() => {
     const initializeMap = () => {
-      if (mapRef.current && window.google?.maps) {
-        const map = new window.google.maps.Map(mapRef.current, {
-          center: mapCenter,
-          zoom: currentLocation ? 15 : 13, // 現在地がある場合はズームを大きく
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-        });
+      if (mapRef.current && (window as any).google?.maps) {
+        try {
+          const map = new (window as any).google.maps.Map(mapRef.current, {
+            center: mapCenter,
+            zoom: currentLocation ? 15 : 13,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+          });
 
-        // マーカーを追加
-        addMarkers(map);
-        setIsLoaded(true);
+          // マーカーを追加
+          addMarkers(map);
+          setIsLoaded(true);
+        } catch (error) {
+          console.error('Error initializing map:', error);
+          setMapError('地図の初期化に失敗しました');
+        }
       }
     };
 
