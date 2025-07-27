@@ -588,6 +588,9 @@ const App: React.FC = () => {
             </ProtectedRoute>
           } />
           
+          {/* デバッグ・開発者用 */}
+          <Route path="/debug/map" element={<MapDebug />} />
+          
           {/* 404ページ */}
           <Route path="*" element={
             <Suspense fallback={<PageSkeleton />}>
