@@ -80,7 +80,7 @@ export function DogParkCard({ park, userLocation, distance }: DogParkCardProps) 
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
       {/* パーク画像 */}
       {park.image_url && (
-        <div className="aspect-video relative overflow-hidden rounded-t-lg">
+        <div className="aspect-square relative overflow-hidden rounded-t-lg">
           <img
             src={park.image_url}
             alt={park.name}

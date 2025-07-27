@@ -1,11 +1,12 @@
 import { Check, RotateCcw, Upload, X } from 'lucide-react';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { processImage } from '../utils/imageUtils';
 import Button from './Button';
 
 interface ImageCropperProps {
+  imageFile?: File; // 初期画像ファイル
   onCropComplete: (croppedFile: File) => void;
   onCancel: () => void;
   aspectRatio?: number;
@@ -14,6 +15,7 @@ interface ImageCropperProps {
 }
 
 const ImageCropper: React.FC<ImageCropperProps> = ({
+  imageFile,
   onCropComplete,
   onCancel,
   aspectRatio = 1, // デフォルト1:1比率
@@ -26,6 +28,35 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // 初期ファイルがある場合の処理
+  useEffect(() => {
+    if (imageFile) {
+      // ファイル形式チェック
+      if (!imageFile.type.startsWith('image/')) {
+        alert('画像ファイルを選択してください。');
+        onCancel();
+        return;
+      }
+
+      // ファイルサイズチェック（10MB未満）
+      if (imageFile.size > 10 * 1024 * 1024) {
+        alert('ファイルサイズは10MB未満にしてください。');
+        onCancel();
+        return;
+      }
+
+      setCrop(undefined);
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        const result = reader.result;
+        if (result && typeof result === 'string') {
+          setImageSrc(result);
+        }
+      });
+      reader.readAsDataURL(imageFile);
+    }
+  }, [imageFile, onCancel]);
 
   // ファイル選択時の処理
   const onSelectFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

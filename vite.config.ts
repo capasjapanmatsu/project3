@@ -145,6 +145,8 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    host: 'localhost',
+    strictPort: true, // ポート3000が使用中の場合、他のポートにフォールバックしない
     open: true,
     hmr: {
       overlay: true,

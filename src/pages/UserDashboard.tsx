@@ -588,30 +588,96 @@ export function UserDashboard() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {ownedParks.slice(0, 6).map((park) => (
-            <div key={park.id} className="p-4 bg-white rounded-lg border border-gray-200">
-              <h3 className="font-semibold mb-1">{park.name}</h3>
-              <p className="text-sm text-gray-600 mb-2">{park.address}</p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    park.status === 'approved' 
-                      ? 'bg-green-100 text-green-800'
-                      : park.status === 'pending'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {park.status === 'approved' && '公開中'}
-                    {park.status === 'pending' && '審査中'}
-                    {park.status === 'rejected' && '却下'}
-                  </span>
-                </div>
-                <div className="text-xs text-gray-500">
-                  料金: ¥{park.price_per_hour}/時間
+          {ownedParks.slice(0, 6).map((park) => {
+            // ステータスに応じた表示情報を取得
+            const getStatusInfo = (status: string) => {
+              switch (status) {
+                case 'approved':
+                  return {
+                    label: '公開中',
+                    color: 'bg-green-100 text-green-800',
+                    description: ''
+                  };
+                case 'pending':
+                  return {
+                    label: '第一審査中',
+                    color: 'bg-yellow-100 text-yellow-800',
+                    description: '管理者による審査をお待ちください'
+                  };
+                case 'first_stage_passed':
+                  return {
+                    label: '第二審査申請可能',
+                    color: 'bg-blue-100 text-blue-800',
+                    description: '第二審査の申請をしてください'
+                  };
+                case 'second_stage_waiting':
+                  return {
+                    label: '第二審査申請準備中',
+                    color: 'bg-orange-100 text-orange-800',
+                    description: '画像アップロード等の準備を進めてください'
+                  };
+                case 'second_stage_review':
+                  return {
+                    label: '第二審査中',
+                    color: 'bg-purple-100 text-purple-800',
+                    description: '管理者による審査をお待ちください'
+                  };
+                case 'smart_lock_testing':
+                  return {
+                    label: 'スマートロック実証検査中',
+                    color: 'bg-indigo-100 text-indigo-800',
+                    description: '実証検査の完了をお待ちください'
+                  };
+                case 'rejected':
+                  return {
+                    label: '却下',
+                    color: 'bg-red-100 text-red-800',
+                    description: '詳細は管理ページでご確認ください'
+                  };
+                default:
+                  return {
+                    label: '審査中',
+                    color: 'bg-gray-100 text-gray-800',
+                    description: ''
+                  };
+              }
+            };
+
+            const statusInfo = getStatusInfo(park.status);
+
+            return (
+              <div key={park.id} className="p-4 bg-white rounded-lg border border-gray-200">
+                <h3 className="font-semibold mb-1">{park.name}</h3>
+                <p className="text-sm text-gray-600 mb-2">{park.address}</p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
+                      {statusInfo.label}
+                    </span>
+                    <div className="text-xs text-gray-500">
+                      料金: ¥{park.price_per_hour}/時間
+                    </div>
+                  </div>
+                  
+                  {/* ステータス説明 */}
+                  {statusInfo.description && (
+                    <div className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">
+                      {statusInfo.description}
+                    </div>
+                  )}
+                  
+                  {/* 第二審査申請可能な場合のアクションボタン */}
+                  {park.status === 'first_stage_passed' && (
+                    <Link to={`/parks/${park.id}/second-stage`} className="block">
+                      <button className="w-full text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors">
+                        第二審査を申請する
+                      </button>
+                    </Link>
+                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         {ownedParks.length > 6 && (
           <div className="mt-4 text-center">

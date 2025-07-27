@@ -1,8 +1,9 @@
-import { AlertTriangle, ArrowLeft, Building, Camera, CheckCircle, CreditCard, FileText, Image as ImageIcon, MapPin, ParkingCircle, Shield, ShowerHead, Trash2, Upload, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Building, Camera, CheckCircle, Clock, CreditCard, FileText, Image as ImageIcon, MapPin, ParkingCircle, Shield, ShowerHead, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import ImageCropper from '../components/ImageCropper'; // Added import for ImageCropper
 import Input from '../components/Input';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
@@ -157,6 +158,11 @@ export function ParkRegistrationSecondStage() {
   const [bankSuccess, setBankSuccess] = useState('');
   const [smartLockPurchased, setSmartLockPurchased] = useState(false);
   const [smartLockError, setSmartLockError] = useState('');
+  
+  // Image Cropper用のstate
+  const [showImageCropper, setShowImageCropper] = useState(false);
+  const [currentImageType, setCurrentImageType] = useState<string>('');
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
 
   useEffect(() => {
     console.log('🔍 ParkRegistrationSecondStage - parkId:', parkId);
@@ -262,12 +268,32 @@ export function ParkRegistrationSecondStage() {
   };
 
   const handleImageSelect = (imageType: string, file: File) => {
-    // Update the images array with the selected file
+    // Image Cropperを表示するために、選択されたファイルとタイプを保存
+    setCurrentImageType(imageType);
+    setSelectedImageFile(file);
+    setShowImageCropper(true);
+  };
+
+  // Image Cropper完了時の処理
+  const handleCropComplete = (croppedFile: File) => {
+    // Update the images array with the cropped file
     setImages(prev => prev.map(img =>
-      img.image_type === imageType
-        ? { ...img, file, error: undefined }
+      img.image_type === currentImageType
+        ? { ...img, file: croppedFile, error: undefined }
         : img
     ));
+    
+    // Image Cropperを閉じる
+    setShowImageCropper(false);
+    setCurrentImageType('');
+    setSelectedImageFile(null);
+  };
+
+  // Image Cropperキャンセル時の処理
+  const handleCropCancel = () => {
+    setShowImageCropper(false);
+    setCurrentImageType('');
+    setSelectedImageFile(null);
   };
 
   const handleImageUpload = async (imageType: string) => {
@@ -596,7 +622,7 @@ export function ParkRegistrationSecondStage() {
 
       // Redirect to dashboard after 3 seconds
       setTimeout(() => {
-        navigate('/owner-dashboard');
+        navigate('/dashboard');
       }, 3000);
     } catch (error: unknown) {
       console.error('Error submitting review:', error);
@@ -781,38 +807,60 @@ export function ParkRegistrationSecondStage() {
           <div className="flex items-start space-x-3">
             <Shield className="w-6 h-6 text-orange-600 mt-1" />
             <div className="flex-1">
-              <h3 className="font-semibold text-orange-900 mb-2">スマートロック購入確認</h3>
+              <h3 className="font-semibold text-orange-900 mb-2">
+                スマートロック購入確認 <span className="text-red-600">*必須</span>
+              </h3>
               <p className="text-sm text-orange-800 mb-4">
                 第二審査に進む前に、スマートロックの購入と設置が完了していることを確認してください。
               </p>
 
               <div className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="smartLockPurchased"
-                    checked={smartLockPurchased}
-                    onChange={(e) => {
-                      setSmartLockPurchased(e.target.checked);
-                      setSmartLockError('');
-                    }}
-                    className="w-5 h-5 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
-                  />
-                  <label htmlFor="smartLockPurchased" className="text-sm font-medium text-orange-900">
-                    スマートロックを購入し、設置を完了しました
-                  </label>
+                <div className={`p-3 rounded-lg border-2 ${
+                  !smartLockPurchased 
+                    ? 'border-red-300 bg-red-50' 
+                    : 'border-green-300 bg-green-50'
+                }`}>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="smartLockPurchased"
+                      checked={smartLockPurchased}
+                      onChange={(e) => {
+                        setSmartLockPurchased(e.target.checked);
+                        setSmartLockError('');
+                      }}
+                      className="w-5 h-5 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
+                    />
+                    <label htmlFor="smartLockPurchased" className="text-sm font-medium text-orange-900">
+                      スマートロックを購入し、設置を完了しました
+                    </label>
+                  </div>
+                  
+                  {!smartLockPurchased && (
+                    <div className="mt-2 text-sm text-red-700 font-medium">
+                      ⚠️ この項目をチェックしないと申請できません
+                    </div>
+                  )}
+                  
+                  {smartLockPurchased && (
+                    <div className="mt-2 text-sm text-green-700 font-medium">
+                      ✅ 確認完了
+                    </div>
+                  )}
                 </div>
 
                 {smartLockError && (
-                  <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-                    {smartLockError}
+                  <div className="text-sm text-red-600 bg-red-100 border border-red-300 p-3 rounded-lg">
+                    <strong>⚠️ 申請エラー:</strong> {smartLockError}
                   </div>
                 )}
 
-                <div className="text-xs text-orange-700 space-y-1">
+                <div className="text-xs text-orange-700 space-y-1 bg-orange-100 p-3 rounded">
+                  <p><strong>スマートロック購入・設置について:</strong></p>
                   <p>• スマートロックはペットショップで購入できます</p>
                   <p>• 設置完了後、動作確認を行ってください</p>
                   <p>• 第二審査では実際の設置状況を確認します</p>
+                  <p>• 設置に関するサポートが必要な場合はお問い合わせください</p>
                 </div>
               </div>
             </div>
@@ -908,7 +956,7 @@ export function ParkRegistrationSecondStage() {
                     {image.image_url ? (
                       <div className="relative">
                         <div
-                          className="h-40 bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
+                          className="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
                           onClick={() => setShowImagePreview(image.image_url || null)}
                         >
                           <img
@@ -916,7 +964,7 @@ export function ParkRegistrationSecondStage() {
                             alt={imageTypeConfig?.label || image.image_type}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
+                              e.currentTarget.src = 'https://via.placeholder.com/400x400?text=Image+Not+Available';
                             }}
                           />
                         </div>
@@ -1149,19 +1197,67 @@ export function ParkRegistrationSecondStage() {
       )}
 
       {/* Submit button */}
-      <div className="mt-8 flex justify-end">
-        <Button
-          onClick={handleSubmitReview}
-          isLoading={isSubmitting}
-          disabled={park?.status === 'second_stage_review'}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          {park?.status === 'second_stage_review'
-            ? '審査中です'
-            : park?.status === 'approved'
-            ? '編集する'
-            : '第二審査を申請する'}
-        </Button>
+      <div className="mt-8 space-y-4">
+        {/* スマートロック購入確認が未完了の場合の警告 */}
+        {park?.status !== 'approved' && !smartLockPurchased && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+              <span className="text-sm font-medium text-red-800">
+                申請するには「スマートロック購入確認」のチェックが必要です
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <Button
+            onClick={handleSubmitReview}
+            isLoading={isSubmitting}
+            disabled={
+              park?.status === 'second_stage_review' || 
+              (park?.status !== 'approved' && !smartLockPurchased)
+            }
+            className={`${
+              park?.status !== 'approved' && !smartLockPurchased
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+          >
+            {isSubmitting 
+              ? '申請中...'
+              : park?.status === 'second_stage_review'
+              ? '審査中です'
+              : park?.status === 'approved'
+              ? '編集する'
+              : !smartLockPurchased
+              ? 'スマートロック確認が必要です'
+              : '第二審査を申請する'}
+          </Button>
+        </div>
+
+        {/* 申請可能状態の表示 */}
+        {park?.status !== 'approved' && park?.status !== 'second_stage_review' && (
+          <div className="text-center">
+            <div className={`inline-flex items-center space-x-2 px-3 py-2 rounded-lg text-sm ${
+              smartLockPurchased 
+                ? 'bg-green-50 text-green-700 border border-green-200'
+                : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+            }`}>
+              {smartLockPurchased ? (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  <span>申請準備完了</span>
+                </>
+              ) : (
+                <>
+                  <Clock className="w-4 h-4" />
+                  <span>スマートロック購入確認が必要です</span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 審査プロセスの説明 */}
@@ -1180,6 +1276,18 @@ export function ParkRegistrationSecondStage() {
           </div>
         </div>
       </Card>
+      
+      {/* Image Cropper Modal */}
+      {showImageCropper && selectedImageFile && (
+        <ImageCropper
+          imageFile={selectedImageFile}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+          aspectRatio={1} // 1:1比率でクロップ
+          maxWidth={400}
+          maxHeight={400}
+        />
+      )}
     </div>
   );
 }

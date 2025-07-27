@@ -17,34 +17,56 @@ async function checkPortInUse(port) {
 }
 
 /**
- * 安全に開発サーバーを起動
+ * Node.jsプロセスを強制終了
+ */
+async function killNodeProcesses() {
+  try {
+    console.log('🔄 既存のNode.jsプロセスを停止しています...');
+    await execAsync('taskkill /f /im node.exe');
+    console.log('✅ 既存のプロセスを停止しました');
+    // プロセス停止後に少し待機
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  } catch (error) {
+    console.log('ℹ️  停止すべきプロセスはありませんでした');
+  }
+}
+
+/**
+ * 安全に開発サーバーを起動（localhost:3000固定）
  */
 async function startDevServer() {
   console.log('🔍 開発サーバーの起動準備中...');
+  console.log('🎯 目標: localhost:3000での固定起動');
   
   try {
-    // ポート3000が使用中かチェック
+    // ポート3000と3001（HMR用）が使用中かチェック
     const port3000InUse = await checkPortInUse(3000);
     const port3001InUse = await checkPortInUse(3001);
     
-    if (port3000InUse) {
-      console.log('⚠️  ポート3000は既に使用中です');
-    }
-    
-    if (port3001InUse) {
-      console.log('⚠️  ポート3001は既に使用中です');
-    }
-    
     if (port3000InUse || port3001InUse) {
-      console.log('🛑 開発サーバーが既に起動している可能性があります');
-      console.log('💡 既存のサーバーを停止してから再実行してください');
-      console.log('   taskkill /f /im node.exe (Windows)');
-      return;
+      console.log('⚠️  必要なポートが使用中です:');
+      if (port3000InUse) console.log('   - ポート3000 (メインサーバー)');
+      if (port3001InUse) console.log('   - ポート3001 (HMR)');
+      
+      // 自動的にプロセスを停止
+      await killNodeProcesses();
+      
+      // 再チェック
+      const port3000StillInUse = await checkPortInUse(3000);
+      const port3001StillInUse = await checkPortInUse(3001);
+      
+      if (port3000StillInUse || port3001StillInUse) {
+        console.log('❌ ポートの解放に失敗しました');
+        console.log('💡 手動で以下のコマンドを実行してください:');
+        console.log('   taskkill /f /im node.exe');
+        return;
+      }
     }
     
-    console.log('✅ ポートが利用可能です。開発サーバーを起動します...');
+    console.log('✅ ポート3000とポート3001が利用可能です');
+    console.log('🚀 開発サーバーを localhost:3000 で起動します...');
     
-    // npm run dev を実行
+    // npm run dev を実行（strictPort: trueによりポート3000固定）
     const childProcess = exec('npm run dev', (error, stdout, stderr) => {
       if (error) {
         console.error('❌ 開発サーバー起動エラー:', error);
@@ -67,8 +89,9 @@ async function startDevServer() {
       console.log(`開発サーバーが終了しました (終了コード: ${code})`);
     });
     
-    console.log('🚀 開発サーバー起動コマンドを実行しました');
+    console.log('🎉 開発サーバー起動完了！');
     console.log('📱 ブラウザで http://localhost:3000 にアクセスしてください');
+    console.log('⚡ ホットリロード: http://localhost:3001 (HMR)');
     
   } catch (error) {
     console.error('❌ 予期しないエラーが発生しました:', error);

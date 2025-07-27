@@ -98,7 +98,7 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
       {/* 施設画像 */}
       {facility.image_url && (
-        <div className="aspect-video relative overflow-hidden rounded-t-lg">
+        <div className="aspect-square relative overflow-hidden rounded-t-lg">
           <img
             src={facility.image_url}
             alt={facility.name}

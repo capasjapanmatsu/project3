@@ -8,6 +8,8 @@ import {
     Eye,
     FileText,
     MapPin,
+    Settings,
+    Shield,
     Star
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -171,20 +173,38 @@ export function MyParksManagement() {
       pending: { 
         bg: 'bg-yellow-100', 
         text: 'text-yellow-800', 
-        label: '審査中',
+        label: '第一審査中',
         icon: Clock 
+      },
+      first_stage_passed: { 
+        bg: 'bg-blue-100', 
+        text: 'text-blue-800', 
+        label: '第二審査申請可能',
+        icon: FileText 
+      },
+      second_stage_waiting: { 
+        bg: 'bg-orange-100', 
+        text: 'text-orange-800', 
+        label: '第二審査申請準備中',
+        icon: Settings 
+      },
+      second_stage_review: { 
+        bg: 'bg-purple-100', 
+        text: 'text-purple-800', 
+        label: '第二審査中',
+        icon: Clock 
+      },
+      smart_lock_testing: { 
+        bg: 'bg-indigo-100', 
+        text: 'text-indigo-800', 
+        label: 'スマートロック実証検査中',
+        icon: Shield 
       },
       rejected: { 
         bg: 'bg-red-100', 
         text: 'text-red-800', 
         label: '却下',
         icon: AlertTriangle 
-      },
-      second_stage_waiting: { 
-        bg: 'bg-orange-100', 
-        text: 'text-orange-800', 
-        label: '詳細情報待ち',
-        icon: FileText 
       }
     };
 

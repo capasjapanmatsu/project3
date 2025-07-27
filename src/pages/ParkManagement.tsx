@@ -3,18 +3,23 @@ import {
     ArrowLeft,
     Building,
     Calendar,
+    Camera,
     CheckCircle,
-    Clock,
     DollarSign,
     Edit,
     Eye,
     FileText,
     Image as ImageIcon,
     Key,
+    MapPin,
+    ParkingCircle,
     Plus,
     Settings,
+    Shield,
+    ShowerHead,
     Star,
     Trash2,
+    Upload,
     Users,
     Wrench,
     X
@@ -23,10 +28,107 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import ImageCropper from '../components/ImageCropper'; // ImageCropperコンポーネントを追加
 import { PinCodeGenerator } from '../components/PinCodeGenerator';
 import useAuth from '../context/AuthContext';
 import type { DogPark, SmartLock } from '../types';
 import { supabase } from '../utils/supabase';
+
+// 施設画像タイプ定義
+const IMAGE_TYPES = {
+  overview: {
+    label: '施設全景',
+    description: 'ドッグランの全体が見渡せる写真',
+    icon: Building,
+    required: true
+  },
+  entrance: {
+    label: '入口',
+    description: '入口の様子がわかる写真',
+    icon: MapPin,
+    required: true
+  },
+  gate: {
+    label: 'スマートロック',
+    description: 'ドッグランのスマートロック（入退場管理）の写真',
+    icon: Shield,
+    required: true
+  },
+  large_dog_area: {
+    label: '大型犬エリア',
+    description: '大型犬用のエリアの写真',
+    icon: Building,
+    required: false,
+    conditionalOn: 'large_dog_area'
+  },
+  small_dog_area: {
+    label: '小型犬エリア',
+    description: '小型犬用のエリアの写真',
+    icon: Building,
+    required: false,
+    conditionalOn: 'small_dog_area'
+  },
+  private_booth: {
+    label: 'プライベートブース',
+    description: 'プライベートブースの内部と外観',
+    icon: Building,
+    required: false,
+    conditionalOn: 'private_booths'
+  },
+  parking: {
+    label: '駐車場',
+    description: '駐車場の様子がわかる写真',
+    icon: ParkingCircle,
+    required: false,
+    conditionalOn: 'facilities.parking'
+  },
+  shower: {
+    label: 'シャワー設備',
+    description: 'シャワー設備の写真',
+    icon: ShowerHead,
+    required: false,
+    conditionalOn: 'facilities.shower'
+  },
+  restroom: {
+    label: 'トイレ',
+    description: 'トイレ設備の写真',
+    icon: FileText,
+    required: false,
+    conditionalOn: 'facilities.restroom'
+  },
+  agility: {
+    label: 'アジリティ設備',
+    description: 'アジリティ設備の写真',
+    icon: Building,
+    required: false,
+    conditionalOn: 'facilities.agility'
+  },
+  rest_area: {
+    label: '休憩スペース',
+    description: '休憩スペースの写真',
+    icon: Building,
+    required: false,
+    conditionalOn: 'facilities.rest_area'
+  },
+  water_station: {
+    label: '給水設備',
+    description: '給水設備の写真',
+    icon: Building,
+    required: false,
+    conditionalOn: 'facilities.water_station'
+  }
+} as const;
+
+interface FacilityImage {
+  id?: string;
+  image_type: string;
+  image_url?: string;
+  is_approved?: boolean | null;
+  admin_notes?: string | null;
+  file?: File;
+  uploading?: boolean;
+  error?: string | undefined;
+}
 
 interface MaintenanceSchedule {
   id: string;
@@ -70,7 +172,7 @@ export function ParkManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'stats' | 'settings' | 'pins'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'stats' | 'pins' | 'settings'>('overview');
   const [smartLocks, setSmartLocks] = useState<SmartLock[]>([]);
   const [selectedLock, setSelectedLock] = useState<SmartLock | null>(null);
   const [pinPurpose, setPinPurpose] = useState<'entry' | 'exit'>('entry');
@@ -115,359 +217,131 @@ export function ParkManagement() {
     description: ''
   });
 
+  // 施設画像管理用のstate
+  const [facilityImages, setFacilityImages] = useState<FacilityImage[]>([]);
+  const [showImageCropper, setShowImageCropper] = useState(false);
+  const [currentImageType, setCurrentImageType] = useState<string>('');
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!user || !parkId) {
-      navigate('/owner-dashboard');
-      return;
+    if (parkId && user) {
+      void fetchParkData();
     }
-    
-    fetchParkData();
-  }, [user, parkId, navigate]);
+  }, [parkId, user]);
 
+  // パークデータが取得された後に画像データを取得
+  useEffect(() => {
+    if (park) {
+      void fetchFacilityImages();
+    }
+  }, [park]);
 
-
+  // パークデータ取得関数
   const fetchParkData = async () => {
+    if (!parkId || !user) return;
+
     try {
       setIsLoading(true);
-      
-      // Fetch park data
+      setError('');
+
       const { data: parkData, error: parkError } = await supabase
         .from('dog_parks')
         .select('*')
         .eq('id', parkId)
-        .eq('owner_id', user?.id)
+        .eq('owner_id', user.id)
         .single();
-      
-      if (parkError) throw parkError;
-      if (!parkData) {
-        navigate('/owner-dashboard');
-        return;
+
+      if (parkError) {
+        throw new Error('ドッグランが見つかりません');
       }
-      
+
       setPark(parkData);
-      
-      // 編集フォームに現在の値を設定
-      setEditForm({
-        max_capacity: parkData.max_capacity || 0,
-        facilities: parkData.facilities || {
-          parking: false,
-          shower: false,
-          restroom: false,
-          agility: false,
-          rest_area: false,
-          water_station: false,
-        },
-        large_dog_area: parkData.large_dog_area || false,
-        small_dog_area: parkData.small_dog_area || false,
-        private_booths: parkData.private_booths || false,
-        private_booth_count: parkData.private_booth_count || 0,
-        facility_details: parkData.facility_details || '',
-        description: parkData.description || ''
-      });
-      
-      // Fetch smart locks for this park
-      const { data: locksData, error: locksError } = await supabase
+
+      // スマートロック情報も取得
+      const { data: lockData, error: lockError } = await supabase
         .from('smart_locks')
         .select('*')
         .eq('park_id', parkId);
-      
-      if (locksError) throw locksError;
-      setSmartLocks(locksData || []);
-      
-      // Set the first lock as selected by default
-      if (locksData && locksData.length > 0) {
-        setSelectedLock(locksData[0]);
+
+      if (!lockError && lockData) {
+        setSmartLocks(lockData);
+        if (lockData.length > 0) {
+          setSelectedLock(lockData[0]);
+        }
       }
 
-
-      
-      // Fetch maintenance schedules
-      await fetchMaintenanceSchedules();
-      
     } catch (error) {
       console.error('Error fetching park data:', error);
-      setError('データの取得に失敗しました。');
+      setError((error as Error).message || 'データの取得に失敗しました');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // メンテナンススケジュールを取得
-  const fetchMaintenanceSchedules = async () => {
+  // 施設画像データの取得
+  const fetchFacilityImages = async () => {
+    if (!park) return;
+
     try {
-      const { data, error } = await supabase
-        .from('park_maintenance')
+      // 既存の施設画像を取得
+      const { data: imageData, error: imageError } = await supabase
+        .from('dog_park_facility_images')
         .select('*')
-        .eq('park_id', parkId)
-        .order('start_date', { ascending: false });
-      
-      if (error) throw error;
-      setMaintenanceSchedules(data || []);
-    } catch (error) {
-      console.error('Error fetching maintenance schedules:', error);
-    }
-  };
+        .eq('park_id', park.id);
 
-  // メンテナンススケジュールを作成
-  const handleCreateMaintenance = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !parkId) return;
-
-    setIsMaintenanceLoading(true);
-    try {
-      // バリデーション
-      if (!maintenanceForm.title || !maintenanceForm.start_date || !maintenanceForm.end_date) {
-        throw new Error('必須項目を入力してください。');
+      if (imageError && imageError.code !== 'PGRST116') {
+        console.error('Error fetching facility images:', imageError);
+        return;
       }
 
-      const startDate = new Date(maintenanceForm.start_date);
-      const endDate = new Date(maintenanceForm.end_date);
-      
-      if (endDate <= startDate) {
-        throw new Error('終了日時は開始日時より後に設定してください。');
-      }
-
-      if (startDate < new Date()) {
-        throw new Error('開始日時は現在時刻より後に設定してください。');
-      }
-
-      const { error } = await supabase
-        .from('park_maintenance')
-        .insert({
-          park_id: parkId,
-          title: maintenanceForm.title,
-          description: maintenanceForm.description,
-          start_date: convertLocalDateTimeToUTC(maintenanceForm.start_date),
-          end_date: convertLocalDateTimeToUTC(maintenanceForm.end_date),
-          is_emergency: maintenanceForm.is_emergency,
-          notify_users: maintenanceForm.notify_users,
-          created_by: user.id
-        });
-
-      if (error) throw error;
-
-      setSuccess('メンテナンススケジュールを作成しました。');
-      setShowMaintenanceForm(false);
-      setMaintenanceForm({
-        title: '',
-        description: '',
-        start_date: '',
-        end_date: '',
-        is_emergency: false,
-        notify_users: true
-      });
-      
-      await fetchMaintenanceSchedules();
-      
-    } catch (error) {
-      console.error('Error creating maintenance:', error);
-      setError(error instanceof Error ? error.message : 'メンテナンススケジュールの作成に失敗しました。');
-    } finally {
-      setIsMaintenanceLoading(false);
-    }
-  };
-
-  // メンテナンススケジュールを削除
-  const handleDeleteMaintenance = async (maintenanceId: string) => {
-    if (!window.confirm('このメンテナンススケジュールを削除しますか？')) return;
-
-    try {
-      const { error } = await supabase
-        .from('park_maintenance')
-        .delete()
-        .eq('id', maintenanceId);
-
-      if (error) throw error;
-
-      setSuccess('メンテナンススケジュールを削除しました。');
-      await fetchMaintenanceSchedules();
-    } catch (error) {
-      console.error('Error deleting maintenance:', error);
-      setError('メンテナンススケジュールの削除に失敗しました。');
-    }
-  };
-
-  // メンテナンス状態を取得
-  const getMaintenanceStatus = (maintenance: MaintenanceSchedule) => {
-    const now = new Date();
-    const start = new Date(maintenance.start_date);
-    const end = new Date(maintenance.end_date);
-
-    if (maintenance.status === 'cancelled') return { status: 'cancelled', label: 'キャンセル済み', color: 'bg-gray-500' };
-    if (maintenance.status === 'completed') return { status: 'completed', label: '完了', color: 'bg-gray-500' };
-    if (now >= start && now < end) return { status: 'active', label: 'メンテナンス中', color: 'bg-red-500' };
-    if (now < start) return { status: 'scheduled', label: '予定', color: 'bg-yellow-500' };
-    return { status: 'completed', label: '完了', color: 'bg-gray-500' };
-  };
-
-  // パーク情報編集処理
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!park || !user) return;
-
-    setIsEditLoading(true);
-    try {
-      // バリデーション
-      if (editForm.max_capacity < 1) {
-        throw new Error('収容人数は1人以上で入力してください。');
-      }
-
-      if (editForm.private_booths && editForm.private_booth_count < 1) {
-        throw new Error('プライベートブースがある場合は、部屋数を1以上で入力してください。');
-      }
-
-      const { error } = await supabase
-        .from('dog_parks')
-        .update({
-          max_capacity: editForm.max_capacity,
-          facilities: editForm.facilities,
-          large_dog_area: editForm.large_dog_area,
-          small_dog_area: editForm.small_dog_area,
-          private_booths: editForm.private_booths,
-          private_booth_count: editForm.private_booths ? editForm.private_booth_count : 0,
-          facility_details: editForm.facility_details,
-          description: editForm.description,
-          updated_at: new Date().toISOString()
+      // パークの設備に基づいて必要な画像タイプを決定
+      const requiredImageTypes = Object.entries(IMAGE_TYPES)
+        .filter(([, config]) => {
+          if (config.required) return true;
+          if (config.conditionalOn && park) {
+            const path = config.conditionalOn.split('.');
+            if (path.length === 1) {
+              return ((park as any)[path[0]]) ?? false;
+            } else if (path.length === 2) {
+              const parent = (park as any)[path[0]];
+              if (parent && typeof parent === 'object') {
+                return (parent as any)[path[1]] ?? false;
+              }
+            }
+          }
+          return false;
         })
-        .eq('id', park.id);
+        .map(([key]) => key);
 
-      if (error) throw error;
+      const images: FacilityImage[] = requiredImageTypes.map(imageType => {
+        const existingImage = (imageData || []).find(img => img.image_type === imageType);
+        return {
+          id: existingImage?.id,
+          image_type: imageType,
+          image_url: existingImage?.image_url,
+          is_approved: existingImage?.is_approved ?? null,
+          admin_notes: existingImage?.admin_notes
+        };
+      });
 
-      setSuccess('施設情報を更新しました。');
-      setShowEditForm(false);
-      
-      // データを再取得
-      await fetchParkData();
-      
-      // 3秒後に成功メッセージを消す
-      setTimeout(() => {
-        setSuccess('');
-      }, 3000);
-      
+      setFacilityImages(images);
     } catch (error) {
-      console.error('Error updating park:', error);
-      setError(error instanceof Error ? error.message : '施設情報の更新に失敗しました。');
-      
-      // 5秒後にエラーメッセージを消す
-      setTimeout(() => {
-        setError('');
-      }, 5000);
-    } finally {
-      setIsEditLoading(false);
+      console.error('Error in fetchFacilityImages:', error);
     }
   };
 
-
-
-  // PINコード生成成功時の処理
+  // PINコード成功時の処理
   const handlePinSuccess = (pin: string) => {
-    setSuccess(`PINコードを生成しました: ${pin}`);
-    
-    // 3秒後に成功メッセージを消す
-    setTimeout(() => {
-      setSuccess('');
-    }, 3000);
+    setSuccess(`PINコード「${pin}」を発行しました。有効期限は5分間です。`);
+    setTimeout(() => setSuccess(''), 5000);
   };
 
-  // PINコード生成エラー時の処理
+  // PINコードエラー時の処理
   const handlePinError = (errorMessage: string) => {
     setError(errorMessage);
-    
-    // 5秒後にエラーメッセージを消す
-    setTimeout(() => {
-      setError('');
-    }, 5000);
-  };
-
-
-
-  const formatMaintenanceDate = (dateString: string | null) => {
-    if (!dateString) return '未設定';
-    return new Date(dateString).toLocaleString('ja-JP', {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Asia/Tokyo'
-    });
-  };
-
-  // 公開状態をトグルする関数
-  const handlePublicToggle = async () => {
-    if (!park) return;
-    
-    setIsToggleLoading(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const newIsPublic = !park.is_public;
-      
-      const { error: updateError } = await supabase
-        .from('dog_parks')
-        .update({ is_public: newIsPublic })
-        .eq('id', park.id);
-
-      if (updateError) throw updateError;
-
-      // ローカルのparkデータを更新
-      setPark(prev => prev ? { ...prev, is_public: newIsPublic } : null);
-      
-      setSuccess(
-        newIsPublic 
-          ? 'ドッグランを公開状態にしました。一般リストに表示されます。' 
-          : 'ドッグランを非公開状態にしました。一般リストに表示されません。'
-      );
-    } catch (error) {
-      console.error('Error toggling public status:', error);
-      setError('公開状態の変更に失敗しました。');
-    } finally {
-      setIsToggleLoading(false);
-    }
-  };
-
-  // パーク削除処理
-  const handleDeletePark = async () => {
-    if (!park || deleteConfirmText !== park.name) {
-      setError('施設名が正しく入力されていません。');
-      return;
-    }
-
-    if (!window.confirm('本当にこの施設を完全に削除しますか？\nこの操作は取り消せません。')) {
-      return;
-    }
-
-    try {
-      setIsDeleting(true);
-      setError('');
-
-      // Supabaseの削除関数を呼び出し
-      const { data, error: deleteError } = await supabase
-        .rpc('delete_rejected_park', {
-          p_park_id: park.id,
-          p_user_id: user?.id
-        });
-
-      if (deleteError) throw deleteError;
-
-      if (data?.success) {
-        setSuccess('施設を削除しました。');
-        // 削除成功後、管理ページにリダイレクト
-        setTimeout(() => {
-          navigate('/my-parks-management');
-        }, 2000);
-      } else {
-        throw new Error(data?.message || '削除に失敗しました。');
-      }
-    } catch (error) {
-      console.error('Error deleting park:', error);
-      setError(error instanceof Error ? error.message : '削除に失敗しました。');
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteDialog(false);
-      setDeleteConfirmText('');
-    }
+    setTimeout(() => setError(''), 5000);
   };
 
   if (isLoading) {
@@ -559,52 +433,56 @@ export function ParkManagement() {
             )}
 
             {/* タブナビゲーション */}
-            <div className="flex space-x-4 border-b">
-              <button
-                className={`px-4 py-2 font-medium ${
-                  activeTab === 'overview'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-                onClick={() => setActiveTab('overview')}
-              >
-                <Building className="w-4 h-4 inline mr-2" />
-                概要
-              </button>
-              <button
-                className={`px-4 py-2 font-medium ${
-                  activeTab === 'stats'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-                onClick={() => setActiveTab('stats')}
-              >
-                <Star className="w-4 h-4 inline mr-2" />
-                統計・収益
-              </button>
-              <button
-                className={`px-4 py-2 font-medium ${
-                  activeTab === 'pins'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-                onClick={() => setActiveTab('pins')}
-              >
-                <Key className="w-4 h-4 inline mr-2" />
-                PINコード管理
-              </button>
-              <button
-                className={`px-4 py-2 font-medium ${
-                  activeTab === 'settings'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-                onClick={() => setActiveTab('settings')}
-              >
-                <Settings className="w-4 h-4 inline mr-2" />
-                設定
-              </button>
-            </div>
+            <Card className="mb-6">
+              <div className="border-b border-gray-200">
+                <div className="flex space-x-8 px-6">
+                  <button
+                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === 'overview'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                    onClick={() => setActiveTab('overview')}
+                  >
+                    <Building className="w-4 h-4 inline mr-2" />
+                    概要
+                  </button>
+                  <button
+                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === 'stats'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                    onClick={() => setActiveTab('stats')}
+                  >
+                    <Star className="w-4 h-4 inline mr-2" />
+                    統計・収益
+                  </button>
+                  <button
+                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === 'pins'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                    onClick={() => setActiveTab('pins')}
+                  >
+                    <Key className="w-4 h-4 inline mr-2" />
+                    PINコード管理
+                  </button>
+                  <button
+                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === 'settings'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                    onClick={() => setActiveTab('settings')}
+                  >
+                    <Settings className="w-4 h-4 inline mr-2" />
+                    設定
+                  </button>
+                </div>
+              </div>
+            </Card>
 
             {/* 概要タブ */}
             {activeTab === 'overview' && (
@@ -622,10 +500,10 @@ export function ParkManagement() {
                       <div className="space-y-2 text-sm">
                         <p><span className="font-medium">住所:</span> {park.address}</p>
                         <p><span className="font-medium">ステータス:</span> {park.status === 'approved' ? '運営中' : '審査中'}</p>
-                        <p><span className="font-medium">料金:</span> ¥{park.price}/日</p>
-                        <p><span className="font-medium">最大収容人数:</span> {park.max_capacity}人</p>
-                        <p><span className="font-medium">現在の利用者数:</span> {park.current_occupancy}人</p>
-                        <p><span className="font-medium">評価:</span> ★{park.average_rating.toFixed(1)} ({park.review_count}件)</p>
+                        <p><span className="font-medium">料金:</span> ¥{park.price || '800'}/日</p>
+                        <p><span className="font-medium">最大収容人数:</span> {(park as any).max_capacity || '未設定'}人</p>
+                        <p><span className="font-medium">現在の利用者数:</span> {park.current_occupancy || 0}人</p>
+                        <p><span className="font-medium">評価:</span> ★{park.average_rating?.toFixed(1) || '0.0'} ({park.review_count || 0}件)</p>
                       </div>
                     </div>
 
@@ -642,7 +520,7 @@ export function ParkManagement() {
                         }).map(([key, label]) => (
                           <div key={key} className="flex items-center space-x-2">
                             <div className={`w-4 h-4 rounded ${
-                              park.facilities[key as keyof typeof park.facilities] 
+                              (park as any).facilities?.[key] 
                                 ? 'bg-green-500' 
                                 : 'bg-gray-300'
                             }`} />
@@ -652,9 +530,9 @@ export function ParkManagement() {
                       </div>
                       
                       <div className="mt-4 space-y-2">
-                        <p><span className="font-medium">大型犬エリア:</span> {park.large_dog_area ? 'あり' : 'なし'}</p>
-                        <p><span className="font-medium">小型犬エリア:</span> {park.small_dog_area ? 'あり' : 'なし'}</p>
-                        <p><span className="font-medium">プライベートブース:</span> {park.private_booths ? `${park.private_booth_count}室` : 'なし'}</p>
+                        <p><span className="font-medium">大型犬エリア:</span> {(park as any).large_dog_area ? 'あり' : 'なし'}</p>
+                        <p><span className="font-medium">小型犬エリア:</span> {(park as any).small_dog_area ? 'あり' : 'なし'}</p>
+                        <p><span className="font-medium">プライベートブース:</span> {(park as any).private_booths ? `${(park as any).private_booth_count || 1}室` : 'なし'}</p>
                       </div>
                     </div>
                   </div>
@@ -693,65 +571,6 @@ export function ParkManagement() {
                       </div>
                       <p className="text-2xl font-bold text-purple-600">{park.current_occupancy}人</p>
                       <p className="text-xs text-purple-700 mt-1">最大: {park.max_capacity}人</p>
-                    </div>
-                  </div>
-                </Card>
-
-                {/* 施設画像 */}
-                <Card className="p-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-semibold flex items-center">
-                      <ImageIcon className="w-6 h-6 text-blue-600 mr-2" />
-                      施設画像
-                    </h2>
-                    <Link to={`/parks/${park.id}/second-stage`}>
-                      <Button size="sm">
-                        <Edit className="w-4 h-4 mr-2" />
-                        画像を管理
-                      </Button>
-                    </Link>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {park.image_url ? (
-                      <div className="h-48 rounded-lg overflow-hidden">
-                        <img 
-                          src={park.image_url} 
-                          alt={`${park.name} - メイン画像`} 
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.src = 'https://via.placeholder.com/400x300?text=No+Image';
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <p className="text-gray-500">メイン画像なし</p>
-                      </div>
-                    )}
-                    
-                    {park.cover_image_url ? (
-                      <div className="h-48 rounded-lg overflow-hidden">
-                        <img 
-                          src={park.cover_image_url} 
-                          alt={`${park.name} - カバー画像`} 
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.src = 'https://via.placeholder.com/400x300?text=No+Image';
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <p className="text-gray-500">カバー画像なし</p>
-                      </div>
-                    )}
-                    
-                    <div className="h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <Link to={`/parks/${park.id}/second-stage`} className="text-blue-600 hover:text-blue-800 flex flex-col items-center">
-                        <ImageIcon className="w-8 h-8 mb-2" />
-                        <p>その他の画像を管理</p>
-                      </Link>
                     </div>
                   </div>
                 </Card>
@@ -978,557 +797,468 @@ export function ParkManagement() {
             {/* 設定タブ */}
             {activeTab === 'settings' && (
               <div className="space-y-6">
-                {/* 編集フォーム */}
-                {showEditForm && (
-                  <Card className="p-6 bg-blue-50 border-blue-200">
-                    <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-xl font-semibold text-blue-900">施設情報の編集</h3>
-                      <button
-                        onClick={() => setShowEditForm(false)}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
+                {/* 基本設定 */}
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center">
+                    <Wrench className="w-5 h-5 text-blue-600 mr-2" />
+                    基本設定
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    施設の基本情報や設備情報を編集できます。住所と料金は変更できません。
+                  </p>
+                  <Link to={`/parks/${park.id}/edit`}>
+                    <Button>
+                      <Edit className="w-4 h-4 mr-2" />
+                      基本情報を編集
+                    </Button>
+                  </Link>
+                </Card>
+
+                {/* 施設画像管理 */}
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center">
+                    <ImageIcon className="w-5 h-5 text-blue-600 mr-2" />
+                    施設画像管理
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    各設備の画像を管理できます。画像はすべて1:1でトリミングされ、最適化されます。
+                  </p>
+
+                  {/* エラー・成功メッセージ */}
+                  {error && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                      {error}
                     </div>
+                  )}
+                  {success && (
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700">
+                      {success}
+                    </div>
+                  )}
 
-                    <form onSubmit={handleEditSubmit} className="space-y-6">
-                      {/* 変更不可情報の表示 */}
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-gray-900 mb-3">変更不可項目</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                          <div>
-                            <span className="font-medium">住所:</span> {park.address}
+                  <div className="space-y-6">
+                    {facilityImages.map((image) => {
+                      const imageTypeConfig = IMAGE_TYPES[image.image_type as keyof typeof IMAGE_TYPES];
+                      const IconComponent = imageTypeConfig?.icon || Building;
+
+                      return (
+                        <div key={image.image_type} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center space-x-2">
+                              <IconComponent className="w-5 h-5 text-blue-600" />
+                              <h4 className="font-medium text-gray-900">
+                                {imageTypeConfig?.label || image.image_type}
+                              </h4>
+                            </div>
+                            {image.is_approved === true && (
+                              <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                承認済み
+                              </span>
+                            )}
+                            {image.is_approved === false && (
+                              <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                                却下
+                              </span>
+                            )}
                           </div>
-                          <div>
-                            <span className="font-medium">料金:</span> ¥{park.price}/日（全国統一料金）
-                          </div>
-                        </div>
-                      </div>
 
-                      {/* 基本情報 */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            最大収容人数 *
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="100"
-                            value={editForm.max_capacity}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, max_capacity: parseInt(e.target.value) || 0 }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            required
-                          />
-                        </div>
+                          <p className="text-sm text-gray-600 mb-4">
+                            {imageTypeConfig?.description || '画像をアップロードしてください'}
+                          </p>
 
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            説明文
-                          </label>
-                          <textarea
-                            value={editForm.description}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            rows={3}
-                            placeholder="施設の特徴や利用案内など"
-                          />
-                        </div>
-                      </div>
+                          {/* 現在の画像表示 */}
+                          {image.image_url ? (
+                            <div className="space-y-4">
+                              <div className="relative">
+                                <div
+                                  className="aspect-square w-48 bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
+                                  onClick={() => setShowImagePreview(image.image_url || null)}
+                                >
+                                  <img
+                                    src={image.image_url}
+                                    alt={imageTypeConfig?.label || image.image_type}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.src = 'https://via.placeholder.com/400x400?text=Image+Not+Available';
+                                    }}
+                                  />
+                                </div>
+                                <div className="absolute top-2 right-2 flex space-x-2">
+                                  <button
+                                    onClick={() => setShowImagePreview(image.image_url || null)}
+                                    className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
+                                  >
+                                    <Eye className="w-4 h-4 text-blue-600" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleImageDelete(image.id, image.image_type)}
+                                    className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
+                                    disabled={imageLoading}
+                                  >
+                                    <Trash2 className="w-4 h-4 text-red-600" />
+                                  </button>
+                                </div>
+                              </div>
 
-                      {/* エリア設定 */}
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-3">エリア設定</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={editForm.large_dog_area}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, large_dog_area: e.target.checked }))}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-sm text-gray-700">大型犬エリア</span>
-                          </label>
+                              {/* 却下理由の表示 */}
+                              {image.is_approved === false && image.admin_notes && (
+                                <div className="p-3 bg-red-50 rounded-lg text-sm text-red-800">
+                                  <p className="font-medium">却下理由:</p>
+                                  <p>{image.admin_notes}</p>
+                                </div>
+                              )}
 
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={editForm.small_dog_area}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, small_dog_area: e.target.checked }))}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-sm text-gray-700">小型犬エリア</span>
-                          </label>
-                        </div>
-                      </div>
+                              {/* 画像入れ替えボタン */}
+                              <div className="flex space-x-2">
+                                <input
+                                  type="file"
+                                  id={`replace-image-${image.image_type}`}
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      handleImageSelect(image.image_type, file);
+                                    }
+                                  }}
+                                />
+                                <label
+                                  htmlFor={`replace-image-${image.image_type}`}
+                                  className="cursor-pointer inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                                >
+                                  <Camera className="w-4 h-4 mr-2" />
+                                  画像を入れ替える
+                                </label>
+                              </div>
+                            </div>
+                          ) : (
+                            /* 画像がない場合のアップロード */
+                            <div className="space-y-3">
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                                <input
+                                  type="file"
+                                  id={`upload-image-${image.image_type}`}
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      handleImageSelect(image.image_type, file);
+                                    }
+                                  }}
+                                />
+                                <label
+                                  htmlFor={`upload-image-${image.image_type}`}
+                                  className="cursor-pointer flex flex-col items-center"
+                                >
+                                  <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                                  <span className="text-sm text-gray-600">
+                                    クリックして画像を選択
+                                  </span>
+                                </label>
+                              </div>
 
-                      {/* プライベートブース設定 */}
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-3">プライベートブース</h4>
-                        <div className="space-y-3">
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={editForm.private_booths}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, private_booths: e.target.checked }))}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-sm text-gray-700">プライベートブースあり</span>
-                          </label>
-
-                          {editForm.private_booths && (
-                            <div className="ml-6">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                部屋数
-                              </label>
-                              <input
-                                type="number"
-                                min="1"
-                                max="10"
-                                value={editForm.private_booth_count}
-                                onChange={(e) => setEditForm(prev => ({ ...prev, private_booth_count: parseInt(e.target.value) || 0 }))}
-                                className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
+                              {/* ファイル選択後のアップロードボタン */}
+                              {image.file && (
+                                <div className="flex items-center justify-between bg-gray-50 p-3 rounded">
+                                  <span className="text-sm truncate">{image.file.name}</span>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleImageUpload(image.image_type)}
+                                    disabled={imageLoading}
+                                  >
+                                    {imageLoading ? 'アップロード中...' : 'アップロード'}
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
-                      </div>
+                      );
+                    })}
+                  </div>
+                </Card>
 
-                      {/* 設備情報 */}
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-3">設備情報</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          {Object.entries({
-                            parking: '駐車場',
-                            shower: 'シャワー設備',
-                            restroom: 'トイレ',
-                            agility: 'アジリティ設備',
-                            rest_area: '休憩スペース',
-                            water_station: '給水設備',
-                          }).map(([key, label]) => (
-                            <label key={key} className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                checked={editForm.facilities[key as keyof typeof editForm.facilities]}
-                                onChange={(e) => setEditForm(prev => ({
-                                  ...prev,
-                                  facilities: {
-                                    ...prev.facilities,
-                                    [key]: e.target.checked
-                                  }
-                                }))}
-                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                              />
-                              <span className="text-sm text-gray-700">{label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
+                {/* 料金設定 */}
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center">
+                    <DollarSign className="w-5 h-5 text-blue-600 mr-2" />
+                    料金設定
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    料金体系は全国統一です。変更はできません。
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-medium">• 通常利用:</span>
+                      <span>¥800/日 (固定)</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-medium">• 施設貸し切り:</span>
+                      <span>¥4,400/時間 (固定)</span>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
 
-                      {/* 設備詳細 */}
+            {/* メンテナンス管理 */}
+            <Card className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold flex items-center">
+                  <Wrench className="w-6 h-6 text-blue-600 mr-2" />
+                  メンテナンス管理
+                </h2>
+                <Button
+                  onClick={() => setShowMaintenanceForm(true)}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  メンテナンス予定を追加
+                </Button>
+              </div>
+
+              {/* メンテナンス作成フォーム */}
+              {showMaintenanceForm && (
+                <Card className="p-4 mb-6 bg-blue-50 border-blue-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold text-blue-900">新しいメンテナンス予定</h3>
+                    <button
+                      onClick={() => setShowMaintenanceForm(false)}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleCreateMaintenance} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          設備詳細説明
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          メンテナンス内容 *
                         </label>
-                        <textarea
-                          value={editForm.facility_details}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, facility_details: e.target.value }))}
+                        <input
+                          type="text"
+                          value={maintenanceForm.title}
+                          onChange={(e) => setMaintenanceForm(prev => ({ ...prev, title: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          rows={3}
-                          placeholder="設備の詳細説明や利用案内など"
+                          placeholder="例：設備点検・清掃作業"
+                          required
                         />
                       </div>
 
-                      {/* ボタン */}
-                      <div className="flex justify-end space-x-3">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => setShowEditForm(false)}
-                        >
-                          キャンセル
-                        </Button>
-                        <Button
-                          type="submit"
-                          isLoading={isEditLoading}
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          更新
-                        </Button>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          開始日時 * (日本時間)
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={maintenanceForm.start_date}
+                          onChange={(e) => setMaintenanceForm(prev => ({ ...prev, start_date: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">日本時間で入力してください</p>
                       </div>
-                    </form>
-                  </Card>
-                )}
 
-                <Card className="p-6">
-                  <h2 className="text-xl font-semibold mb-6 flex items-center">
-                    <Settings className="w-6 h-6 text-blue-600 mr-2" />
-                    施設設定
-                  </h2>
-                  
-                  <div className="space-y-4">
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-blue-900 mb-3">基本設定</h3>
-                      <p className="text-sm text-blue-800 mb-3">
-                        施設の基本情報や設備情報を編集できます。住所と料金は変更できません。
-                      </p>
-                      <Button size="sm" onClick={() => setShowEditForm(true)}>
-                        <Edit className="w-4 h-4 mr-2" />
-                        基本情報を編集
-                      </Button>
-                    </div>
-                    
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-green-900 mb-3">料金設定</h3>
-                      <p className="text-sm text-green-800 mb-3">
-                        料金体系は全国統一です。変更はできません。
-                      </p>
-                      <ul className="text-sm text-green-800 space-y-1">
-                        <li>• 通常利用: ¥800/日（固定）</li>
-                        <li>• 施設貸し切り: ¥4,400/時間（固定）</li>
-                        <li>• プライベートブース: サブスク使い放題・1日券でも利用可能（追加料金なし）</li>
-                      </ul>
-                    </div>
-                    
-                    <div className="bg-purple-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-purple-900 mb-3">スマートロック設定</h3>
-                      <p className="text-sm text-purple-800 mb-3">
-                        スマートロックの設定を管理します。
-                      </p>
-                      <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
-                        <Key className="w-4 h-4 mr-2" />
-                        スマートロックを管理
-                      </Button>
-                    </div>
-                    
-                    <div className="bg-orange-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-orange-900 mb-3">営業時間設定</h3>
-                      <p className="text-sm text-orange-800 mb-3">
-                        営業時間は24時間です。変更はできません。
-                      </p>
-                      <div className="flex items-center space-x-2">
-                        <Clock className="w-5 h-5 text-orange-600" />
-                        <span className="font-medium">24時間営業</span>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          終了日時 * (日本時間)
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={maintenanceForm.end_date}
+                          onChange={(e) => setMaintenanceForm(prev => ({ ...prev, end_date: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">日本時間で入力してください</p>
                       </div>
                     </div>
-                  </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        詳細説明
+                      </label>
+                      <textarea
+                        value={maintenanceForm.description}
+                        onChange={(e) => setMaintenanceForm(prev => ({ ...prev, description: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        rows={3}
+                        placeholder="メンテナンス内容の詳細説明（任意）"
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-6">
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={maintenanceForm.is_emergency}
+                          onChange={(e) => setMaintenanceForm(prev => ({ ...prev, is_emergency: e.target.checked }))}
+                          className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                        />
+                        <span className="text-sm text-gray-700">緊急メンテナンス</span>
+                      </label>
+
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={maintenanceForm.notify_users}
+                          onChange={(e) => setMaintenanceForm(prev => ({ ...prev, notify_users: e.target.checked }))}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">ユーザーに通知</span>
+                      </label>
+                    </div>
+
+                    <div className="flex justify-end space-x-3">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setShowMaintenanceForm(false)}
+                      >
+                        キャンセル
+                      </Button>
+                      <Button
+                        type="submit"
+                        isLoading={isMaintenanceLoading}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        作成
+                      </Button>
+                    </div>
+                  </form>
                 </Card>
+              )}
 
-                {/* メンテナンス管理 */}
-                <Card className="p-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-semibold flex items-center">
-                      <Wrench className="w-6 h-6 text-blue-600 mr-2" />
-                      メンテナンス管理
-                    </h2>
-                    <Button
-                      onClick={() => setShowMaintenanceForm(true)}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      メンテナンス予定を追加
-                    </Button>
+              {/* メンテナンススケジュール一覧 */}
+              <div className="space-y-4">
+                {maintenanceSchedules.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Wrench className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-lg font-medium mb-2">メンテナンス予定がありません</p>
+                    <p className="text-sm">施設のメンテナンス予定を追加してください</p>
                   </div>
-
-                  {/* メンテナンス作成フォーム */}
-                  {showMaintenanceForm && (
-                    <Card className="p-4 mb-6 bg-blue-50 border-blue-200">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold text-blue-900">新しいメンテナンス予定</h3>
-                        <button
-                          onClick={() => setShowMaintenanceForm(false)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-
-                      <form onSubmit={handleCreateMaintenance} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              メンテナンス内容 *
-                            </label>
-                            <input
-                              type="text"
-                              value={maintenanceForm.title}
-                              onChange={(e) => setMaintenanceForm(prev => ({ ...prev, title: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="例：設備点検・清掃作業"
-                              required
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              開始日時 * (日本時間)
-                            </label>
-                            <input
-                              type="datetime-local"
-                              value={maintenanceForm.start_date}
-                              onChange={(e) => setMaintenanceForm(prev => ({ ...prev, start_date: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              required
-                            />
-                            <p className="text-xs text-gray-500 mt-1">日本時間で入力してください</p>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              終了日時 * (日本時間)
-                            </label>
-                            <input
-                              type="datetime-local"
-                              value={maintenanceForm.end_date}
-                              onChange={(e) => setMaintenanceForm(prev => ({ ...prev, end_date: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              required
-                            />
-                            <p className="text-xs text-gray-500 mt-1">日本時間で入力してください</p>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            詳細説明
-                          </label>
-                          <textarea
-                            value={maintenanceForm.description}
-                            onChange={(e) => setMaintenanceForm(prev => ({ ...prev, description: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            rows={3}
-                            placeholder="メンテナンス内容の詳細説明（任意）"
-                          />
-                        </div>
-
-                        <div className="flex items-center space-x-6">
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={maintenanceForm.is_emergency}
-                              onChange={(e) => setMaintenanceForm(prev => ({ ...prev, is_emergency: e.target.checked }))}
-                              className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                            />
-                            <span className="text-sm text-gray-700">緊急メンテナンス</span>
-                          </label>
-
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={maintenanceForm.notify_users}
-                              onChange={(e) => setMaintenanceForm(prev => ({ ...prev, notify_users: e.target.checked }))}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-sm text-gray-700">ユーザーに通知</span>
-                          </label>
-                        </div>
-
-                        <div className="flex justify-end space-x-3">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => setShowMaintenanceForm(false)}
-                          >
-                            キャンセル
-                          </Button>
-                          <Button
-                            type="submit"
-                            isLoading={isMaintenanceLoading}
-                            className="bg-blue-600 hover:bg-blue-700"
-                          >
-                            作成
-                          </Button>
-                        </div>
-                      </form>
-                    </Card>
-                  )}
-
-                  {/* メンテナンススケジュール一覧 */}
-                  <div className="space-y-4">
-                    {maintenanceSchedules.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">
-                        <Wrench className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                        <p className="text-lg font-medium mb-2">メンテナンス予定がありません</p>
-                        <p className="text-sm">施設のメンテナンス予定を追加してください</p>
-                      </div>
-                    ) : (
-                      maintenanceSchedules.map((maintenance) => {
-                        const status = getMaintenanceStatus(maintenance);
-                        return (
-                          <Card key={maintenance.id} className="p-4">
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-3 mb-2">
-                                  <h3 className="font-semibold text-lg">{maintenance.title}</h3>
-                                  <span className={`px-2 py-1 rounded-full text-xs font-medium text-white ${status.color}`}>
-                                    {status.label}
-                                  </span>
-                                  {maintenance.is_emergency && (
-                                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                      緊急
-                                    </span>
-                                  )}
-                                </div>
-                                
-                                {maintenance.description && (
-                                  <p className="text-gray-600 mb-3">{maintenance.description}</p>
-                                )}
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                                  <div>
-                                    <span className="font-medium">開始:</span>{' '}
-                                    {formatMaintenanceDate(maintenance.start_date)}
-                                  </div>
-                                  <div>
-                                    <span className="font-medium">終了:</span>{' '}
-                                    {formatMaintenanceDate(maintenance.end_date)}
-                                  </div>
-                                </div>
+                ) : (
+                  maintenanceSchedules.map((maintenance) => {
+                    const status = getMaintenanceStatus(maintenance);
+                    return (
+                      <Card key={maintenance.id} className="p-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <h3 className="font-semibold text-lg">{maintenance.title}</h3>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium text-white ${status.color}`}>
+                                {status.label}
+                              </span>
+                              {maintenance.is_emergency && (
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                  緊急
+                                </span>
+                              )}
+                            </div>
+                            
+                            {maintenance.description && (
+                              <p className="text-gray-600 mb-3">{maintenance.description}</p>
+                            )}
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                              <div>
+                                <span className="font-medium">開始:</span>{' '}
+                                {formatMaintenanceDate(maintenance.start_date)}
                               </div>
-                              
-                              <div className="flex items-center space-x-2">
-                                {maintenance.status === 'scheduled' && (
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    onClick={() => handleDeleteMaintenance(maintenance.id)}
-                                    className="text-red-600 hover:text-red-800"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </Button>
-                                )}
+                              <div>
+                                <span className="font-medium">終了:</span>{' '}
+                                {formatMaintenanceDate(maintenance.end_date)}
                               </div>
                             </div>
-                          </Card>
-                        );
-                      })
-                    )}
-                  </div>
-
-                  <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
-                    <div className="flex items-start space-x-3">
-                      <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                      <div className="text-sm text-yellow-800">
-                        <p className="font-medium mb-1">メンテナンス機能について</p>
-                        <ul className="space-y-1">
-                          <li>• メンテナンス中は新規予約を受け付けません</li>
-                          <li>• 既存の予約がある場合は事前に利用者に連絡してください</li>
-                          <li>• 緊急メンテナンスの場合は即座に施設が利用停止になります</li>
-                          <li>• ユーザー通知を有効にすると、利用者にメール通知が送信されます</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-                
-                <Card className="p-6 bg-gray-50">
-                  <div className="flex items-start space-x-3">
-                    <FileText className="w-6 h-6 text-gray-600 mt-1" />
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">運営サポート</h3>
-                      <div className="text-sm text-gray-700 space-y-1">
-                        <p>• 設定に関するご質問は運営事務局までお問い合わせください</p>
-                        <p>• QRコードシステムの設置・設定サポートを提供しています</p>
-                        <p>• 運営開始後も継続的なサポートを行います</p>
-                        <p>• 📧 サポート窓口: info@dogparkjp.com</p>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            {maintenance.status === 'scheduled' && (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => handleDeleteMaintenance(maintenance.id)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })
+                )}
               </div>
-            )}
 
-            {/* 削除セクション - ページの一番下 */}
-            <Card className="p-6 mt-8 border-red-200 bg-red-50">
-              <div className="flex items-start space-x-3">
-                <Trash2 className="w-6 h-6 text-red-600 mt-1" />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-red-900 mb-2">危険な操作</h3>
-                  <p className="text-sm text-red-800 mb-4">
-                    この施設を完全に削除します。削除後はデータの復旧はできません。
-                    {park.status === 'approved' && (
-                      <span className="block mt-1 font-medium">
-                        ※ 公開中の施設は削除できません。まず非公開にしてから削除してください。
-                      </span>
-                    )}
-                  </p>
-                  
-                  {park.status === 'rejected' ? (
-                    <Button
-                      onClick={() => setShowDeleteDialog(true)}
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                      size="sm"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      施設を削除
-                    </Button>
-                  ) : (
-                    <Button
-                      disabled
-                      className="bg-gray-400 cursor-not-allowed text-white"
-                      size="sm"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      削除不可（{park.status === 'approved' ? '公開中' : '審査中'}）
-                    </Button>
-                  )}
+              <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                  <div className="text-sm text-yellow-800">
+                    <p className="font-medium mb-1">メンテナンス機能について</p>
+                    <ul className="space-y-1">
+                      <li>• メンテナンス中は新規予約を受け付けません</li>
+                      <li>• 既存の予約がある場合は事前に利用者に連絡してください</li>
+                      <li>• 緊急メンテナンスの場合は即座に施設が利用停止になります</li>
+                      <li>• ユーザー通知を有効にすると、利用者にメール通知が送信されます</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </Card>
-
-            {/* 削除確認ダイアログ */}
-            {showDeleteDialog && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                  <div className="flex items-center mb-4">
-                    <Trash2 className="w-6 h-6 text-red-600 mr-3" />
-                    <h3 className="text-lg font-semibold text-gray-900">施設の削除確認</h3>
-                  </div>
-                  
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-600 mb-2">
-                      <span className="font-medium text-red-600">警告:</span> この操作は取り消せません。
-                    </p>
-                    <p className="text-sm text-gray-600 mb-4">
-                      削除を実行するには、施設名「<span className="font-medium">{park.name}</span>」を入力してください。
-                    </p>
-                    
-                    <input
-                      type="text"
-                      value={deleteConfirmText}
-                      onChange={(e) => setDeleteConfirmText(e.target.value)}
-                      placeholder="施設名を入力"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                    />
-                  </div>
-                  
-                  <div className="flex justify-end space-x-3">
-                    <Button
-                      onClick={() => {
-                        setShowDeleteDialog(false);
-                        setDeleteConfirmText('');
-                      }}
-                      variant="secondary"
-                      disabled={isDeleting}
-                    >
-                      キャンセル
-                    </Button>
-                    <Button
-                      onClick={handleDeletePark}
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                      disabled={isDeleting || deleteConfirmText !== park.name}
-                      isLoading={isDeleting}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      削除実行
-                    </Button>
+            
+            <Card className="p-6 bg-gray-50">
+              <div className="flex items-start space-x-3">
+                <FileText className="w-6 h-6 text-gray-600 mt-1" />
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">運営サポート</h3>
+                  <div className="text-sm text-gray-700 space-y-1">
+                    <p>• 設定に関するご質問は運営事務局までお問い合わせください</p>
+                    <p>• QRコードシステムの設置・設定サポートを提供しています</p>
+                    <p>• 運営開始後も継続的なサポートを行います</p>
+                    <p>• 📧 サポート窓口: info@dogparkjp.com</p>
                   </div>
                 </div>
               </div>
-            )}
+            </Card>
           </>
         )}
       </div>
+
+      {/* Image Cropper Modal */}
+      {showImageCropper && selectedImageFile && (
+        <ImageCropper
+          imageFile={selectedImageFile}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+          aspectRatio={1} // 1:1比率でクロップ
+          maxWidth={400}
+          maxHeight={400}
+        />
+      )}
+
+      {/* 画像プレビューモーダル */}
+      {showImagePreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="relative max-w-4xl w-full">
+            <button
+              onClick={() => setShowImagePreview(null)}
+              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 z-10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div className="flex items-center justify-center h-[80vh]">
+              <img
+                src={showImagePreview}
+                alt="プレビュー"
+                className="max-h-full max-w-full object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
