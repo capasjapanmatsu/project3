@@ -515,3 +515,35 @@ const { id: parkId } = useParams();
 ---
 
 **⚠️ 重要**: このマニフェストは運用上の重要な指針です。ページ追加・削除・修正時は必ずこのマニフェストも更新してください。 
+
+## 🔄 最新の変更履歴・実装状況
+
+### 2025年1月24日の主要な修正・実装
+
+#### 🗑️ 各編集ページに削除機能を追加完了
+- **`ParkManagement.tsx`**: ドッグラン削除機能を実装
+  - 慎重な削除フロー（施設名入力 + 二重確認ダイアログ）
+  - 却下されたパークのみ削除可能（安全制限）
+  - ページ最下部の目立たない赤い警告セクションに配置
+  - Supabase RPC関数 `delete_rejected_park` を使用
+
+- **`FacilityEdit.tsx`**: 新規ペット関連施設編集ページを作成
+  - 完全な編集フォーム（施設名、カテゴリ、住所、電話、ウェブサイト、説明）
+  - 身分証明書の再アップロード機能
+  - 施設削除機能（施設名入力による慎重な確認）
+  - App.tsxにルート `/facilities/:id/edit` を追加
+  - MyFacilitiesManagementの「管理・修正」ボタン404エラーを解決
+
+#### 🔧 MyParksManagement 管理・修正ボタン修正
+- **`ParkManagement.tsx`**: useParams()の取得方法を修正
+  - `const { parkId } = useParams();` → `const { id: parkId } = useParams();`
+  - App.tsxのルート定義 `/parks/:id/manage` と一致するよう修正
+  - MyParksManagementの「管理・修正」ボタンから正常にアクセス可能に
+
+#### 🔧 MyParksManagement & MyFacilitiesManagement ページ作成
+- **`MyParksManagement.tsx`**: ダッシュボードから分離した専用の管理中ドッグラン一覧ページ
+  - 所有者のドッグラン一覧表示（`owner_id`での正しいデータ取得）
+  - ステータス別の条件分岐ボタン（審査中は無効化、承認済み・却下は編集可能）
+  - 統計情報表示（一時的に無効化してエラー回避）
+- **`MyFacilitiesManagement.tsx`**: 管理中ペット関連施設の専用管理ページ
+  - ダッシュボードから独立した詳細管理機能 

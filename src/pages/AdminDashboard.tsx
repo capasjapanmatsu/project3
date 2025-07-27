@@ -2,17 +2,13 @@ import {
     AlertTriangle,
     Badge,
     BarChart4,
-    Bell,
     Building,
-    Calendar,
     CheckCircle,
     DollarSign,
-    Download,
-    MapPin,
+    Eye,
     Settings,
     Shield,
-    ShoppingBag,
-    TrendingUp,
+    ShieldAlert,
     Users
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -21,6 +17,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import AdminMaintenanceManagement from '../components/admin/AdminMaintenanceManagement';
 import useAuth from '../context/AuthContext';
+import { FraudDetectionResult, getFraudDetectionStats, getHighRiskUsers } from '../utils/adminFraudDetection';
 import { supabase } from '../utils/supabase';
 
 interface AdminStats {
@@ -53,10 +50,18 @@ interface AdminStatsResponse {
   unread_messages: number;
 }
 
+interface FraudStats {
+  totalHighRiskUsers: number;
+  totalMediumRiskUsers: number;
+  recentDetections: number;
+  blockedAttempts: number;
+  trialAbuseCount: number;
+}
+
 export function AdminDashboard() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'parks' | 'vaccines' | 'users' | 'maintenance'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'parks' | 'vaccines' | 'users' | 'maintenance' | 'fraud'>('overview');
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalParks: 0,
@@ -75,6 +80,16 @@ export function AdminDashboard() {
   const [processingError, setProcessingError] = useState('');
   const [processingSuccess, setProcessingSuccess] = useState('');
 
+  // 不正検知関連のstate
+  const [fraudStats, setFraudStats] = useState<FraudStats>({
+    totalHighRiskUsers: 0,
+    totalMediumRiskUsers: 0,
+    recentDetections: 0,
+    blockedAttempts: 0,
+    trialAbuseCount: 0
+  });
+  const [highRiskUsers, setHighRiskUsers] = useState<FraudDetectionResult[]>([]);
+
   useEffect(() => {
     // 管理者権限チェック
     if (!isAdmin) {
@@ -83,6 +98,7 @@ export function AdminDashboard() {
     }
 
     void fetchAdminData();
+    void fetchFraudData();
   }, [isAdmin, navigate]);
 
   const fetchAdminData = async () => {
@@ -98,588 +114,506 @@ export function AdminDashboard() {
 
       const typedStatsData = statsData as AdminStatsResponse | null;
 
-      // ペット関連施設の申請待ち数を取得
-      const { data: pendingFacilitiesData, error: pendingFacilitiesError } = await supabase
-        .from('pet_facilities')
-        .select('id', { count: 'exact' })
-        .eq('status', 'pending');
+      if (typedStatsData) {
+        setStats({
+          totalUsers: typedStatsData.total_users || 0,
+          totalParks: typedStatsData.total_parks || 0,
+          pendingParks: typedStatsData.pending_parks || 0,
+          pendingVaccines: typedStatsData.pending_vaccines || 0,
+          pendingFacilities: typedStatsData.pending_facilities || 0,
+          totalReservations: typedStatsData.total_reservations || 0,
+          monthlyRevenue: typedStatsData.monthly_revenue || 0,
+          lastMonthRevenue: typedStatsData.last_month_revenue || 0,
+          totalSubscriptions: typedStatsData.total_subscriptions || 0,
+          activeSubscriptions: typedStatsData.active_subscriptions || 0,
+          newUsersThisMonth: typedStatsData.new_users_this_month || 0,
+          unreadMessages: typedStatsData.unread_messages || 0
+        });
+      }
 
-      const pendingFacilitiesCount = pendingFacilitiesData?.length || 0;
-
-      // ドッグランの審査待ち数を直接取得
-      const { data: pendingParksData, error: pendingParksError } = await supabase
-        .from('dog_parks')
-        .select('id', { count: 'exact' })
-        .in('status', ['pending', 'first_stage_passed', 'second_stage_waiting', 'second_stage_review', 'smart_lock_testing']);
-
-      const pendingParksCount = pendingParksData?.length || 0;
-
-      setStats({
-        totalUsers: typedStatsData?.total_users || 0,
-        totalParks: typedStatsData?.total_parks || 0,
-        pendingParks: pendingParksCount, // 直接取得した値を使用
-        pendingVaccines: typedStatsData?.pending_vaccines || 0,
-        pendingFacilities: pendingFacilitiesCount,
-        totalReservations: typedStatsData?.total_reservations || 0,
-        monthlyRevenue: typedStatsData?.monthly_revenue || 0,
-        lastMonthRevenue: typedStatsData?.last_month_revenue || 0,
-        totalSubscriptions: typedStatsData?.total_subscriptions || 0,
-        activeSubscriptions: typedStatsData?.active_subscriptions || 0,
-        newUsersThisMonth: typedStatsData?.new_users_this_month || 0,
-        unreadMessages: typedStatsData?.unread_messages || 0
-      });
     } catch (error) {
       console.error('Error fetching admin data:', error);
-      setProcessingError('統計データの取得に失敗しました。');
+      setProcessingError('管理者データの取得に失敗しました。');
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (isLoading) {
+  const fetchFraudData = async () => {
+    try {
+      // 不正検知統計を取得
+      const fraudStatsData = await getFraudDetectionStats();
+      setFraudStats(fraudStatsData);
+
+      // 高リスクユーザーを取得（上位5名）
+      const highRiskData = await getHighRiskUsers();
+      setHighRiskUsers(highRiskData.slice(0, 5));
+
+    } catch (error) {
+      console.error('Error fetching fraud data:', error);
+    }
+  };
+
+  const calculateRevenueGrowth = () => {
+    if (stats.lastMonthRevenue === 0) return 0;
+    return ((stats.monthlyRevenue - stats.lastMonthRevenue) / stats.lastMonthRevenue) * 100;
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('ja-JP', {
+      style: 'currency',
+      currency: 'JPY',
+    }).format(amount);
+  };
+
+  if (!isAdmin) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="p-8 text-center">
+          <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">アクセス拒否</h1>
+          <p className="text-gray-600">管理者権限が必要です。</p>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center">
-            <Shield className="w-8 h-8 text-red-600 mr-3" />
-            管理者ダッシュボード
-          </h1>
-          <p className="text-gray-600">システム全体の管理と監視</p>
-        </div>
-        <div className="text-sm text-gray-500">
-          最終更新: {new Date().toLocaleString('ja-JP')}
-        </div>
-      </div>
-
-      {/* 処理結果メッセージ */}
-      {processingError && (
-        <div className="bg-red-100 border border-red-300 text-red-800 rounded-lg p-4 flex items-start">
-          <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
-          <p>{processingError}</p>
-        </div>
-      )}
-
-      {processingSuccess && (
-        <div className="bg-green-100 border border-green-300 text-green-800 rounded-lg p-4 flex items-start">
-          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
-          <p>{processingSuccess}</p>
-        </div>
-      )}
-
-      {/* 統計カード */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Link to="/admin/users">
-          <Card className="p-6 hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">総ユーザー数</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.totalUsers}</p>
-                <p className="text-xs text-green-600">+{stats.newUsersThisMonth} 今月</p>
-              </div>
-              <Users className="w-8 h-8 text-blue-600" />
+    <div className="min-h-screen bg-gray-50">
+      {/* ヘッダー */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+                <Settings className="w-8 h-8 text-blue-600 mr-3" />
+                管理者ダッシュボード
+              </h1>
+              <p className="text-gray-600">システム全体の監視と管理</p>
             </div>
-          </Card>
-        </Link>
-
-        <Link to="/admin/parks">
-          <Card className="p-6 hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">総ドッグラン数</p>
-                <p className="text-2xl font-bold text-green-600">{stats.totalParks}</p>
-                {stats.pendingParks > 0 && (
-                  <p className="text-xs text-orange-600">承認待ち: {stats.pendingParks}</p>
-                )}
-              </div>
-              <MapPin className="w-8 h-8 text-green-600" />
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">
+                管理者: {user?.email}
+              </span>
             </div>
-          </Card>
-        </Link>
-
-        <Link to="/admin/reservations">
-          <Card className="p-6 hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">今月の予約数</p>
-                <p className="text-2xl font-bold text-purple-600">{stats.totalReservations}</p>
-                <p className="text-xs text-purple-600">サブスク会員: {stats.activeSubscriptions}</p>
-              </div>
-              <Calendar className="w-8 h-8 text-purple-600" />
-            </div>
-          </Card>
-        </Link>
-
-        <Link to="/admin/sales">
-          <Card className="p-6 hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">今月の売上</p>
-                <p className="text-2xl font-bold text-orange-600">¥{stats.monthlyRevenue.toLocaleString()}</p>
-                {stats.lastMonthRevenue > 0 && (
-                  <p className="text-xs text-gray-500">
-                    前月比: {Math.round((stats.monthlyRevenue / stats.lastMonthRevenue - 1) * 100)}%
-                  </p>
-                )}
-              </div>
-              <DollarSign className="w-8 h-8 text-orange-600" />
-            </div>
-          </Card>
-        </Link>
-      </div>
-
-      {/* 緊急対応が必要な項目 */}
-      {(stats.pendingParks > 0 || stats.pendingVaccines > 0 || stats.pendingFacilities > 0) && (
-        <Card className="p-6 bg-red-50 border-red-200">
-          <div className="flex items-center space-x-3 mb-4">
-            <AlertTriangle className="w-6 h-6 text-red-600" />
-            <h2 className="text-lg font-semibold text-red-900">緊急対応が必要</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* エラー・成功メッセージ */}
+        {processingError && (
+          <div className="bg-red-100 border border-red-300 text-red-800 rounded-lg p-4 mb-6">
+            <AlertTriangle className="w-5 h-5 inline mr-2" />
+            {processingError}
+          </div>
+        )}
+
+        {processingSuccess && (
+          <div className="bg-green-100 border border-green-300 text-green-800 rounded-lg p-4 mb-6">
+            <CheckCircle className="w-5 h-5 inline mr-2" />
+            {processingSuccess}
+          </div>
+        )}
+
+        {/* 緊急対応が必要な項目 */}
+        {(stats.pendingParks > 0 || stats.pendingVaccines > 0 || stats.pendingFacilities > 0 || fraudStats.totalHighRiskUsers > 0) && (
+          <Card className="p-6 mb-6 border-red-200 bg-red-50">
+            <h2 className="text-lg font-semibold text-red-900 mb-4 flex items-center">
+              <AlertTriangle className="w-6 h-6 text-red-600 mr-2" />
+              緊急対応が必要な項目
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {stats.pendingParks > 0 && (
+                <Link to="/admin/parks" className="block">
+                  <div className="bg-white rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">承認待ちドッグラン</p>
+                        <p className="text-2xl font-bold text-red-600">{stats.pendingParks}</p>
+                      </div>
+                      <Building className="w-8 h-8 text-red-500" />
+                    </div>
+                  </div>
+                </Link>
+              )}
+
+              {stats.pendingVaccines > 0 && (
+                <Link to="/admin/vaccine-approval" className="block">
+                  <div className="bg-white rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">ワクチン証明書承認待ち</p>
+                        <p className="text-2xl font-bold text-red-600">{stats.pendingVaccines}</p>
+                      </div>
+                      <Shield className="w-8 h-8 text-red-500" />
+                    </div>
+                  </div>
+                </Link>
+              )}
+
+              {stats.pendingFacilities > 0 && (
+                <Link to="/admin/facility-approval" className="block">
+                  <div className="bg-white rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">施設承認待ち</p>
+                        <p className="text-2xl font-bold text-red-600">{stats.pendingFacilities}</p>
+                      </div>
+                      <Building className="w-8 h-8 text-red-500" />
+                    </div>
+                  </div>
+                </Link>
+              )}
+
+              {fraudStats.totalHighRiskUsers > 0 && (
+                <Link to="/admin/users?filter=high_risk" className="block">
+                  <div className="bg-white rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">高リスクユーザー</p>
+                        <p className="text-2xl font-bold text-red-600">{fraudStats.totalHighRiskUsers}</p>
+                      </div>
+                      <ShieldAlert className="w-8 h-8 text-red-500" />
+                    </div>
+                  </div>
+                </Link>
+              )}
+            </div>
+
+            {/* 高リスクユーザーの詳細 */}
+            {highRiskUsers.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-md font-semibold text-red-900 mb-3">最新の高リスクユーザー</h3>
+                <div className="bg-white rounded-lg overflow-hidden">
+                  <table className="min-w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ユーザー</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">リスクスコア</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">検知タイプ</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">最終検知</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">アクション</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {highRiskUsers.map((user) => (
+                        <tr key={user.userId} className="hover:bg-gray-50">
+                          <td className="px-4 py-2">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{user.userName}</div>
+                              <div className="text-sm text-gray-500">{user.email}</div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                              user.riskLevel === 'high' ? 'bg-red-100 text-red-800' :
+                              user.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {user.riskScore}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2">
+                            <div className="text-sm text-gray-900">
+                              {user.detectionTypes.join(', ')}
+                            </div>
+                          </td>
+                          <td className="px-4 py-2">
+                            <div className="text-sm text-gray-900">
+                              {new Date(user.lastDetection).toLocaleDateString('ja-JP')}
+                            </div>
+                          </td>
+                          <td className="px-4 py-2">
+                            <Link to={`/admin/users?filter=high_risk`}>
+                              <Button variant="secondary" size="sm">
+                                <Eye className="w-4 h-4 mr-1" />
+                                詳細
+                              </Button>
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* タブナビゲーション */}
+        <div className="flex space-x-1 mb-6">
+          {[
+            { id: 'overview', label: '概要', icon: BarChart4 },
+            { id: 'parks', label: 'ドッグラン', icon: Building },
+            { id: 'users', label: 'ユーザー', icon: Users },
+            { id: 'fraud', label: '不正検知', icon: ShieldAlert },
+            { id: 'maintenance', label: 'メンテナンス', icon: Settings }
+          ].map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Icon className="w-4 h-4 mr-2" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 概要タブ */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            {/* 統計カード */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">総ユーザー数</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
+                    <p className="text-sm text-green-600">
+                      今月 +{stats.newUsersThisMonth}人
+                    </p>
+                  </div>
+                  <Users className="w-8 h-8 text-blue-500" />
+                </div>
+              </Card>
+
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">総ドッグラン数</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.totalParks}</p>
+                    {stats.pendingParks > 0 && (
+                      <p className="text-sm text-orange-600">
+                        承認待ち {stats.pendingParks}件
+                      </p>
+                    )}
+                  </div>
+                  <Building className="w-8 h-8 text-green-500" />
+                </div>
+              </Card>
+
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">月間売上</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {formatCurrency(stats.monthlyRevenue)}
+                    </p>
+                    <p className={`text-sm ${calculateRevenueGrowth() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      前月比 {calculateRevenueGrowth() >= 0 ? '+' : ''}{calculateRevenueGrowth().toFixed(1)}%
+                    </p>
+                  </div>
+                  <DollarSign className="w-8 h-8 text-yellow-500" />
+                </div>
+              </Card>
+
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">アクティブサブスクリプション</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.activeSubscriptions}</p>
+                    <p className="text-sm text-gray-600">
+                      総数 {stats.totalSubscriptions}件
+                    </p>
+                  </div>
+                  <Badge className="w-8 h-8 text-purple-500" />
+                </div>
+              </Card>
+            </div>
+
+            {/* クイックアクション */}
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">クイックアクション</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Link to="/admin/users">
+                  <Button className="w-full justify-start">
+                    <Users className="w-4 h-4 mr-2" />
+                    ユーザー管理
+                  </Button>
+                </Link>
+                <Link to="/admin/parks">
+                  <Button className="w-full justify-start">
+                    <Building className="w-4 h-4 mr-2" />
+                    ドッグラン管理
+                  </Button>
+                </Link>
+                <Link to="/admin/sales">
+                  <Button className="w-full justify-start">
+                    <BarChart4 className="w-4 h-4 mr-2" />
+                    売上レポート
+                  </Button>
+                </Link>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* 不正検知タブ */}
+        {activeTab === 'fraud' && (
+          <div className="space-y-6">
+            {/* 不正検知統計 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">高リスクユーザー</p>
+                    <p className="text-2xl font-bold text-red-600">{fraudStats.totalHighRiskUsers}</p>
+                  </div>
+                  <ShieldAlert className="w-8 h-8 text-red-500" />
+                </div>
+              </Card>
+
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">中リスクユーザー</p>
+                    <p className="text-2xl font-bold text-yellow-600">{fraudStats.totalMediumRiskUsers}</p>
+                  </div>
+                  <AlertTriangle className="w-8 h-8 text-yellow-500" />
+                </div>
+              </Card>
+
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">最近の検知</p>
+                    <p className="text-2xl font-bold text-blue-600">{fraudStats.recentDetections}</p>
+                    <p className="text-xs text-gray-500">過去30日</p>
+                  </div>
+                  <Eye className="w-8 h-8 text-blue-500" />
+                </div>
+              </Card>
+
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">ブロック済み</p>
+                    <p className="text-2xl font-bold text-green-600">{fraudStats.blockedAttempts}</p>
+                  </div>
+                  <Shield className="w-8 h-8 text-green-500" />
+                </div>
+              </Card>
+
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">トライアル悪用</p>
+                    <p className="text-2xl font-bold text-purple-600">{fraudStats.trialAbuseCount}</p>
+                  </div>
+                  <AlertTriangle className="w-8 h-8 text-purple-500" />
+                </div>
+              </Card>
+            </div>
+
+            {/* 不正検知管理 */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">不正検知管理</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-4 bg-red-50 rounded-lg">
+                  <div>
+                    <h4 className="font-medium text-red-900">高リスクユーザーの監視</h4>
+                    <p className="text-sm text-red-700">
+                      リスクスコア70以上のユーザーを定期的に確認し、必要に応じて制限措置を実施してください。
+                    </p>
+                  </div>
+                  <Link to="/admin/users?filter=high_risk">
+                    <Button className="bg-red-600 hover:bg-red-700">
+                      <ShieldAlert className="w-4 h-4 mr-2" />
+                      確認する
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="flex justify-between items-center p-4 bg-yellow-50 rounded-lg">
+                  <div>
+                    <h4 className="font-medium text-yellow-900">中リスクユーザーの監視</h4>
+                    <p className="text-sm text-yellow-700">
+                      リスクスコア50-69のユーザーの動向を監視し、パターンを分析してください。
+                    </p>
+                  </div>
+                  <Link to="/admin/users?filter=medium_risk">
+                    <Button variant="secondary">
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      確認する
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
+                  <div>
+                    <h4 className="font-medium text-blue-900">全ユーザー管理</h4>
+                    <p className="text-sm text-blue-700">
+                      すべてのユーザーの不正検知状況を確認し、総合的な監視を行います。
+                    </p>
+                  </div>
+                  <Link to="/admin/users">
+                    <Button variant="secondary">
+                      <Users className="w-4 h-4 mr-2" />
+                      ユーザー一覧
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* 既存のタブ内容 */}
+        {activeTab === 'parks' && (
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4">ドッグラン承認管理</h3>
+            <p className="text-gray-600">
+              詳細なドッグラン管理は
+              <Link to="/admin/parks" className="text-blue-600 hover:text-blue-800 mx-1">
+                ドッグラン管理ページ
+              </Link>
+              で行えます。
+            </p>
             {stats.pendingParks > 0 && (
-              <div className="bg-white p-4 rounded-lg border border-red-200">
-                <p className="font-medium text-red-900">ドッグラン承認待ち</p>
-                <p className="text-2xl font-bold text-red-600">{stats.pendingParks}件</p>
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-700">
+                  <strong>{stats.pendingParks}件</strong>のドッグラン承認待ちがあります。
+                </p>
                 <Link to="/admin/parks">
                   <Button size="sm" className="mt-2">
-                    確認する
+                    今すぐ確認する
                   </Button>
                 </Link>
               </div>
             )}
-            {stats.pendingVaccines > 0 && (
-              <div className="bg-white p-4 rounded-lg border border-red-200">
-                <p className="font-medium text-red-900">ワクチン証明書承認待ち</p>
-                <p className="text-2xl font-bold text-red-600">{stats.pendingVaccines}件</p>
-                <Link to="/admin/vaccine-approval">
-                  <Button size="sm" className="mt-2">
-                    確認する
-                  </Button>
-                </Link>
-              </div>
-            )}
-            {stats.pendingFacilities > 0 && (
-              <div className="bg-white p-4 rounded-lg border border-red-200">
-                <p className="font-medium text-red-900">ペット関連施設承認待ち</p>
-                <p className="text-2xl font-bold text-red-600">{stats.pendingFacilities}件</p>
-                <Link to="/admin/facility-approval">
-                  <Button size="sm" className="mt-2">
-                    確認する
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
-
-      {/* 管理メニュー */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Link to="/admin/vaccine-approval">
-          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="flex items-center space-x-3">
-              <div className="bg-blue-100 p-3 rounded-full">
-                <Badge className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold">ワクチン証明書管理</h3>
-                <p className="text-sm text-gray-600">
-                  ワクチン証明書の承認・管理
-                </p>
-                {stats.pendingVaccines > 0 && (
-                  <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    <span className="w-2 h-2 bg-red-500 rounded-full mr-1"></span>
-                    {stats.pendingVaccines}件の承認待ち
-                  </div>
-                )}
-              </div>
-            </div>
           </Card>
-        </Link>
+        )}
 
-        <Link to="/admin/parks">
-          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="flex items-center space-x-3">
-              <div className="bg-green-100 p-3 rounded-full">
-                <MapPin className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold">ドッグラン管理</h3>
-                <p className="text-sm text-gray-600">
-                  ドッグランの審査・管理
-                </p>
-                {stats.pendingParks > 0 && (
-                  <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    <span className="w-2 h-2 bg-red-500 rounded-full mr-1"></span>
-                    {stats.pendingParks}件の承認待ち
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
-        </Link>
-
-        <Link to="/admin/facility-approval">
-          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="flex items-center space-x-3">
-              <div className="bg-indigo-100 p-3 rounded-full">
-                <Building className="w-6 h-6 text-indigo-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold">ペット関連施設承認</h3>
-                <p className="text-sm text-gray-600">
-                  ペット関連施設の掲載申請承認・管理
-                </p>
-                {stats.pendingFacilities > 0 && (
-                  <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    <span className="w-2 h-2 bg-red-500 rounded-full mr-1"></span>
-                    {stats.pendingFacilities}件の承認待ち
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
-        </Link>
-
-        <Link to="/admin/shop">
-          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="flex items-center space-x-3">
-              <div className="bg-green-100 p-3 rounded-full">
-                <ShoppingBag className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold">ショップ管理</h3>
-                <p className="text-sm text-gray-600">
-                  商品管理・注文管理・在庫管理
-                </p>
-              </div>
-            </div>
-          </Card>
-        </Link>
-
-        <Link to="/admin/revenue">
-          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="flex items-center space-x-3">
-              <div className="bg-purple-100 p-3 rounded-full">
-                <TrendingUp className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold">売上レポート</h3>
-                <p className="text-sm text-gray-600">
-                  ドッグラン別売上・振込管理
-                </p>
-              </div>
-            </div>
-          </Card>
-        </Link>
-
-        <Link to="/admin/news">
-          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="flex items-center space-x-3">
-              <div className="bg-yellow-100 p-3 rounded-full">
-                <Bell className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold">新着情報管理</h3>
-                <p className="text-sm text-gray-600">
-                  サイトの新着情報・お知らせを管理
-                </p>
-              </div>
-            </div>
-          </Card>
-        </Link>
-
-        <div onClick={() => setActiveTab('maintenance')}>
-          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="flex items-center space-x-3">
-              <div className="bg-orange-100 p-3 rounded-full">
-                <Settings className="w-6 h-6 text-orange-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold">メンテナンス管理</h3>
-                <p className="text-sm text-gray-600">
-                  システムメンテナンス・IP管理
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      {/* タブナビゲーション */}
-      <div className="flex space-x-4 border-b">
-        <button
-          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${activeTab === 'overview'
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
-            }`}
-          onClick={() => setActiveTab('overview')}
-        >
-          <BarChart4 className="w-4 h-4" />
-          <span>概要</span>
-        </button>
-        <button
-          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${activeTab === 'parks'
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
-            }`}
-          onClick={() => setActiveTab('parks')}
-        >
-          <MapPin className="w-4 h-4" />
-          <span>ドッグラン管理</span>
-          {stats.pendingParks > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              {stats.pendingParks}
-            </span>
-          )}
-        </button>
-        <button
-          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${activeTab === 'vaccines'
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
-            }`}
-          onClick={() => setActiveTab('vaccines')}
-        >
-          <Badge className="w-4 h-4" />
-          <span>ワクチン承認</span>
-          {stats.pendingVaccines > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              {stats.pendingVaccines}
-            </span>
-          )}
-        </button>
-        <button
-          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${activeTab === 'facilities'
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
-            }`}
-          onClick={() => setActiveTab('facilities')}
-        >
-          <Building className="w-4 h-4" />
-          <span>施設承認</span>
-          {stats.pendingFacilities > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              {stats.pendingFacilities}
-            </span>
-          )}
-        </button>
-        <button
-          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${activeTab === 'users'
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
-            }`}
-          onClick={() => setActiveTab('users')}
-        >
-          <Users className="w-4 h-4" />
-          <span>ユーザー管理</span>
-        </button>
-        <button
-          className={`px-4 py-2 font-medium relative flex items-center space-x-2 ${activeTab === 'maintenance'
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
-            }`}
-          onClick={() => setActiveTab('maintenance')}
-        >
-          <Settings className="w-4 h-4" />
-          <span>メンテナンス</span>
-        </button>
-      </div>
-
-      {/* 概要タブ */}
-      {activeTab === 'overview' && (
-        <div className="space-y-6">
+        {activeTab === 'users' && (
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">システム概要</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-medium mb-2">プラットフォーム統計</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>アクティブユーザー:</span>
-                    <span className="font-medium">{stats.totalUsers}人</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>承認済みドッグラン:</span>
-                    <span className="font-medium">{stats.totalParks - stats.pendingParks}施設</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>今月の予約:</span>
-                    <span className="font-medium">{stats.totalReservations}件</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>今月の売上:</span>
-                    <span className="font-medium">¥{stats.monthlyRevenue.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>アクティブサブスク:</span>
-                    <span className="font-medium">{stats.activeSubscriptions}件</span>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <h4 className="font-medium mb-2">承認待ち項目</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>ドッグラン:</span>
-                    <span className={`font-medium ${stats.pendingParks > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {stats.pendingParks}件
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>ワクチン証明書:</span>
-                    <span className={`font-medium ${stats.pendingVaccines > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {stats.pendingVaccines}件
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>ペット関連施設:</span>
-                    <span className={`font-medium ${stats.pendingFacilities > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {stats.pendingFacilities}件
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* 売上グラフ（プレースホルダー） */}
-          <Card className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">売上推移</h3>
-              <div className="flex space-x-2">
-                <Link to="/admin/revenue">
-                  <Button size="sm" variant="secondary">
-                    <TrendingUp className="w-4 h-4 mr-1" />
-                    詳細レポート
-                  </Button>
-                </Link>
-                <Button size="sm" variant="secondary">
-                  <Download className="w-4 h-4 mr-1" />
-                  CSV
-                </Button>
-              </div>
-            </div>
-            <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-              <p className="text-gray-500">売上グラフ（実装予定）</p>
-            </div>
-          </Card>
-
-          {/* 新着情報管理 */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">新着情報管理</h3>
+            <h3 className="text-lg font-semibold mb-4">ユーザー管理</h3>
             <p className="text-gray-600">
-              サイトの新着情報・お知らせを管理するには
-              <Link to="/admin/news" className="text-blue-600 hover:text-blue-800 mx-1">
-                こちら
+              詳細なユーザー管理は
+              <Link to="/admin/users" className="text-blue-600 hover:text-blue-800 mx-1">
+                ユーザー管理ページ
               </Link>
-              からアクセスしてください。
+              で行えます。
             </p>
           </Card>
-        </div>
-      )}
+        )}
 
-      {/* 他のタブ */}
-      {activeTab === 'parks' && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">ドッグラン管理</h3>
-          <p className="text-gray-600">
-            詳細なドッグラン管理は
-            <Link to="/admin/parks" className="text-blue-600 hover:text-blue-800 mx-1">
-              ドッグラン管理ページ
-            </Link>
-            で行えます。
-          </p>
-          {stats.pendingParks > 0 && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700">
-                <strong>{stats.pendingParks}件</strong>のドッグラン承認待ちがあります。
-              </p>
-              <Link to="/admin/parks">
-                <Button size="sm" className="mt-2">
-                  今すぐ確認する
-                </Button>
-              </Link>
-            </div>
-          )}
-        </Card>
-      )}
-
-      {activeTab === 'vaccines' && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">ワクチン証明書管理</h3>
-          <p className="text-gray-600">
-            詳細なワクチン証明書管理は
-            <Link to="/admin/vaccine-approval" className="text-blue-600 hover:text-blue-800 mx-1">
-              ワクチン証明書管理ページ
-            </Link>
-            で行えます。
-          </p>
-          {stats.pendingVaccines > 0 && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700">
-                <strong>{stats.pendingVaccines}件</strong>のワクチン証明書承認待ちがあります。
-              </p>
-              <Link to="/admin/vaccine-approval">
-                <Button size="sm" className="mt-2">
-                  今すぐ確認する
-                </Button>
-              </Link>
-            </div>
-          )}
-        </Card>
-      )}
-
-      {activeTab === 'facilities' && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">ペット関連施設承認管理</h3>
-          <p className="text-gray-600">
-            詳細なペット関連施設の承認管理は
-            <Link to="/admin/facility-approval" className="text-blue-600 hover:text-blue-800 mx-1">
-              施設承認ページ
-            </Link>
-            で行えます。
-          </p>
-          {stats.pendingFacilities > 0 && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700">
-                <strong>{stats.pendingFacilities}件</strong>の施設承認待ちがあります。
-              </p>
-              <Link to="/admin/facility-approval">
-                <Button size="sm" className="mt-2">
-                  今すぐ確認する
-                </Button>
-              </Link>
-            </div>
-          )}
-        </Card>
-      )}
-
-      {activeTab === 'users' && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">ユーザー管理</h3>
-          <p className="text-gray-600">
-            詳細なユーザー管理は
-            <Link to="/admin/users" className="text-blue-600 hover:text-blue-800 mx-1">
-              ユーザー管理ページ
-            </Link>
-            で行えます。
-          </p>
-        </Card>
-      )}
-
-      {activeTab === 'maintenance' && (
-        <AdminMaintenanceManagement
-          onError={setProcessingError}
-          onSuccess={setProcessingSuccess}
-        />
-      )}
+        {activeTab === 'maintenance' && (
+          <AdminMaintenanceManagement
+            onError={setProcessingError}
+            onSuccess={setProcessingSuccess}
+          />
+        )}
+      </div>
     </div>
   );
 }
