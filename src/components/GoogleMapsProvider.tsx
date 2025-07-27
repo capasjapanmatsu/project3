@@ -89,39 +89,56 @@ export function GoogleMapsProvider({
         // Google Maps API スクリプトを動的に読み込み
         const script = document.createElement('script');
         const librariesParam = libraries.length > 0 ? `&libraries=${libraries.join(',')}` : '';
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${key}${librariesParam}`;
+        const scriptUrl = `https://maps.googleapis.com/maps/api/js?key=${key}${librariesParam}`;
+        script.src = scriptUrl;
         script.async = true;
         script.defer = true;
 
+        console.log('Google Maps スクリプトURL:', scriptUrl.replace(key, `${key.substring(0, 6)}...`));
+        
         // 読み込み完了/エラーハンドリング
         await new Promise<void>((resolve, reject) => {
           script.onload = () => {
+            console.log('Google Maps スクリプト読み込み完了');
             (window as any)._googleMapsLoading = false;
-            setGoogleInstance(window.google);
-            setIsLoaded(true);
-            setIsLoading(false);
-            resolve();
+            
+            if (window.google?.maps) {
+              console.log('Google Maps API正常に初期化されました');
+              setGoogleInstance(window.google);
+              setIsLoaded(true);
+              setIsLoading(false);
+              resolve();
+            } else {
+              console.error('Google Maps スクリプトは読み込まれましたが、APIが利用できません');
+              const errorMsg = 'Google Maps APIの初期化に失敗しました';
+              setError(errorMsg);
+              setIsLoading(false);
+              reject(new Error(errorMsg));
+            }
           };
 
-          script.onerror = () => {
+          script.onerror = (event) => {
+            console.error('Google Maps スクリプト読み込みエラー:', event);
             (window as any)._googleMapsLoading = false;
-            const errorMsg = 'Google Maps API の読み込みに失敗しました';
+            const errorMsg = 'Google Maps API の読み込みに失敗しました - ネットワークエラーまたはAPIキーが無効です';
             setError(errorMsg);
             setIsLoading(false);
             reject(new Error(errorMsg));
           };
 
-          // タイムアウト設定（10秒）
+          // タイムアウト設定（15秒に延長）
           setTimeout(() => {
             if (!window.google?.maps) {
+              console.error('Google Maps API読み込みタイムアウト');
               (window as any)._googleMapsLoading = false;
-              const errorMsg = 'Google Maps API の読み込みがタイムアウトしました';
+              const errorMsg = 'Google Maps API の読み込みがタイムアウトしました（15秒）';
               setError(errorMsg);
               setIsLoading(false);
               reject(new Error(errorMsg));
             }
-          }, 10000);
+          }, 15000);
 
+          console.log('Google Maps スクリプトをページに追加中...');
           document.head.appendChild(script);
         });
 

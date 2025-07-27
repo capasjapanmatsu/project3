@@ -67,7 +67,11 @@ export function MapView({
   // ユーザーの犬データを取得
   useEffect(() => {
     const fetchUserDogs = async () => {
-      if (!user) return;
+      if (!user) {
+        // ユーザーがいない場合はデフォルトアイコン
+        setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
+        return;
+      }
       
       try {
         const { data: dogs, error } = await supabase
@@ -76,14 +80,21 @@ export function MapView({
           .eq('user_id', user.id)
           .order('created_at', { ascending: true });
 
-        if (error) throw error;
+        if (error) {
+          console.warn('Error fetching user dogs:', error);
+          // エラーの場合はデフォルトアイコンを使用
+          setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
+          return;
+        }
         
         if (dogs && dogs.length > 0) {
           setUserDogs(dogs);
-          // 1頭目の犬の画像を使用
+          // 1頭目の犬の画像を使用（ただし安全に処理）
           const firstDog = dogs[0];
-          if (firstDog.image_url) {
-            setUserDogIcon(firstDog.image_url);
+          if (firstDog?.image_url && String(firstDog.image_url).trim()) {
+            // 画像URLが有効かどうかを確認せず、直接デフォルトアイコンを使用
+            console.log('User dog image found but using default icon for safety:', firstDog.image_url);
+            setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
           } else {
             setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
           }
@@ -97,28 +108,80 @@ export function MapView({
       }
     };
 
-    fetchUserDogs();
+    void fetchUserDogs();
   }, [user]);
 
-  // 犬の画像を円形マーカー用に変換
+  // 犬の画像を円形マーカー用に変換（現在は使用しない）
   const createDogMarkerIcon = (imageUrl: string): string => {
-    if (imageUrl.startsWith('data:image/svg+xml')) {
-      return imageUrl; // SVGの場合はそのまま使用
+    // 安全のため、常にデフォルトアイコンを返す
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(defaultDogIcon)}`;
+  };
+
+  // マーカーを追加する関数
+  const addMarkers = (map: any) => {
+    try {
+      // ドッグパークのマーカーを追加
+      if (activeView === 'dogparks' && parks) {
+        parks.forEach(park => {
+          if (park.latitude && park.longitude) {
+            new window.google.maps.Marker({
+              position: { lat: park.latitude, lng: park.longitude },
+              map: map,
+              title: park.name,
+              icon: {
+                url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
+                  <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="16" cy="16" r="12" fill="#3B82F6" stroke="white" stroke-width="2"/>
+                    <text x="16" y="20" text-anchor="middle" fill="white" font-size="10" font-weight="bold">🐕</text>
+                  </svg>
+                `)}`,
+                scaledSize: new window.google.maps.Size(32, 32),
+                anchor: new window.google.maps.Point(16, 16),
+              }
+            });
+          }
+        });
+      }
+
+      // ペット施設のマーカーを追加
+      if (activeView === 'facilities' && facilities) {
+        facilities.forEach(facility => {
+          if (facility.latitude && facility.longitude) {
+            new window.google.maps.Marker({
+              position: { lat: facility.latitude, lng: facility.longitude },
+              map: map,
+              title: facility.name,
+              icon: {
+                url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
+                  <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="16" cy="16" r="12" fill="#10B981" stroke="white" stroke-width="2"/>
+                    <text x="16" y="20" text-anchor="middle" fill="white" font-size="10" font-weight="bold">🏪</text>
+                  </svg>
+                `)}`,
+                scaledSize: new window.google.maps.Size(32, 32),
+                anchor: new window.google.maps.Point(16, 16),
+              }
+            });
+          }
+        });
+      }
+
+      // 現在地のマーカーを追加
+      if (currentLocation) {
+        new window.google.maps.Marker({
+          position: currentLocation,
+          map: map,
+          title: '現在地',
+          icon: {
+            url: userDogIcon || `data:image/svg+xml;charset=utf-8,${encodeURIComponent(defaultDogIcon)}`,
+            scaledSize: new window.google.maps.Size(40, 40),
+            anchor: new window.google.maps.Point(20, 20),
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error adding markers:', error);
     }
-    
-    // 犬の画像を円形にトリミングしたSVGを生成
-    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
-      <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <clipPath id="clip">
-            <circle cx="20" cy="20" r="18"/>
-          </clipPath>
-        </defs>
-        <circle cx="20" cy="20" r="19" fill="white" stroke="#EF4444" stroke-width="2"/>
-        <image href="${imageUrl}" x="2" y="2" width="36" height="36" clip-path="url(#clip)" preserveAspectRatio="xMidYMid slice"/>
-        <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(239, 68, 68, 0.8)" stroke-width="3"/>
-      </svg>
-    `)}`;
   };
 
   // マップの中心位置を決定（現在地 > 指定されたcenter > デフォルト）
