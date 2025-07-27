@@ -43,8 +43,20 @@ export function GoogleMapsProvider({
       try {
         // APIキーの確認
         const key = apiKey || import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        
+        // デバッグ用ログ（本番環境でも表示）
+        console.log('Google Maps 初期化開始:', {
+          hasPropsApiKey: !!apiKey,
+          hasEnvApiKey: !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+          finalKey: key ? `${key.substring(0, 6)}...` : 'なし',
+          windowGoogle: !!window.google,
+          windowGoogleMaps: !!window.google?.maps
+        });
+        
         if (!key) {
-          setError('Google Maps API キーが設定されていません');
+          const errorMsg = 'Google Maps API キーが設定されていません';
+          console.error(errorMsg);
+          setError(errorMsg);
           setIsLoading(false);
           return;
         }
