@@ -112,6 +112,7 @@ const ParkRegistrationSecondStage = React.lazy(() => import('./pages/ParkRegistr
 const ParkManagement = React.lazy(() => import('./pages/ParkManagement').then(module => ({ default: module.ParkManagement })));
 const ParkPublishingSetup = React.lazy(() => import('./pages/ParkPublishingSetup').then(module => ({ default: module.ParkPublishingSetup })));
 const FacilityRegistration = React.lazy(() => import('./pages/FacilityRegistration'));
+const FacilityEdit = React.lazy(() => import('./pages/FacilityEdit'));
 const OwnerPaymentSystem = React.lazy(() => import('./pages/OwnerPaymentSystem').then(module => ({ default: module.OwnerPaymentSystem })));
 
 // 管理者ページ
@@ -448,6 +449,13 @@ const App: React.FC = () => {
           <ProtectedRoute>
             <Suspense fallback={<DashboardSkeleton />}>
               <FacilityRegistration />
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/facilities/:id/edit" element={
+          <ProtectedRoute>
+            <Suspense fallback={<DashboardSkeleton />}>
+              <FacilityEdit />
             </Suspense>
           </ProtectedRoute>
         } />
