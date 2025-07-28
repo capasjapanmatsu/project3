@@ -237,7 +237,7 @@ export function MapView({
         <h3 style="
           font-size: 13px;
           font-weight: 600;
-          margin: 6px 0 8px 0;
+          margin: 6px 0 0px 0;
           color: #1f2937;
           line-height: 1.3;
         ">${itemName}</h3>
@@ -246,7 +246,7 @@ export function MapView({
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-top: 12px;
+          margin-top: 5px;
         ">
           ${distanceText}
           <button
