@@ -228,7 +228,7 @@ export function MapView({
       <div style="
         min-width: 220px;
         max-width: 260px;
-        min-height: 220px;
+        min-height: 280px;
         padding: 12px 12px 20px 12px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       ">
