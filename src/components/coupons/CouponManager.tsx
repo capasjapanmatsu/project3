@@ -123,10 +123,11 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
       if (couponImageFile) {
         const timestamp = Date.now();
         const filename = `coupon_${facilityId}_${timestamp}.jpg`;
+        const filePath = `${facilityId}/${filename}`;
         
         const { error: uploadError } = await supabase.storage
-          .from('facility-images')
-          .upload(filename, couponImageFile, {
+          .from('pet-facility-images')
+          .upload(filePath, couponImageFile, {
             contentType: 'image/jpeg',
             upsert: true
           });
@@ -134,8 +135,8 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
         if (uploadError) throw uploadError;
 
         const { data: urlData } = supabase.storage
-          .from('facility-images')
-          .getPublicUrl(filename);
+          .from('pet-facility-images')
+          .getPublicUrl(filePath);
 
         couponImageUrl = urlData.publicUrl;
       }
