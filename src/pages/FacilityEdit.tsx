@@ -463,17 +463,42 @@ export default function FacilityEdit() {
     try {
       setIsDeleting(true);
       setError('');
+      console.log('施設削除開始:', facility.id, facility.name);
 
-      // 施設を削除
-      const { error: deleteError } = await supabase
+      // 1. 関連する施設画像を手動で削除（CASCADE削除の保険として）
+      try {
+        console.log('関連画像削除開始...');
+        const { error: imagesDeleteError } = await supabase
+          .from('pet_facility_images')
+          .delete()
+          .eq('facility_id', facility.id);
+
+        if (imagesDeleteError) {
+          console.warn('施設画像削除エラー（継続）:', imagesDeleteError);
+        } else {
+          console.log('関連画像削除完了');
+        }
+      } catch (imageError) {
+        console.warn('施設画像削除で例外（継続）:', imageError);
+      }
+
+      // 2. 施設本体を削除
+      console.log('施設本体削除開始...');
+      const { error: deleteError, data: deleteData } = await supabase
         .from('pet_facilities')
         .delete()
         .eq('id', facility.id)
         .eq('owner_id', user?.id);
 
-      if (deleteError) throw deleteError;
+      console.log('削除結果:', { deleteError, deleteData });
 
-      setSuccess('施設を削除しました。');
+      if (deleteError) {
+        console.error('施設削除エラー詳細:', deleteError);
+        throw new Error(`削除エラー: ${deleteError.message} (Code: ${deleteError.code})`);
+      }
+
+      console.log('施設削除完了');
+      setSuccess('施設を削除しました。2秒後に管理画面に戻ります。');
       
       // 削除成功後、管理ページにリダイレクト
       setTimeout(() => {
@@ -482,7 +507,8 @@ export default function FacilityEdit() {
 
     } catch (error) {
       console.error('Error deleting facility:', error);
-      setError(error instanceof Error ? error.message : '削除に失敗しました。');
+      const errorMessage = error instanceof Error ? error.message : '削除に失敗しました。';
+      setError(`削除処理でエラーが発生しました: ${errorMessage}`);
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
