@@ -464,7 +464,31 @@ export default function FacilityEdit() {
       setIsDeleting(true);
       setError('');
       console.log('施設削除開始:', facility.id, facility.name);
-      console.log('ユーザーID:', user?.id);
+      console.log('現在のユーザーID:', user?.id);
+
+      // デバッグ: 施設の詳細情報を再取得して確認
+      console.log('施設詳細確認開始...');
+      const { data: facilityCheck, error: checkError } = await supabase
+        .from('pet_facilities')
+        .select('id, name, owner_id, created_at')
+        .eq('id', facility.id)
+        .single();
+
+      if (checkError) {
+        console.error('施設確認エラー:', checkError);
+      } else {
+        console.log('施設詳細:', facilityCheck);
+        console.log('owner_id一致:', facilityCheck?.owner_id === user?.id);
+      }
+
+      // 管理者権限の確認
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user?.id)
+        .single();
+
+      console.log('ユーザー権限:', profileData?.role);
 
       // 1. 関連する施設画像を手動で削除（CASCADE削除の保険として）
       try {
@@ -483,51 +507,55 @@ export default function FacilityEdit() {
         console.warn('施設画像削除で例外（継続）:', imageError);
       }
 
-      // 2. 施設本体を削除（RLSポリシーを考慮した条件追加）
+      // 2. 施設本体を削除
       console.log('施設本体削除開始...');
-      const { error: deleteError, data: deleteData, count } = await supabase
-        .from('pet_facilities')
-        .delete()
-        .eq('id', facility.id)
-        .eq('owner_id', user?.id) // 所有者確認
-        .select(); // 削除されたデータを返す
-
-      console.log('削除結果:', { deleteError, deleteData, count });
       console.log('削除クエリ条件:', { 
         facilityId: facility.id, 
         ownerId: user?.id
       });
 
+      // 管理者の場合は owner_id 条件を外す
+      let deleteQuery = supabase.from('pet_facilities').delete();
+      
+      if (profileData?.role === 'admin') {
+        console.log('管理者権限で削除実行');
+        deleteQuery = deleteQuery.eq('id', facility.id).select();
+      } else {
+        console.log('一般ユーザー権限で削除実行');
+        deleteQuery = deleteQuery.eq('id', facility.id).eq('owner_id', user?.id).select();
+      }
+
+      const { error: deleteError, data: deleteData, count } = await deleteQuery;
+
+      console.log('削除結果:', { deleteError, deleteData, count });
+
       if (deleteError) {
-        console.error('施設削除エラー詳細:', deleteError);
+        console.error('削除エラーの詳細:', deleteError);
         
-        // RLSポリシーエラーの場合の代替処理
-        if (deleteError.code === 'PGRST116' || deleteError.message?.includes('RLS')) {
-          console.log('RLSポリシーエラー、管理者権限での削除を試行...');
-          throw new Error(`RLSポリシーエラー: ${deleteError.message}。管理者にお問い合わせください。`);
+        if (deleteError.message?.includes('RLS')) {
+          throw new Error('権限エラー: この施設を削除する権限がありません。管理者にお問い合わせください。');
         }
         
-        throw new Error(`削除エラー: ${deleteError.message} (Code: ${deleteError.code})`);
+        throw new Error(`削除処理エラー: ${deleteError.message}`);
       }
 
-      // 削除が実際に実行されたかチェック
-      if (!deleteData || deleteData.length === 0) {
-        console.warn('削除データが空です。施設が存在しないか、権限がない可能性があります。');
-        throw new Error('施設の削除に失敗しました。施設が存在しないか、削除権限がありません。');
+      // 削除が実際に実行されたかを確認
+      if (!deleteData || (Array.isArray(deleteData) && deleteData.length === 0)) {
+        console.warn('削除検証エラー: 削除する施設が見つからない、または削除権限がありません。');
+        throw new Error('削除する施設が見つからない、または削除権限がありません。');
       }
 
-      console.log('施設削除完了。削除された施設:', deleteData);
-      setSuccess('施設を削除しました。2秒後に管理画面に戻ります。');
+      console.log('施設削除完了');
+      setSuccess('施設が正常に削除されました。');
       
-      // 削除成功後、管理ページにリダイレクト
+      // 3秒後にリダイレクト
       setTimeout(() => {
         navigate('/my-facilities-management');
-      }, 2000);
+      }, 3000);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting facility:', error);
-      const errorMessage = error instanceof Error ? error.message : '削除に失敗しました。';
-      setError(`削除処理でエラーが発生しました: ${errorMessage}`);
+      setError(`削除処理でエラーが発生しました: ${error.message}`);
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
