@@ -93,36 +93,41 @@ export function DogParkDetail() {
 
   const fetchParkData = async () => {
     try {
-      // ドッグラン情報を取得
-      const { data: parkData, error: parkError } = await supabase
-        .from('dog_parks')
-        .select('*')
-        .eq('id', parkId)
-        .eq('status', 'approved')
-        .single();
+      // 🚀 フェーズ1: クリティカルデータの並列取得（最優先）
+      const [parkResult, imageResult] = await Promise.all([
+        // ドッグラン基本情報
+        supabase
+          .from('dog_parks')
+          .select('*')
+          .eq('id', parkId)
+          .eq('status', 'approved')
+          .single(),
+        // メイン画像のみ（優先度高）
+        supabase
+          .from('dog_park_images')
+          .select('*')
+          .eq('park_id', parkId)
+          .order('display_order', { ascending: true })
+          .limit(3) // 最初の3枚のみ取得
+      ]);
 
-      if (parkError) {
-        console.error('Park not found:', parkError);
+      // パーク情報の処理
+      if (parkResult.error) {
+        console.error('Park not found:', parkResult.error);
         navigate('/parks');
         return;
       }
 
+      const parkData = parkResult.data;
       setPark(parkData);
 
-      // パーク画像を取得
-      const { data: imageData, error: imageError } = await supabase
-        .from('dog_park_images')
-        .select('*')
-        .eq('park_id', parkId)
-        .order('display_order', { ascending: true });
-
-      if (!imageError && imageData) {
-        // メイン画像とカバー画像も含めて表示
-        const allImages: ParkImage[] = [];
+      // 画像の優先処理（メイン画像を最優先）
+      if (!imageResult.error && imageResult.data) {
+        const priorityImages: ParkImage[] = [];
         
-        // メイン画像を先頭に追加
+        // メイン画像を最優先で追加
         if (parkData.image_url) {
-          allImages.push({
+          priorityImages.push({
             id: 'main',
             url: parkData.image_url,
             caption: `${parkData.name} - メイン画像`
@@ -131,129 +136,138 @@ export function DogParkDetail() {
         
         // カバー画像を追加
         if (parkData.cover_image_url) {
-          allImages.push({
+          priorityImages.push({
             id: 'cover',
             url: parkData.cover_image_url,
             caption: `${parkData.name} - カバー画像`
           });
         }
         
-        // その他の画像を追加
-        imageData.forEach(img => {
-          allImages.push({
+        // 追加の画像を追加
+        imageResult.data.forEach(img => {
+          priorityImages.push({
             id: img.id,
             url: img.image_url,
             caption: img.caption || `${parkData.name} - 施設画像`
           });
         });
         
-        setParkImages(allImages);
+        setParkImages(priorityImages);
       }
 
-      // レビューを取得
-      const { data: reviewsData, error: reviewsError } = await supabase
-        .rpc('get_park_reviews', { park_id_param: parkId });
+      // 最低限の情報で画面を表示可能にする
+      setIsLoading(false);
 
-      if (reviewsError) {
-        console.error('Error fetching reviews:', reviewsError);
-      } else {
-        setReviews(reviewsData || []);
+      // 🚀 フェーズ2: 非クリティカルデータの並列取得（バックグラウンド）
+      const backgroundPromises = [
+        // レビューデータ
+        supabase.rpc('get_park_reviews', { park_id_param: parkId }),
+        // スマートロック情報
+        supabase
+          .from('smart_locks')
+          .select('*')
+          .eq('park_id', parkId)
+          .eq('is_active', true),
+        // メンテナンス情報
+        supabase
+          .from('park_maintenance')
+          .select('*')
+          .eq('park_id', parkId)
+          .in('status', ['scheduled', 'active'])
+          .gte('end_date', new Date().toISOString())
+          .order('start_date', { ascending: true })
+      ];
+
+      // 残りの画像も並列で取得
+      if (imageResult.data && imageResult.data.length >= 3) {
+        backgroundPromises.push(
+          supabase
+            .from('dog_park_images')
+            .select('*')
+            .eq('park_id', parkId)
+            .order('display_order', { ascending: true })
+            .range(3, 50) // 4枚目以降を取得
+        );
       }
 
-      // 施設貸し切り予約を取得（今後の予約）
-      const { data: rentalsData, error: rentalsError } = await supabase
-        .from('reservations')
-        .select('*')
-        .eq('park_id', parkId)
-        .eq('reservation_type', 'whole_facility')
-        .eq('status', 'confirmed')
-        .gte('date', new Date().toISOString().split('T')[0]);
+      const [reviewsResult, locksResult, maintenanceResult, additionalImagesResult] = await Promise.all(backgroundPromises);
 
-      if (rentalsError) {
-        console.error('Error fetching facility rentals:', rentalsError);
-      } else {
-        setFacilityRentals(rentalsData || []);
+      // バックグラウンドデータの処理
+      if (!reviewsResult.error) {
+        setReviews(reviewsResult.data || []);
+      }
+
+      if (!locksResult.error) {
+        setSmartLocks(locksResult.data || []);
+      }
+
+      if (!maintenanceResult.error && maintenanceResult.data) {
+        setMaintenanceInfo(maintenanceResult.data);
         
-        // 本日の貸し切り予約を抽出
-        const today = new Date().toISOString().split('T')[0];
-        const todayRentals = rentalsData?.filter(rental => rental.date === today) || [];
-        setTodayRentals(todayRentals);
+        const now = new Date();
+        const activeMaintenance = maintenanceResult.data.find(m => {
+          const startDate = new Date(m.start_date);
+          const endDate = new Date(m.end_date);
+          return startDate <= now && endDate > now;
+        });
+        
+        setCurrentMaintenance(activeMaintenance || null);
       }
 
-      // スマートロック情報を取得
-      const { data: locksData, error: locksError } = await supabase
-        .from('smart_locks')
-        .select('id, lock_id, lock_name, park_id')
-        .eq('park_id', parkId)
-        .eq('status', 'active');
-
-      if (locksError) {
-        console.error('Error fetching smart locks:', locksError);
-      } else {
-        setSmartLocks(locksData || []);
+      // 追加画像の処理
+      if (additionalImagesResult && !additionalImagesResult.error && additionalImagesResult.data) {
+        setParkImages(prev => [
+          ...prev,
+          ...additionalImagesResult.data.map(img => ({
+            id: img.id,
+            url: img.image_url,
+            caption: img.caption || `${parkData.name} - 施設画像`
+          }))
+        ]);
       }
 
+      // 🚀 フェーズ3: ユーザー関連データ（さらに低優先度）
       if (user) {
+        void fetchUserRelatedData(locksResult.data || []);
+      }
+
+    } catch (error) {
+      console.error('Error occurred:', error);
+      setError((error as Error).message || 'エラーが発生しました');
+      navigate('/parks');
+    }
+  };
+
+  // 🔄 ユーザー関連データの遅延読み込み
+  const fetchUserRelatedData = async (smartLocks: SmartLock[]) => {
+    if (!user || !parkId) return;
+
+    try {
+      const userDataPromises = [
         // ユーザーの犬を取得
-        const { data: dogsData, error: dogsError } = await supabase
+        supabase
           .from('dogs')
           .select(`
             *,
             vaccine_certifications!inner(*)
           `)
           .eq('owner_id', user.id)
-          .eq('vaccine_certifications.status', 'approved');
-
-        if (dogsError) {
-          console.error('Error fetching dogs:', dogsError);
-        } else {
-          setUserDogs(dogsData || []);
-        }
-
-        // ユーザーがレビュー可能かチェック
-        const { data: canReviewData, error: canReviewError } = await supabase
-          .rpc('can_user_review_park', {
-            user_id_param: user.id,
-            park_id_param: parkId
-          });
-
-        if (!canReviewError) {
-          setCanReview(canReviewData);
-        }
-
-        // ユーザーの既存レビューを取得
-        const { data: userReviewData, error: userReviewError } = await supabase
-          .rpc('get_user_park_review', {
-            user_id_param: user.id,
-            park_id_param: parkId
-          });
-
-        if (!userReviewError && userReviewData && userReviewData.length > 0) {
-          setUserReview(userReviewData[0]);
-          setReviewFormData({
-            rating: userReviewData[0].rating,
-            review_text: userReviewData[0].review_text || '',
-            visit_date: userReviewData[0].visit_date,
-            dog_id: userReviewData[0].dog_id,
-          });
-        }
-
-        // ユーザーがこの施設にアクセスできるか確認
-        if (smartLocks.length > 0) {
-          const { data: accessData, error: accessError } = await supabase.rpc('check_user_park_access', {
-            p_user_id: user.id,
-            p_lock_id: smartLocks[0].lock_id
-          });
-
-          if (!accessError && accessData && accessData.has_access) {
-            setUserHasAccess(true);
-    
-          }
-        }
-
-        // ユーザーの現在の予約を取得
-        const today = new Date().toISOString().split('T')[0];
-        const { data: userReservationData, error: userReservationError } = await supabase
+          .eq('vaccine_certifications.status', 'approved'),
+        
+        // レビュー権限チェック
+        supabase.rpc('can_user_review_park', {
+          user_id_param: user.id,
+          park_id_param: parkId
+        }),
+        
+        // ユーザーの既存レビュー
+        supabase.rpc('get_user_park_review', {
+          user_id_param: user.id,
+          park_id_param: parkId
+        }),
+        
+        // 今日の予約情報
+        supabase
           .from('reservations')
           .select(`
             *,
@@ -263,44 +277,52 @@ export function DogParkDetail() {
           .eq('park_id', parkId)
           .eq('user_id', user.id)
           .eq('status', 'confirmed')
-          .eq('date', today)
+          .eq('date', new Date().toISOString().split('T')[0])
           .order('start_time', { ascending: true })
           .limit(1)
-          .single();
+          .single()
+      ];
 
-        if (!userReservationError && userReservationData) {
-          setUserReservation(userReservationData);
+      const [dogsResult, canReviewResult, userReviewResult, reservationResult] = await Promise.all(userDataPromises);
+
+      // ユーザーデータの処理
+      if (!dogsResult.error) {
+        setUserDogs(dogsResult.data || []);
+      }
+
+      if (!canReviewResult.error) {
+        setCanReview(canReviewResult.data);
+      }
+
+      if (!userReviewResult.error && userReviewResult.data && userReviewResult.data.length > 0) {
+        const reviewData = userReviewResult.data[0];
+        setUserReview(reviewData);
+        setReviewFormData({
+          rating: reviewData.rating,
+          review_text: reviewData.review_text || '',
+          visit_date: reviewData.visit_date,
+          dog_id: reviewData.dog_id,
+        });
+      }
+
+      if (!reservationResult.error && reservationResult.data) {
+        setUserReservation(reservationResult.data);
+      }
+
+      // スマートロックアクセス権限チェック
+      if (smartLocks.length > 0) {
+        const { data: accessData, error: accessError } = await supabase.rpc('check_user_park_access', {
+          p_user_id: user.id,
+          p_lock_id: smartLocks[0].lock_id
+        });
+
+        if (!accessError && accessData && accessData.has_access) {
+          setUserHasAccess(true);
         }
       }
 
-      // メンテナンス情報を取得（現在進行中または今後のメンテナンス）
-      const { data: maintenanceData, error: maintenanceError } = await supabase
-        .from('park_maintenance')
-        .select('*')
-        .eq('park_id', parkId)
-        .in('status', ['scheduled', 'active'])
-        .gte('end_date', new Date().toISOString())
-        .order('start_date', { ascending: true });
-
-      if (!maintenanceError && maintenanceData) {
-        setMaintenanceInfo(maintenanceData);
-        
-        // 現在メンテナンス中の情報を取得
-        const now = new Date();
-        const activeMaintenance = maintenanceData.find(m => {
-          const startDate = new Date(m.start_date);
-          const endDate = new Date(m.end_date);
-          return startDate <= now && endDate > now;
-        });
-        
-        setCurrentMaintenance(activeMaintenance || null);
-      }
     } catch (error) {
-      console.error('Error occurred:', error);
-      setError((error as Error).message || 'エラーが発生しました');
-      navigate('/parks');
-    } finally {
-      setIsLoading(false);
+      console.error('Error fetching user data:', error);
     }
   };
 
