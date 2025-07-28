@@ -9,12 +9,13 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import ImageCropper from '../components/ImageCropper'; // ImageCropperコンポーネントを追加
 import Input from '../components/Input';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 
-// 画像処理ユーティリティ
-const processFacilityImage = (file: File): Promise<string> => {
+// 画像処理ユーティリティ（リサイズ・圧縮）
+const processAndCompressImage = async (file: File): Promise<File> => {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -23,7 +24,7 @@ const processFacilityImage = (file: File): Promise<string> => {
     img.onload = () => {
       // 最大サイズ設定
       const maxWidth = 800;
-      const maxHeight = 600;
+      const maxHeight = 800;
       
       let width = img.naturalWidth;
       let height = img.naturalHeight;
@@ -47,9 +48,18 @@ const processFacilityImage = (file: File): Promise<string> => {
       // 画像を描画
       ctx?.drawImage(img, 0, 0, width, height);
       
-      // 圧縮してBase64として返す
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-      resolve(dataUrl);
+      // Blobに変換（圧縮）
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const compressedFile = new File([blob], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now()
+          });
+          resolve(compressedFile);
+        } else {
+          reject(new Error('画像の圧縮に失敗しました'));
+        }
+      }, 'image/jpeg', 0.8);
     };
     
     img.onerror = reject;
@@ -65,10 +75,7 @@ interface FacilityForm {
   website: string;
   description: string;
   images: string[];
-  mainImage: string;
-  additionalImages: string[];
-  mainImageFile?: File;
-  additionalImageFiles?: (File | undefined)[];
+  imageFiles: (File | null)[];
 }
 
 const FACILITY_CATEGORIES = [
@@ -90,15 +97,23 @@ export default function FacilityRegistration() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string>('');
-  const [imageUploading, setImageUploading] = useState({
-    main: false,
-    additional: [false, false, false]
+  const [imageUploading, setImageUploading] = useState<boolean[]>([false, false, false, false, false]);
+  
+  // 画像トリミング用状態
+  const [cropperState, setCropperState] = useState<{
+    isOpen: boolean;
+    imageIndex: number;
+    originalFile: File | null;
+  }>({
+    isOpen: false,
+    imageIndex: -1,
+    originalFile: null
   });
   
-  // ユーザー情報編集用の状態
+  // ユーザー情報（自動取得・編集可能）
   const [userInfo, setUserInfo] = useState({
-    name: userProfile?.name || '',
-    address: (userProfile?.address as string) || '',
+    name: '',
+    address: '',
     isEditing: false
   });
   
@@ -109,10 +124,8 @@ export default function FacilityRegistration() {
     phone: '',
     website: '',
     description: '',
-    images: [],
-    mainImage: '',
-    additionalImages: [],
-    additionalImageFiles: []
+    images: ['', '', '', '', ''],
+    imageFiles: [null, null, null, null, null]
   });
 
   // 認証チェック
@@ -122,11 +135,11 @@ export default function FacilityRegistration() {
     }
   }, [isAuthenticated, navigate]);
 
-  // userProfileが変更された時にuserInfoを更新
+  // userProfileが変更された時にuserInfoを自動設定
   useEffect(() => {
     if (userProfile) {
       setUserInfo({
-        name: userProfile.name || '',
+        name: userProfile.name || userProfile.display_name || '',
         address: (userProfile.address as string) || '',
         isEditing: false
       });
@@ -139,14 +152,14 @@ export default function FacilityRegistration() {
   };
 
   // 画像をSupabase Storageにアップロード
-  const uploadImageToStorage = async (file: File, facilityId: string, imageType: 'main' | 'additional', index?: number): Promise<string> => {
+  const uploadImageToStorage = async (file: File, facilityId: string, imageType: string, index?: number): Promise<string> => {
     try {
       // ファイル名を生成（重複を避けるためタイムスタンプを追加）
       const timestamp = Date.now();
-      const fileExtension = file.name.split('.').pop();
-      const fileName = imageType === 'main' 
-        ? `main_${timestamp}.${fileExtension}`
-        : `additional_${index}_${timestamp}.${fileExtension}`;
+      const fileExtension = file.name.split('.').pop() || 'jpg';
+      const fileName = index !== undefined 
+        ? `image_${index}_${timestamp}.${fileExtension}`
+        : `main_${timestamp}.${fileExtension}`;
       
       const filePath = `${facilityId}/${fileName}`;
 
@@ -174,8 +187,8 @@ export default function FacilityRegistration() {
     }
   };
 
-  // 画像ファイル処理（Storageアップロード版）
-  const handleMainImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  // 画像選択ハンドラー（トリミング対応）
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -191,278 +204,87 @@ export default function FacilityRegistration() {
       return;
     }
 
-    try {
-      // ローディング開始
-      setImageUploading(prev => ({ ...prev, main: true }));
-      setError('');
-      
-      // プレビュー用にBase64を生成
-      const processedImage = await processFacilityImage(file);
-      setFormData(prev => ({ 
-        ...prev, 
-        mainImage: processedImage,
-        mainImageFile: file // ファイルも保存
-      }));
-    } catch (err) {
-      setError('画像の処理に失敗しました');
-      console.error('Image processing error:', err);
-    } finally {
-      // ローディング終了
-      setImageUploading(prev => ({ ...prev, main: false }));
-    }
-  };
-
-  const handleAdditionalImageChange = async (event: React.ChangeEvent<HTMLInputElement>, index: number) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // ファイルサイズチェック（5MB制限）
-    if (file.size > 5 * 1024 * 1024) {
-      setError('画像ファイルのサイズは5MB以下にしてください');
-      return;
-    }
-
-    // ファイル形式チェック
-    if (!file.type.startsWith('image/')) {
-      setError('画像ファイルを選択してください');
-      return;
-    }
-
-    try {
-      // ローディング開始
-      setImageUploading(prev => {
-        const newAdditional = [...prev.additional];
-        newAdditional[index] = true;
-        return { ...prev, additional: newAdditional };
-      });
-      setError('');
-      
-      // プレビュー用にBase64を生成
-      const processedImage = await processFacilityImage(file);
-      setFormData(prev => {
-        const newAdditionalImages = [...prev.additionalImages];
-        const newAdditionalImageFiles = prev.additionalImageFiles ? [...prev.additionalImageFiles] : [];
-        
-        newAdditionalImages[index] = processedImage;
-        newAdditionalImageFiles[index] = file;
-        
-        return { 
-          ...prev, 
-          additionalImages: newAdditionalImages,
-          additionalImageFiles: newAdditionalImageFiles
-        };
-      });
-    } catch (err) {
-      setError('画像の処理に失敗しました');
-      console.error('Image processing error:', err);
-    } finally {
-      // ローディング終了
-      setImageUploading(prev => {
-        const newAdditional = [...prev.additional];
-        newAdditional[index] = false;
-        return { ...prev, additional: newAdditional };
-      });
-    }
-  };
-
-  const removeAdditionalImage = (index: number) => {
-    setFormData(prev => {
-      const newAdditionalImages = [...prev.additionalImages];
-      const newAdditionalImageFiles = prev.additionalImageFiles ? [...prev.additionalImageFiles] : [];
-      
-      newAdditionalImages[index] = '';
-      newAdditionalImageFiles[index] = undefined;
-      
-      return { 
-        ...prev, 
-        additionalImages: newAdditionalImages,
-        additionalImageFiles: newAdditionalImageFiles
-      };
+    // トリミング画面を開く
+    setCropperState({
+      isOpen: true,
+      imageIndex: index,
+      originalFile: file
     });
   };
 
-  const removeMainImage = () => {
-    setFormData(prev => ({ 
-      ...prev, 
-      mainImage: '',
-      mainImageFile: undefined
-    }));
-  };
-
-  // フォーム送信処理
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    console.log('=== 申請開始 ===');
-    
-    // バリデーション
-    if (!formData.name || !formData.category_id || !formData.address) {
-      setError('必須項目を入力してください');
-      return;
-    }
-
-    // メイン画像の必須チェック
-    if (!formData.mainImage || !formData.mainImageFile) {
-      setError('メイン画像は必須です');
-      return;
-    }
-
+  // トリミング完了ハンドラー
+  const handleCropComplete = async (croppedFile: File) => {
     try {
-      setIsLoading(true);
-      setError('');
+      const { imageIndex } = cropperState;
       
-      console.log('1. バリデーション完了');
-
-      // 1. 施設データを先に挿入（画像URL無しで）
-      const facilityData = {
-        owner_id: user?.id, // 現在のユーザーIDを設定
-        name: formData.name,
-        category_id: formData.category_id,
-        address: formData.address,
-        phone: formData.phone || null,
-        website: formData.website || null,
-        description: formData.description || null,
-        status: 'pending'
-      };
-
-      console.log('2. 施設データ準備完了:', facilityData);
-
-      const { data: facilityResponse, error: insertError } = await supabase
-        .from('pet_facilities')
-        .insert([facilityData])
-        .select()
-        .single();
-
-      console.log('3. 施設登録レスポンス:', { facilityResponse, insertError });
-
-      if (insertError || !facilityResponse) {
-        console.error('施設登録エラー:', insertError);
-        throw insertError || new Error('施設の登録に失敗しました');
-      }
-
-      const facilityId = facilityResponse.id;
-      console.log('4. 施設ID取得:', facilityId);
-
-      // 2. 画像をStorageにアップロード
-      console.log('5. 画像アップロード開始');
-      const imageUploads: Promise<{ url: string; type: 'main' | 'additional'; order: number }>[] = [];
-
-      // メイン画像をアップロード
-      if (formData.mainImageFile) {
-        console.log('6. メイン画像アップロード準備');
-        imageUploads.push(
-          uploadImageToStorage(formData.mainImageFile, facilityId, 'main').then(url => {
-            console.log('7. メイン画像アップロード完了:', url);
-            return {
-              url,
-              type: 'main' as const,
-              order: 0
-            };
-          })
-        );
-      }
-
-      // 追加画像をアップロード
-      if (formData.additionalImageFiles) {
-        formData.additionalImageFiles.forEach((file, index) => {
-          if (file) {
-            console.log(`8. 追加画像${index + 1}アップロード準備`);
-            imageUploads.push(
-              uploadImageToStorage(file, facilityId, 'additional', index).then(url => {
-                console.log(`9. 追加画像${index + 1}アップロード完了:`, url);
-                return {
-                  url,
-                  type: 'additional' as const,
-                  order: index + 1
-                };
-              })
-            );
-          }
-        });
-      }
-
-      console.log('10. 全画像アップロード実行中...');
-      // 全ての画像アップロードを並行実行
-      const uploadedImages = await Promise.all(imageUploads);
-      console.log('11. 全画像アップロード完了:', uploadedImages);
-
-      // 3. 画像情報をDBに保存
-      if (uploadedImages.length > 0) {
-        console.log('12. 画像情報DB保存開始');
-        const imageRecords = uploadedImages.map(img => ({
-          facility_id: facilityId,
-          image_url: img.url,
-          image_type: img.type,
-          display_order: img.order,
-          alt_text: `${formData.name} - ${img.type === 'main' ? 'メイン画像' : `追加画像${img.order}`}`
-        }));
-
-        console.log('13. 画像レコード準備完了:', imageRecords);
-
-        const { error: imageInsertError } = await supabase
-          .from('pet_facility_images')
-          .insert(imageRecords);
-
-        console.log('14. 画像DB保存結果:', { imageInsertError });
-
-        if (imageInsertError) {
-          console.error('Image records insert error:', imageInsertError);
-          // 画像レコードの挿入に失敗しても施設登録は継続
-        }
-      }
-
-      console.log('15. 申請完了処理開始');
-      setSuccessMessage('施設の申請が完了しました。審査完了までお待ちください。');
-      
-      // フォームリセット
-      setFormData({
-        name: '',
-        category_id: '',
-        address: '',
-        phone: '',
-        website: '',
-        description: '',
-        images: [],
-        mainImage: '',
-        additionalImages: [],
-        additionalImageFiles: []
+      // ローディング開始
+      setImageUploading(prev => {
+        const newImageUploading = [...prev];
+        newImageUploading[imageIndex] = true;
+        return newImageUploading;
       });
 
-      console.log('16. フォームリセット完了');
+      // 画像を圧縮
+      const compressedFile = await processAndCompressImage(croppedFile);
+      
+      // プレビュー用のURLを生成
+      const previewUrl = URL.createObjectURL(compressedFile);
 
-      // 3秒後にリダイレクト
-      setTimeout(() => {
-        console.log('17. リダイレクト実行');
-        navigate('/dashboard');
-      }, 3000);
+      // 状態を更新
+      setFormData(prev => {
+        const newImages = [...prev.images];
+        const newImageFiles = [...prev.imageFiles];
+        
+        newImages[imageIndex] = previewUrl;
+        newImageFiles[imageIndex] = compressedFile;
+        
+        return {
+          ...prev,
+          images: newImages,
+          imageFiles: newImageFiles
+        };
+      });
 
-      console.log('=== 申請処理完了 ===');
+      // トリミング画面を閉じる
+      setCropperState({
+        isOpen: false,
+        imageIndex: -1,
+        originalFile: null
+      });
 
     } catch (err) {
-      console.error('=== 申請エラー ===', err);
-      
-      // より詳細なエラーメッセージを表示
-      let errorMessage = '申請の送信に失敗しました';
-      
-      if (err && typeof err === 'object' && 'message' in err) {
-        errorMessage = (err as Error).message;
-      } else if (err && typeof err === 'object' && 'error' in err) {
-        const supabaseError = err as any;
-        if (supabaseError.error?.message) {
-          errorMessage = `データベースエラー: ${supabaseError.error.message}`;
-        }
-      }
-      
-      // RLSエラーの場合の特別な処理
-      if (errorMessage.includes('row-level security policy') || errorMessage.includes('RLS')) {
-        errorMessage = 'データベースのアクセス権限に問題があります。管理者にお問い合わせください。';
-      }
-      
-      setError(errorMessage);
+      console.error('Image crop error:', err);
+      setError('画像の処理に失敗しました');
     } finally {
-      console.log('=== finally ブロック実行 ===');
-      setIsLoading(false);
+      // ローディング終了
+      setImageUploading(prev => {
+        const newImageUploading = [...prev];
+        newImageUploading[cropperState.imageIndex] = false;
+        return newImageUploading;
+      });
     }
+  };
+
+  // 画像削除ハンドラー
+  const removeImage = (index: number) => {
+    setFormData(prev => {
+      const newImages = [...prev.images];
+      const newImageFiles = [...prev.imageFiles];
+      
+      // 既存のプレビューURLをクリア
+      if (newImages[index] && newImages[index].startsWith('blob:')) {
+        URL.revokeObjectURL(newImages[index]);
+      }
+      
+      newImages[index] = '';
+      newImageFiles[index] = null;
+      
+      return {
+        ...prev,
+        images: newImages,
+        imageFiles: newImageFiles
+      };
+    });
   };
 
   // ユーザー情報の編集ハンドラー
@@ -506,16 +328,161 @@ export default function FacilityRegistration() {
     }
   };
 
-  // ユーザー情報の保存（非同期ハンドラー）
-  const handleSaveUserInfo = () => {
-    void saveUserInfo();
-  };
   const cancelUserInfoEdit = () => {
     setUserInfo({
-      name: userProfile?.name || '',
+      name: userProfile?.name || userProfile?.display_name || '',
       address: (userProfile?.address as string) || '',
       isEditing: false
     });
+  };
+
+  // フォーム送信処理
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    console.log('=== 申請開始 ===');
+    
+    // バリデーション
+    if (!formData.name || !formData.category_id || !formData.address) {
+      setError('必須項目を入力してください');
+      return;
+    }
+
+    // メイン画像の必須チェック
+    if (!formData.imageFiles || formData.imageFiles.length === 0 || !formData.imageFiles[0]) {
+      setError('メイン画像は必須です');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      console.log('1. バリデーション完了');
+
+      // 1. 施設データを先に挿入（画像URL無しで）
+      const facilityData = {
+        owner_id: user?.id, // 現在のユーザーIDを設定
+        name: formData.name,
+        category_id: formData.category_id,
+        address: formData.address,
+        phone: formData.phone || null,
+        website: formData.website || null,
+        description: formData.description || null,
+        status: 'pending'
+      };
+
+      console.log('2. 施設データ準備完了:', facilityData);
+
+      const { data: facilityResponse, error: insertError } = await supabase
+        .from('pet_facilities')
+        .insert([facilityData])
+        .select()
+        .single();
+
+      console.log('3. 施設登録レスポンス:', { facilityResponse, insertError });
+
+      if (insertError || !facilityResponse) {
+        console.error('施設登録エラー:', insertError);
+        throw insertError || new Error('施設の登録に失敗しました');
+      }
+
+      const facilityId = facilityResponse.id;
+      console.log('4. 施設ID取得:', facilityId);
+
+      // 2. 画像をStorageにアップロード
+      console.log('5. 画像アップロード開始');
+      const imageUploads: Promise<{ url: string; type: string; order: number }>[] = [];
+
+      // 全ての画像をアップロード
+      if (formData.imageFiles) {
+        formData.imageFiles.forEach((file, index) => {
+          if (file) {
+            console.log(`6. 画像${index + 1}アップロード準備`);
+            imageUploads.push(
+              uploadImageToStorage(file, facilityId, index === 0 ? 'main' : 'additional', index).then(url => {
+                console.log(`7. 画像${index + 1}アップロード完了:`, url);
+                return {
+                  url,
+                  type: index === 0 ? 'main' : 'additional',
+                  order: index
+                };
+              })
+            );
+          }
+        });
+      }
+
+      console.log('8. 全画像アップロード実行中...');
+      // 全ての画像アップロードを並行実行
+      const uploadedImages = await Promise.all(imageUploads);
+      console.log('9. 全画像アップロード完了:', uploadedImages);
+
+      // 3. 画像情報をDBに保存
+      if (uploadedImages.length > 0) {
+        console.log('10. 画像情報DB保存開始');
+        const imageRecords = uploadedImages.map(img => ({
+          facility_id: facilityId,
+          image_url: img.url,
+          image_type: img.type,
+          display_order: img.order,
+          alt_text: `${formData.name} - ${img.type === 'main' ? 'メイン画像' : `画像${img.order + 1}`}`
+        }));
+
+        console.log('11. 画像レコード準備完了:', imageRecords);
+
+        const { error: imageInsertError } = await supabase
+          .from('facility_images')
+          .insert(imageRecords);
+
+        console.log('12. 画像DB保存結果:', { imageInsertError });
+
+        if (imageInsertError) {
+          console.error('Image records insert error:', imageInsertError);
+          // 画像レコードの挿入に失敗しても施設登録は継続
+        }
+      }
+
+      console.log('13. 申請完了処理開始');
+      setSuccessMessage('施設の申請が完了しました。審査完了までお待ちください。');
+      
+      // フォームリセット
+      setFormData({
+        name: '',
+        category_id: '',
+        address: '',
+        phone: '',
+        website: '',
+        description: '',
+        images: ['', '', '', '', ''],
+        imageFiles: [null, null, null, null, null]
+      });
+
+      console.log('14. フォームリセット完了');
+
+      // 3秒後にリダイレクト
+      setTimeout(() => {
+        console.log('15. リダイレクト実行');
+        navigate('/dashboard');
+      }, 3000);
+
+      console.log('=== 申請処理完了 ===');
+
+    } catch (err) {
+      console.error('=== 申請エラー ===', err);
+      
+      // より詳細なエラーメッセージを表示
+      let errorMessage = '申請の送信に失敗しました';
+      
+      if (err && typeof err === 'object' && 'message' in err) {
+        errorMessage = (err as Error).message;
+      }
+      
+      setError(errorMessage);
+    } finally {
+      console.log('=== finally ブロック実行 ===');
+      setIsLoading(false);
+    }
   };
 
   if (!isAuthenticated) {
@@ -551,7 +518,7 @@ export default function FacilityRegistration() {
         </div>
       )}
 
-              <form onSubmit={(e) => void handleSubmit(e)} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* 基本情報 */}
         <Card>
           <div className="p-6">
@@ -637,41 +604,50 @@ export default function FacilityRegistration() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  施設の説明
+                  施設説明
                 </label>
                 <textarea
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
                   rows={4}
-                  placeholder="施設の特徴やサービス内容を入力してください"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="施設の特徴やサービス内容を説明してください"
                 />
               </div>
+            </div>
+          </div>
+        </Card>
 
-              {/* 画像アップロードセクション */}
+        {/* 施設画像 */}
+        <Card>
+          <div className="p-6">
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <ImageIcon className="w-6 h-6 mr-2" />
+              施設画像
+            </h2>
+            
+            <div className="space-y-6">
+              {/* メイン画像 */}
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">施設画像</h3>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  メイン画像 <span className="text-red-500">*</span>
+                </label>
+                <p className="text-sm text-gray-500 mb-3">
+                  施設の代表的な画像をアップロードしてください（最大5MB、JPG/PNG形式）
+                </p>
                 
-                {/* メイン画像（必須） */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    メイン画像 <span className="text-red-500">*</span>
-                  </label>
-                  <p className="text-sm text-gray-500 mb-3">
-                    施設の代表的な画像をアップロードしてください（最大5MB、JPG/PNG形式）
-                  </p>
-                  
-                  {formData.mainImage ? (
-                    <div className="relative inline-block">
+                <div className="flex items-center space-x-4">
+                  {formData.images[0] ? (
+                    <div className="relative">
                       <img
-                        src={formData.mainImage}
+                        src={formData.images[0]}
                         alt="メイン画像プレビュー"
                         className="w-48 h-36 object-cover rounded-lg border border-gray-300"
                       />
                       <button
                         type="button"
-                        onClick={removeMainImage}
+                        onClick={() => removeImage(0)}
                         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
                       >
                         <X className="w-4 h-4" />
@@ -679,10 +655,10 @@ export default function FacilityRegistration() {
                     </div>
                   ) : (
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                      {imageUploading.main ? (
+                      {imageUploading[0] ? (
                         <div className="flex flex-col items-center">
                           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-                          <p className="mt-2 text-sm text-gray-600">画像を処理中...</p>
+                          <p className="mt-2 text-sm text-gray-600">処理中...</p>
                         </div>
                       ) : (
                         <>
@@ -697,9 +673,9 @@ export default function FacilityRegistration() {
                                 name="mainImage"
                                 type="file"
                                 accept="image/*"
-                                onChange={(e) => void handleMainImageChange(e)}
+                                onChange={(e) => handleImageSelect(e, 0)}
                                 className="sr-only"
-                                disabled={imageUploading.main}
+                                disabled={imageUploading[0]}
                               />
                             </label>
                           </div>
@@ -708,144 +684,74 @@ export default function FacilityRegistration() {
                     </div>
                   )}
                 </div>
+              </div>
 
-                {/* 追加画像（任意） */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    追加画像（任意）
-                  </label>
-                  <p className="text-sm text-gray-500 mb-3">
-                    最大3枚まで追加できます
-                  </p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {[0, 1, 2].map((index) => (
-                      <div key={index}>
-                        {formData.additionalImages[index] ? (
-                          <div className="relative">
-                            <img
-                              src={formData.additionalImages[index]}
-                              alt={`追加画像${index + 1}プレビュー`}
-                              className="w-full h-32 object-cover rounded-lg border border-gray-300"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeAdditionalImage(index)}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                            {imageUploading.additional[index] ? (
-                              <div className="flex flex-col items-center">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                                <p className="mt-2 text-xs text-gray-600">処理中...</p>
+              {/* 追加画像（4枚） */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  追加画像（任意）
+                </label>
+                <p className="text-sm text-gray-500 mb-3">
+                  最大4枚まで追加できます（合計5枚）
+                </p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map((index) => (
+                    <div key={index}>
+                      {formData.images[index] ? (
+                        <div className="relative">
+                          <img
+                            src={formData.images[index]}
+                            alt={`追加画像${index}プレビュー`}
+                            className="w-full h-32 object-cover rounded-lg border border-gray-300"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                          {imageUploading[index] ? (
+                            <div className="flex flex-col items-center">
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                              <p className="mt-2 text-xs text-gray-600">処理中...</p>
+                            </div>
+                          ) : (
+                            <>
+                              <ImageIcon className="mx-auto h-8 w-8 text-gray-400" />
+                              <div className="mt-2">
+                                <label htmlFor={`additionalImage${index}`} className="cursor-pointer">
+                                  <span className="text-sm text-gray-600 hover:text-blue-600">
+                                    画像{index}
+                                  </span>
+                                  <input
+                                    id={`additionalImage${index}`}
+                                    name={`additionalImage${index}`}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => handleImageSelect(e, index)}
+                                    className="sr-only"
+                                    disabled={imageUploading[index]}
+                                  />
+                                </label>
                               </div>
-                            ) : (
-                              <>
-                                <ImageIcon className="mx-auto h-8 w-8 text-gray-400" />
-                                <div className="mt-2">
-                                  <label htmlFor={`additionalImage${index}`} className="cursor-pointer">
-                                    <span className="text-sm text-gray-600 hover:text-blue-600">
-                                      画像{index + 1}
-                                    </span>
-                                    <input
-                                      id={`additionalImage${index}`}
-                                      name={`additionalImage${index}`}
-                                      type="file"
-                                      accept="image/*"
-                                      onChange={(e) => void handleAdditionalImageChange(e, index)}
-                                      className="sr-only"
-                                      disabled={imageUploading.additional[index]}
-                                    />
-                                  </label>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
         </Card>
 
-        {/* ユーザー情報 */}
-        <Card>
-          <div className="p-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
-              <Building className="w-6 h-6 mr-2" />
-              ユーザー情報
-            </h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  名前
-                </label>
-                {userInfo.isEditing ? (
-                  <Input
-                    label="名前"
-                    name="name"
-                    value={userInfo.name}
-                    onChange={handleUserInfoChange}
-                    placeholder="名前を入力してください"
-                  />
-                ) : (
-                  <p className="text-gray-900">{userInfo.name}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  住所
-                </label>
-                {userInfo.isEditing ? (
-                  <Input
-                    label="住所"
-                    name="address"
-                    value={userInfo.address}
-                    onChange={handleUserInfoChange}
-                    placeholder="住所を入力してください"
-                  />
-                ) : (
-                  <p className="text-gray-900">{userInfo.address}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-end mt-4">
-              {userInfo.isEditing ? (
-                <>
-                  <Button
-                    onClick={handleSaveUserInfo}
-                    className="mr-2"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? '保存中...' : '保存'}
-                  </Button>
-                  <Button
-                    onClick={cancelUserInfoEdit}
-                    disabled={isLoading}
-                  >
-                    キャンセル
-                  </Button>
-                </>
-              ) : (
-                <Button onClick={() => setUserInfo(prev => ({ ...prev, isEditing: true }))}>
-                  編集
-                </Button>
-              )}
-            </div>
-          </div>
-        </Card>
-
-        {/* 現在のアカウント情報確認 */}
+        {/* ユーザー情報セクション */}
         <Card>
           <div className="p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center">
@@ -859,21 +765,19 @@ export default function FacilityRegistration() {
                 <div className="text-sm text-blue-800">
                   <p className="font-medium mb-1">登録者情報の確認</p>
                   <p className="text-xs">
-                    以下の情報をご確認ください。変更が必要な場合は編集できます。
+                    アカウント情報から自動取得されました。変更が必要な場合は編集できます。
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="space-y-4">
-              {/* 氏名 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   氏名
                 </label>
                 {userInfo.isEditing ? (
                   <Input
-                    label="氏名"
                     name="name"
                     value={userInfo.name}
                     onChange={handleUserInfoChange}
@@ -887,19 +791,16 @@ export default function FacilityRegistration() {
                 )}
               </div>
 
-              {/* 住所 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   住所
                 </label>
                 {userInfo.isEditing ? (
                   <Input
-                    label="住所"
                     name="address"
                     value={userInfo.address}
                     onChange={handleUserInfoChange}
                     placeholder="住所を入力してください"
-                    required
                   />
                 ) : (
                   <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md">
@@ -907,67 +808,65 @@ export default function FacilityRegistration() {
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* 編集ボタン */}
-              <div className="flex gap-2">
-                {userInfo.isEditing ? (
-                  <>
-                    <Button
-                      type="button"
-                      onClick={handleSaveUserInfo}
-                      disabled={isLoading}
-                    >
-                      {isLoading ? '保存中...' : '保存'}
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={cancelUserInfoEdit}
-                    >
-                      キャンセル
-                    </Button>
-                  </>
-                ) : (
+            <div className="flex justify-end mt-4">
+              {userInfo.isEditing ? (
+                <div className="space-x-2">
                   <Button
                     type="button"
-                    onClick={() => setUserInfo(prev => ({ ...prev, isEditing: true }))}
+                    onClick={() => void saveUserInfo()}
+                    disabled={isLoading}
                   >
-                    編集
+                    {isLoading ? '保存中...' : '保存'}
                   </Button>
-                )}
-              </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={cancelUserInfoEdit}
+                    disabled={isLoading}
+                  >
+                    キャンセル
+                  </Button>
+                </div>
+              ) : (
+                <Button 
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setUserInfo(prev => ({ ...prev, isEditing: true }))}
+                >
+                  編集
+                </Button>
+              )}
             </div>
           </div>
         </Card>
 
-        {/* 無料掲載キャンペーン */}
-        <Card className="mb-6">
-          <div className="p-6">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center mb-2">
-                <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                <span className="font-medium text-green-800">無料掲載期間実施中！</span>
-              </div>
-              <p className="text-green-700 mb-2">
-                すべてのペット関連施設が<strong className="text-lg">無料</strong>で掲載できます。
-              </p>
-              <ul className="text-sm text-green-600 space-y-1">
-                <li>• 本人確認手続きは不要です</li>
-                <li>• 申請後、管理者の承認を経て掲載開始となります</li>
-                <li>• 無料掲載となりますので、お店などの施設、ホームページなどに当アプリのご紹介をお願いします。</li>
-              </ul>
-            </div>
-          </div>
-        </Card>
-
+        {/* 申請ボタン */}
         <div className="flex justify-end">
           <Button
             type="submit"
             disabled={isLoading}
+            className="px-8 py-3 text-lg"
           >
-            {isLoading ? '申請中...' : '申請を送信する'}
+            {isLoading ? '申請中...' : '申請を送信'}
           </Button>
         </div>
       </form>
+
+      {/* 画像トリミングモーダル */}
+      {cropperState.isOpen && cropperState.originalFile && (
+        <ImageCropper
+          image={cropperState.originalFile}
+          aspectRatio={1}
+          onCropComplete={handleCropComplete}
+          onCancel={() => setCropperState({
+            isOpen: false,
+            imageIndex: -1,
+            originalFile: null
+          })}
+        />
+      )}
     </div>
   );
 }
