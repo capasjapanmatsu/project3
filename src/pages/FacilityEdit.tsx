@@ -1026,8 +1026,8 @@ export default function FacilityEdit() {
             </div>
           </div>
 
-          {/* 削除セクション - ページの一番下（クーポン管理タブでは非表示） */}
-          {activeTab !== 'coupons' && (
+          {/* 削除セクション - ページの一番下（基本情報タブでのみ表示） */}
+          {activeTab === 'info' && (
             <Card className="p-6 border-red-200 bg-red-50">
               <div className="flex items-start space-x-3">
                 <Trash2 className="w-6 h-6 text-red-600 mt-1" />
