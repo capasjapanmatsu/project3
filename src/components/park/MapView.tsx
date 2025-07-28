@@ -61,12 +61,62 @@ export function MapView({
   // マップの中心位置を決定
   const mapCenter = center || currentLocation || DEFAULT_CENTER;
 
-  // デフォルトの犬アイコン（SVG）
-  const defaultDogIcon = `
-    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="16" cy="16" r="15" fill="#EF4444" stroke="white" stroke-width="2"/>
-      <path d="M10 12c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm8 0c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zM8 18c0-2.2 3.6-4 8-4s8 1.8 8 4c0 1.1-3.6 2-8 2s-8-.9-8-2z" fill="white"/>
-      <path d="M14 16h4v2h-4z" fill="#EF4444"/>
+  // ドッグパークアイコン（先がとがったピンデザイン・肉球付き）
+  const dogParkIcon = `
+    <svg width="40" height="56" viewBox="0 0 40 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- ピンの形状（先がとがった） -->
+      <path d="M20 0C8.954 0 0 8.954 0 20C0 31.046 20 56 20 56S40 31.046 40 20C40 8.954 31.046 0 20 0Z" fill="url(#dogParkGradient)" stroke="white" stroke-width="2"/>
+      <!-- 背景円 -->
+      <circle cx="20" cy="20" r="15" fill="white"/>
+      <!-- 肉球デザイン -->
+      <g transform="translate(20, 20) scale(0.8)">
+        <!-- メイン肉球 -->
+        <ellipse cx="0" cy="3" rx="6" ry="4" fill="#3B82F6"/>
+        <!-- 上の小さな肉球（左上） -->
+        <ellipse cx="-4" cy="-5" rx="2.5" ry="3" fill="#3B82F6"/>
+        <!-- 上の小さな肉球（右上） -->
+        <ellipse cx="4" cy="-5" rx="2.5" ry="3" fill="#3B82F6"/>
+        <!-- 上の小さな肉球（中央上） -->
+        <ellipse cx="0" cy="-7" rx="2" ry="2.5" fill="#3B82F6"/>
+      </g>
+      <defs>
+        <linearGradient id="dogParkGradient" x1="20" y1="0" x2="20" y2="40" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#3B82F6"/>
+          <stop offset="1" stop-color="#2563EB"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  `;
+
+  // ペット施設アイコン（先がとがったピンデザイン・十字マーク）
+  const facilityIcon = `
+    <svg width="36" height="50" viewBox="0 0 36 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- ピンの形状（先がとがった） -->
+      <path d="M18 0C8.059 0 0 8.059 0 18C0 27.941 18 50 18 50S36 27.941 36 18C36 8.059 27.941 0 18 0Z" fill="#22C55E" stroke="white" stroke-width="2"/>
+      <!-- 背景円 -->
+      <circle cx="18" cy="18" r="13" fill="white"/>
+      <!-- 十字マーク -->
+      <path d="M16 10h4v6h6v4h-6v6h-4v-6h-6v-4h6z" fill="#22C55E"/>
+    </svg>
+  `;
+
+  // 現在地アイコン（ポールに丸のピンデザイン）
+  const currentLocationIcon = `
+    <svg width="24" height="40" viewBox="0 0 24 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- ポール部分 -->
+      <rect x="11" y="20" width="2" height="20" fill="#DC2626" stroke="white" stroke-width="1"/>
+      <!-- 丸い部分 -->
+      <circle cx="12" cy="12" r="11" fill="url(#currentLocationGradient)" stroke="white" stroke-width="2"/>
+      <!-- 中央の小さな円 -->
+      <circle cx="12" cy="12" r="6" fill="white"/>
+      <!-- 中央のドット -->
+      <circle cx="12" cy="12" r="3" fill="#DC2626"/>
+      <defs>
+        <linearGradient id="currentLocationGradient" x1="12" y1="1" x2="12" y2="23" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#EF4444"/>
+          <stop offset="1" stop-color="#DC2626"/>
+        </linearGradient>
+      </defs>
     </svg>
   `;
 
@@ -186,16 +236,13 @@ export function MapView({
         parks.forEach(park => {
           if (park.latitude && park.longitude) {
             const marker = new windowObj.google.maps.Marker({
-              position: { lat: park.latitude, lng: park.longitude },
+              position: { lat: park.latitude!, lng: park.longitude! },
               map: map,
               title: park.name,
               icon: {
-                url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
-                  <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="16" cy="16" r="12" fill="#3B82F6" stroke="white" stroke-width="2"/>
-                    <path d="M12 10h8v2h-8zm0 4h8v2h-8zm0 4h6v2h-6z" fill="white"/>
-                  </svg>
-                `)}`
+                url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(dogParkIcon)}`,
+                scaledSize: new windowObj.google.maps.Size(40, 56),
+                anchor: new windowObj.google.maps.Point(20, 56)
               }
             });
             
@@ -214,16 +261,13 @@ export function MapView({
         facilities.forEach(facility => {
           if (facility.latitude && facility.longitude) {
             const marker = new windowObj.google.maps.Marker({
-              position: { lat: facility.latitude, lng: facility.longitude },
+              position: { lat: facility.latitude!, lng: facility.longitude! },
               map: map,
               title: facility.name,
               icon: {
-                url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
-                  <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="16" cy="16" r="12" fill="#10B981" stroke="white" stroke-width="2"/>
-                    <path d="M10 14h12v2h-12zm2-4h8v2h-8zm-2 8h12v2h-12z" fill="white"/>
-                  </svg>
-                `)}`
+                url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(facilityIcon)}`,
+                scaledSize: new windowObj.google.maps.Size(36, 50),
+                anchor: new windowObj.google.maps.Point(18, 50)
               }
             });
             
@@ -244,7 +288,9 @@ export function MapView({
           map: map,
           title: '現在地',
           icon: {
-            url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(defaultDogIcon)}`
+            url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(currentLocationIcon)}`,
+            scaledSize: new windowObj.google.maps.Size(24, 40),
+            anchor: new windowObj.google.maps.Point(12, 40)
           }
         });
       }
@@ -252,7 +298,7 @@ export function MapView({
     } catch (error) {
       console.error('マーカー追加エラー:', error);
     }
-  }, [activeView, parks, facilities, currentLocation, defaultDogIcon, createSimpleInfoWindowContent]);
+  }, [activeView, parks, facilities, currentLocation, dogParkIcon, facilityIcon, currentLocationIcon, createSimpleInfoWindowContent]);
 
   // マップを初期化する関数
   const initializeMap = useCallback((mapContainer: HTMLElement) => {
