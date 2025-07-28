@@ -46,7 +46,7 @@ export function MapView({
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(userLocation || null);
   const [mapError, setMapError] = useState<string>('');
   const [isLocating, setIsLocating] = useState(false);
-  const [infoWindow, setInfoWindow] = useState<any>(null);
+  // 【一時無効化】const [infoWindow, setInfoWindow] = useState<any>(null);
   
   // GoogleMapsProviderから状態を取得
   const { isLoaded: isGoogleMapsLoaded, isLoading: isGoogleMapsLoading, error: googleMapsError } = useGoogleMaps();
@@ -70,7 +70,8 @@ export function MapView({
     </svg>
   `;
 
-  // シンプルなInfoWindowコンテンツを生成する関数
+  // 【一時無効化】シンプルなInfoWindowコンテンツを生成する関数
+  /*
   const createSimpleInfoWindowContent = useCallback((item: DogPark | PetFacility, type: 'park' | 'facility'): string => {
     const itemName = item.name || '名前未設定';
     const detailPath = type === 'park' ? `/parks/${item.id}` : `/facilities/${item.id}`;
@@ -113,7 +114,7 @@ export function MapView({
     `;
   }, []);
 
-  // InfoWindowのナビゲーション用グローバル関数を設定
+  // 【一時無効化】InfoWindowのナビゲーション用グローバル関数を設定
   useEffect(() => {
     (window as any).infoWindowNavigate = (path: string) => {
       navigate(path);
@@ -123,13 +124,15 @@ export function MapView({
       delete (window as any).infoWindowNavigate;
     };
   }, [navigate]);
+  */
 
   // マーカーを追加する関数
   const addMarkers = useCallback((map: any) => {
     try {
       const windowObj = window as any;
       
-      // 既存のInfoWindowがあれば閉じる
+      // 【一時無効化】既存のInfoWindowがあれば閉じる
+      /*
       if (infoWindow) {
         infoWindow.close();
       }
@@ -137,6 +140,7 @@ export function MapView({
       // 新しいInfoWindowを作成
       const newInfoWindow = new windowObj.google.maps.InfoWindow();
       setInfoWindow(newInfoWindow);
+      */
       
       // ドッグパークのマーカーを追加
       if (activeView === 'dogparks' && parks) {
@@ -156,12 +160,14 @@ export function MapView({
               }
             });
             
-            // マーカークリックイベントを追加
+            // 【一時無効化】マーカークリックイベントを追加
+            /*
             marker.addListener('click', () => {
               const content = createSimpleInfoWindowContent(park, 'park');
               newInfoWindow.setContent(content);
               newInfoWindow.open(map, marker);
             });
+            */
           }
         });
       }
@@ -184,12 +190,14 @@ export function MapView({
               }
             });
             
-            // マーカークリックイベントを追加
+            // 【一時無効化】マーカークリックイベントを追加
+            /*
             marker.addListener('click', () => {
               const content = createSimpleInfoWindowContent(facility, 'facility');
               newInfoWindow.setContent(content);
               newInfoWindow.open(map, marker);
             });
+            */
           }
         });
       }
@@ -209,7 +217,7 @@ export function MapView({
     } catch (error) {
       console.error('マーカー追加エラー:', error);
     }
-  }, [activeView, parks, facilities, currentLocation, defaultDogIcon, infoWindow, createSimpleInfoWindowContent]);
+  }, [activeView, parks, facilities, currentLocation, defaultDogIcon]); // infoWindow, createSimpleInfoWindowContent を一時削除
 
   // マップを初期化する関数
   const initializeMap = useCallback(() => {
