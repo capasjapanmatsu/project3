@@ -71,15 +71,14 @@ export function FacilityDetail() {
       setIsLoading(true);
       setError(null);
 
-      // 施設の基本情報、カテゴリ、画像、アクティブなクーポンを並列取得
+      console.log('Fetching facility data for ID:', facilityId);
+
+      // 施設の基本情報、画像、アクティブなクーポンを並列取得
       const [facilityResult, imagesResult, couponsResult] = await Promise.all([
-        // 施設基本情報とカテゴリ
+        // 施設基本情報
         supabase
           .from('pet_facilities')
-          .select(`
-            *,
-            category_info:facility_categories(*)
-          `)
+          .select('*')
           .eq('id', facilityId)
           .eq('status', 'approved')
           .single(),
@@ -101,24 +100,52 @@ export function FacilityDetail() {
           .order('created_at', { ascending: false })
       ]);
 
+      console.log('Facility result:', facilityResult);
+
       if (facilityResult.error) {
+        console.error('Facility query error:', facilityResult.error);
         throw facilityResult.error;
       }
 
       if (!facilityResult.data) {
+        console.log('No facility data found');
         setError('施設が見つかりません');
         return;
       }
 
+      console.log('Facility data:', facilityResult.data);
+
+      // カテゴリ情報を個別に取得
+      let categoryInfo = null;
+      const categoryId = facilityResult.data.category_id || facilityResult.data.category;
+      
+      console.log('Category ID:', categoryId);
+      
+      if (categoryId) {
+        const { data: categoryData, error: categoryError } = await supabase
+          .from('facility_categories')
+          .select('*')
+          .eq('id', categoryId)
+          .single();
+        
+        if (categoryError) {
+          console.error('Category query error:', categoryError);
+        } else {
+          categoryInfo = categoryData;
+          console.log('Category info:', categoryInfo);
+        }
+      }
+
       setFacility({
         ...facilityResult.data,
+        category_info: categoryInfo,
         images: imagesResult.data || [],
         coupons: couponsResult.data || []
       });
 
     } catch (err) {
       console.error('施設データの取得に失敗:', err);
-      setError('施設データの取得に失敗しました');
+      setError(`施設データの取得に失敗しました: ${err.message || JSON.stringify(err)}`);
     } finally {
       setIsLoading(false);
     }
