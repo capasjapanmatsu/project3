@@ -1026,32 +1026,34 @@ export default function FacilityEdit() {
             </div>
           </div>
 
-          {/* 削除セクション - ページの一番下 */}
-          <Card className="p-6 border-red-200 bg-red-50">
-            <div className="flex items-start space-x-3">
-              <Trash2 className="w-6 h-6 text-red-600 mt-1" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-red-900 mb-2">危険な操作</h3>
-                <p className="text-sm text-red-800 mb-4">
-                  この施設を完全に削除します。削除後はデータの復旧はできません。
-                  {facility.status === 'approved' && (
-                    <span className="block mt-1 font-medium">
-                      ※ 承認済みの施設を削除すると、公開ページからも削除されます。
-                    </span>
-                  )}
-                </p>
-                
-                <Button
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                  size="sm"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  施設を削除
-                </Button>
+          {/* 削除セクション - ページの一番下（クーポン管理タブでは非表示） */}
+          {activeTab !== 'coupons' && (
+            <Card className="p-6 border-red-200 bg-red-50">
+              <div className="flex items-start space-x-3">
+                <Trash2 className="w-6 h-6 text-red-600 mt-1" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-red-900 mb-2">危険な操作</h3>
+                  <p className="text-sm text-red-800 mb-4">
+                    この施設を完全に削除します。削除後はデータの復旧はできません。
+                    {facility.status === 'approved' && (
+                      <span className="block mt-1 font-medium">
+                        ※ 承認済みの施設を削除すると、公開ページからも削除されます。
+                      </span>
+                    )}
+                  </p>
+                  
+                  <Button
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                    size="sm"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    施設を削除
+                  </Button>
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          )}
 
           {/* 削除確認ダイアログ */}
           {showDeleteDialog && (
