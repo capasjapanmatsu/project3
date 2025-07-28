@@ -485,46 +485,68 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
                       </div>
                     ) : (
                       // 文字クーポンの表示
-                      <div className="aspect-square w-full border-2 border-gray-300 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center p-4 relative overflow-hidden">
-                        {/* 背景の薄い「COUPON」テキスト */}
-                        <div className="absolute inset-0 flex items-center justify-center opacity-10">
-                          <span className="text-6xl font-bold text-gray-800 transform rotate-12">
-                            COUPON
-                          </span>
-                        </div>
-                        
-                        {/* メインコンテンツ */}
-                        <div className="relative z-10 text-center space-y-2">
-                          <div className="bg-white/80 px-3 py-1 rounded-full">
-                            <span className="text-xs font-medium text-indigo-600">
-                              ドッグパークJPクーポン
+                      <div className="aspect-square w-full border-2 border-gray-300 rounded-lg relative overflow-hidden">
+                        {/* チケット風の背景 */}
+                        <div className="w-full h-full bg-gradient-to-br from-red-500 to-red-600 relative">
+                          {/* チケットの切り込み装飾 */}
+                          <div className="absolute top-1/2 -left-3 w-6 h-6 bg-white rounded-full transform -translate-y-1/2"></div>
+                          <div className="absolute top-1/2 -right-3 w-6 h-6 bg-white rounded-full transform -translate-y-1/2"></div>
+                          
+                          {/* 背景の薄い「COUPON」テキスト */}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-10">
+                            <span className="text-6xl font-bold text-white transform rotate-12">
+                              COUPON
                             </span>
                           </div>
                           
-                          <div className="space-y-1">
-                            <h3 className="text-sm font-bold text-gray-800 leading-tight">
-                              {formData.title || 'クーポンタイトル'}
-                            </h3>
-                            <p className="text-xs text-gray-600 leading-tight">
-                              {formData.service_content || 'サービス内容'}
-                            </p>
-                          </div>
-                          
-                          {(formData.discount_value && formData.discount_type) && (
-                            <div className="bg-red-500 text-white px-2 py-1 rounded">
-                              <span className="text-lg font-bold">
-                                {formData.discount_value}{formData.discount_type === 'amount' ? '円' : '%'}
-                              </span>
-                              <span className="text-xs ml-1">
-                                {formData.discount_type === 'amount' ? 'OFF' : 'OFF'}
+                          {/* メインコンテンツ */}
+                          <div className="relative z-10 flex flex-col items-center justify-center h-full p-4 text-center space-y-3">
+                            {/* ドッグパークJPクーポン（一番上） */}
+                            <div className="bg-white/95 px-3 py-1 rounded-full shadow-sm">
+                              <span className="text-xs font-medium text-red-600">
+                                ドッグパークJPクーポン
                               </span>
                             </div>
-                          )}
-                          
-                          <div className="pt-2 border-t border-gray-300">
-                            <p className="text-xs text-gray-500">
-                              {formData.description || '詳細説明'}
-                            </p>
+                            
+                            {/* 店舗名（2番目） */}
+                            <div className="text-white">
+                              <h2 className="text-sm font-bold leading-tight">
+                                {facilityName}
+                              </h2>
+                            </div>
+                            
+                            {/* クーポンタイトル */}
+                            <div className="text-white">
+                              <h3 className="text-base font-bold leading-tight">
+                                {formData.title || 'クーポンタイトル'}
+                              </h3>
+                            </div>
+                            
+                            {/* サービス内容 */}
+                            <div className="text-white/90">
+                              <p className="text-sm leading-tight">
+                                {formData.service_content || 'サービス内容'}
+                              </p>
+                            </div>
+                            
+                            {/* 割引表示 */}
+                            {(formData.discount_value && formData.discount_type) && (
+                              <div className="bg-white text-red-600 px-4 py-2 rounded-lg shadow-md">
+                                <span className="text-2xl font-bold">
+                                  {formData.discount_value}{formData.discount_type === 'amount' ? '円' : '%'}
+                                </span>
+                                <span className="text-sm ml-1 font-medium">
+                                  OFF
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* 詳細説明 */}
+                            <div className="border-t border-white/30 pt-2">
+                              <p className="text-xs text-white/80">
+                                {formData.description || '詳細説明'}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
