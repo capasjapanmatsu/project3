@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { MapPin, Navigation } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useAuth from '../../context/AuthContext';
 import { type DogPark } from '../../types';
 import { type PetFacility } from '../../types/facilities';
@@ -45,6 +46,7 @@ export function MapView({
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(userLocation || null);
   const [mapError, setMapError] = useState<string>('');
   const [isLocating, setIsLocating] = useState(false);
+  const [infoWindow, setInfoWindow] = useState<any>(null);
   
   // GoogleMapsProviderから状態を取得
   const { isLoaded: isGoogleMapsLoaded, isLoading: isGoogleMapsLoading, error: googleMapsError } = useGoogleMaps();
@@ -52,6 +54,9 @@ export function MapView({
   // 認証とユーザーの犬データ
   const { user } = useAuth();
   const [userDogs, setUserDogs] = useState<Dog[]>([]);
+  
+  // ナビゲーション
+  const navigate = useNavigate();
 
   // マップの中心位置を決定
   const mapCenter = center || currentLocation || DEFAULT_CENTER;
@@ -65,16 +70,79 @@ export function MapView({
     </svg>
   `;
 
+  // シンプルなInfoWindowコンテンツを生成する関数
+  const createSimpleInfoWindowContent = useCallback((item: DogPark | PetFacility, type: 'park' | 'facility'): string => {
+    const itemName = item.name || '名前未設定';
+    const detailPath = type === 'park' ? `/parks/${item.id}` : `/facilities/${item.id}`;
+    
+    return `
+      <div style="
+        min-width: 200px;
+        max-width: 250px;
+        padding: 12px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      ">
+        <h3 style="
+          font-size: 16px;
+          font-weight: 600;
+          margin: 0 0 12px 0;
+          color: #1f2937;
+          line-height: 1.3;
+        ">${itemName}</h3>
+        
+        <button
+          onclick="window.infoWindowNavigate('${detailPath}')"
+          style="
+            width: 100%;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+          "
+          onmouseover="this.style.background='#2563eb'"
+          onmouseout="this.style.background='#3b82f6'"
+        >
+          詳細を見る
+        </button>
+      </div>
+    `;
+  }, []);
+
+  // InfoWindowのナビゲーション用グローバル関数を設定
+  useEffect(() => {
+    (window as any).infoWindowNavigate = (path: string) => {
+      navigate(path);
+    };
+    
+    return () => {
+      delete (window as any).infoWindowNavigate;
+    };
+  }, [navigate]);
+
   // マーカーを追加する関数
   const addMarkers = useCallback((map: any) => {
     try {
       const windowObj = window as any;
       
+      // 既存のInfoWindowがあれば閉じる
+      if (infoWindow) {
+        infoWindow.close();
+      }
+      
+      // 新しいInfoWindowを作成
+      const newInfoWindow = new windowObj.google.maps.InfoWindow();
+      setInfoWindow(newInfoWindow);
+      
       // ドッグパークのマーカーを追加
       if (activeView === 'dogparks' && parks) {
         parks.forEach(park => {
           if (park.latitude && park.longitude) {
-            new windowObj.google.maps.Marker({
+            const marker = new windowObj.google.maps.Marker({
               position: { lat: park.latitude, lng: park.longitude },
               map: map,
               title: park.name,
@@ -87,6 +155,13 @@ export function MapView({
                 `)}`
               }
             });
+            
+            // マーカークリックイベントを追加
+            marker.addListener('click', () => {
+              const content = createSimpleInfoWindowContent(park, 'park');
+              newInfoWindow.setContent(content);
+              newInfoWindow.open(map, marker);
+            });
           }
         });
       }
@@ -95,7 +170,7 @@ export function MapView({
       if (activeView === 'facilities' && facilities) {
         facilities.forEach(facility => {
           if (facility.latitude && facility.longitude) {
-            new windowObj.google.maps.Marker({
+            const marker = new windowObj.google.maps.Marker({
               position: { lat: facility.latitude, lng: facility.longitude },
               map: map,
               title: facility.name,
@@ -107,6 +182,13 @@ export function MapView({
                   </svg>
                 `)}`
               }
+            });
+            
+            // マーカークリックイベントを追加
+            marker.addListener('click', () => {
+              const content = createSimpleInfoWindowContent(facility, 'facility');
+              newInfoWindow.setContent(content);
+              newInfoWindow.open(map, marker);
             });
           }
         });
@@ -127,7 +209,7 @@ export function MapView({
     } catch (error) {
       console.error('マーカー追加エラー:', error);
     }
-  }, [activeView, parks, facilities, currentLocation, defaultDogIcon]);
+  }, [activeView, parks, facilities, currentLocation, defaultDogIcon, infoWindow, createSimpleInfoWindowContent]);
 
   // マップを初期化する関数
   const initializeMap = useCallback(() => {
