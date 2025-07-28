@@ -238,8 +238,10 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
     setShowImageCropper(true);
   };
 
-  const handleCropComplete = (croppedImageUrl: string) => {
-    setImagePreview(croppedImageUrl);
+  const handleCropComplete = (croppedFile: File) => {
+    const imageUrl = URL.createObjectURL(croppedFile);
+    setImagePreview(imageUrl);
+    setFormData({...formData, coupon_image: croppedFile});
     setShowImageCropper(false);
   };
 
