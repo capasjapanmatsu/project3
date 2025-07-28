@@ -46,7 +46,7 @@ export function MapView({
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(userLocation || null);
   const [mapError, setMapError] = useState<string>('');
   const [isLocating, setIsLocating] = useState(false);
-  // 【一時無効化】const [infoWindow, setInfoWindow] = useState<any>(null);
+  const [infoWindow, setInfoWindow] = useState<any>(null);
   
   // GoogleMapsProviderから状態を取得
   const { isLoaded: isGoogleMapsLoaded, isLoading: isGoogleMapsLoading, error: googleMapsError } = useGoogleMaps();
@@ -70,46 +70,24 @@ export function MapView({
     </svg>
   `;
 
-  // 【一時無効化】シンプルなInfoWindowコンテンツを生成する関数
-  /*
+  // 【段階的復活】シンプルなInfoWindowコンテンツを生成する関数
   const createSimpleInfoWindowContent = useCallback((item: DogPark | PetFacility, type: 'park' | 'facility'): string => {
     const itemName = item.name || '名前未設定';
-    const detailPath = type === 'park' ? `/parks/${item.id}` : `/facilities/${item.id}`;
     
     return `
       <div style="
-        min-width: 200px;
-        max-width: 250px;
-        padding: 12px;
+        min-width: 150px;
+        max-width: 200px;
+        padding: 8px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       ">
         <h3 style="
-          font-size: 16px;
+          font-size: 14px;
           font-weight: 600;
-          margin: 0 0 12px 0;
+          margin: 0;
           color: #1f2937;
           line-height: 1.3;
         ">${itemName}</h3>
-        
-        <button
-          onclick="window.infoWindowNavigate('${detailPath}')"
-          style="
-            width: 100%;
-            background: #3b82f6;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.2s;
-          "
-          onmouseover="this.style.background='#2563eb'"
-          onmouseout="this.style.background='#3b82f6'"
-        >
-          詳細を見る
-        </button>
       </div>
     `;
   }, []);
@@ -124,23 +102,15 @@ export function MapView({
       delete (window as any).infoWindowNavigate;
     };
   }, [navigate]);
-  */
 
   // マーカーを追加する関数
   const addMarkers = useCallback((map: any) => {
     try {
       const windowObj = window as any;
       
-      // 【一時無効化】既存のInfoWindowがあれば閉じる
-      /*
-      if (infoWindow) {
-        infoWindow.close();
-      }
-      
-      // 新しいInfoWindowを作成
+      // 【段階的復活】新しいInfoWindowを作成
       const newInfoWindow = new windowObj.google.maps.InfoWindow();
       setInfoWindow(newInfoWindow);
-      */
       
       // ドッグパークのマーカーを追加
       if (activeView === 'dogparks' && parks) {
@@ -160,14 +130,12 @@ export function MapView({
               }
             });
             
-            // 【一時無効化】マーカークリックイベントを追加
-            /*
+            // 【段階的復活】シンプルなマーカークリックイベントを追加
             marker.addListener('click', () => {
               const content = createSimpleInfoWindowContent(park, 'park');
               newInfoWindow.setContent(content);
               newInfoWindow.open(map, marker);
             });
-            */
           }
         });
       }
@@ -190,14 +158,12 @@ export function MapView({
               }
             });
             
-            // 【一時無効化】マーカークリックイベントを追加
-            /*
+            // 【段階的復活】シンプルなマーカークリックイベントを追加
             marker.addListener('click', () => {
               const content = createSimpleInfoWindowContent(facility, 'facility');
               newInfoWindow.setContent(content);
               newInfoWindow.open(map, marker);
             });
-            */
           }
         });
       }
@@ -217,7 +183,7 @@ export function MapView({
     } catch (error) {
       console.error('マーカー追加エラー:', error);
     }
-  }, [activeView, parks, facilities, currentLocation, defaultDogIcon]); // infoWindow, createSimpleInfoWindowContent を一時削除
+  }, [activeView, parks, facilities, currentLocation, defaultDogIcon, createSimpleInfoWindowContent]);
 
   // マップを初期化する関数
   const initializeMap = useCallback(() => {
