@@ -42,14 +42,14 @@ export function MapView({
   className = '' 
 }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [isMapInitialized, setIsMapInitialized] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(userLocation || null);
   const [mapError, setMapError] = useState<string>('');
   const [isLocating, setIsLocating] = useState(false);
   const [infoWindow, setInfoWindow] = useState<any>(null);
+  const [isMapInitialized, setIsMapInitialized] = useState(false);
   
   // GoogleMapsProviderから状態を取得
-  const { isLoaded: isGoogleMapsLoaded, isLoading: isGoogleMapsLoading, error: googleMapsError } = useGoogleMaps();
+  const { isLoaded, isLoading: isGoogleMapsLoading, error } = useGoogleMaps();
   
   // 認証とユーザーの犬データ
   const { user } = useAuth();
@@ -255,43 +255,95 @@ export function MapView({
   }, [activeView, parks, facilities, currentLocation, defaultDogIcon, createSimpleInfoWindowContent]);
 
   // マップを初期化する関数
-  const initializeMap = useCallback(() => {
-    if (!mapRef.current || !isGoogleMapsLoaded) return;
-    
-    const windowObj = window as any;
-    if (!windowObj.google?.maps) {
-      console.warn('Google Maps API未読み込み');
-      return;
-    }
-
+  const initializeMap = useCallback((mapContainer: HTMLElement) => {
     try {
-      const map = new windowObj.google.maps.Map(mapRef.current, {
+      const window: any = globalThis.window;
+      
+      if (!window.google?.maps || !isLoaded) {
+        console.warn('Google Maps API not loaded yet');
+        return;
+      }
+
+      const mapCenter = userLocation || currentLocation || center || { lat: 35.6762, lng: 139.6503 };
+      
+      // POI（Points of Interest）を非表示にするマップスタイル
+      const mapStyles = [
+        {
+          featureType: "poi",
+          elementType: "labels",
+          stylers: [{ visibility: "off" }]
+        },
+        {
+          featureType: "poi.business",
+          stylers: [{ visibility: "off" }]
+        },
+        {
+          featureType: "poi.park",
+          elementType: "labels",
+          stylers: [{ visibility: "off" }]
+        },
+        {
+          featureType: "poi.attraction",
+          stylers: [{ visibility: "off" }]
+        },
+        {
+          featureType: "poi.government",
+          stylers: [{ visibility: "off" }]
+        },
+        {
+          featureType: "poi.medical",
+          stylers: [{ visibility: "off" }]
+        },
+        {
+          featureType: "poi.place_of_worship",
+          stylers: [{ visibility: "off" }]
+        },
+        {
+          featureType: "poi.school",
+          stylers: [{ visibility: "off" }]
+        },
+        {
+          featureType: "poi.sports_complex",
+          stylers: [{ visibility: "off" }]
+        }
+      ];
+
+      const mapOptions = {
         center: mapCenter,
-        zoom: currentLocation ? 15 : 13,
+        zoom: 13,
+        styles: mapStyles, // POI非表示スタイルを適用
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
-      });
+        zoomControl: true,
+        scrollwheel: true,
+        disableDoubleClickZoom: false,
+      };
+
+      const map = new window.google.maps.Map(mapContainer, mapOptions);
 
       // マーカーを追加
       addMarkers(map);
-      setIsMapInitialized(true);
-      setMapError('');
       
+      setMapError('');
+      setIsMapInitialized(true);
+      console.log('マップ初期化完了（POI非表示）');
     } catch (error) {
       console.error('マップ初期化エラー:', error);
       setMapError('地図の初期化に失敗しました');
     }
-  }, [mapCenter, currentLocation, addMarkers, isGoogleMapsLoaded]);
+  }, [userLocation, currentLocation, center, addMarkers, isLoaded]);
 
   // Google Maps API読み込み完了後にマップを初期化
   useEffect(() => {
-    if (isGoogleMapsLoaded && !googleMapsError) {
-      initializeMap();
-    } else if (googleMapsError) {
-      setMapError(googleMapsError);
+    if (!mapRef.current) return;
+    
+    if (isLoaded && !error) {
+      initializeMap(mapRef.current);
+    } else if (error) {
+      setMapError(error);
     }
-  }, [isGoogleMapsLoaded, googleMapsError, initializeMap, parks, facilities, activeView]);
+  }, [isLoaded, error, initializeMap]);
 
   // 現在地を取得
   const getCurrentLocation = useCallback(() => {
@@ -386,12 +438,12 @@ export function MapView({
   }, [user]);
 
   // Google Maps APIが利用できない場合の表示
-  if (googleMapsError) {
+  if (error) {
     return (
       <Card className={`p-6 text-center ${className}`}>
         <MapPin className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
         <h3 className="text-lg font-semibold mb-2">マップ機能は現在利用できません</h3>
-        <p className="text-gray-600 text-sm mb-4">{googleMapsError}</p>
+        <p className="text-gray-600 text-sm mb-4">{error}</p>
         <div className="text-xs text-gray-500">
           <p>{activeView === 'dogparks' ? 'ドッグラン' : 'ペット施設'}: {activeView === 'dogparks' ? parks.length : facilities.length}件</p>
         </div>
@@ -400,7 +452,7 @@ export function MapView({
   }
 
   // マップエラーが発生した場合の表示
-  if (mapError && mapError !== googleMapsError) {
+  if (mapError && mapError !== error) {
     return (
       <Card className={`p-6 text-center ${className}`}>
         <MapPin className="w-12 h-12 text-red-400 mx-auto mb-4" />
@@ -408,7 +460,10 @@ export function MapView({
         <p className="text-gray-600 text-sm mb-4">{mapError}</p>
         <Button onClick={() => {
           setMapError('');
-          initializeMap();
+          setIsMapInitialized(false);
+          if (mapRef.current) {
+            initializeMap(mapRef.current);
+          }
         }}>
           再読み込み
         </Button>
@@ -478,7 +533,7 @@ export function MapView({
           style={{ minHeight: '400px' }}
         />
         
-        {(isGoogleMapsLoading || !isMapInitialized) && !googleMapsError && (
+        {(isGoogleMapsLoading || !isMapInitialized) && !error && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
@@ -492,7 +547,7 @@ export function MapView({
 
       {/* フッター */}
       <div className="p-3 border-t bg-gray-50 text-xs text-gray-500 text-center">
-        {googleMapsError ? 'マップ機能は現在利用できません' : 'マーカーをクリックすると詳細情報が表示されます'}
+        {error ? 'マップ機能は現在利用できません' : 'マーカーをクリックすると詳細情報が表示されます'}
       </div>
     </Card>
   );
