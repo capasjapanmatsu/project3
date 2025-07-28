@@ -2,14 +2,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { MapPin, Navigation } from 'lucide-react';
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import useAuth from '../../context/AuthContext';
 import { type DogPark } from '../../types';
 import { type PetFacility } from '../../types/facilities';
 import { supabase } from '../../utils/supabase';
 import Button from '../Button';
 import Card from '../Card';
-import { GoogleMapsContext } from '../GoogleMapsProvider';
+import { useGoogleMaps } from '../GoogleMapsProvider';
 
 // 犬のデータ型
 interface Dog {
@@ -47,12 +47,7 @@ export function MapView({
   const [isLocating, setIsLocating] = useState(false);
   
   // GoogleMapsProviderから状態を取得
-  const googleMapsContext = useContext(GoogleMapsContext);
-  const { isLoaded: isGoogleMapsLoaded, isLoading: isGoogleMapsLoading, error: googleMapsError } = googleMapsContext || {
-    isLoaded: false,
-    isLoading: true,
-    error: null
-  };
+  const { isLoaded: isGoogleMapsLoaded, isLoading: isGoogleMapsLoading, error: googleMapsError } = useGoogleMaps();
   
   // 認証とユーザーの犬データ
   const { user } = useAuth();
@@ -230,16 +225,30 @@ export function MapView({
     void fetchUserDogs();
   }, [user]);
 
-  // エラー状態の表示
-  if (mapError || googleMapsError) {
+  // Google Maps APIが利用できない場合の表示
+  if (googleMapsError) {
+    return (
+      <Card className={`p-6 text-center ${className}`}>
+        <MapPin className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2">マップ機能は現在利用できません</h3>
+        <p className="text-gray-600 text-sm mb-4">{googleMapsError}</p>
+        <div className="text-xs text-gray-500">
+          <p>{activeView === 'dogparks' ? 'ドッグラン' : 'ペット施設'}: {activeView === 'dogparks' ? parks.length : facilities.length}件</p>
+        </div>
+      </Card>
+    );
+  }
+
+  // マップエラーが発生した場合の表示
+  if (mapError && mapError !== googleMapsError) {
     return (
       <Card className={`p-6 text-center ${className}`}>
         <MapPin className="w-12 h-12 text-red-400 mx-auto mb-4" />
         <h3 className="text-lg font-semibold mb-2">マップを読み込めませんでした</h3>
-        <p className="text-gray-600 text-sm mb-4">{mapError || googleMapsError}</p>
+        <p className="text-gray-600 text-sm mb-4">{mapError}</p>
         <Button onClick={() => {
           setMapError('');
-          window.location.reload();
+          initializeMap();
         }}>
           再読み込み
         </Button>
@@ -309,7 +318,7 @@ export function MapView({
           style={{ minHeight: '400px' }}
         />
         
-        {(isGoogleMapsLoading || !isMapInitialized) && (
+        {(isGoogleMapsLoading || !isMapInitialized) && !googleMapsError && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
@@ -323,7 +332,7 @@ export function MapView({
 
       {/* フッター */}
       <div className="p-3 border-t bg-gray-50 text-xs text-gray-500 text-center">
-        マーカーをクリックすると詳細情報が表示されます
+        {googleMapsError ? 'マップ機能は現在利用できません' : 'マーカーをクリックすると詳細情報が表示されます'}
       </div>
     </Card>
   );

@@ -39,6 +39,7 @@ interface GoogleMapsProviderProps {
 /**
  * Google Maps API を1回だけ読み込む共通プロバイダー
  * アプリケーション全体で Google Maps の状態を管理
+ * エラーが発生してもアプリ全体は正常に動作する
  */
 export function GoogleMapsProvider({ 
   children, 
@@ -66,15 +67,16 @@ export function GoogleMapsProvider({
         });
         
         if (!key) {
-          const errorMsg = 'Google Maps API キーが設定されていません';
-          console.error(errorMsg);
+          const errorMsg = 'Google Maps API キーが設定されていません（マップ機能は利用できません）';
+          console.warn(errorMsg);
           setError(errorMsg);
           setIsLoading(false);
-          return;
+          return; // エラーでもアプリは続行
         }
 
         // すでに読み込み済みの場合
         if (window.google?.maps) {
+          console.log('Google Maps API既に読み込み済み');
           setGoogleInstance(window.google);
           setIsLoaded(true);
           setIsLoading(false);
@@ -83,6 +85,7 @@ export function GoogleMapsProvider({
 
         // 読み込み中フラグをチェック（重複防止）
         if ((window as any)._googleMapsLoading) {
+          console.log('Google Maps API読み込み中（待機）');
           // 他の読み込みが完了するまで待機
           const checkInterval = setInterval(() => {
             if (window.google?.maps) {
@@ -92,11 +95,23 @@ export function GoogleMapsProvider({
               setIsLoading(false);
             }
           }, 100);
+          
+          // 30秒でタイムアウト
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            if (!window.google?.maps) {
+              const errorMsg = 'Google Maps API読み込みタイムアウト（待機中）';
+              console.warn(errorMsg);
+              setError(errorMsg);
+              setIsLoading(false);
+            }
+          }, 30000);
           return;
         }
 
         // 読み込み開始フラグを設定
         (window as any)._googleMapsLoading = true;
+        console.log('Google Maps APIスクリプト読み込み開始');
 
         // Google Maps API スクリプトを動的に読み込み
         const script = document.createElement('script');
@@ -108,8 +123,8 @@ export function GoogleMapsProvider({
 
         console.log('Google Maps スクリプトURL:', scriptUrl.replace(key, `${key.substring(0, 6)}...`));
         
-        // 読み込み完了/エラーハンドリング
-        await new Promise<void>((resolve, reject) => {
+        // Promise で読み込み完了を待機（ただしアプリはブロックしない）
+        const loadPromise = new Promise<void>((resolve, reject) => {
           script.onload = () => {
             console.log('Google Maps スクリプト読み込み完了');
             (window as any)._googleMapsLoading = false;
@@ -138,30 +153,39 @@ export function GoogleMapsProvider({
             reject(new Error(errorMsg));
           };
 
-          // タイムアウト設定（15秒に延長）
+          // タイムアウト設定（30秒）
           setTimeout(() => {
             if (!window.google?.maps) {
               console.error('Google Maps API読み込みタイムアウト');
               (window as any)._googleMapsLoading = false;
-              const errorMsg = 'Google Maps API の読み込みがタイムアウトしました（15秒）';
+              const errorMsg = 'Google Maps API の読み込みがタイムアウトしました（30秒）';
               setError(errorMsg);
               setIsLoading(false);
               reject(new Error(errorMsg));
             }
-          }, 15000);
+          }, 30000);
 
-          console.log('Google Maps スクリプトをページに追加中...');
           document.head.appendChild(script);
         });
 
-      } catch (err) {
-        console.error('Google Maps 初期化エラー:', err);
-        setError(err instanceof Error ? err.message : 'Google Maps の初期化に失敗しました');
+        // エラーをキャッチしてもアプリは続行
+        try {
+          await loadPromise;
+        } catch (loadError) {
+          console.warn('Google Maps読み込みエラー（アプリは続行）:', loadError);
+          // エラーが発生してもアプリは正常に動作させる
+        }
+
+      } catch (error) {
+        console.error('Google Maps Provider初期化エラー:', error);
+        const errorMsg = error instanceof Error ? error.message : 'Google Maps の初期化で予期しないエラーが発生しました';
+        setError(errorMsg);
         setIsLoading(false);
+        // エラーが発生してもアプリは正常に動作させる
       }
     };
 
-    initializeGoogleMaps();
+    void initializeGoogleMaps();
   }, [apiKey, libraries]);
 
   // コンテキスト値
@@ -172,6 +196,7 @@ export function GoogleMapsProvider({
     google: googleInstance,
   };
 
+  // エラーが発生してもchildrenは常に表示する
   return (
     <GoogleMapsContext.Provider value={contextValue}>
       {children}
@@ -180,12 +205,12 @@ export function GoogleMapsProvider({
 }
 
 /**
- * Google Maps の状態とインスタンスを取得するフック
+ * Google Maps コンテキストを使用するフック
  */
 export function useGoogleMaps() {
   const context = useContext(GoogleMapsContext);
-  if (!context) {
-    throw new Error('useGoogleMaps must be used within GoogleMapsProvider');
+  if (context === undefined) {
+    throw new Error('useGoogleMaps must be used within a GoogleMapsProvider');
   }
   return context;
 }
