@@ -4,6 +4,7 @@ import {
     Building,
     CheckCircle,
     Eye,
+    Gift,
     Image as ImageIcon,
     Plus,
     Save,
@@ -18,6 +19,7 @@ import Card from '../components/Card';
 import ImageCropper from '../components/ImageCropper'; // ImageCropperコンポーネントを追加
 import Input from '../components/Input';
 import { SEO } from '../components/SEO';
+import { CouponManager } from '../components/coupons/CouponManager';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 
@@ -129,6 +131,9 @@ export default function FacilityEdit() {
   
   const [identityDocument, setIdentityDocument] = useState<File | null>(null);
   const [identityPreview, setIdentityPreview] = useState<string>('');
+
+  // タブ管理用のstate
+  const [activeTab, setActiveTab] = useState<'info' | 'images' | 'coupons'>('info');
 
   useEffect(() => {
     if (!user || !facilityId) {
@@ -637,247 +642,389 @@ export default function FacilityEdit() {
             </div>
           )}
 
-          {/* 編集フォーム */}
-          <Card className="p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-6 flex items-center">
-              <Building className="w-6 h-6 text-blue-600 mr-2" />
-              施設情報の編集
-            </h2>
+          {/* タブナビゲーション */}
+          <div className="bg-white rounded-lg border mb-6">
+            <div className="border-b">
+              <nav className="flex space-x-8 px-6">
+                <button
+                  onClick={() => setActiveTab('info')}
+                  className={`py-4 px-2 border-b-2 font-medium text-sm ${
+                    activeTab === 'info'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Building className="w-4 h-4 inline mr-2" />
+                  基本情報
+                </button>
+                <button
+                  onClick={() => setActiveTab('images')}
+                  className={`py-4 px-2 border-b-2 font-medium text-sm ${
+                    activeTab === 'images'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <ImageIcon className="w-4 h-4 inline mr-2" />
+                  画像管理
+                </button>
+                <button
+                  onClick={() => setActiveTab('coupons')}
+                  className={`py-4 px-2 border-b-2 font-medium text-sm ${
+                    activeTab === 'coupons'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Gift className="w-4 h-4 inline mr-2" />
+                  クーポン管理
+                </button>
+              </nav>
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* 基本情報 */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* タブコンテンツ */}
+            <div className="p-6">
+              {activeTab === 'info' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    施設名 *
-                  </label>
-                  <Input
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="施設名を入力"
-                    required
-                  />
-                </div>
+                  <h2 className="text-xl font-semibold mb-6 flex items-center">
+                    <Building className="w-6 h-6 text-blue-600 mr-2" />
+                    施設情報の編集
+                  </h2>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    カテゴリ *
-                  </label>
-                  <select
-                    name="category_id"
-                    value={formData.category_id}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="">カテゴリを選択</option>
-                    {categories.map(category => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  住所 *
-                </label>
-                <Input
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  placeholder="住所を入力"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    電話番号
-                  </label>
-                  <Input
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="電話番号を入力"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    ウェブサイト
-                  </label>
-                  <Input
-                    name="website"
-                    value={formData.website}
-                    onChange={handleInputChange}
-                    placeholder="https://example.com"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  施設説明
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="施設の特徴やサービス内容を入力"
-                />
-              </div>
-
-              {/* 身分証明書 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  身分証明書
-                </label>
-                <div className="space-y-4">
-                  {identityPreview && (
-                    <div className="relative inline-block">
-                      <img
-                        src={identityPreview}
-                        alt="身分証明書プレビュー"
-                        className="max-w-xs h-auto border rounded-lg"
-                      />
-                      {identityDocument && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIdentityDocument(null);
-                            setIdentityPreview(facility.identity_document_url || '');
-                          }}
-                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleIdentityFileChange}
-                      className="hidden"
-                      id="identity-upload"
-                    />
-                    <label
-                      htmlFor="identity-upload"
-                      className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
-                    >
-                      <ImageIcon className="w-4 h-4 mr-2" />
-                      {identityPreview ? '画像を変更' : '画像をアップロード'}
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* 施設画像 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  施設画像 (最大5枚)
-                </label>
-                <p className="text-sm text-gray-500 mb-4">
-                  1枚目がメイン画像として使用されます。施設の雰囲気がわかる画像をアップロードしてください。
-                </p>
-                
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                  {facilityImages.map((image, index) => (
-                    <div key={image.id} className="relative group">
-                      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
-                        <img
-                          src={image.image_url}
-                          alt={`施設画像 ${index + 1}`}
-                          className="w-full h-full object-cover"
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* 基本情報 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          施設名 *
+                        </label>
+                        <Input
+                          name="name"
+                          value={formData.name}
+                          onChange={handleInputChange}
+                          placeholder="施設名を入力"
+                          required
                         />
                       </div>
-                      
-                      {/* 画像の順序表示 */}
-                      <div className="absolute top-2 left-2">
-                        <span className="bg-blue-600 text-white text-xs font-medium px-2 py-1 rounded">
-                          {index === 0 ? 'メイン' : index + 1}
-                        </span>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          カテゴリ *
+                        </label>
+                        <select
+                          name="category_id"
+                          value={formData.category_id}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                        >
+                          <option value="">カテゴリを選択</option>
+                          {categories.map(category => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                      
-                      {/* 画像操作ボタン */}
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="flex space-x-1">
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        住所 *
+                      </label>
+                      <Input
+                        name="address"
+                        value={formData.address}
+                        onChange={handleInputChange}
+                        placeholder="住所を入力"
+                        required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          電話番号
+                        </label>
+                        <Input
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          placeholder="電話番号を入力"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          ウェブサイト
+                        </label>
+                        <Input
+                          name="website"
+                          value={formData.website}
+                          onChange={handleInputChange}
+                          placeholder="https://example.com"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        施設説明
+                      </label>
+                      <textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
+                        rows={4}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="施設の特徴やサービス内容を入力"
+                      />
+                    </div>
+
+                    {/* 身分証明書 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        身分証明書
+                      </label>
+                      <div className="space-y-4">
+                        {identityPreview && (
+                          <div className="relative inline-block">
+                            <img
+                              src={identityPreview}
+                              alt="身分証明書プレビュー"
+                              className="max-w-xs h-auto border rounded-lg"
+                            />
+                            {identityDocument && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIdentityDocument(null);
+                                  setIdentityPreview(facility.identity_document_url || '');
+                                }}
+                                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        
+                        <div>
                           <input
                             type="file"
                             accept="image/*"
-                            onChange={(e) => handleImageSelect(e, index)}
+                            onChange={handleIdentityFileChange}
                             className="hidden"
-                            id={`image-replace-${index}`}
+                            id="identity-upload"
                           />
                           <label
-                            htmlFor={`image-replace-${index}`}
-                            className="bg-white text-gray-600 p-1 rounded shadow hover:bg-gray-50 cursor-pointer"
-                            title="画像を変更"
+                            htmlFor="identity-upload"
+                            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
                           >
-                            <ImageIcon className="w-4 h-4" />
+                            <ImageIcon className="w-4 h-4 mr-2" />
+                            {identityPreview ? '画像を変更' : '画像をアップロード'}
                           </label>
-                          
-                          <button
-                            type="button"
-                            onClick={() => handleImageDelete(image.id)}
-                            className="bg-red-500 text-white p-1 rounded shadow hover:bg-red-600"
-                            title="画像を削除"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
                         </div>
                       </div>
                     </div>
-                  ))}
-                  
-                  {/* 新しい画像追加ボタン */}
-                  {facilityImages.length < 5 && (
-                    <div className="aspect-square bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-blue-400 hover:bg-blue-50 transition-colors">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleImageSelect(e)}
-                        className="hidden"
-                        id="image-add"
-                      />
-                      <label
-                        htmlFor="image-add"
-                        className="flex flex-col items-center cursor-pointer text-gray-500 hover:text-blue-600"
-                      >
-                        <Plus className="w-8 h-8 mb-2" />
-                        <span className="text-sm font-medium">画像を追加</span>
+
+                    {/* 施設画像 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        施設画像 (最大5枚)
                       </label>
+                      <p className="text-sm text-gray-500 mb-4">
+                        1枚目がメイン画像として使用されます。施設の雰囲気がわかる画像をアップロードしてください。
+                      </p>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                        {facilityImages.map((image, index) => (
+                          <div key={image.id} className="relative group">
+                            <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
+                              <img
+                                src={image.image_url}
+                                alt={`施設画像 ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            
+                            {/* 画像の順序表示 */}
+                            <div className="absolute top-2 left-2">
+                              <span className="bg-blue-600 text-white text-xs font-medium px-2 py-1 rounded">
+                                {index === 0 ? 'メイン' : index + 1}
+                              </span>
+                            </div>
+                            
+                            {/* 画像操作ボタン */}
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="flex space-x-1">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleImageSelect(e, index)}
+                                  className="hidden"
+                                  id={`image-replace-${index}`}
+                                />
+                                <label
+                                  htmlFor={`image-replace-${index}`}
+                                  className="bg-white text-gray-600 p-1 rounded shadow hover:bg-gray-50 cursor-pointer"
+                                  title="画像を変更"
+                                >
+                                  <ImageIcon className="w-4 h-4" />
+                                </label>
+                                
+                                <button
+                                  type="button"
+                                  onClick={() => handleImageDelete(image.id)}
+                                  className="bg-red-500 text-white p-1 rounded shadow hover:bg-red-600"
+                                  title="画像を削除"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* 新しい画像追加ボタン */}
+                        {facilityImages.length < 5 && (
+                          <div className="aspect-square bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleImageSelect(e)}
+                              className="hidden"
+                              id="image-add"
+                            />
+                            <label
+                              htmlFor="image-add"
+                              className="flex flex-col items-center cursor-pointer text-gray-500 hover:text-blue-600"
+                            >
+                              <Plus className="w-8 h-8 mb-2" />
+                              <span className="text-sm font-medium">画像を追加</span>
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {facilityImages.length === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                          <UploadCloud className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                          <p className="text-sm">まだ画像がアップロードされていません</p>
+                          <p className="text-xs mt-1">最初の画像がメイン画像として使用されます</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 保存ボタン */}
+                    <div className="flex justify-end">
+                      <Button type="submit" isLoading={isSubmitting}>
+                        <Save className="w-4 h-4 mr-2" />
+                        更新
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {activeTab === 'images' && (
+                <div>
+                  <h2 className="text-xl font-semibold mb-6 flex items-center">
+                    <ImageIcon className="w-6 h-6 text-blue-600 mr-2" />
+                    施設画像の管理
+                  </h2>
+                  <p className="text-sm text-gray-500 mb-4">
+                    施設の画像を管理します。最大5枚まで登録でき、最初の画像がメイン画像として使用されます。
+                  </p>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                    {facilityImages.map((image, index) => (
+                      <div key={image.id} className="relative group">
+                        <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
+                          <img
+                            src={image.image_url}
+                            alt={`施設画像 ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        
+                        {/* 画像の順序表示 */}
+                        <div className="absolute top-2 left-2">
+                          <span className="bg-blue-600 text-white text-xs font-medium px-2 py-1 rounded">
+                            {index === 0 ? 'メイン' : index + 1}
+                          </span>
+                        </div>
+                        
+                        {/* 画像操作ボタン */}
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex space-x-1">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleImageSelect(e, index)}
+                              className="hidden"
+                              id={`image-replace-${index}`}
+                            />
+                            <label
+                              htmlFor={`image-replace-${index}`}
+                              className="bg-white text-gray-600 p-1 rounded shadow hover:bg-gray-50 cursor-pointer"
+                              title="画像を変更"
+                            >
+                              <ImageIcon className="w-4 h-4" />
+                            </label>
+                            
+                            <button
+                              type="button"
+                              onClick={() => handleImageDelete(image.id)}
+                              className="bg-red-500 text-white p-1 rounded shadow hover:bg-red-600"
+                              title="画像を削除"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* 新しい画像追加ボタン */}
+                    {facilityImages.length < 5 && (
+                      <div className="aspect-square bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleImageSelect(e)}
+                          className="hidden"
+                          id="image-add"
+                        />
+                        <label
+                          htmlFor="image-add"
+                          className="flex flex-col items-center cursor-pointer text-gray-500 hover:text-blue-600"
+                        >
+                          <Plus className="w-8 h-8 mb-2" />
+                          <span className="text-sm font-medium">画像を追加</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {facilityImages.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <UploadCloud className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                      <p className="text-sm">まだ画像がアップロードされていません</p>
+                      <p className="text-xs mt-1">最初の画像がメイン画像として使用されます</p>
                     </div>
                   )}
                 </div>
-                
-                {facilityImages.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    <UploadCloud className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                    <p className="text-sm">まだ画像がアップロードされていません</p>
-                    <p className="text-xs mt-1">最初の画像がメイン画像として使用されます</p>
-                  </div>
-                )}
-              </div>
+              )}
 
-              {/* 保存ボタン */}
-              <div className="flex justify-end">
-                <Button type="submit" isLoading={isSubmitting}>
-                  <Save className="w-4 h-4 mr-2" />
-                  更新
-                </Button>
-              </div>
-            </form>
-          </Card>
+              {activeTab === 'coupons' && facility && (
+                <CouponManager 
+                  facilityId={facility.id} 
+                  facilityName={facility.name}
+                />
+              )}
+            </div>
+          </div>
 
           {/* 削除セクション - ページの一番下 */}
           <Card className="p-6 border-red-200 bg-red-50">

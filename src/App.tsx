@@ -414,6 +414,13 @@ const App: React.FC = () => {
               </Suspense>
             </ProtectedRoute>
           } />
+          <Route path="/my-coupons" element={
+            <ProtectedRoute>
+              <Suspense fallback={<DashboardSkeleton />}>
+                <MyCoupons />
+              </Suspense>
+            </ProtectedRoute>
+          } />
           <Route path="/reservation/:parkId" element={
             <ProtectedRoute>
               <Suspense fallback={<DashboardSkeleton />}>

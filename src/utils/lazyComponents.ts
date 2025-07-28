@@ -8,18 +8,19 @@ export const Home = lazy(() => import('../pages/Home').then(module => ({ default
 export const Login = lazy(() => import('../pages/Login').then(module => ({ default: module.Login })));
 export const Register = lazy(() => import('../pages/Register').then(module => ({ default: module.Register })));
 
-// User Dashboard & Profile
+// User pages - all wrapped in lazy loading with preload triggers
 export const UserDashboard = lazy(() => import('../pages/UserDashboard').then(module => ({ default: module.UserDashboard })));
+export const DogRegistration = lazy(() => import('../pages/DogRegistration'));
+export const DogManagement = lazy(() => import('../pages/DogManagement').then(module => ({ default: module.DogManagement })));
+export const DogProfile = lazy(() => import('../pages/DogProfile').then(module => ({ default: module.DogProfile })));
 export const ProfileSettings = lazy(() => import('../pages/ProfileSettings').then(module => ({ default: module.ProfileSettings })));
-
+export const PaymentMethodSettings = lazy(() => import('../pages/PaymentMethodSettings').then(module => ({ default: module.PaymentMethodSettings })));
+export const DogParkHistory = lazy(() => import('../pages/DogParkHistory').then(module => ({ default: module.DogParkHistory })));
+export const ParkReservation = lazy(() => import('../pages/ParkReservation').then(module => ({ default: module.ParkReservation })));
+export const LikedDogs = lazy(() => import('../pages/LikedDogs').then(module => ({ default: module.LikedDogs })));
+export const MyCoupons = lazy(() => import('../pages/MyCoupons').then(module => ({ default: module.MyCoupons })));
 
 // Dog Management (Named Exports)
-export const DogManagement = lazy(() => import('../pages/DogManagement').then(module => ({ default: module.DogManagement })));
-export const DogRegistration = lazy(() => import('../pages/DogRegistration').then(module => ({ default: module.DogRegistration })));
-export const DogProfile = lazy(() => import('../pages/DogProfile').then(module => ({ default: module.DogProfile })));
-export const LikedDogs = lazy(() => import('../pages/LikedDogs').then(module => ({ default: module.LikedDogs })));
-
-// Park-related components
 export const DogParkList = lazy(() => import('../pages/DogParkList').then(module => ({ default: module.DogParkList })));
 export const DogParkDetail = lazy(() => import('../pages/DogParkDetail').then(module => ({ default: module.DogParkDetail })));
 export const DogParkRules = lazy(() => import('../pages/DogParkRules').then(module => ({ default: module.DogParkRules })));
@@ -62,7 +63,6 @@ export const Breeds = lazy(() => import('../pages/dog-info/Breeds').then(module 
 
 // Payment System (Named Exports)
 export const PaymentSetup = lazy(() => import('../pages/PaymentSetup').then(module => ({ default: module.PaymentSetup })));
-export const PaymentMethodSettings = lazy(() => import('../pages/PaymentMethodSettings').then(module => ({ default: module.PaymentMethodSettings })));
 export const PaymentConfirmation = lazy(() => import('../pages/PaymentConfirmation').then(module => ({ default: module.PaymentConfirmation })));
 export const Subscription = lazy(() => import('../pages/Subscription').then(module => ({ default: module.Subscription })));
 

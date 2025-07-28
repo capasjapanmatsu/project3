@@ -4,6 +4,7 @@ import {
     Clock,
     Coffee,
     ExternalLink,
+    Gift,
     Heart,
     Home,
     MapPin,
@@ -14,9 +15,14 @@ import {
     Stethoscope,
     UtensilsCrossed
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import useAuth from '../../context/AuthContext';
+import { type FacilityCoupon, type ObtainCouponResponse, type UserCoupon } from '../../types/coupons';
 import { type FacilityCategory, type PetFacility } from '../../types/facilities';
+import { supabase } from '../../utils/supabase';
 import Button from '../Button';
+import { CouponDisplay } from '../coupons/CouponDisplay';
 
 interface FacilityCardProps {
   facility: PetFacility;
@@ -36,6 +42,88 @@ const FACILITY_ICONS = {
 } as const;
 
 export function FacilityCard({ facility, showDistance, distance }: FacilityCardProps) {
+  const { user } = useAuth();
+  const [availableCoupons, setAvailableCoupons] = useState<FacilityCoupon[]>([]);
+  const [userCoupons, setUserCoupons] = useState<UserCoupon[]>([]);
+  const [showCouponDisplay, setShowCouponDisplay] = useState(false);
+  const [displayingCoupon, setDisplayingCoupon] = useState<(UserCoupon & { coupon: FacilityCoupon }) | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      fetchCoupons();
+    }
+  }, [user, facility.id]);
+
+  const fetchCoupons = async () => {
+    try {
+      // 利用可能なクーポンを取得
+      const { data: coupons, error: couponsError } = await supabase
+        .from('facility_coupons')
+        .select('*')
+        .eq('facility_id', facility.id)
+        .eq('is_active', true)
+        .lte('start_date', new Date().toISOString())
+        .gte('end_date', new Date().toISOString());
+
+      if (couponsError) throw couponsError;
+      setAvailableCoupons(coupons || []);
+
+      if (user) {
+        // ユーザーが取得済みのクーポンを確認
+        const { data: userCouponsData, error: userCouponsError } = await supabase
+          .from('user_coupons')
+          .select(`
+            *,
+            coupon:facility_coupons(*)
+          `)
+          .eq('user_id', user.id)
+          .in('coupon_id', (coupons || []).map(c => c.id));
+
+        if (userCouponsError) throw userCouponsError;
+        setUserCoupons(userCouponsData || []);
+      }
+    } catch (error) {
+      console.error('クーポン情報の取得に失敗しました:', error);
+    }
+  };
+
+  const handleObtainCoupon = async (coupon: FacilityCoupon) => {
+    if (!user) {
+      alert('クーポンの取得にはログインが必要です。');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('obtain_coupon', {
+        coupon_uuid: coupon.id
+      });
+
+      if (error) throw error;
+
+      const response = data as ObtainCouponResponse;
+      
+      if (response.success) {
+        alert(response.message);
+        fetchCoupons(); // クーポン状態を更新
+      } else {
+        alert(response.error);
+      }
+    } catch (error) {
+      alert('クーポンの取得に失敗しました。');
+    }
+  };
+
+  const handleShowCoupon = (userCoupon: UserCoupon) => {
+    if (userCoupon.is_used && userCoupon.coupon?.usage_limit_type === 'once') {
+      alert('このクーポンは既に使用済みです。');
+      return;
+    }
+
+    const couponWithData = userCoupon as UserCoupon & { coupon: FacilityCoupon };
+    setDisplayingCoupon(couponWithData);
+    setShowCouponDisplay(true);
+  };
+
   // 営業状況の判定
   const isOpen = () => {
     const now = new Date();
@@ -48,7 +136,7 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
       return currentTime >= opening && currentTime <= closing;
     }
     
-    return true; // デフォルトは営業中として扱う
+    return null;
   };
 
   // カテゴリのアイコンとラベルを取得
@@ -196,32 +284,85 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
         )}
 
         {/* アクションボタン */}
-        <div className="flex space-x-2">
-          <Link to={`/facilities/${facility.id}`} className="flex-1">
-            <Button
-              variant="outline"
-              className="w-full flex items-center justify-center"
-            >
-              <ExternalLink className="w-4 h-4 mr-1" />
-              詳細を見る
-            </Button>
-          </Link>
-          
-          {facility.website_url && (
-            <a
-              href={facility.website_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Button className="w-full">
-                ウェブサイト
-              </Button>
-            </a>
+        <div className="space-y-2">
+          {/* クーポン関連ボタン */}
+          {availableCoupons.length > 0 && (
+            <div className="space-y-2">
+              {availableCoupons.map((coupon) => {
+                const userCoupon = userCoupons.find(uc => uc.coupon_id === coupon.id);
+                
+                if (userCoupon) {
+                  // 既に取得済みのクーポン
+                  return (
+                    <Button
+                      key={coupon.id}
+                      onClick={() => handleShowCoupon(userCoupon)}
+                      className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700"
+                      disabled={userCoupon.is_used && coupon.usage_limit_type === 'once'}
+                    >
+                      <Gift className="w-4 h-4 mr-2" />
+                      {userCoupon.is_used && coupon.usage_limit_type === 'once' 
+                        ? 'クーポン使用済み' 
+                        : 'クーポンを表示'
+                      }
+                    </Button>
+                  );
+                } else {
+                  // 未取得のクーポン
+                  return (
+                    <Button
+                      key={coupon.id}
+                      onClick={() => handleObtainCoupon(coupon)}
+                      className="w-full flex items-center justify-center bg-pink-600 hover:bg-pink-700"
+                    >
+                      <Gift className="w-4 h-4 mr-2" />
+                      クーポンを取得
+                    </Button>
+                  );
+                }
+              })}
+            </div>
           )}
+
+          {/* 既存のボタン */}
+          <div className="flex space-x-2">
+            <Link to={`/facilities/${facility.id}`} className="flex-1">
+              <Button
+                variant="outline"
+                className="w-full flex items-center justify-center"
+              >
+                <ExternalLink className="w-4 h-4 mr-1" />
+                詳細を見る
+              </Button>
+            </Link>
+            
+            {facility.website_url && (
+              <a
+                href={facility.website_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Button className="w-full">
+                  ウェブサイト
+                </Button>
+              </a>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* クーポン表示モーダル */}
+      {showCouponDisplay && displayingCoupon && (
+        <CouponDisplay
+          userCoupon={displayingCoupon}
+          onClose={() => {
+            setShowCouponDisplay(false);
+            setDisplayingCoupon(null);
+          }}
+        />
+      )}
     </div>
   );
 }
