@@ -594,7 +594,7 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
           imageFile={couponImageFile}
           onComplete={handleCropComplete}
           onCancel={() => setShowImageCropper(false)}
-          aspectRatio={16/9}
+          aspectRatio={1}
         />
       )}
     </div>
