@@ -228,7 +228,8 @@ export function MapView({
       <div style="
         min-width: 220px;
         max-width: 260px;
-        padding: 0px 12px 12px 12px;
+        min-height: 180px;
+        padding: 8px 12px 16px 12px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       ">
         ${thumbnailHtml}
@@ -236,7 +237,7 @@ export function MapView({
         <h3 style="
           font-size: 13px;
           font-weight: 600;
-          margin: 0 0 2px 0;
+          margin: 4px 0 6px 0;
           color: #1f2937;
           line-height: 1.3;
         ">${itemName}</h3>
@@ -245,7 +246,7 @@ export function MapView({
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-top: 2px;
+          margin-top: 8px;
         ">
           ${distanceText}
           <button
