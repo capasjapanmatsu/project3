@@ -18,8 +18,8 @@ import {
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useAuth from '../../context/AuthContext';
-import { type FacilityCoupon, type ObtainCouponResponse, type UserCoupon } from '../../types/coupons';
-import { type FacilityCategory, type PetFacility } from '../../types/facilities';
+import { type FacilityCoupon, type UserCoupon } from '../../types/coupons';
+import { type FacilityImage, type PetFacility } from '../../types/facilities';
 import { supabase } from '../../utils/supabase';
 import Button from '../Button';
 import { CouponDisplay } from '../coupons/CouponDisplay';
@@ -47,12 +47,37 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
   const [userCoupons, setUserCoupons] = useState<UserCoupon[]>([]);
   const [showCouponDisplay, setShowCouponDisplay] = useState(false);
   const [displayingCoupon, setDisplayingCoupon] = useState<(UserCoupon & { coupon: FacilityCoupon }) | null>(null);
+  const [facilityImages, setFacilityImages] = useState<FacilityImage[]>([]);
+  const [imageLoading, setImageLoading] = useState(true);
 
   useEffect(() => {
+    void fetchFacilityImages();
     if (user) {
-      fetchCoupons();
+      void fetchCoupons();
     }
   }, [user, facility.id]);
+
+  const fetchFacilityImages = async () => {
+    try {
+      setImageLoading(true);
+      const { data: images, error: imagesError } = await supabase
+        .from('facility_images')
+        .select('*')
+        .eq('facility_id', facility.id)
+        .order('created_at', { ascending: true })
+        .limit(1); // メイン画像のみ取得
+
+      if (imagesError) {
+        console.error('施設画像の取得に失敗:', imagesError);
+      } else {
+        setFacilityImages(images || []);
+      }
+    } catch (error) {
+      console.error('施設画像の取得中にエラーが発生:', error);
+    } finally {
+      setImageLoading(false);
+    }
+  };
 
   const fetchCoupons = async () => {
     try {
@@ -70,17 +95,20 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
 
       if (user) {
         // ユーザーが取得済みのクーポンを確認
-        const { data: userCouponsData, error: userCouponsError } = await supabase
-          .from('user_coupons')
-          .select(`
-            *,
-            coupon:facility_coupons(*)
-          `)
-          .eq('user_id', user.id)
-          .in('coupon_id', (coupons || []).map(c => c.id));
+        const couponIds = (coupons || []).map(c => c.id);
+        if (couponIds.length > 0) {
+          const { data: userCouponsData, error: userCouponsError } = await supabase
+            .from('user_coupons')
+            .select(`
+              *,
+              coupon:facility_coupons(*)
+            `)
+            .eq('user_id', user.id)
+            .in('coupon_id', couponIds);
 
-        if (userCouponsError) throw userCouponsError;
-        setUserCoupons(userCouponsData || []);
+          if (userCouponsError) throw userCouponsError;
+          setUserCoupons(userCouponsData || []);
+        }
       }
     } catch (error) {
       console.error('クーポン情報の取得に失敗しました:', error);
@@ -95,117 +123,154 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
 
     try {
       const { data, error } = await supabase.rpc('obtain_coupon', {
-        coupon_uuid: coupon.id
+        p_coupon_id: coupon.id,
+        p_user_id: user.id
       });
 
       if (error) throw error;
 
-      const response = data as ObtainCouponResponse;
-      
-      if (response.success) {
-        alert(response.message);
-        fetchCoupons(); // クーポン状態を更新
+      if (data === 'success') {
+        alert('クーポンを取得しました！');
+        await fetchCoupons(); // クーポン情報を再取得
       } else {
-        alert(response.error);
+        const errorMessages: Record<string, string> = {
+          'coupon_not_found': 'クーポンが見つかりません',
+          'coupon_expired': 'クーポンの有効期限が切れています',
+          'coupon_inactive': 'クーポンが利用できません',
+          'already_obtained': 'すでに取得済みのクーポンです'
+        };
+        
+        const message = errorMessages[data as string] || '不明なエラーが発生しました';
+        alert(message);
       }
     } catch (error) {
-      alert('クーポンの取得に失敗しました。');
+      console.error('クーポン取得エラー:', error);
+      alert('クーポンの取得に失敗しました');
     }
   };
 
-  const handleShowCoupon = (userCoupon: UserCoupon) => {
-    if (userCoupon.is_used && userCoupon.coupon?.usage_limit_type === 'once') {
-      alert('このクーポンは既に使用済みです。');
-      return;
-    }
-
-    const couponWithData = userCoupon as UserCoupon & { coupon: FacilityCoupon };
-    setDisplayingCoupon(couponWithData);
+  const handleShowCoupon = (userCoupon: UserCoupon & { coupon: FacilityCoupon }) => {
+    setDisplayingCoupon(userCoupon);
     setShowCouponDisplay(true);
   };
 
-  // 営業状況の判定
-  const isOpen = () => {
-    const now = new Date();
-    const currentTime = now.getHours() * 100 + now.getMinutes();
-    
-    if (facility.opening_hours && facility.closing_hours) {
-      const opening = parseInt(facility.opening_hours.replace(':', ''), 10);
-      const closing = parseInt(facility.closing_hours.replace(':', ''), 10);
-      
-      return currentTime >= opening && currentTime <= closing;
-    }
-    
-    return null;
+  // カテゴリアイコンとラベルを取得
+  const getCategoryInfo = () => {
+    const categoryName = facility.category_id || facility.category || 'other';
+    return FACILITY_ICONS[categoryName as keyof typeof FACILITY_ICONS] || FACILITY_ICONS.other;
   };
 
-  // カテゴリのアイコンとラベルを取得
-  const getCategoryInfo = (category: FacilityCategory | undefined) => {
-    if (!category || !(category in FACILITY_ICONS)) {
-      return FACILITY_ICONS.other;
-    }
-    return FACILITY_ICONS[category as keyof typeof FACILITY_ICONS];
-  };
-
-  const categoryInfo = getCategoryInfo(facility.category);
+  const categoryInfo = getCategoryInfo();
   const Icon = categoryInfo.icon;
-  const isCurrentlyOpen = isOpen();
 
-  // 評価の表示（5段階評価）
-  const renderRating = (rating?: number) => {
-    if (!rating) return null;
+  // 営業時間の判定
+  const isCurrentlyOpen = () => {
+    if (!facility.opening_hours || !facility.closing_hours) return false;
+    
+    const now = new Date();
+    const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+    
+    return currentTime >= facility.opening_hours && currentTime <= facility.closing_hours;
+  };
+
+  // 評価の星を表示
+  const renderRating = (rating: number) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    
+    for (let i = 0; i < 5; i++) {
+      if (i < fullStars) {
+        stars.push(<Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />);
+      } else if (i === fullStars && hasHalfStar) {
+        stars.push(<Star key={i} className="w-4 h-4 fill-yellow-400/50 text-yellow-400" />);
+      } else {
+        stars.push(<Star key={i} className="w-4 h-4 text-gray-300" />);
+      }
+    }
     
     return (
       <div className="flex items-center space-x-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`w-4 h-4 ${
-              star <= rating 
-                ? 'text-yellow-400 fill-current' 
-                : 'text-gray-300'
-            }`}
-          />
-        ))}
-        <span className="text-sm text-gray-600 ml-1">({rating})</span>
+        <div className="flex">{stars}</div>
+        <span className="text-sm text-gray-600">({rating.toFixed(1)})</span>
       </div>
     );
   };
 
-  // 距離の表示
-  const formatDistance = (dist?: number) => {
-    if (!dist) return '';
-    
-    if (dist < 1) {
-      return `${Math.round(dist * 1000)}m`;
+  // 距離のフォーマット
+  const formatDistance = (distanceKm: number) => {
+    if (distanceKm < 1) {
+      return `${Math.round(distanceKm * 1000)}m`;
     }
-    return `${dist.toFixed(1)}km`;
+    return `${distanceKm.toFixed(1)}km`;
   };
 
+  const mainImage = facilityImages.length > 0 ? facilityImages[0] : null;
+
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-      {/* 施設画像 */}
-      {facility.image_url && (
-        <div className="aspect-square relative overflow-hidden rounded-t-lg">
+    <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden cursor-pointer border border-gray-200">
+      {/* サムネイル画像セクション */}
+      <div className="relative aspect-[4/3] bg-gray-100">
+        {imageLoading ? (
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          </div>
+        ) : mainImage ? (
           <img
-            src={facility.image_url}
-            alt={facility.name}
+            src={mainImage.image_url}
+            alt={mainImage.description || `${facility.name}のメイン画像`}
             className="w-full h-full object-cover"
-            loading="lazy"
-          />
-          {/* お気に入りボタン */}
-          <button
-            className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              // お気に入り機能の実装
+            onError={(e) => {
+              // 画像読み込みエラー時のフォールバック
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const parent = target.parentElement;
+              if (parent) {
+                parent.innerHTML = `
+                  <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                    <div class="text-center">
+                      <svg class="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                      </svg>
+                      <p class="text-sm text-gray-500">画像なし</p>
+                    </div>
+                  </div>
+                `;
+              }
             }}
-          >
-            <Heart className="w-4 h-4 text-gray-600 hover:text-red-500" />
-          </button>
-        </div>
-      )}
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+            <div className="text-center">
+              <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">画像なし</p>
+            </div>
+          </div>
+        )}
+
+        {/* 画像数表示 */}
+        {facilityImages.length > 1 && (
+          <div className="absolute top-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
+            {facilityImages.length}枚
+          </div>
+        )}
+
+        {/* お気に入りボタン（将来実装用） */}
+        {user && (
+          <div className="absolute top-2 left-2">
+            <button
+              className="p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // お気に入り機能の実装
+              }}
+            >
+              <Heart className="w-4 h-4 text-gray-600 hover:text-red-500" />
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="p-4">
         {/* カテゴリとステータス */}
@@ -215,7 +280,7 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
             <span className="text-sm text-gray-600">{categoryInfo.label}</span>
           </div>
           
-          {isCurrentlyOpen ? (
+          {isCurrentlyOpen() ? (
             <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
               営業中
             </span>
