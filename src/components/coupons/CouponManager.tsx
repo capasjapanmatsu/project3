@@ -1,10 +1,8 @@
 import {
     Calendar,
-    DollarSign,
     Eye,
     Gift,
     Image as ImageIcon,
-    Percent,
     Plus,
     Save,
     Trash2,
@@ -326,7 +324,7 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   割引設定
                 </label>
-                <div className="flex space-x-2">
+                <div className="flex space-x-2 items-center">
                   <select
                     value={formData.discount_type}
                     onChange={(e) => setFormData({...formData, discount_type: e.target.value as 'amount' | 'percentage'})}
@@ -340,10 +338,10 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
                     value={formData.discount_value || ''}
                     onChange={(e) => setFormData({...formData, discount_value: parseInt(e.target.value) || undefined})}
                     placeholder={formData.discount_type === 'amount' ? '500' : '10'}
-                    className="flex-1"
+                    className="w-24 text-lg font-medium text-center"
                   />
-                  <span className="flex items-center text-sm text-gray-500">
-                    {formData.discount_type === 'amount' ? <DollarSign className="w-4 h-4" /> : <Percent className="w-4 h-4" />}
+                  <span className="flex items-center text-lg text-gray-700 font-medium">
+                    {formData.discount_type === 'amount' ? '円' : '%'}
                   </span>
                 </div>
               </div>
