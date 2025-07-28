@@ -266,7 +266,7 @@ export function MapView({
 
       const mapCenter = userLocation || currentLocation || center || { lat: 35.6762, lng: 139.6503 };
       
-      // POI（Points of Interest）を非表示にするマップスタイル
+      // POI（Points of Interest）を非表示にするマップスタイル（動物病院は表示）
       const mapStyles = [
         {
           featureType: "poi",
@@ -290,10 +290,11 @@ export function MapView({
           featureType: "poi.government",
           stylers: [{ visibility: "off" }]
         },
-        {
-          featureType: "poi.medical",
-          stylers: [{ visibility: "off" }]
-        },
+        // 動物病院表示のため医療施設のPOI非表示設定を削除
+        // {
+        //   featureType: "poi.medical",
+        //   stylers: [{ visibility: "off" }]
+        // },
         {
           featureType: "poi.place_of_worship",
           stylers: [{ visibility: "off" }]
