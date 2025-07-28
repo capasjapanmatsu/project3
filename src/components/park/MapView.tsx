@@ -290,11 +290,16 @@ export function MapView({
           featureType: "poi.government",
           stylers: [{ visibility: "off" }]
         },
-        // 動物病院表示のため医療施設のPOI非表示設定を削除
-        // {
-        //   featureType: "poi.medical",
-        //   stylers: [{ visibility: "off" }]
-        // },
+        // 動物病院を明示的に表示
+        {
+          featureType: "poi.medical",
+          stylers: [{ visibility: "on" }]
+        },
+        {
+          featureType: "poi.medical",
+          elementType: "labels",
+          stylers: [{ visibility: "on" }]
+        },
         {
           featureType: "poi.place_of_worship",
           stylers: [{ visibility: "off" }]
