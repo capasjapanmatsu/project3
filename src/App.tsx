@@ -103,15 +103,15 @@ const NotFound = React.lazy(() => import('./pages/NotFound').then(module => ({ d
 
 // 保護されたページ
 const UserDashboard = React.lazy(() => import('./pages/UserDashboard').then(module => ({ default: module.UserDashboard })));
-const DogRegistration = React.lazy(() => import('./pages/DogRegistration').then(module => ({ default: module.DogRegistration })));
+const DogRegistration = React.lazy(() => import('./pages/DogRegistration'));
 const DogManagement = React.lazy(() => import('./pages/DogManagement').then(module => ({ default: module.DogManagement })));
 const DogProfile = React.lazy(() => import('./pages/DogProfile').then(module => ({ default: module.DogProfile })));
 const ProfileSettings = React.lazy(() => import('./pages/ProfileSettings').then(module => ({ default: module.ProfileSettings })));
-const ParkReservation = React.lazy(() => import('./pages/ParkReservation').then(module => ({ default: module.ParkReservation })));
-const DogParkHistory = React.lazy(() => import('./pages/DogParkHistory').then(module => ({ default: module.DogParkHistory })));
-const OrderHistory = React.lazy(() => import('./pages/OrderHistory').then(module => ({ default: module.OrderHistory })));
 const PaymentMethodSettings = React.lazy(() => import('./pages/PaymentMethodSettings').then(module => ({ default: module.PaymentMethodSettings })));
+const DogParkHistory = React.lazy(() => import('./pages/DogParkHistory').then(module => ({ default: module.DogParkHistory })));
 const LikedDogs = React.lazy(() => import('./pages/LikedDogs').then(module => ({ default: module.LikedDogs })));
+const MyCoupons = React.lazy(() => import('./pages/MyCoupons').then(module => ({ default: module.MyCoupons })));
+const ParkReservation = React.lazy(() => import('./pages/ParkReservation').then(module => ({ default: module.ParkReservation })));
 const ParkRegistration = React.lazy(() => import('./pages/ParkRegistration'));
 const ParkRegistrationAgreement = React.lazy(() => import('./pages/ParkRegistrationAgreement'));
 const ParkRegistrationSecondStage = React.lazy(() => import('./pages/ParkRegistrationSecondStage').then(module => ({ default: module.ParkRegistrationSecondStage })));
