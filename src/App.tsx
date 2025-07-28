@@ -99,7 +99,7 @@ const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy').then(modu
 const NotFound = React.lazy(() => import('./pages/NotFound').then(module => ({ default: module.NotFound })));
 
 // デバッグページ
-const MapDebug = React.lazy(() => import('./pages/MapDebug').then(module => ({ default: module.MapDebug })));
+// const MapDebug = React.lazy(() => import('./pages/MapDebug').then(module => ({ default: module.MapDebug })));
 
 // 保護されたページ
 const UserDashboard = React.lazy(() => import('./pages/UserDashboard').then(module => ({ default: module.UserDashboard })));
@@ -595,11 +595,11 @@ const App: React.FC = () => {
           } />
           
           {/* デバッグ・開発者用 */}
-          <Route path="/debug/map" element={
+          {/* <Route path="/debug/map" element={
             <Suspense fallback={<PageSkeleton />}>
               <MapDebug />
             </Suspense>
-          } />
+          } /> */}
           
           {/* 404ページ */}
           <Route path="*" element={

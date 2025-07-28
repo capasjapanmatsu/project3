@@ -191,8 +191,7 @@ export default function FacilityEdit() {
       setCategories(categoriesData || []);
       
     } catch (error) {
-      console.error('Error fetching data:', error);
-      setError('データの取得に失敗しました。');
+      setError('データの読み込みに失敗しました。');
     } finally {
       setIsLoading(false);
     }
@@ -287,11 +286,10 @@ export default function FacilityEdit() {
         );
       }
 
-      setSuccess('画像をアップロードしました。');
+      setSuccess('画像がアップロードされました。');
       setTimeout(() => setSuccess(''), 3000);
 
     } catch (error) {
-      console.error('Error uploading image:', error);
       setError('画像のアップロードに失敗しました。');
     } finally {
       setIsUploadingImage(false);
@@ -339,11 +337,11 @@ export default function FacilityEdit() {
         }
       }
 
-      setSuccess('画像を削除しました。');
+      setSuccess('画像が削除されました。');
+      fetchData(); // 画像削除後にデータを再取得
       setTimeout(() => setSuccess(''), 3000);
 
     } catch (error) {
-      console.error('Error deleting image:', error);
       setError('画像の削除に失敗しました。');
     }
   };
@@ -362,7 +360,6 @@ export default function FacilityEdit() {
       setIdentityDocument(file);
       setIdentityPreview(processedImage);
     } catch (error) {
-      console.error('Error processing image:', error);
       setError('画像の処理に失敗しました。');
     }
   };
@@ -442,7 +439,6 @@ export default function FacilityEdit() {
       }, 3000);
 
     } catch (error) {
-      console.error('Error updating facility:', error);
       setError(error instanceof Error ? error.message : '更新に失敗しました。');
     } finally {
       setIsSubmitting(false);
@@ -463,23 +459,6 @@ export default function FacilityEdit() {
     try {
       setIsDeleting(true);
       setError('');
-      console.log('施設削除開始:', facility.id, facility.name);
-      console.log('現在のユーザーID:', user?.id);
-
-      // デバッグ: 施設の詳細情報を再取得して確認
-      console.log('施設詳細確認開始...');
-      const { data: facilityCheck, error: checkError } = await supabase
-        .from('pet_facilities')
-        .select('id, name, owner_id, created_at')
-        .eq('id', facility.id)
-        .single();
-
-      if (checkError) {
-        console.error('施設確認エラー:', checkError);
-      } else {
-        console.log('施設詳細:', facilityCheck);
-        console.log('owner_id一致:', facilityCheck?.owner_id === user?.id);
-      }
 
       // 管理者権限の確認
       const { data: profileData } = await supabase
@@ -488,79 +467,49 @@ export default function FacilityEdit() {
         .eq('id', user?.id)
         .single();
 
-      console.log('ユーザー権限:', profileData?.role);
-
-      // 1. 関連する施設画像を手動で削除（CASCADE削除の保険として）
+      // 関連する施設画像を削除
       try {
-        console.log('関連画像削除開始...');
-        const { error: imagesDeleteError, count: deletedImagesCount } = await supabase
+        await supabase
           .from('pet_facility_images')
           .delete()
           .eq('facility_id', facility.id);
-
-        if (imagesDeleteError) {
-          console.warn('施設画像削除エラー（継続）:', imagesDeleteError);
-        } else {
-          console.log('関連画像削除完了。削除数:', deletedImagesCount);
-        }
       } catch (imageError) {
-        console.warn('施設画像削除で例外（継続）:', imageError);
+        // 画像削除エラーは継続して施設削除を試行
       }
 
-      // 2. 施設本体を削除
-      console.log('施設本体削除開始...');
-      console.log('削除クエリ条件:', { 
-        facilityId: facility.id, 
-        ownerId: user?.id
-      });
-
-      // 管理者の場合は owner_id 条件を外す
+      // 施設本体を削除
       let deleteQuery = supabase.from('pet_facilities').delete();
       
       if (profileData?.role === 'admin') {
-        console.log('管理者権限で削除実行');
         deleteQuery = deleteQuery.eq('id', facility.id);
       } else {
-        console.log('一般ユーザー権限で削除実行');
         deleteQuery = deleteQuery.eq('id', facility.id).eq('owner_id', user?.id);
       }
 
-      const { error: deleteError, count } = await deleteQuery;
-
-      console.log('削除結果:', { deleteError, count });
+      const { error: deleteError } = await deleteQuery;
 
       if (deleteError) {
-        console.error('削除エラーの詳細:', deleteError);
-        
         if (deleteError.message?.includes('RLS')) {
           throw new Error('権限エラー: この施設を削除する権限がありません。管理者にお問い合わせください。');
         }
-        
         throw new Error(`削除処理エラー: ${deleteError.message}`);
       }
 
-      // 削除検証: 施設が実際に削除されたかを確認
-      console.log('削除検証開始...');
+      // 削除検証
       const { data: verifyData, error: verifyError } = await supabase
         .from('pet_facilities')
         .select('id')
         .eq('id', facility.id)
         .single();
 
-      console.log('削除検証結果:', { verifyData, verifyError });
-
       if (verifyData) {
-        console.warn('削除検証失敗: 施設がまだ存在しています');
-        
-        // 管理者の場合、RPCを使用した強制削除を試行
+        // 管理者の場合、RPC強制削除を試行
         if (profileData?.role === 'admin') {
-          console.log('管理者権限でRPC強制削除を実行...');
           const { error: rpcError } = await supabase.rpc('force_delete_facility', {
             target_facility_id: facility.id
           });
           
           if (rpcError) {
-            console.error('RPC削除エラー:', rpcError);
             throw new Error(`削除に失敗しました。データベース管理者にお問い合わせください。エラー: ${rpcError.message}`);
           }
           
@@ -574,27 +523,20 @@ export default function FacilityEdit() {
           if (finalCheck) {
             throw new Error('施設の削除に失敗しました。データベース管理者にお問い合わせください。');
           }
-          
-          console.log('RPC強制削除完了');
         } else {
           throw new Error('削除する施設が見つからない、または削除権限がありません。');
         }
       } else if (verifyError && verifyError.code !== 'PGRST116') {
-        // PGRST116 は "not found" エラーで、削除成功を意味する
-        console.error('削除検証エラー:', verifyError);
         throw new Error(`削除検証でエラーが発生しました: ${verifyError.message}`);
       }
 
-      console.log('施設削除完了');
       setSuccess('施設が正常に削除されました。');
       
-      // 3秒後にリダイレクト
       setTimeout(() => {
         navigate('/my-facilities-management');
       }, 3000);
 
     } catch (error: any) {
-      console.error('Error deleting facility:', error);
       setError(`削除処理でエラーが発生しました: ${error.message}`);
     } finally {
       setIsDeleting(false);

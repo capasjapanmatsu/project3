@@ -168,22 +168,16 @@ export function DogManagement() {
       setDogUpdateError('');
       
       // 1. Supabase Storageから画像ファイルを削除
-      try {
-        const url = new URL(selectedDog.image_url);
-        const pathParts = url.pathname.split('/');
-        const fileName = pathParts[pathParts.length - 1];
-        const filePath = `${selectedDog.id}/${fileName}`;
-        
-        const { error: storageError } = await supabase.storage
-          .from('dog-images')
-          .remove([filePath]);
-        
-        if (storageError) {
-          console.warn('Warning: Could not delete image from storage:', storageError);
+      if (selectedDog.image_url && selectedDog.image_url.includes('dog-images/')) {
+        const imagePath = selectedDog.image_url.split('dog-images/')[1];
+        if (imagePath) {
+          const { error: storageError } = await supabase
+            .storage
+            .from('dog-images')
+            .remove([imagePath]);
+          
           // ストレージ削除エラーは警告として扱い、DB更新は続行
         }
-      } catch (storageErr) {
-        log('warn', 'Warning: Error processing image deletion', { error: storageErr });
       }
       
       // 2. データベースのimage_urlをnullに更新

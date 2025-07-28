@@ -71,19 +71,19 @@ export const OwnerDashboard = lazy(() => import('../pages/OwnerDashboard').then(
 export const OwnerPaymentSystem = lazy(() => import('../pages/OwnerPaymentSystem').then(module => ({ default: module.OwnerPaymentSystem })));
 
 // Admin Panel (Named Exports - Heavy Components)
-export const AdminDashboard = lazy(() => import('../pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
+export const AdminDashboard = lazy(() => import('../pages/AdminDashboard'));
 export const AdminManagement = lazy(() => import('../pages/AdminManagement').then(module => ({ default: module.AdminManagement })));
 export const AdminTasks = lazy(() => import('../pages/AdminTasks').then(module => ({ default: module.AdminTasks })));
-export const AdminUserManagement = lazy(() => import('../pages/AdminUserManagement').then(module => ({ default: module.AdminUserManagement })));
+export const AdminUserManagement = lazy(() => import('../pages/AdminUserManagement'));
 export const AdminUserDetail = lazy(() => import('../pages/AdminUserDetail').then(module => ({ default: module.AdminUserDetail })));
-export const AdminParkManagement = lazy(() => import('../pages/AdminParkManagement').then(module => ({ default: module.AdminParkManagement })));
-export const AdminReservationManagement = lazy(() => import('../pages/AdminReservationManagement').then(module => ({ default: module.AdminReservationManagement })));
-export const AdminShopManagement = lazy(() => import('../pages/AdminShopManagement').then(module => ({ default: module.AdminShopManagement })));
-export const AdminSalesManagement = lazy(() => import('../pages/AdminSalesManagement').then(module => ({ default: module.AdminSalesManagement })));
+export const AdminParkManagement = lazy(() => import('../pages/AdminParkManagement'));
+export const AdminReservationManagement = lazy(() => import('../pages/AdminReservationManagement'));
+export const AdminShopManagement = lazy(() => import('../pages/AdminShopManagement'));
+export const AdminSalesManagement = lazy(() => import('../pages/AdminSalesManagement'));
 export const AdminVaccineApproval = lazy(() => import('../pages/AdminVaccineApproval'));
 export const AdminFacilityApproval = lazy(() => import('../pages/AdminFacilityApproval'));
 export const AdminRevenueReport = lazy(() => import('../pages/AdminRevenueReport').then(module => ({ default: module.AdminRevenueReport })));
-export const AdminNewsManagement = lazy(() => import('../pages/AdminNewsManagement').then(module => ({ default: module.AdminNewsManagement })));
+export const AdminNewsManagement = lazy(() => import('../pages/AdminNewsManagement'));
 
 // Authentication & Security (Default Exports)
 export const TwoFactorSetup = lazy(() => import('../pages/TwoFactorSetup'));
@@ -103,13 +103,10 @@ export const BusinessInformation = lazy(() => import('../pages/BusinessInformati
 // Development & Deployment (Named Exports)
 export const Deploy = lazy(() => import('../pages/Deploy').then(module => ({ default: module.Deploy })));
 export const DeploymentHistory = lazy(() => import('../pages/DeploymentHistory').then(module => ({ default: module.DeploymentHistory })));
-export const NetlifySetupGuide = lazy(() => import('../pages/NetlifySetupGuide'));
 
 // PWA Documentation (Default Exports)
 export const PWASetupGuide = lazy(() => import('../pages/PWASetupGuide'));
-export const PWAImplementationGuide = lazy(() => import('../pages/PWAImplementationGuide'));
 export const PWADocumentation = lazy(() => import('../pages/PWADocumentation'));
-export const PWATestingSuite = lazy(() => import('../pages/PWATestingSuite'));
 export const PWALighthouseAudit = lazy(() => import('../pages/PWALighthouseAudit'));
 export const PWADeploymentGuide = lazy(() => import('../pages/PWADeploymentGuide'));
 

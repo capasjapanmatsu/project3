@@ -50,61 +50,45 @@ export const validateVaccineFile = (file: File): { isValid: boolean; error?: str
  */
 export const uploadVaccineImage = async (
   file: File,
-  config: VaccineUploadConfig
+  dogId: string,
+  vaccineType: VaccineType = 'mixed'
 ): Promise<VaccineUploadResult> => {
   try {
-    // ファイル検証
-    const validation = validateVaccineFile(file);
-    if (!validation.isValid) {
-      return { success: false, error: validation.error };
+    const dogIdTyped = dogId as string;
+    const fileValidation = validateVaccineFile(file);
+    
+    if (!fileValidation.isValid) {
+      throw new Error(fileValidation.error);
     }
 
-    // ファイル名の生成
-    const timestamp = Date.now();
-    const extension = file.name.split('.').pop() || 'jpg';
-    const fileName = `${config.dogId}/${config.imageType}_${timestamp}.${extension}`;
+    const processedFile = await processVaccineImage(file);
+    const fileName = `${dogIdTyped}_${vaccineType}_${Date.now()}.jpg`;
+    const filePath = `${dogIdTyped}/${fileName}`;
 
-    console.log('🧪 Starting vaccine image upload:', {
-      dogId: config.dogId,
-      imageType: config.imageType,
-      fileName,
-      fileSize: file.size,
-      fileType: file.type
-    });
-
-    // Supabase Storageにアップロード（Content-Typeを明示）
     const { data, error } = await supabase.storage
       .from('vaccine-certs')
-      .upload(fileName, file, {
+      .upload(filePath, processedFile, {
         cacheControl: '3600',
-        upsert: true,
-        contentType: file.type  // ← 重要: Content-Typeを明示
+        upsert: false
       });
 
     if (error) {
-      console.error('❌ Vaccine upload error:', error);
-      return { 
-        success: false, 
-        error: `アップロードに失敗しました: ${error.message}`,
-        errorCode: error.message
-      };
+      throw error;
     }
 
-    console.log('✅ Vaccine upload successful:', {
-      fileName,
-      data
-    });
+    const publicUrl = supabase.storage.from('vaccine-certs').getPublicUrl(data.path).data.publicUrl;
 
     return {
       success: true,
-      filePath: fileName
+      publicUrl,
+      fileName,
+      filePath: data.path
     };
 
   } catch (error) {
-    console.error('❌ Vaccine upload exception:', error);
-    return { 
-      success: false, 
-      error: `アップロード中にエラーが発生しました: ${(error as Error).message}` 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'アップロードに失敗しました'
     };
   }
 };
