@@ -375,9 +375,6 @@ export default function FacilityEdit() {
         throw new Error('電話番号を入力してください。');
       }
 
-      let identityDocumentUrl = facility.identity_document_url;
-      let identityDocumentFilename = facility.identity_document_filename;
-
       // 施設情報を更新
       const { error: updateError } = await supabase
         .from('pet_facilities')
