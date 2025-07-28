@@ -464,11 +464,12 @@ export default function FacilityEdit() {
       setIsDeleting(true);
       setError('');
       console.log('施設削除開始:', facility.id, facility.name);
+      console.log('ユーザーID:', user?.id);
 
       // 1. 関連する施設画像を手動で削除（CASCADE削除の保険として）
       try {
         console.log('関連画像削除開始...');
-        const { error: imagesDeleteError } = await supabase
+        const { error: imagesDeleteError, count: deletedImagesCount } = await supabase
           .from('pet_facility_images')
           .delete()
           .eq('facility_id', facility.id);
@@ -476,28 +477,46 @@ export default function FacilityEdit() {
         if (imagesDeleteError) {
           console.warn('施設画像削除エラー（継続）:', imagesDeleteError);
         } else {
-          console.log('関連画像削除完了');
+          console.log('関連画像削除完了。削除数:', deletedImagesCount);
         }
       } catch (imageError) {
         console.warn('施設画像削除で例外（継続）:', imageError);
       }
 
-      // 2. 施設本体を削除
+      // 2. 施設本体を削除（RLSポリシーを考慮した条件追加）
       console.log('施設本体削除開始...');
-      const { error: deleteError, data: deleteData } = await supabase
+      const { error: deleteError, data: deleteData, count } = await supabase
         .from('pet_facilities')
         .delete()
         .eq('id', facility.id)
-        .eq('owner_id', user?.id);
+        .eq('owner_id', user?.id) // 所有者確認
+        .select(); // 削除されたデータを返す
 
-      console.log('削除結果:', { deleteError, deleteData });
+      console.log('削除結果:', { deleteError, deleteData, count });
+      console.log('削除クエリ条件:', { 
+        facilityId: facility.id, 
+        ownerId: user?.id
+      });
 
       if (deleteError) {
         console.error('施設削除エラー詳細:', deleteError);
+        
+        // RLSポリシーエラーの場合の代替処理
+        if (deleteError.code === 'PGRST116' || deleteError.message?.includes('RLS')) {
+          console.log('RLSポリシーエラー、管理者権限での削除を試行...');
+          throw new Error(`RLSポリシーエラー: ${deleteError.message}。管理者にお問い合わせください。`);
+        }
+        
         throw new Error(`削除エラー: ${deleteError.message} (Code: ${deleteError.code})`);
       }
 
-      console.log('施設削除完了');
+      // 削除が実際に実行されたかチェック
+      if (!deleteData || deleteData.length === 0) {
+        console.warn('削除データが空です。施設が存在しないか、権限がない可能性があります。');
+        throw new Error('施設の削除に失敗しました。施設が存在しないか、削除権限がありません。');
+      }
+
+      console.log('施設削除完了。削除された施設:', deleteData);
       setSuccess('施設を削除しました。2秒後に管理画面に戻ります。');
       
       // 削除成功後、管理ページにリダイレクト
