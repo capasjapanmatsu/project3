@@ -165,7 +165,7 @@ export function MapView({
     const thumbnailHtml = imageUrl ? `
       <div style="
         width: 100%;
-        height: 120px;
+        height: 100px;
         margin-bottom: 8px;
         border-radius: 8px;
         overflow: hidden;
@@ -186,7 +186,7 @@ export function MapView({
     ` : `
       <div style="
         width: 100%;
-        height: 80px;
+        height: 60px;
         margin-bottom: 8px;
         border-radius: 8px;
         background: #f3f4f6;
@@ -255,6 +255,7 @@ export function MapView({
             font-weight: 500;
             cursor: pointer;
             transition: background 0.2s ease-in-out;
+            margin-top: 8px;
           "
           onmouseover="this.style.background='#2563eb'"
           onmouseout="this.style.background='#3b82f6'"
