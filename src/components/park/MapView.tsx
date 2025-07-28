@@ -228,8 +228,8 @@ export function MapView({
       <div style="
         min-width: 220px;
         max-width: 260px;
-        min-height: 260px;
-        padding: 0px 12px 20px 12px;
+        min-height: 240px;
+        padding: 0px 12px 40px 12px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       ">
         ${thumbnailHtml}
@@ -252,7 +252,7 @@ export function MapView({
           <button
             onclick="window.infoWindowNavigate('${detailPath}')"
             style="
-              width: 80px;
+              width: 60px;
               background: #3b82f6;
               color: white;
               border: none;
