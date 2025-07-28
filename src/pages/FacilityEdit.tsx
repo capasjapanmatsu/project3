@@ -22,6 +22,19 @@ import { CouponManager } from '../components/coupons/CouponManager';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 
+// カテゴリの日本語マッピング
+const CATEGORY_LABELS: { [key: string]: string } = {
+  'pet_hotel': 'ペットホテル',
+  'pet_salon': 'ペットサロン',
+  'veterinary': '動物病院',
+  'pet_cafe': 'ペットカフェ',
+  'pet_restaurant': 'ペット同伴レストラン',
+  'pet_shop': 'ペットショップ',
+  'pet_accommodation': 'ペット同伴宿泊',
+  'dog_training': 'しつけ教室',
+  'pet_friendly_other': 'その他ワンちゃん同伴可能施設'
+};
+
 // 画像処理ユーティリティ
 const processFacilityImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -680,7 +693,7 @@ export default function FacilityEdit() {
                           <option value="">カテゴリを選択</option>
                           {categories.map(category => (
                             <option key={category.id} value={category.id}>
-                              {category.name}
+                              {CATEGORY_LABELS[category.name] || category.name}
                             </option>
                           ))}
                         </select>
