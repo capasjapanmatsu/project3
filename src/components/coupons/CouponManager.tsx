@@ -242,6 +242,7 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
     const imageUrl = URL.createObjectURL(croppedFile);
     setImagePreview(imageUrl);
     setFormData({...formData, coupon_image: croppedFile});
+    setCouponImageFile(croppedFile);
     setShowImageCropper(false);
   };
 
