@@ -9,8 +9,7 @@ import {
     Plus,
     Save,
     Trash2,
-    UploadCloud,
-    X
+    UploadCloud
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -129,9 +128,6 @@ export default function FacilityEdit() {
     description: ''
   });
   
-  const [identityDocument, setIdentityDocument] = useState<File | null>(null);
-  const [identityPreview, setIdentityPreview] = useState<string>('');
-
   // タブ管理用のstate
   const [activeTab, setActiveTab] = useState<'info' | 'images' | 'coupons'>('info');
 
@@ -173,7 +169,7 @@ export default function FacilityEdit() {
       });
       
       if (facilityData.identity_document_url) {
-        setIdentityPreview(facilityData.identity_document_url);
+        // 身分証明書プレビューは削除されました
       }
       
       // 施設画像を取得
@@ -196,8 +192,8 @@ export default function FacilityEdit() {
       setCategories(categoriesData || []);
       
     } catch (error) {
-      setError('データの読み込みに失敗しました。');
-    } finally {
+      console.error('Failed to load facility data:', error);
+      setError('施設データの読み込みに失敗しました。');
       setIsLoading(false);
     }
   };
@@ -356,19 +352,6 @@ export default function FacilityEdit() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleIdentityFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const processedImage = await processFacilityImage(file);
-      setIdentityDocument(file);
-      setIdentityPreview(processedImage);
-    } catch (error) {
-      setError('画像の処理に失敗しました。');
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!facility || !user) return;
@@ -388,31 +371,12 @@ export default function FacilityEdit() {
       if (!formData.address.trim()) {
         throw new Error('住所を入力してください。');
       }
+      if (!formData.phone.trim()) {
+        throw new Error('電話番号を入力してください。');
+      }
 
       let identityDocumentUrl = facility.identity_document_url;
       let identityDocumentFilename = facility.identity_document_filename;
-
-      // 身分証明書がアップロードされている場合
-      if (identityDocument) {
-        const timestamp = Date.now();
-        const filename = `identity_${user.id}_${timestamp}.jpg`;
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('vaccine-certs')
-          .upload(filename, identityDocument, {
-            contentType: 'image/jpeg',
-            upsert: true
-          });
-
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from('vaccine-certs')
-          .getPublicUrl(filename);
-
-        identityDocumentUrl = urlData.publicUrl;
-        identityDocumentFilename = identityDocument.name;
-      }
 
       // 施設情報を更新
       const { error: updateError } = await supabase
@@ -421,12 +385,9 @@ export default function FacilityEdit() {
           name: formData.name.trim(),
           category_id: formData.category_id,
           address: formData.address.trim(),
-          phone: formData.phone.trim() || null,
+          phone: formData.phone.trim(),
           website: formData.website.trim() || null,
           description: formData.description.trim() || null,
-          identity_document_url: identityDocumentUrl,
-          identity_document_filename: identityDocumentFilename,
-          identity_status: identityDocument ? 'submitted' : facility.identity_status,
           updated_at: new Date().toISOString()
         })
         .eq('id', facility.id);
@@ -751,6 +712,7 @@ export default function FacilityEdit() {
                           value={formData.phone}
                           onChange={handleInputChange}
                           placeholder="電話番号を入力"
+                          required
                         />
                       </div>
 
@@ -779,53 +741,6 @@ export default function FacilityEdit() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="施設の特徴やサービス内容を入力"
                       />
-                    </div>
-
-                    {/* 身分証明書 */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        身分証明書
-                      </label>
-                      <div className="space-y-4">
-                        {identityPreview && (
-                          <div className="relative inline-block">
-                            <img
-                              src={identityPreview}
-                              alt="身分証明書プレビュー"
-                              className="max-w-xs h-auto border rounded-lg"
-                            />
-                            {identityDocument && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setIdentityDocument(null);
-                                  setIdentityPreview(facility.identity_document_url || '');
-                                }}
-                                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        )}
-                        
-                        <div>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleIdentityFileChange}
-                            className="hidden"
-                            id="identity-upload"
-                          />
-                          <label
-                            htmlFor="identity-upload"
-                            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
-                          >
-                            <ImageIcon className="w-4 h-4 mr-2" />
-                            {identityPreview ? '画像を変更' : '画像をアップロード'}
-                          </label>
-                        </div>
-                      </div>
                     </div>
 
                     {/* 施設画像 */}
