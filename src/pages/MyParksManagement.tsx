@@ -245,7 +245,7 @@ export function MyParksManagement() {
               className="mr-4"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />
-              ダッシュボードに戻る
+              マイページに戻る
             </Button>
           </div>
           
@@ -266,6 +266,28 @@ export function MyParksManagement() {
                 新規ドッグラン登録
               </Button>
             </Link>
+          </div>
+
+          {/* 新規ドッグラン募集バナー */}
+          <div className="mt-6 mb-6">
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold text-green-800 mb-2">
+                    🌟 新規ドッグラン募集中！
+                  </h2>
+                  <p className="text-green-700 text-sm">
+                    あなたの土地を活用してドッグラン事業を始めませんか？初期費用・運営サポート充実！
+                  </p>
+                </div>
+                <Link to="/park-registration" className="ml-6 flex-shrink-0">
+                  <Button className="bg-green-600 hover:bg-green-700 px-6 py-3 font-semibold">
+                    <Building className="w-5 h-5 mr-2" />
+                    新規ドッグラン募集詳細
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
 

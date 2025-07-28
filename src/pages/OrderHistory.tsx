@@ -1,26 +1,26 @@
-import { useEffect, useState } from 'react';
-import { useLocation, Link } from 'react-router-dom';
-import { 
-  Package, 
-  Truck, 
-  CheckCircle, 
-  Clock, 
-  X,
-  Eye,
-  Download,
-  Star,
-  ArrowLeft,
-  User,
-  CreditCard,
-  History,
-  ShoppingBag,
-  AlertTriangle
+import {
+    AlertTriangle,
+    ArrowLeft,
+    CheckCircle,
+    Clock,
+    CreditCard,
+    Download,
+    Eye,
+    History,
+    Package,
+    ShoppingBag,
+    Star,
+    Truck,
+    User,
+    X
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 import type { Order, OrderItem } from '../types';
+import { supabase } from '../utils/supabase';
 
 interface OrderWithItems extends Order {
   order_items: OrderItem[];
@@ -334,7 +334,7 @@ export function OrderHistory() {
           className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          ダッシュボードに戻る
+          マイページに戻る
         </Link>
       </div>
 

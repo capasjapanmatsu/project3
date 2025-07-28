@@ -1,26 +1,26 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { 
-  CreditCard, 
-  ArrowLeft, 
-  Plus, 
-  Trash2, 
-  CheckCircle, 
-  AlertTriangle,
-  Star,
-  Lock,
-  X,
-  History,
-  User,
-  Package,
-  ShoppingBag
+import {
+    AlertTriangle,
+    ArrowLeft,
+    CheckCircle,
+    CreditCard,
+    History,
+    Lock,
+    Package,
+    Plus,
+    ShoppingBag,
+    Star,
+    Trash2,
+    User,
+    X
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 import type { PaymentCard } from '../types';
+import { supabase } from '../utils/supabase';
 
 export function PaymentMethodSettings() {
   const { user } = useAuth();
@@ -279,7 +279,7 @@ export function PaymentMethodSettings() {
           className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          ダッシュボードに戻る
+          マイページに戻る
         </Link>
       </div>
 

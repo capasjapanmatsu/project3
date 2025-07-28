@@ -154,7 +154,7 @@ export function MyFacilitiesManagement() {
               className="mr-4"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />
-              ダッシュボードに戻る
+              マイページに戻る
             </Button>
           </div>
           

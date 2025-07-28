@@ -557,7 +557,7 @@ export function ProfileSettings() {
           className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          ダッシュボードに戻る
+          マイページに戻る
         </Link>
       </div>
 

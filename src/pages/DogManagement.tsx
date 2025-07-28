@@ -594,8 +594,8 @@ export function DogManagement() {
       <div className="flex justify-between items-center">
         <div>
           <Link to="/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-2">
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            ダッシュボードに戻る
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            マイページに戻る
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">ワンちゃん管理</h1>
           <p className="text-gray-600">登録済みのワンちゃんの情報を管理できます</p>
