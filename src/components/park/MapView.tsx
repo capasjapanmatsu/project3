@@ -165,8 +165,8 @@ export function MapView({
     const thumbnailHtml = imageUrl ? `
       <div style="
         width: 100%;
-        height: 80px;
-        margin: 0px 0px 2px 0px;
+        height: 120px;
+        margin: 0px 0px 4px 0px;
         border-radius: 8px;
         overflow: hidden;
         background: #f3f4f6;
@@ -186,8 +186,8 @@ export function MapView({
     ` : `
       <div style="
         width: 100%;
-        height: 50px;
-        margin: 0px 0px 2px 0px;
+        height: 80px;
+        margin: 0px 0px 4px 0px;
         border-radius: 8px;
         background: #f3f4f6;
         display: flex;
@@ -213,9 +213,10 @@ export function MapView({
         <p style="
           font-size: 12px;
           color: #6b7280;
-          margin: 2px 0 2px 0;
+          margin: 0;
           display: flex;
           align-items: center;
+          flex: 1;
         ">
           <span style="margin-right: 4px;">📍</span>
           現在地から ${formatDistance(distance)}
@@ -240,28 +241,33 @@ export function MapView({
           line-height: 1.3;
         ">${itemName}</h3>
         
-        ${distanceText}
-        
-        <button
-          onclick="window.infoWindowNavigate('${detailPath}')"
-          style="
-            width: 100%;
-            background: #3b82f6;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s ease-in-out;
-            margin-top: 2px;
-          "
-          onmouseover="this.style.background='#2563eb'"
-          onmouseout="this.style.background='#3b82f6'"
-        >
-          詳細を見る
-        </button>
+        <div style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-top: 2px;
+        ">
+          ${distanceText}
+          <button
+            onclick="window.infoWindowNavigate('${detailPath}')"
+            style="
+              width: 80px;
+              background: #3b82f6;
+              color: white;
+              border: none;
+              padding: 6px 12px;
+              border-radius: 6px;
+              font-size: 12px;
+              font-weight: 500;
+              cursor: pointer;
+              transition: background 0.2s ease-in-out;
+            "
+            onmouseover="this.style.background='#2563eb'"
+            onmouseout="this.style.background='#3b82f6'"
+          >
+            詳細
+          </button>
+        </div>
       </div>
     `;
   }, [currentLocation, calculateDistance, formatDistance]);
