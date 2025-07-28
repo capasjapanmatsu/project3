@@ -191,6 +191,7 @@ export default function FacilityEdit() {
       if (categoriesError) throw categoriesError;
       setCategories(categoriesData || []);
       
+      setIsLoading(false);
     } catch (error) {
       console.error('Failed to load facility data:', error);
       setError('施設データの読み込みに失敗しました。');
