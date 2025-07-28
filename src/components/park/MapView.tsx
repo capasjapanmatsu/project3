@@ -228,8 +228,8 @@ export function MapView({
       <div style="
         min-width: 220px;
         max-width: 260px;
-        min-height: 240px;
-        padding: 0px 12px 40px 12px;
+        min-height: 200px;
+        padding: 0px 12px 5px 12px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       ">
         ${thumbnailHtml}
@@ -246,13 +246,13 @@ export function MapView({
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-top: 5px;
+          margin-top: 3px;
         ">
           ${distanceText}
           <button
             onclick="window.infoWindowNavigate('${detailPath}')"
             style="
-              width: 60px;
+              width: 40px;
               background: #3b82f6;
               color: white;
               border: none;
