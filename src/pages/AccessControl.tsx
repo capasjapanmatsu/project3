@@ -53,7 +53,7 @@ export function AccessControl() {
   const OTHERS_PARKS_PER_PAGE = 10; // その他施設の1ページあたり表示件数
 
   // PIN生成機能（簡略化版）
-  const generatePin = async () => {
+  const generatePin = () => {
     if (!selectedPark || selectedDogs.length === 0) {
       setError('犬と施設を選択してください');
       return;
@@ -115,7 +115,7 @@ export function AccessControl() {
     setNearbyParks(sorted);
     
     // 最も近い施設を自動選択
-    if (sorted.length > 0 && !selectedPark) {
+    if (sorted.length > 0 && !selectedPark && sorted[0]) {
       handleParkSelection(sorted[0]);
     }
   };
@@ -136,8 +136,6 @@ export function AccessControl() {
       park_id: park.id,
       lock_name: `${park.name} - 入場ゲート`,
       lock_type: 'ttlock_smart_lock',
-      is_online: true,
-      battery_level: 85,
       purpose: 'entry_exit',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -147,9 +145,10 @@ export function AccessControl() {
   };
 
   useEffect(() => {
-    const fetchUserDogs = async () => {
+    const fetchInitialData = async () => {
       if (!user) return;
 
+      // 🚀 フェーズ1: 最優先データ（犬情報）を最初に取得
       try {
         const { data, error } = await supabase
           .from('dogs')
@@ -168,32 +167,47 @@ export function AccessControl() {
         if (error) {
           console.warn('Error fetching dogs:', error);
           setError('ワンちゃんの情報を取得できませんでした。');
-          return;
+        } else {
+          // ワクチン承認済みのワンちゃんのみをフィルタリング
+          const approvedDogs = (data || []).filter((dog: any) => {
+            const vaccineStatus = getVaccineStatusFromDog(dog);
+            return vaccineStatus === 'approved';
+          });
+          
+          setDogs(approvedDogs as Dog[]);
+
+          // 承認済みのワンちゃんがいない場合の警告
+          if (data && data.length > 0 && approvedDogs.length === 0) {
+            setError('ワクチン接種証明書が承認されたワンちゃんがいません。マイページからワクチン証明書をアップロードして承認を受けてください。');
+          }
         }
-        
-        // ワクチン承認済みのワンちゃんのみをフィルタリング
-        const approvedDogs = (data || []).filter(dog => {
-          const vaccineStatus = getVaccineStatusFromDog(dog);
-          return vaccineStatus === 'approved';
-        });
-        
-        setDogs(approvedDogs);
-        
-        // 承認済みのワンちゃんがいない場合の警告
-        if (data && data.length > 0 && approvedDogs.length === 0) {
-          setError('ワクチン接種証明書が承認されたワンちゃんがいません。マイページからワクチン証明書をアップロードして承認を受けてください。');
-        }
+
+        // 基本的な犬情報で画面表示を開始
+        setIsLoading(false);
+
+        // 🚀 フェーズ2: バックグラウンドで並列取得
+        const backgroundPromises = [
+          // ドッグラン情報の取得
+          fetchParksData(),
+          // 決済状況の確認
+          fetchPaymentStatusData(),
+          // 位置情報の取得
+          getCurrentUserLocation()
+        ];
+
+        // 並列実行（エラー処理は個別に行う）
+        void Promise.allSettled(backgroundPromises);
+
       } catch (error) {
-        console.error('Error fetching dogs:', error);
-        setError('ワンちゃんの情報を取得できませんでした。');
+        console.error('Error in initial data fetch:', error);
+        setError('データの取得に失敗しました。');
+        setIsLoading(false);
       }
     };
 
-    const fetchParks = async () => {
+    // 🔄 ドッグラン情報取得の分離関数
+    const fetchParksData = async () => {
       try {
-        setIsLoading(true);
-        
-        // より安全なクエリ（is_publicカラムの存在に関係なく動作）
         let query = supabase
           .from('dog_parks')
           .select('*')
@@ -209,7 +223,6 @@ export function AccessControl() {
               id: 'test-park-1',
               name: 'テスト用ドッグラン',
               address: '東京都渋谷区1-1-1',
-              prefecture: '東京都',
               city: '渋谷区',
               status: 'approved',
               is_public: true,
@@ -220,29 +233,17 @@ export function AccessControl() {
             }
           ];
           setParks(fallbackParks);
-
-          // 位置情報が取得されている場合、距離順でソート
-          if (userLocation) {
-            sortParksByDistance(fallbackParks, userLocation);
-          }
           return;
         }
 
         setParks(parksData || []);
-
-        // 位置情報が取得されている場合、距離順でソート
-        if (userLocation && parksData) {
-          sortParksByDistance(parksData, userLocation);
-        }
       } catch (error) {
         console.error('Error fetching parks:', error);
-        setError('施設データの取得に失敗しました。');
-      } finally {
-        setIsLoading(false);
       }
     };
 
-    const fetchPaymentStatus = async () => {
+    // 🔄 決済状況確認の分離関数
+    const fetchPaymentStatusData = async () => {
       if (!user) return;
       
       try {
@@ -259,16 +260,20 @@ export function AccessControl() {
       }
     };
 
-    fetchUserDogs();
-    fetchParks();
-    fetchPaymentStatus();
-    getCurrentUserLocation();
+    fetchInitialData();
   }, [user]);
 
-  // 位置情報が更新されたら施設をソート
+  // 🚀 フェーズ3: 位置情報が更新されたら施設をソート（低優先度処理）
   useEffect(() => {
     if (userLocation && parks.length > 0) {
-      sortParksByDistance(parks, userLocation);
+      // 🔄 非同期でソート処理を実行（UIをブロックしない）
+      const sortParksAsync = async () => {
+        // 少し遅延を入れてメインスレッドを譲る
+        await new Promise(resolve => setTimeout(resolve, 10));
+        sortParksByDistance(parks, userLocation);
+      };
+      
+      void sortParksAsync();
     }
   }, [userLocation, parks]);
 
