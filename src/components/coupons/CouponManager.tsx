@@ -425,7 +425,7 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    クーポン画像（オプション）
+                    ご用意頂いた画像にする場合は画像アップロードしてください。
                   </label>
                   <div className="flex items-center space-x-4">
                     <Button
