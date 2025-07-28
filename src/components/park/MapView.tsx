@@ -233,7 +233,7 @@ export function MapView({
         ${thumbnailHtml}
         
         <h3 style="
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 600;
           margin: 0 0 2px 0;
           color: #1f2937;
@@ -249,7 +249,7 @@ export function MapView({
             background: #3b82f6;
             color: white;
             border: none;
-            padding: 8px 12px;
+            padding: 6px 12px;
             border-radius: 6px;
             font-size: 12px;
             font-weight: 500;
