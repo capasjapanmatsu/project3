@@ -165,7 +165,7 @@ export function MapView({
     const thumbnailHtml = imageUrl ? `
       <div style="
         width: 100%;
-        height: 100px;
+        height: 80px;
         margin: 0px 0px 2px 0px;
         border-radius: 8px;
         overflow: hidden;
@@ -186,7 +186,7 @@ export function MapView({
     ` : `
       <div style="
         width: 100%;
-        height: 60px;
+        height: 50px;
         margin: 0px 0px 2px 0px;
         border-radius: 8px;
         background: #f3f4f6;
@@ -213,7 +213,7 @@ export function MapView({
         <p style="
           font-size: 12px;
           color: #6b7280;
-          margin: 4px 0 8px 0;
+          margin: 2px 0 2px 0;
           display: flex;
           align-items: center;
         ">
@@ -235,7 +235,7 @@ export function MapView({
         <h3 style="
           font-size: 14px;
           font-weight: 600;
-          margin: 0 0 4px 0;
+          margin: 0 0 2px 0;
           color: #1f2937;
           line-height: 1.3;
         ">${itemName}</h3>
@@ -255,7 +255,7 @@ export function MapView({
             font-weight: 500;
             cursor: pointer;
             transition: background 0.2s ease-in-out;
-            margin-top: 4px;
+            margin-top: 2px;
           "
           onmouseover="this.style.background='#2563eb'"
           onmouseout="this.style.background='#3b82f6'"
