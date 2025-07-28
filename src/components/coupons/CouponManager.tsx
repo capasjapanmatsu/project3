@@ -597,28 +597,115 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
         ) : (
           coupons.map((coupon) => (
             <Card key={coupon.id} className="p-6">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{coupon.title}</h3>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* 左側：チケット風クーポンデザイン */}
+                <div className="w-full max-w-sm mx-auto">
+                  {coupon.coupon_image_url ? (
+                    // 画像クーポンの表示
+                    <div className="aspect-square w-full border-2 border-gray-300 rounded-lg overflow-hidden">
+                      <img
+                        src={coupon.coupon_image_url}
+                        alt="クーポン画像"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    // 文字クーポンの表示
+                    <div className="aspect-square w-full border-2 border-gray-300 rounded-lg relative overflow-hidden">
+                      {/* チケット風の背景 */}
+                      <div className="w-full h-full bg-gradient-to-br from-red-500 to-red-600 relative">
+                        {/* チケットの切り込み装飾 */}
+                        <div className="absolute top-1/2 -left-3 w-6 h-6 bg-white rounded-full transform -translate-y-1/2"></div>
+                        <div className="absolute top-1/2 -right-3 w-6 h-6 bg-white rounded-full transform -translate-y-1/2"></div>
+                        
+                        {/* 背景の薄い「COUPON」テキスト */}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-10">
+                          <span className="text-6xl font-bold text-white transform rotate-12">
+                            COUPON
+                          </span>
+                        </div>
+                        
+                        {/* メインコンテンツ */}
+                        <div className="relative z-10 flex flex-col items-center justify-center h-full p-4 text-center space-y-3">
+                          {/* ドッグパークJPクーポン（一番上） */}
+                          <div className="bg-white/95 px-3 py-1 rounded-full shadow-sm">
+                            <span className="text-xs font-medium text-red-600">
+                              ドッグパークJPクーポン
+                            </span>
+                          </div>
+                          
+                          {/* 店舗名（2番目） */}
+                          <div className="text-white">
+                            <h2 className="text-sm font-bold leading-tight">
+                              {facilityName}
+                            </h2>
+                          </div>
+                          
+                          {/* クーポンタイトル */}
+                          <div className="text-white">
+                            <h3 className="text-base font-bold leading-tight">
+                              {coupon.title}
+                            </h3>
+                          </div>
+                          
+                          {/* サービス内容 */}
+                          <div className="text-white/90">
+                            <p className="text-sm leading-tight">
+                              {coupon.service_content}
+                            </p>
+                          </div>
+                          
+                          {/* 割引表示 */}
+                          {(coupon.discount_value && coupon.discount_type) && (
+                            <div className="bg-white text-red-600 px-4 py-2 rounded-lg shadow-md">
+                              <span className="text-2xl font-bold">
+                                {coupon.discount_value}{coupon.discount_type === 'amount' ? '円' : '%'}
+                              </span>
+                              <span className="text-sm ml-1 font-medium">
+                                OFF
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* 詳細説明 */}
+                          {coupon.description && (
+                            <div className="border-t border-white/30 pt-2">
+                              <p className="text-xs text-white/80">
+                                {coupon.description}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="mt-2 text-xs text-gray-500 text-center">
+                    {coupon.coupon_image_url ? '画像クーポン' : '文字クーポン'}
+                  </div>
+                </div>
+
+                {/* 右側：統計情報と操作ボタン */}
+                <div className="space-y-4">
+                  {/* ステータス表示 */}
+                  <div className="flex items-center space-x-3">
+                    <span className={`px-3 py-1 text-sm font-medium rounded-full ${
                       coupon.is_active 
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-gray-100 text-gray-800'
                     }`}>
                       {coupon.is_active ? '有効' : '無効'}
                     </span>
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                    <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
                       {coupon.usage_limit_type === 'once' ? '1回限り' : '何回でも'}
                     </span>
                   </div>
 
-                  <p className="text-gray-600 mb-3">{coupon.service_content}</p>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-500">期間：</span>
-                      <div className="flex items-center">
+                  {/* 統計情報 */}
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">期間：</span>
+                      <div className="flex items-center text-sm">
                         <Calendar className="w-4 h-4 mr-1 text-gray-400" />
                         {new Date(coupon.start_date).toLocaleDateString()} 〜 
                         {new Date(coupon.end_date).toLocaleDateString()}
@@ -626,75 +713,61 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
                     </div>
 
                     {couponStats[coupon.id] && (
-                      <div>
-                        <span className="text-gray-500">取得数：</span>
-                        <div className="flex items-center">
-                          <Users className="w-4 h-4 mr-1 text-gray-400" />
-                          {couponStats[coupon.id].total_obtained}人
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">取得数：</span>
+                          <div className="flex items-center text-sm">
+                            <Users className="w-4 h-4 mr-1 text-gray-400" />
+                            {couponStats[coupon.id].total_obtained}人
+                          </div>
                         </div>
-                      </div>
-                    )}
 
-                    {couponStats[coupon.id] && (
-                      <div>
-                        <span className="text-gray-500">使用数：</span>
-                        <div className="flex items-center">
-                          <Gift className="w-4 h-4 mr-1 text-gray-400" />
-                          {couponStats[coupon.id].total_used}回
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">使用数：</span>
+                          <div className="flex items-center text-sm">
+                            <Gift className="w-4 h-4 mr-1 text-gray-400" />
+                            {couponStats[coupon.id].total_used}回
+                          </div>
                         </div>
-                      </div>
-                    )}
 
-                    {couponStats[coupon.id] && (
-                      <div>
-                        <span className="text-gray-500">使用率：</span>
-                        <div className="font-medium">
-                          {couponStats[coupon.id].usage_rate}%
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">使用率：</span>
+                          <div className="font-medium text-sm">
+                            {couponStats[coupon.id].usage_rate}%
+                          </div>
                         </div>
-                      </div>
+                      </>
                     )}
                   </div>
 
-                  {coupon.description && (
-                    <p className="text-sm text-gray-500 mt-2">{coupon.description}</p>
-                  )}
-                </div>
-
-                <div className="flex items-center space-x-2 ml-4">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handleEdit(coupon)}
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    編集
-                  </Button>
-                  <Button
-                    variant={coupon.is_active ? "secondary" : "primary"}
-                    size="sm"
-                    onClick={() => handleToggleActive(coupon)}
-                  >
-                    {coupon.is_active ? '無効化' : '有効化'}
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => handleDelete(coupon.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  {/* 操作ボタン */}
+                  <div className="flex flex-col space-y-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleEdit(coupon)}
+                      className="w-full"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      編集
+                    </Button>
+                    <Button
+                      variant={coupon.is_active ? "secondary" : "primary"}
+                      onClick={() => handleToggleActive(coupon)}
+                      className="w-full"
+                    >
+                      {coupon.is_active ? '無効化' : '有効化'}
+                    </Button>
+                    <Button
+                      variant="danger"
+                      onClick={() => handleDelete(coupon.id)}
+                      className="w-full"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      削除
+                    </Button>
+                  </div>
                 </div>
               </div>
-
-              {coupon.coupon_image_url && (
-                <div className="mt-4">
-                  <img
-                    src={coupon.coupon_image_url}
-                    alt="クーポン画像"
-                    className="max-w-md h-auto border rounded-lg"
-                  />
-                </div>
-              )}
             </Card>
           ))
         )}
