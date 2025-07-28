@@ -143,10 +143,62 @@ export function MapView({
     }
   }, []);
 
-  // 【Phase 3】距離計算付きInfoWindowコンテンツを生成する関数
+  // 【Phase 4】サムネイル画像付きInfoWindowコンテンツを生成する関数
   const createSimpleInfoWindowContent = useCallback((item: DogPark | PetFacility, type: 'park' | 'facility'): string => {
     const itemName = item.name || '名前未設定';
     const detailPath = type === 'park' ? `/parks/${item.id}` : `/facilities/${item.id}`;
+    
+    // 画像URLを取得（複数の可能性のあるフィールドから取得）
+    let imageUrl = '';
+    // プロパティの存在チェックを使用
+    if ('main_image_url' in item && item.main_image_url) {
+      imageUrl = item.main_image_url;
+    } else if ('image_url' in item && item.image_url) {
+      imageUrl = item.image_url;
+    } else if ('cover_image_url' in item && item.cover_image_url) {
+      imageUrl = item.cover_image_url;
+    } else if ('thumbnail_url' in item && item.thumbnail_url) {
+      imageUrl = item.thumbnail_url;
+    }
+    
+    // サムネイル画像のHTML（画像がある場合のみ表示）
+    const thumbnailHtml = imageUrl ? `
+      <div style="
+        width: 100%;
+        height: 120px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #f3f4f6;
+      ">
+        <img 
+          src="${imageUrl}" 
+          alt="${itemName}"
+          style="
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+          "
+          onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:12px;\\'>画像なし</div>';"
+        />
+      </div>
+    ` : `
+      <div style="
+        width: 100%;
+        height: 80px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        background: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #9ca3af;
+        font-size: 12px;
+      ">
+        ${type === 'park' ? '🐾' : '🏥'} 画像なし
+      </div>
+    `;
     
     // 現在地がある場合は距離を計算
     let distanceText = '';
@@ -173,11 +225,13 @@ export function MapView({
     
     return `
       <div style="
-        min-width: 200px;
-        max-width: 240px;
+        min-width: 220px;
+        max-width: 260px;
         padding: 12px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       ">
+        ${thumbnailHtml}
+        
         <h3 style="
           font-size: 14px;
           font-weight: 600;
@@ -200,7 +254,7 @@ export function MapView({
             font-size: 12px;
             font-weight: 500;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: background 0.2s ease-in-out;
           "
           onmouseover="this.style.background='#2563eb'"
           onmouseout="this.style.background='#3b82f6'"
