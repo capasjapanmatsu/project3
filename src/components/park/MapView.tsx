@@ -1,4 +1,6 @@
-// MapView.tsx - シンプルなマップ表示コンポーネント
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { MapPin, Navigation } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import useAuth from '../../context/AuthContext';
@@ -7,8 +9,6 @@ import { type PetFacility } from '../../types/facilities';
 import { supabase } from '../../utils/supabase';
 import Button from '../Button';
 import Card from '../Card';
-
-// MapView.tsx - シンプルなマップ表示コンポーネント
 
 // Google Maps API の簡単な型定義
 declare global {
@@ -48,6 +48,7 @@ export function MapView({
 }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoadingAPI, setIsLoadingAPI] = useState(true);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(userLocation || null);
   const [mapError, setMapError] = useState<string>('');
   const [isLocating, setIsLocating] = useState(false);
@@ -56,6 +57,9 @@ export function MapView({
   const { user } = useAuth();
   const [userDogs, setUserDogs] = useState<Dog[]>([]);
   const [userDogIcon, setUserDogIcon] = useState<string>('');
+
+  // マップの中心位置を決定
+  const mapCenter = center || currentLocation || DEFAULT_CENTER;
 
   // デフォルトの犬アイコン（SVG）
   const defaultDogIcon = `
@@ -66,11 +70,212 @@ export function MapView({
     </svg>
   `;
 
-  // ユーザーの犬データを取得
+  // Google Maps API を動的に読み込む
+  const loadGoogleMapsAPI = useCallback(async () => {
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
+    
+    if (!apiKey) {
+      setMapError('Google Maps API キーが設定されていません');
+      setIsLoadingAPI(false);
+      return;
+    }
+
+    // すでに読み込み済みの場合
+    const windowObj = window as any;
+    if (windowObj.google?.maps) {
+      setIsLoadingAPI(false);
+      return;
+    }
+
+    // 読み込み中の場合は待機
+    if (windowObj._googleMapsLoading) {
+      const checkInterval = setInterval(() => {
+        if (windowObj.google?.maps) {
+          clearInterval(checkInterval);
+          setIsLoadingAPI(false);
+        }
+      }, 100);
+      return;
+    }
+
+    try {
+      windowObj._googleMapsLoading = true;
+      
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+
+      await new Promise<void>((resolve, reject) => {
+        script.onload = () => {
+          windowObj._googleMapsLoading = false;
+          if (windowObj.google?.maps) {
+            console.log('Google Maps API 読み込み完了');
+            resolve();
+          } else {
+            reject(new Error('Google Maps API読み込み後にAPIが利用できません'));
+          }
+        };
+
+        script.onerror = () => {
+          windowObj._googleMapsLoading = false;
+          reject(new Error('Google Maps APIの読み込みに失敗しました'));
+        };
+
+        document.head.appendChild(script);
+      });
+
+    } catch (error) {
+      console.error('Google Maps API読み込みエラー:', error);
+      setMapError('Google Maps APIの読み込みに失敗しました');
+    } finally {
+      setIsLoadingAPI(false);
+    }
+  }, []);
+
+  // マーカーを追加する関数
+  const addMarkers = useCallback((map: any) => {
+    try {
+      const windowObj = window as any;
+      
+      // ドッグパークのマーカーを追加
+      if (activeView === 'dogparks' && parks) {
+        parks.forEach(park => {
+          if (park.latitude && park.longitude) {
+            new windowObj.google.maps.Marker({
+              position: { lat: park.latitude, lng: park.longitude },
+              map: map,
+              title: park.name,
+              icon: {
+                url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
+                  <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="16" cy="16" r="12" fill="#3B82F6" stroke="white" stroke-width="2"/>
+                    <path d="M12 10h8v2h-8zm0 4h8v2h-8zm0 4h6v2h-6z" fill="white"/>
+                  </svg>
+                `)}`
+              }
+            });
+          }
+        });
+      }
+
+      // ペット施設のマーカーを追加
+      if (activeView === 'facilities' && facilities) {
+        facilities.forEach(facility => {
+          if (facility.latitude && facility.longitude) {
+            new windowObj.google.maps.Marker({
+              position: { lat: facility.latitude, lng: facility.longitude },
+              map: map,
+              title: facility.name,
+              icon: {
+                url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
+                  <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="16" cy="16" r="12" fill="#10B981" stroke="white" stroke-width="2"/>
+                    <path d="M10 14h12v2h-12zm2-4h8v2h-8zm-2 8h12v2h-12z" fill="white"/>
+                  </svg>
+                `)}`
+              }
+            });
+          }
+        });
+      }
+
+      // ユーザーの現在地マーカー
+      if (currentLocation) {
+        new windowObj.google.maps.Marker({
+          position: currentLocation,
+          map: map,
+          title: '現在地',
+          icon: {
+            url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(defaultDogIcon)}`
+          }
+        });
+      }
+
+    } catch (error) {
+      console.error('マーカー追加エラー:', error);
+    }
+  }, [activeView, parks, facilities, currentLocation, defaultDogIcon]);
+
+  // マップを初期化する関数
+  const initializeMap = useCallback(() => {
+    if (!mapRef.current) return;
+    
+    const windowObj = window as any;
+    if (!windowObj.google?.maps) {
+      console.warn('Google Maps API未読み込み');
+      return;
+    }
+
+    try {
+      const map = new windowObj.google.maps.Map(mapRef.current, {
+        center: mapCenter,
+        zoom: currentLocation ? 15 : 13,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+      });
+
+      // マーカーを追加
+      addMarkers(map);
+      setIsLoaded(true);
+      setMapError('');
+      
+    } catch (error) {
+      console.error('マップ初期化エラー:', error);
+      setMapError('地図の初期化に失敗しました');
+    }
+  }, [mapCenter, currentLocation, addMarkers]);
+
+  // Google Maps API読み込み
+  useEffect(() => {
+    void loadGoogleMapsAPI();
+  }, [loadGoogleMapsAPI]);
+
+  // API読み込み完了後にマップを初期化
+  useEffect(() => {
+    if (!isLoadingAPI && !mapError) {
+      initializeMap();
+    }
+  }, [isLoadingAPI, mapError, initializeMap, parks, facilities, activeView]);
+
+  // 現在地を取得
+  const getCurrentLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setMapError('位置情報がサポートされていません');
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        setCurrentLocation(location);
+        setIsLocating(false);
+        // 親コンポーネントに位置情報を通知
+        if (onLocationSelect) {
+          onLocationSelect(location);
+        }
+      },
+      (error) => {
+        console.warn('位置情報の取得に失敗:', error);
+        setIsLocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 600000
+      }
+    );
+  }, [onLocationSelect]);
+
+  // ユーザーの犬データを取得（簡略化）
   useEffect(() => {
     const fetchUserDogs = async () => {
       if (!user) {
-        // ユーザーがいない場合はデフォルトアイコン
         setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
         return;
       }
@@ -82,28 +287,13 @@ export function MapView({
           .eq('user_id', user.id)
           .order('created_at', { ascending: true });
 
-        if (error) {
-          console.warn('Error fetching user dogs:', error);
-          // エラーの場合はデフォルトアイコンを使用
-          setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
-          return;
+        if (!error && dogs && dogs.length > 0) {
+          setUserDogs(dogs);
         }
         
-        if (dogs && dogs.length > 0) {
-          setUserDogs(dogs);
-          // 1頭目の犬の画像を使用（ただし安全に処理）
-          const firstDog = dogs[0];
-          if (firstDog?.image_url && String(firstDog.image_url).trim()) {
-            // 画像URLが有効かどうかを確認せず、直接デフォルトアイコンを使用
-            console.log('User dog image found but using default icon for safety:', firstDog.image_url);
-            setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
-          } else {
-            setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
-          }
-        } else {
-          // 犬が未登録の場合はデフォルトアイコン
-          setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
-        }
+        // 常にデフォルトアイコンを使用
+        setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
+        
       } catch (error) {
         console.error('Error fetching user dogs:', error);
         setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
@@ -111,154 +301,22 @@ export function MapView({
     };
 
     void fetchUserDogs();
-  }, [user]);
+  }, [user, defaultDogIcon]);
 
-  // 犬の画像を円形マーカー用に変換（現在は使用しない）
-  const createDogMarkerIcon = (imageUrl: string): string => {
-    // 安全のため、常にデフォルトアイコンを返す
-    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(defaultDogIcon)}`;
-  };
-
-  // マーカーを追加する関数
-  const addMarkers = (map: any) => {
-    try {
-      // ドッグパークのマーカーを追加
-      if (activeView === 'dogparks' && parks) {
-        parks.forEach(park => {
-          if (park.latitude && park.longitude) {
-            new (window as any).google.maps.Marker({
-              position: { lat: park.latitude, lng: park.longitude },
-              map: map,
-              title: park.name,
-            });
-          }
-        });
-      }
-
-      // ペット施設のマーカーを追加
-      if (activeView === 'facilities' && facilities) {
-        facilities.forEach(facility => {
-          if (facility.latitude && facility.longitude) {
-            new (window as any).google.maps.Marker({
-              position: { lat: facility.latitude, lng: facility.longitude },
-              map: map,
-              title: facility.name,
-            });
-          }
-        });
-      }
-
-      // 現在地のマーカーを追加
-      if (currentLocation) {
-        new (window as any).google.maps.Marker({
-          position: currentLocation,
-          map: map,
-          title: '現在地',
-        });
-      }
-    } catch (error) {
-      console.error('Error adding markers:', error);
-    }
-  };
-
-  // マップの中心位置を決定（現在地 > 指定されたcenter > デフォルト）
-  const mapCenter = currentLocation || center || DEFAULT_CENTER;
-
-  // 現在地を自動取得
-  useEffect(() => {
-    if (!currentLocation && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          };
-          setCurrentLocation(location);
-          // 親コンポーネントに位置情報を通知
-          if (onLocationSelect) {
-            onLocationSelect(location);
-          }
-        },
-        (error) => {
-          console.warn('位置情報の取得に失敗:', error);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 600000
-        }
-      );
-    }
-  }, [currentLocation, onLocationSelect]);
-
-  // 現在地を手動取得
-  const getCurrentLocation = useCallback(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          };
-          setCurrentLocation(location);
-          // 親コンポーネントに位置情報を通知
-          if (onLocationSelect) {
-            onLocationSelect(location);
-          }
-        },
-        (error) => {
-          console.warn('位置情報の取得に失敗:', error);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 600000
-        }
-      );
-    }
-  }, [onLocationSelect]);
-
-  // Google Maps の初期化
-  useEffect(() => {
-    const initializeMap = () => {
-      if (mapRef.current && (window as any).google?.maps) {
-        try {
-          const map = new (window as any).google.maps.Map(mapRef.current, {
-            center: mapCenter,
-            zoom: currentLocation ? 15 : 13,
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: false,
-          });
-
-          // マーカーを追加
-          addMarkers(map);
-          setIsLoaded(true);
-        } catch (error) {
-          console.error('Error initializing map:', error);
-          setMapError('地図の初期化に失敗しました');
-        }
-      }
-    };
-
-    // GoogleMapsProviderが読み込み完了したら地図を初期化
-    initializeMap();
-  }, [parks, facilities, activeView, center, currentLocation, mapCenter, userDogIcon, userDogs]);
-
-  // Google Maps API キーが設定されていない場合のフォールバック
-  if (!import.meta.env.VITE_GOOGLE_MAPS_API_KEY) {
-    console.warn('Google Maps API キーが設定されていません');
+  // エラー状態の表示
+  if (mapError) {
     return (
-      <Card className="p-6 text-center">
-        <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold mb-2">マップは現在利用できません</h3>
-        <p className="text-gray-600 text-sm mb-4">
-          Google Maps API キーが設定されていないため、マップ機能を使用できません
-        </p>
-        <div className="text-xs text-gray-500">
-          <p>ドッグパーク: {parks.length}件</p>
-          <p>ペット施設: {facilities.length}件</p>
-        </div>
+      <Card className={`p-6 text-center ${className}`}>
+        <MapPin className="w-12 h-12 text-red-400 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2">マップを読み込めませんでした</h3>
+        <p className="text-gray-600 text-sm mb-4">{mapError}</p>
+        <Button onClick={() => {
+          setMapError('');
+          setIsLoadingAPI(true);
+          void loadGoogleMapsAPI();
+        }}>
+          再読み込み
+        </Button>
       </Card>
     );
   }
@@ -274,7 +332,7 @@ export function MapView({
           <div className="flex items-center">
             <MapPin className="w-5 h-5 text-blue-600 mr-2" />
             <h3 className="font-semibold">
-              {activeView === 'dogparks' ? 'ドッグパーク' : 'ペット施設'}マップ
+              {activeView === 'dogparks' ? 'ドッグラン' : 'ペット施設'}マップ
             </h3>
           </div>
           <span className="text-sm text-gray-500">
@@ -287,7 +345,7 @@ export function MapView({
             {activeView === 'dogparks' && (
               <div className="flex items-center">
                 <div className="w-3 h-3 bg-blue-600 rounded-full mr-2"></div>
-                <span>ドッグパーク</span>
+                <span>ドッグラン</span>
               </div>
             )}
             {activeView === 'facilities' && (
@@ -309,9 +367,10 @@ export function MapView({
             variant="secondary"
             onClick={getCurrentLocation}
             className="text-xs"
+            disabled={isLocating}
           >
             <Navigation className="w-3 h-3 mr-1" />
-            現在地
+            {isLocating ? '取得中...' : '現在地'}
           </Button>
         </div>
       </div>
@@ -324,11 +383,13 @@ export function MapView({
           style={{ minHeight: '400px' }}
         />
         
-        {!isLoaded && (
+        {(isLoadingAPI || !isLoaded) && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-              <p className="text-sm text-gray-600">マップを読み込み中...</p>
+              <p className="text-sm text-gray-600">
+                {isLoadingAPI ? 'Google Maps APIを読み込み中...' : 'マップを初期化中...'}
+              </p>
             </div>
           </div>
         )}
