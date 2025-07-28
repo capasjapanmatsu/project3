@@ -8,6 +8,7 @@ import { MaintenanceProvider } from './context/MaintenanceContext';
 import { BottomNavigation } from './components/BottomNavigation';
 import CampaignModal from './components/CampaignModal';
 import { Footer } from './components/Footer';
+import { GoogleMapsProvider } from './components/GoogleMapsProvider';
 import { DashboardSkeleton, PageSkeleton, ShopSkeleton } from './components/LoadingStates';
 import { Navbar } from './components/Navbar';
 import { SEO } from './components/SEO';
@@ -97,6 +98,9 @@ const TermsOfService = React.lazy(() => import('./pages/TermsOfService').then(mo
 const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy').then(module => ({ default: module.PrivacyPolicy })));
 const NotFound = React.lazy(() => import('./pages/NotFound').then(module => ({ default: module.NotFound })));
 
+// デバッグページ
+const MapDebug = React.lazy(() => import('./pages/MapDebug').then(module => ({ default: module.MapDebug })));
+
 // 保護されたページ
 const UserDashboard = React.lazy(() => import('./pages/UserDashboard').then(module => ({ default: module.UserDashboard })));
 const DogRegistration = React.lazy(() => import('./pages/DogRegistration').then(module => ({ default: module.DogRegistration })));
@@ -149,15 +153,17 @@ const SimplePage = ({ title, children }: { title: string; children: React.ReactN
 const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <HelmetProvider>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <SEO />
-        <Navbar />
-        <main className="flex-1">
-          {children}
-        </main>
-        <Footer />
-        <BottomNavigation />
-      </div>
+      <GoogleMapsProvider>
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+          <SEO />
+          <Navbar />
+          <main className="flex-1">
+            {children}
+          </main>
+          <Footer />
+          <BottomNavigation />
+        </div>
+      </GoogleMapsProvider>
     </HelmetProvider>
   );
 };
@@ -589,7 +595,11 @@ const App: React.FC = () => {
           } />
           
           {/* デバッグ・開発者用 */}
-          <Route path="/debug/map" element={<MapDebug />} />
+          <Route path="/debug/map" element={
+            <Suspense fallback={<PageSkeleton />}>
+              <MapDebug />
+            </Suspense>
+          } />
           
           {/* 404ページ */}
           <Route path="*" element={

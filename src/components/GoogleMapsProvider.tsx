@@ -1,12 +1,24 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Loader } from 'lucide-react';
 import { createContext, useContext, useEffect, useState } from 'react';
+
+// Google Maps API の簡単な型定義
+declare global {
+  interface Window {
+    google: any;
+    _googleMapsLoading?: boolean;
+  }
+}
 
 // Google Maps 初期化状態の型定義
 interface GoogleMapsContextType {
   isLoaded: boolean;
   isLoading: boolean;
   error: string | null;
-  google: typeof google | null;
+  google: any | null;
 }
 
 // コンテキストを作成
@@ -36,7 +48,7 @@ export function GoogleMapsProvider({
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [googleInstance, setGoogleInstance] = useState<typeof google | null>(null);
+  const [googleInstance, setGoogleInstance] = useState<any | null>(null);
 
   useEffect(() => {
     const initializeGoogleMaps = async () => {
@@ -217,4 +229,6 @@ export function GoogleMapsLoader({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// コンテキストをエクスポート
+export { GoogleMapsContext };
 export default GoogleMapsProvider; 

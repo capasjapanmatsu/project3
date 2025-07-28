@@ -2,20 +2,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { MapPin, Navigation } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import useAuth from '../../context/AuthContext';
 import { type DogPark } from '../../types';
 import { type PetFacility } from '../../types/facilities';
 import { supabase } from '../../utils/supabase';
 import Button from '../Button';
 import Card from '../Card';
-
-// Google Maps API の簡単な型定義
-declare global {
-  interface Window {
-    google: any;
-  }
-}
+import { GoogleMapsContext } from '../GoogleMapsProvider';
 
 // 犬のデータ型
 interface Dog {
@@ -47,16 +41,22 @@ export function MapView({
   className = '' 
 }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [isLoadingAPI, setIsLoadingAPI] = useState(true);
+  const [isMapInitialized, setIsMapInitialized] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(userLocation || null);
   const [mapError, setMapError] = useState<string>('');
   const [isLocating, setIsLocating] = useState(false);
   
+  // GoogleMapsProviderから状態を取得
+  const googleMapsContext = useContext(GoogleMapsContext);
+  const { isLoaded: isGoogleMapsLoaded, isLoading: isGoogleMapsLoading, error: googleMapsError } = googleMapsContext || {
+    isLoaded: false,
+    isLoading: true,
+    error: null
+  };
+  
   // 認証とユーザーの犬データ
   const { user } = useAuth();
   const [userDogs, setUserDogs] = useState<Dog[]>([]);
-  const [userDogIcon, setUserDogIcon] = useState<string>('');
 
   // マップの中心位置を決定
   const mapCenter = center || currentLocation || DEFAULT_CENTER;
@@ -69,69 +69,6 @@ export function MapView({
       <path d="M14 16h4v2h-4z" fill="#EF4444"/>
     </svg>
   `;
-
-  // Google Maps API を動的に読み込む
-  const loadGoogleMapsAPI = useCallback(async () => {
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
-    
-    if (!apiKey) {
-      setMapError('Google Maps API キーが設定されていません');
-      setIsLoadingAPI(false);
-      return;
-    }
-
-    // すでに読み込み済みの場合
-    const windowObj = window as any;
-    if (windowObj.google?.maps) {
-      setIsLoadingAPI(false);
-      return;
-    }
-
-    // 読み込み中の場合は待機
-    if (windowObj._googleMapsLoading) {
-      const checkInterval = setInterval(() => {
-        if (windowObj.google?.maps) {
-          clearInterval(checkInterval);
-          setIsLoadingAPI(false);
-        }
-      }, 100);
-      return;
-    }
-
-    try {
-      windowObj._googleMapsLoading = true;
-      
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-
-      await new Promise<void>((resolve, reject) => {
-        script.onload = () => {
-          windowObj._googleMapsLoading = false;
-          if (windowObj.google?.maps) {
-            console.log('Google Maps API 読み込み完了');
-            resolve();
-          } else {
-            reject(new Error('Google Maps API読み込み後にAPIが利用できません'));
-          }
-        };
-
-        script.onerror = () => {
-          windowObj._googleMapsLoading = false;
-          reject(new Error('Google Maps APIの読み込みに失敗しました'));
-        };
-
-        document.head.appendChild(script);
-      });
-
-    } catch (error) {
-      console.error('Google Maps API読み込みエラー:', error);
-      setMapError('Google Maps APIの読み込みに失敗しました');
-    } finally {
-      setIsLoadingAPI(false);
-    }
-  }, []);
 
   // マーカーを追加する関数
   const addMarkers = useCallback((map: any) => {
@@ -199,7 +136,7 @@ export function MapView({
 
   // マップを初期化する関数
   const initializeMap = useCallback(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !isGoogleMapsLoaded) return;
     
     const windowObj = window as any;
     if (!windowObj.google?.maps) {
@@ -218,26 +155,23 @@ export function MapView({
 
       // マーカーを追加
       addMarkers(map);
-      setIsLoaded(true);
+      setIsMapInitialized(true);
       setMapError('');
       
     } catch (error) {
       console.error('マップ初期化エラー:', error);
       setMapError('地図の初期化に失敗しました');
     }
-  }, [mapCenter, currentLocation, addMarkers]);
+  }, [mapCenter, currentLocation, addMarkers, isGoogleMapsLoaded]);
 
-  // Google Maps API読み込み
+  // Google Maps API読み込み完了後にマップを初期化
   useEffect(() => {
-    void loadGoogleMapsAPI();
-  }, [loadGoogleMapsAPI]);
-
-  // API読み込み完了後にマップを初期化
-  useEffect(() => {
-    if (!isLoadingAPI && !mapError) {
+    if (isGoogleMapsLoaded && !googleMapsError) {
       initializeMap();
+    } else if (googleMapsError) {
+      setMapError(googleMapsError);
     }
-  }, [isLoadingAPI, mapError, initializeMap, parks, facilities, activeView]);
+  }, [isGoogleMapsLoaded, googleMapsError, initializeMap, parks, facilities, activeView]);
 
   // 現在地を取得
   const getCurrentLocation = useCallback(() => {
@@ -275,10 +209,7 @@ export function MapView({
   // ユーザーの犬データを取得（簡略化）
   useEffect(() => {
     const fetchUserDogs = async () => {
-      if (!user) {
-        setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
-        return;
-      }
+      if (!user) return;
       
       try {
         const { data: dogs, error } = await supabase
@@ -291,29 +222,24 @@ export function MapView({
           setUserDogs(dogs);
         }
         
-        // 常にデフォルトアイコンを使用
-        setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
-        
       } catch (error) {
         console.error('Error fetching user dogs:', error);
-        setUserDogIcon('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(defaultDogIcon));
       }
     };
 
     void fetchUserDogs();
-  }, [user, defaultDogIcon]);
+  }, [user]);
 
   // エラー状態の表示
-  if (mapError) {
+  if (mapError || googleMapsError) {
     return (
       <Card className={`p-6 text-center ${className}`}>
         <MapPin className="w-12 h-12 text-red-400 mx-auto mb-4" />
         <h3 className="text-lg font-semibold mb-2">マップを読み込めませんでした</h3>
-        <p className="text-gray-600 text-sm mb-4">{mapError}</p>
+        <p className="text-gray-600 text-sm mb-4">{mapError || googleMapsError}</p>
         <Button onClick={() => {
           setMapError('');
-          setIsLoadingAPI(true);
-          void loadGoogleMapsAPI();
+          window.location.reload();
         }}>
           再読み込み
         </Button>
@@ -383,12 +309,12 @@ export function MapView({
           style={{ minHeight: '400px' }}
         />
         
-        {(isLoadingAPI || !isLoaded) && (
+        {(isGoogleMapsLoading || !isMapInitialized) && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
               <p className="text-sm text-gray-600">
-                {isLoadingAPI ? 'Google Maps APIを読み込み中...' : 'マップを初期化中...'}
+                {isGoogleMapsLoading ? 'Google Maps APIを読み込み中...' : 'マップを初期化中...'}
               </p>
             </div>
           </div>
