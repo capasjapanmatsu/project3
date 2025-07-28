@@ -45,52 +45,91 @@ export function Community() {
 
   useEffect(() => {
     if (user) {
-      fetchData();
-      
-      // リアルタイム更新のサブスクリプションを設定
-      const friendRequestsSubscription = supabase
-        .channel('friend_requests_changes')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'friend_requests',
-          filter: `requested_id=eq.${user.id}`,
-        }, () => {
-          fetchFriendRequests();
-        })
-        .subscribe();
-      
-      const notificationsSubscription = supabase
-        .channel('notifications_changes')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        }, () => {
-          fetchNotifications();
-        })
-        .subscribe();
-      
-      const messagesSubscription = supabase
-        .channel('messages_changes')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'messages',
-          filter: `receiver_id=eq.${user.id}`,
-        }, () => {
-          fetchMessages();
-        })
-        .subscribe();
-      
-      return () => {
-        friendRequestsSubscription.unsubscribe();
-        notificationsSubscription.unsubscribe();
-        messagesSubscription.unsubscribe();
-      };
+      // 🚀 最適化されたデータ取得とリアルタイム設定
+      initializeCommunityPage();
     }
   }, [user]);
+
+  const initializeCommunityPage = async () => {
+    try {
+      // フェーズ1: 即座にUIを表示（基本的なタブ構造）
+      // 初期状態のisLoading=trueで表示開始
+      
+      // フェーズ2: クリティカルデータの優先取得
+      setIsLoading(true);
+      await Promise.allSettled([
+        fetchFriendRequests(),
+        fetchFriends(),
+        fetchNotifications()
+      ]);
+      
+      // 基本的なコミュニケーション機能で画面表示を開始
+      setIsLoading(false);
+      
+      // フェーズ3: 追加データの並列取得（バックグラウンド）
+      void Promise.allSettled([
+        fetchMessages(),
+        fetchDogEncounters(),
+        fetchUserDogs(),
+        fetchBlacklistedDogs()
+      ]);
+      
+      // フェーズ4: リアルタイムサブスクリプション設定（最後）
+      setupRealtimeSubscriptions();
+      
+    } catch (error) {
+      console.error('Error initializing community page:', error);
+      setIsLoading(false);
+    }
+  };
+
+  // 🔄 リアルタイムサブスクリプション設定を分離
+  const setupRealtimeSubscriptions = () => {
+    if (!user) return;
+
+    const friendRequestsSubscription = supabase
+      .channel('friend_requests_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'friend_requests',
+        filter: `requested_id=eq.${user.id}`,
+      }, () => {
+        void fetchFriendRequests();
+      })
+      .subscribe();
+    
+    const notificationsSubscription = supabase
+      .channel('notifications_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`,
+      }, () => {
+        void fetchNotifications();
+      })
+      .subscribe();
+    
+    const messagesSubscription = supabase
+      .channel('messages_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'messages',
+        filter: `receiver_id=eq.${user.id}`,
+      }, () => {
+        void fetchMessages();
+      })
+      .subscribe();
+    
+    // クリーンアップ関数を返す
+    return () => {
+      friendRequestsSubscription.unsubscribe();
+      notificationsSubscription.unsubscribe();
+      messagesSubscription.unsubscribe();
+    };
+  };
 
   const fetchData = async () => {
     try {

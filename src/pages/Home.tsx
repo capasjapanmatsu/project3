@@ -31,9 +31,7 @@ export function Home() {
   // データ取得関数
   const fetchDogs = useCallback(async () => {
     try {
-      setIsDogsLoading(true);
       setDogsError(null);
-      console.log('🐕 犬データを取得中...');
 
       const { data, error } = await supabase
         .from('dogs')
@@ -46,7 +44,6 @@ export function Home() {
       }
 
       setRecentDogs(data || []);
-      console.log('🐕 犬データ取得完了:', data?.length || 0, 'dogs');
     } catch (error) {
       console.error('🐕 犬データ取得エラー:', error);
       setDogsError(error instanceof Error ? error.message : 'データ取得に失敗しました');
@@ -57,9 +54,7 @@ export function Home() {
 
   const fetchNews = useCallback(async () => {
     try {
-      setIsNewsLoading(true);
       setNewsError(null);
-      console.log('📢 ニュースデータを取得中...');
 
       const { data, error } = await supabase
         .from('news_announcements')
@@ -72,7 +67,6 @@ export function Home() {
       }
 
       setNews(data || []);
-      console.log('📢 ニュースデータ取得完了:', data?.length || 0, 'items');
     } catch (error) {
       console.error('📢 ニュースデータ取得エラー:', error);
       setNewsError(error instanceof Error ? error.message : 'データ取得に失敗しました');
@@ -81,10 +75,20 @@ export function Home() {
     }
   }, []);
 
-  // 初期データ取得
+  // 🚀 最適化された初期データ取得
   useEffect(() => {
-    void fetchDogs();
-    void fetchNews();
+    const initializeHomePage = async () => {
+      // フェーズ1: 即座にUIを表示（ローディング状態で）
+      // すでにstateの初期値でローディング状態になっている
+      
+      // フェーズ2: バックグラウンドで並列データ取得
+      void Promise.allSettled([
+        fetchDogs(),
+        fetchNews()
+      ]);
+    };
+
+    initializeHomePage();
   }, [fetchDogs, fetchNews]);
 
   // データの安定化処理

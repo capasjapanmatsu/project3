@@ -63,29 +63,52 @@ export function DogParkList() {
   const { parks, isLoading: parksLoading, error: parksError, fetchParkData } = useParkData();
   const { facilities, facilitiesLoading, error: facilityError, fetchFacilities } = useFacilityData();
 
-  // 位置情報取得
+  // 🚀 最適化された位置情報取得（非同期）
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          };
-          setUserLocation(location);
-          console.log('位置情報を取得しました:', location);
-        },
-        (error) => {
-          console.log('位置情報の取得に失敗しました:', error);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 600000
-        }
-      );
-    }
+    const getUserLocation = async () => {
+      if (!navigator.geolocation) return;
+      
+      try {
+        // 非同期で位置情報を取得（UIをブロックしない）
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 600000
+          });
+        });
+
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        setUserLocation(location);
+      } catch (error) {
+        // 位置情報取得失敗は警告レベル（アプリは正常動作）
+        console.warn('位置情報の取得に失敗しました:', error);
+      }
+    };
+
+    // 位置情報取得を非同期で実行
+    void getUserLocation();
   }, []);
+
+  // 🚀 最適化されたデータ取得（初回のみ最小限実行）
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        if (activeView === 'dogparks') {
+          await fetchParkData();
+        } else {
+          await fetchFacilities();
+        }
+      } catch (error) {
+        console.error('❌ データ取得エラー:', error);
+      }
+    };
+    
+    void loadInitialData();
+  }, [activeView, fetchParkData, fetchFacilities]);
 
   // ドッグパークを距離順でソート
   const sortedParks = useMemo(() => {
@@ -185,30 +208,6 @@ export function DogParkList() {
       });
     }
   };
-
-  // 初回データ取得
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        console.log(`🔄 データ取得開始: ${activeView}`);
-        
-        if (activeView === 'dogparks') {
-          console.log('📍 ドッグランデータを取得中...');
-          await fetchParkData();
-          console.log(`✅ ドッグランデータ取得完了: ${parks.length}件`);
-        } else {
-          console.log('🏢 施設データを取得中...');
-          await fetchFacilities();
-          console.log(`✅ 施設データ取得完了: ${facilities.length}件`);
-        }
-        console.log('🎉 データ取得処理完了');
-      } catch (error) {
-        console.error('❌ データ取得エラー:', error);
-      }
-    };
-    
-    void loadData();
-  }, [activeView, fetchParkData, fetchFacilities]);
 
   // 現在の状態を判定
   const isCurrentlyLoading = activeView === 'dogparks' ? parksLoading : facilitiesLoading;

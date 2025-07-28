@@ -89,21 +89,14 @@ export function UserDashboard() {
   // Subscription hook
   const { isActive: hasSubscription } = useSubscription();
 
-  // 🔄 Enhanced Data Fetching (TanStack Query patterns)
+  // 🚀 Enhanced Data Fetching (3段階最適化)
   const fetchDashboardData = async () => {
     try {
       setGlobalLoading(true);
       setIsLoading(true);
       
-      // 並列データ取得の最適化
-      const [
-        profileResponse,
-        dogsResponse,
-        parksResponse,
-        reservationsResponse,
-        notificationsResponse,
-        newsResponse
-      ] = await Promise.all([
+      // フェーズ1: 最優先データ（プロフィール・犬情報）
+      const [profileResponse, dogsResponse] = await Promise.all([
         supabase
           .from('profiles')
           .select('*')
@@ -114,8 +107,32 @@ export function UserDashboard() {
           .from('dogs')
           .select('*, vaccine_certifications(*)')
           .eq('owner_id', user?.id)
-          .order('created_at', { ascending: false }),
-        
+          .order('created_at', { ascending: false })
+      ]);
+
+      // 基本情報を即座に表示
+      setProfile(profileResponse.data);
+      setDogs(dogsResponse.data || []);
+      
+      // Zustand Storeの更新
+      if (profileResponse.data && !zustandUser) {
+        setUser({
+          id: user?.id || '',
+          email: user?.email || '',
+          name: profileResponse.data.name,
+          role: profileResponse.data.user_type || 'user'
+        });
+      }
+
+      // 基本的なダッシュボードUIを表示開始
+      setIsLoading(false);
+      
+      // フェーズ2: 重要なデータ（パーク・予約・通知）
+      const [
+        parksResponse,
+        reservationsResponse,
+        notificationsResponse
+      ] = await Promise.all([
         supabase
           .from('dog_parks')
           .select('*')
@@ -135,35 +152,43 @@ export function UserDashboard() {
           .eq('user_id', user?.id)
           .eq('read', false)
           .order('created_at', { ascending: false })
-          .limit(5),
-        
+          .limit(5)
+      ]);
+
+      // 重要データの更新
+      setOwnedParks(parksResponse.data || []);
+      setRecentReservations(reservationsResponse.data || []);
+      setNotifications(notificationsResponse.data || []);
+
+      // フェーズ3: 追加データ（ニュース・施設・いいね）をバックグラウンドで取得
+      void Promise.allSettled([
+        // ニュースデータ
         supabase
           .from('news_announcements')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(3)
-      ]);
-
-      // ペット関連施設データも取得
-      let facilitiesData: any[] = [];
-      try {
-        const facilitiesResponse = await supabase
+          .then(response => {
+            setNews(response.data || []);
+          }),
+        
+        // ペット関連施設データ
+        supabase
           .from('pet_facilities')
           .select('*')
           .eq('owner_id', user?.id)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .then(response => {
+            if (response.data) {
+              setFacilities(response.data);
+            }
+          })
+          .catch(() => {
+            // Pet facilities not available
+          }),
         
-        if (facilitiesResponse.data) {
-          facilitiesData = facilitiesResponse.data;
-        }
-      } catch (facilitiesError) {
-        console.log('Pet facilities not available');
-      }
-
-      // いいねしたワンちゃんの情報を取得（エラーハンドリング強化）
-      let likedDogsData: any[] = [];
-      try {
-        const likedDogsResponse = await supabase
+        // いいねしたワンちゃんの情報
+        supabase
           .from('dog_likes')
           .select(`
             *,
@@ -174,47 +199,16 @@ export function UserDashboard() {
           `)
           .eq('user_id', user?.id)
           .order('created_at', { ascending: false })
-          .limit(10);
-        
-        if (likedDogsResponse.data) {
-          likedDogsData = likedDogsResponse.data;
-        }
-      } catch (likesError) {
-        // Dog likes table not available
-      }
-
-      // エラーハンドリングの向上
-      const responses = [profileResponse, dogsResponse, parksResponse, reservationsResponse, notificationsResponse, newsResponse];
-      responses.forEach((response, index) => {
-        if (response.error) {
-          addNotification({
-            type: 'error',
-            title: 'データ取得エラー',
-            message: `一部のデータの取得に失敗しました`,
-            duration: 5000
-          });
-        }
-      });
-
-      // State更新
-      setProfile(profileResponse.data);
-      setDogs(dogsResponse.data || []);
-      setOwnedParks(parksResponse.data || []);
-      setRecentReservations(reservationsResponse.data || []);
-      setNotifications(notificationsResponse.data || []);
-      setNews(newsResponse.data || []);
-      setLikedDogs(likedDogsData.map((like: any) => like.dog).filter(Boolean));
-      setFacilities(facilitiesData); // ペット施設データを追加
-      
-      // Zustand Storeの更新
-      if (profileResponse.data && !zustandUser) {
-        setUser({
-          id: user?.id || '',
-          email: user?.email || '',
-          name: profileResponse.data.name,
-          role: profileResponse.data.user_type || 'user'
-        });
-      }
+          .limit(10)
+          .then(response => {
+            if (response.data) {
+              setLikedDogs(response.data.map((like: any) => like.dog).filter(Boolean));
+            }
+          })
+          .catch(() => {
+            // Dog likes table not available
+          })
+      ]);
       
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -226,7 +220,6 @@ export function UserDashboard() {
         duration: 5000
       });
     } finally {
-      setIsLoading(false);
       setGlobalLoading(false);
     }
   };
