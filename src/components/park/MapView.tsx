@@ -201,6 +201,41 @@ export function MapView({
     );
   }, [onLocationSelect]);
 
+  // 初回読み込み時に自動的に現在地を取得
+  useEffect(() => {
+    // userLocationが既に設定されている場合や、現在地が既に取得済みの場合はスキップ
+    if (userLocation || currentLocation) return;
+    
+    // 位置情報がサポートされていない場合はスキップ
+    if (!navigator.geolocation) return;
+
+    console.log('初回読み込み: 現在地を自動取得中...');
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        console.log('現在地取得成功:', location);
+        setCurrentLocation(location);
+        // 親コンポーネントに位置情報を通知
+        if (onLocationSelect) {
+          onLocationSelect(location);
+        }
+      },
+      (error) => {
+        console.warn('初回現在地取得に失敗（デフォルト位置を使用）:', error);
+        // エラーの場合はデフォルトの東京中心を使用（何もしない）
+      },
+      {
+        enableHighAccuracy: false, // 初回は精度より速度を優先
+        timeout: 8000,
+        maximumAge: 300000 // 5分間キャッシュ
+      }
+    );
+  }, [userLocation, currentLocation, onLocationSelect]);
+
   // ユーザーの犬データを取得（簡略化）
   useEffect(() => {
     const fetchUserDogs = async () => {
