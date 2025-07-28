@@ -14,7 +14,6 @@ import { supabase } from '../../utils/supabase';
 import Button from '../Button';
 import Card from '../Card';
 import ImageCropper from '../ImageCropper';
-import Input from '../Input';
 
 interface CouponManagerProps {  
   facilityId: string;
@@ -310,145 +309,232 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  クーポンタイトル *
-                </label>
-                <Input
-                  value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  placeholder="例：初回利用10%OFF"
-                  maxLength={100}
-                  required
-                />
-              </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* 左側：フォーム入力エリア */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      クーポンタイトル *
+                    </label>
+                    <input
+                      value={formData.title}
+                      onChange={(e) => setFormData({...formData, title: e.target.value})}
+                      placeholder="例：初回利用10%OFF"
+                      maxLength={100}
+                      required
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  割引設定
-                </label>
-                <div className="flex space-x-2 items-center">
-                  <select
-                    value={formData.discount_type}
-                    onChange={(e) => setFormData({...formData, discount_type: e.target.value as 'amount' | 'percentage'})}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm"
-                  >
-                    <option value="amount">金額</option>
-                    <option value="percentage">割引率</option>
-                  </select>
-                  <Input
-                    type="number"
-                    value={formData.discount_value || ''}
-                    onChange={(e) => setFormData({...formData, discount_value: parseInt(e.target.value) || undefined})}
-                    placeholder={formData.discount_type === 'amount' ? '500' : '10'}
-                    className="w-24 text-lg font-medium text-center"
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      割引設定
+                    </label>
+                    <div className="flex space-x-2 items-center">
+                      <select
+                        value={formData.discount_type}
+                        onChange={(e) => setFormData({...formData, discount_type: e.target.value as 'amount' | 'percentage'})}
+                        className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      >
+                        <option value="amount">金額</option>
+                        <option value="percentage">割引率</option>
+                      </select>
+                      <input
+                        type="number"
+                        value={formData.discount_value || ''}
+                        onChange={(e) => setFormData({...formData, discount_value: e.target.value ? parseInt(e.target.value) : undefined})}
+                        placeholder={formData.discount_type === 'amount' ? '500' : '10'}
+                        className="w-24 text-lg font-medium text-center border border-gray-300 rounded-md px-3 py-2"
+                      />
+                      <span className="flex items-center text-lg text-gray-700 font-medium">
+                        {formData.discount_type === 'amount' ? '円' : '%'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    サービス内容 *
+                  </label>
+                  <textarea
+                    value={formData.service_content}
+                    onChange={(e) => setFormData({...formData, service_content: e.target.value})}
+                    placeholder="トリミング10%OFF"
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    required
                   />
-                  <span className="flex items-center text-lg text-gray-700 font-medium">
-                    {formData.discount_type === 'amount' ? '円' : '%'}
-                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    詳細説明
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    placeholder="おひとり様初回1回限定です"
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      開始日時 *
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.start_date}
+                      onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                      required
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      終了日時 *
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.end_date}
+                      onChange={(e) => setFormData({...formData, end_date: e.target.value})}
+                      required
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    使用制限
+                  </label>
+                  <select
+                    value={formData.usage_limit_type}
+                    onChange={(e) => setFormData({...formData, usage_limit_type: e.target.value as 'once' | 'unlimited'})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  >
+                    <option value="unlimited">何回でも</option>
+                    <option value="once">1回限り</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    クーポン画像（オプション）
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => document.getElementById('coupon-image-input')?.click()}
+                      className="flex items-center"
+                    >
+                      <ImageIcon className="w-4 h-4 mr-2" />
+                      画像を選択
+                    </Button>
+                    {imagePreview && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setImagePreview('');
+                          setCouponImageFile(null);
+                          const newFormData = {...formData};
+                          delete newFormData.coupon_image;
+                          setFormData(newFormData);
+                        }}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        画像を削除
+                      </Button>
+                    )}
+                  </div>
+                  <input
+                    id="coupon-image-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageSelect(file);
+                    }}
+                    className="hidden"
+                  />
                 </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                サービス内容 *
-              </label>
-              <textarea
-                value={formData.service_content}
-                onChange={(e) => setFormData({...formData, service_content: e.target.value})}
-                placeholder="例：トリミング料金10%OFF（初回利用限定）"
-                rows={3}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                詳細説明
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                placeholder="クーポンの詳細な利用条件や注意事項を記載してください"
-                rows={2}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  開始日 *
-                </label>
-                <Input
-                  type="date"
-                  value={formData.start_date}
-                  onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  終了日 *
-                </label>
-                <Input
-                  type="date"
-                  value={formData.end_date}
-                  onChange={(e) => setFormData({...formData, end_date: e.target.value})}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  使用制限
-                </label>
-                <select
-                  value={formData.usage_limit_type}
-                  onChange={(e) => setFormData({...formData, usage_limit_type: e.target.value as 'once' | 'unlimited'})}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                >
-                  <option value="unlimited">何回でも</option>
-                  <option value="once">1回限り</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                クーポン画像（オプション）
-              </label>
-              <div className="flex items-center space-x-4">
-                {imagePreview && (
-                  <img
-                    src={imagePreview}
-                    alt="クーポン画像プレビュー"
-                    className="w-32 h-20 object-cover border rounded-lg"
-                  />
-                )}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => document.getElementById('coupon-image-input')?.click()}
-                  className="flex items-center"
-                >
-                  <ImageIcon className="w-4 h-4 mr-2" />
-                  画像を選択
-                </Button>
-                <input
-                  id="coupon-image-input"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleImageSelect(file);
-                  }}
-                  className="hidden"
-                />
+              {/* 右側：プレビューエリア */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    クーポンプレビュー
+                  </label>
+                  <div className="w-full max-w-sm mx-auto">
+                    {imagePreview ? (
+                      // 画像クーポンの表示
+                      <div className="aspect-square w-full border-2 border-gray-300 rounded-lg overflow-hidden">
+                        <img
+                          src={imagePreview}
+                          alt="クーポン画像"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      // 文字クーポンの表示
+                      <div className="aspect-square w-full border-2 border-gray-300 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+                        {/* 背景の薄い「COUPON」テキスト */}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-10">
+                          <span className="text-6xl font-bold text-gray-800 transform rotate-12">
+                            COUPON
+                          </span>
+                        </div>
+                        
+                        {/* メインコンテンツ */}
+                        <div className="relative z-10 text-center space-y-2">
+                          <div className="bg-white/80 px-3 py-1 rounded-full">
+                            <span className="text-xs font-medium text-indigo-600">
+                              ドッグパークJPクーポン
+                            </span>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <h3 className="text-sm font-bold text-gray-800 leading-tight">
+                              {formData.title || 'クーポンタイトル'}
+                            </h3>
+                            <p className="text-xs text-gray-600 leading-tight">
+                              {formData.service_content || 'サービス内容'}
+                            </p>
+                          </div>
+                          
+                          {(formData.discount_value && formData.discount_type) && (
+                            <div className="bg-red-500 text-white px-2 py-1 rounded">
+                              <span className="text-lg font-bold">
+                                {formData.discount_value}{formData.discount_type === 'amount' ? '円' : '%'}
+                              </span>
+                              <span className="text-xs ml-1">
+                                {formData.discount_type === 'amount' ? 'OFF' : 'OFF'}
+                              </span>
+                            </div>
+                          )}
+                          
+                          <div className="pt-2 border-t border-gray-300">
+                            <p className="text-xs text-gray-500">
+                              {formData.description || '詳細説明'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="mt-2 text-xs text-gray-500 text-center">
+                    {imagePreview ? '画像クーポン' : '文字クーポン（画像なし）'}
+                  </div>
+                </div>
               </div>
             </div>
 
