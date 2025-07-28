@@ -166,7 +166,7 @@ export function MapView({
       <div style="
         width: 100%;
         height: 100px;
-        margin-bottom: 4px;
+        margin: 0px 0px 2px 0px;
         border-radius: 8px;
         overflow: hidden;
         background: #f3f4f6;
@@ -187,7 +187,7 @@ export function MapView({
       <div style="
         width: 100%;
         height: 60px;
-        margin-bottom: 4px;
+        margin: 0px 0px 2px 0px;
         border-radius: 8px;
         background: #f3f4f6;
         display: flex;
@@ -227,7 +227,7 @@ export function MapView({
       <div style="
         min-width: 220px;
         max-width: 260px;
-        padding: 4px 12px 12px 12px;
+        padding: 0px 12px 12px 12px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       ">
         ${thumbnailHtml}
@@ -255,7 +255,7 @@ export function MapView({
             font-weight: 500;
             cursor: pointer;
             transition: background 0.2s ease-in-out;
-            margin-top: 8px;
+            margin-top: 4px;
           "
           onmouseover="this.style.background='#2563eb'"
           onmouseout="this.style.background='#3b82f6'"
