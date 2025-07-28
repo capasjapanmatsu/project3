@@ -70,29 +70,50 @@ export function MapView({
     </svg>
   `;
 
-  // 【段階的復活】シンプルなInfoWindowコンテンツを生成する関数
+  // 【Phase 2】詳細ボタン付きInfoWindowコンテンツを生成する関数
   const createSimpleInfoWindowContent = useCallback((item: DogPark | PetFacility, type: 'park' | 'facility'): string => {
     const itemName = item.name || '名前未設定';
+    const detailPath = type === 'park' ? `/parks/${item.id}` : `/facilities/${item.id}`;
     
     return `
       <div style="
-        min-width: 150px;
-        max-width: 200px;
-        padding: 8px;
+        min-width: 180px;
+        max-width: 220px;
+        padding: 10px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       ">
         <h3 style="
           font-size: 14px;
           font-weight: 600;
-          margin: 0;
+          margin: 0 0 8px 0;
           color: #1f2937;
           line-height: 1.3;
         ">${itemName}</h3>
+        
+        <button
+          onclick="window.infoWindowNavigate('${detailPath}')"
+          style="
+            width: 100%;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+          "
+          onmouseover="this.style.background='#2563eb'"
+          onmouseout="this.style.background='#3b82f6'"
+        >
+          詳細を見る
+        </button>
       </div>
     `;
   }, []);
 
-  // 【一時無効化】InfoWindowのナビゲーション用グローバル関数を設定
+  // 【Phase 2】InfoWindowのナビゲーション用グローバル関数を設定
   useEffect(() => {
     (window as any).infoWindowNavigate = (path: string) => {
       navigate(path);
