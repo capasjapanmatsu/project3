@@ -554,7 +554,7 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
                   </div>
                   
                   <div className="mt-2 text-xs text-gray-500 text-center">
-                    {imagePreview ? '画像クーポン' : '文字クーポン（画像なし）'}
+                    {imagePreview ? '画像クーポン' : 'クーポン'}
                   </div>
                 </div>
               </div>
@@ -681,7 +681,7 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
                   )}
                   
                   <div className="mt-2 text-xs text-gray-500 text-center">
-                    {coupon.coupon_image_url ? '画像クーポン' : '文字クーポン'}
+                    {coupon.coupon_image_url ? '画像クーポン' : 'クーポン'}
                   </div>
                 </div>
 
