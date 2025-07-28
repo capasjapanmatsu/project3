@@ -519,15 +519,15 @@ export default function FacilityEdit() {
       
       if (profileData?.role === 'admin') {
         console.log('管理者権限で削除実行');
-        deleteQuery = deleteQuery.eq('id', facility.id).select();
+        deleteQuery = deleteQuery.eq('id', facility.id);
       } else {
         console.log('一般ユーザー権限で削除実行');
-        deleteQuery = deleteQuery.eq('id', facility.id).eq('owner_id', user?.id).select();
+        deleteQuery = deleteQuery.eq('id', facility.id).eq('owner_id', user?.id);
       }
 
-      const { error: deleteError, data: deleteData, count } = await deleteQuery;
+      const { error: deleteError, count } = await deleteQuery;
 
-      console.log('削除結果:', { deleteError, deleteData, count });
+      console.log('削除結果:', { deleteError, count });
 
       if (deleteError) {
         console.error('削除エラーの詳細:', deleteError);
@@ -539,10 +539,50 @@ export default function FacilityEdit() {
         throw new Error(`削除処理エラー: ${deleteError.message}`);
       }
 
-      // 削除が実際に実行されたかを確認
-      if (!deleteData || (Array.isArray(deleteData) && deleteData.length === 0)) {
-        console.warn('削除検証エラー: 削除する施設が見つからない、または削除権限がありません。');
-        throw new Error('削除する施設が見つからない、または削除権限がありません。');
+      // 削除検証: 施設が実際に削除されたかを確認
+      console.log('削除検証開始...');
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('pet_facilities')
+        .select('id')
+        .eq('id', facility.id)
+        .single();
+
+      console.log('削除検証結果:', { verifyData, verifyError });
+
+      if (verifyData) {
+        console.warn('削除検証失敗: 施設がまだ存在しています');
+        
+        // 管理者の場合、RPCを使用した強制削除を試行
+        if (profileData?.role === 'admin') {
+          console.log('管理者権限でRPC強制削除を実行...');
+          const { error: rpcError } = await supabase.rpc('force_delete_facility', {
+            facility_id: facility.id
+          });
+          
+          if (rpcError) {
+            console.error('RPC削除エラー:', rpcError);
+            throw new Error(`削除に失敗しました。データベース管理者にお問い合わせください。エラー: ${rpcError.message}`);
+          }
+          
+          // RPC削除後の再検証
+          const { data: finalCheck } = await supabase
+            .from('pet_facilities')
+            .select('id')
+            .eq('id', facility.id)
+            .single();
+            
+          if (finalCheck) {
+            throw new Error('施設の削除に失敗しました。データベース管理者にお問い合わせください。');
+          }
+          
+          console.log('RPC強制削除完了');
+        } else {
+          throw new Error('削除する施設が見つからない、または削除権限がありません。');
+        }
+      } else if (verifyError && verifyError.code !== 'PGRST116') {
+        // PGRST116 は "not found" エラーで、削除成功を意味する
+        console.error('削除検証エラー:', verifyError);
+        throw new Error(`削除検証でエラーが発生しました: ${verifyError.message}`);
       }
 
       console.log('施設削除完了');
