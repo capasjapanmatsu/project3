@@ -5,14 +5,17 @@ import {
     CheckCircle,
     Eye,
     Image as ImageIcon,
+    Plus,
     Save,
     Trash2,
+    UploadCloud,
     X
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import ImageCropper from '../components/ImageCropper'; // ImageCropperコンポーネントを追加
 import Input from '../components/Input';
 import { SEO } from '../components/SEO';
 import useAuth from '../context/AuthContext';
@@ -56,6 +59,18 @@ const processFacilityImage = (file: File): Promise<string> => {
   });
 };
 
+// 施設画像の型定義
+interface FacilityImage {
+  id: string;
+  facility_id: string;
+  image_url: string;
+  image_type: 'main' | 'additional';
+  display_order: number;
+  alt_text?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 interface PetFacility {
   id: string;
   name: string;
@@ -94,6 +109,13 @@ export default function FacilityEdit() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // 画像アップロード関連のstate
+  const [facilityImages, setFacilityImages] = useState<FacilityImage[]>([]);
+  const [showImageCropper, setShowImageCropper] = useState(false);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState<number | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   
   // フォームデータ
   const [formData, setFormData] = useState({
@@ -149,6 +171,16 @@ export default function FacilityEdit() {
         setIdentityPreview(facilityData.identity_document_url);
       }
       
+      // 施設画像を取得
+      const { data: imagesData, error: imagesError } = await supabase
+        .from('pet_facility_images')
+        .select('*')
+        .eq('facility_id', facilityId)
+        .order('display_order', { ascending: true });
+      
+      if (imagesError) throw imagesError;
+      setFacilityImages(imagesData || []);
+      
       // カテゴリデータを取得
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('facility_categories')
@@ -163,6 +195,156 @@ export default function FacilityEdit() {
       setError('データの取得に失敗しました。');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 画像選択処理
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>, index?: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // ファイル形式チェック
+    if (!file.type.startsWith('image/')) {
+      setError('画像ファイルを選択してください。');
+      return;
+    }
+
+    // ファイルサイズチェック（10MB未満）
+    if (file.size > 10 * 1024 * 1024) {
+      setError('ファイルサイズは10MB未満にしてください。');
+      return;
+    }
+
+    setSelectedImageFile(file);
+    setCurrentImageIndex(index ?? null);
+    setShowImageCropper(true);
+  };
+
+  // ImageCropper完了処理
+  const handleCropComplete = async (croppedFile: File) => {
+    if (!facility) return;
+
+    try {
+      setIsUploadingImage(true);
+      setError('');
+
+      // 画像をSupabase Storageにアップロード
+      const timestamp = Date.now();
+      const filename = `facility_${facility.id}_${timestamp}.jpg`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('vaccine-certs')
+        .upload(filename, croppedFile, {
+          contentType: 'image/jpeg',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('vaccine-certs')
+        .getPublicUrl(filename);
+
+      const imageUrl = urlData.publicUrl;
+
+      // 新しい画像の場合
+      if (currentImageIndex === null) {
+        const newDisplayOrder = facilityImages.length;
+        const imageType = facilityImages.length === 0 ? 'main' : 'additional';
+
+        const { data: imageData, error: imageError } = await supabase
+          .from('pet_facility_images')
+          .insert({
+            facility_id: facility.id,
+            image_url: imageUrl,
+            image_type: imageType,
+            display_order: newDisplayOrder
+          })
+          .select()
+          .single();
+
+        if (imageError) throw imageError;
+
+        setFacilityImages(prev => [...prev, imageData]);
+      } else {
+        // 既存画像の更新
+        const imageToUpdate = facilityImages[currentImageIndex];
+        
+        const { data: imageData, error: imageError } = await supabase
+          .from('pet_facility_images')
+          .update({
+            image_url: imageUrl,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', imageToUpdate.id)
+          .select()
+          .single();
+
+        if (imageError) throw imageError;
+
+        setFacilityImages(prev => 
+          prev.map(img => img.id === imageData.id ? imageData : img)
+        );
+      }
+
+      setSuccess('画像をアップロードしました。');
+      setTimeout(() => setSuccess(''), 3000);
+
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      setError('画像のアップロードに失敗しました。');
+    } finally {
+      setIsUploadingImage(false);
+      setShowImageCropper(false);
+      setSelectedImageFile(null);
+      setCurrentImageIndex(null);
+    }
+  };
+
+  // ImageCropperキャンセル処理
+  const handleCropCancel = () => {
+    setShowImageCropper(false);
+    setSelectedImageFile(null);
+    setCurrentImageIndex(null);
+  };
+
+  // 画像削除処理
+  const handleImageDelete = async (imageId: string) => {
+    if (!window.confirm('この画像を削除しますか？')) return;
+
+    try {
+      setError('');
+
+      const { error: deleteError } = await supabase
+        .from('pet_facility_images')
+        .delete()
+        .eq('id', imageId);
+
+      if (deleteError) throw deleteError;
+
+      setFacilityImages(prev => prev.filter(img => img.id !== imageId));
+      
+      // display_orderを再調整
+      const updatedImages = facilityImages.filter(img => img.id !== imageId);
+      for (let i = 0; i < updatedImages.length; i++) {
+        const newImageType = i === 0 ? 'main' : 'additional';
+        if (updatedImages[i].display_order !== i || updatedImages[i].image_type !== newImageType) {
+          await supabase
+            .from('pet_facility_images')
+            .update({ 
+              display_order: i, 
+              image_type: newImageType 
+            })
+            .eq('id', updatedImages[i].id);
+        }
+      }
+
+      setSuccess('画像を削除しました。');
+      setTimeout(() => setSuccess(''), 3000);
+
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      setError('画像の削除に失敗しました。');
     }
   };
 
@@ -544,6 +726,94 @@ export default function FacilityEdit() {
                 </div>
               </div>
 
+              {/* 施設画像 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  施設画像 (最大5枚)
+                </label>
+                <p className="text-sm text-gray-500 mb-4">
+                  1枚目がメイン画像として使用されます。施設の雰囲気がわかる画像をアップロードしてください。
+                </p>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                  {facilityImages.map((image, index) => (
+                    <div key={image.id} className="relative group">
+                      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
+                        <img
+                          src={image.image_url}
+                          alt={`施設画像 ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      
+                      {/* 画像の順序表示 */}
+                      <div className="absolute top-2 left-2">
+                        <span className="bg-blue-600 text-white text-xs font-medium px-2 py-1 rounded">
+                          {index === 0 ? 'メイン' : index + 1}
+                        </span>
+                      </div>
+                      
+                      {/* 画像操作ボタン */}
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex space-x-1">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageSelect(e, index)}
+                            className="hidden"
+                            id={`image-replace-${index}`}
+                          />
+                          <label
+                            htmlFor={`image-replace-${index}`}
+                            className="bg-white text-gray-600 p-1 rounded shadow hover:bg-gray-50 cursor-pointer"
+                            title="画像を変更"
+                          >
+                            <ImageIcon className="w-4 h-4" />
+                          </label>
+                          
+                          <button
+                            type="button"
+                            onClick={() => handleImageDelete(image.id)}
+                            className="bg-red-500 text-white p-1 rounded shadow hover:bg-red-600"
+                            title="画像を削除"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* 新しい画像追加ボタン */}
+                  {facilityImages.length < 5 && (
+                    <div className="aspect-square bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageSelect(e)}
+                        className="hidden"
+                        id="image-add"
+                      />
+                      <label
+                        htmlFor="image-add"
+                        className="flex flex-col items-center cursor-pointer text-gray-500 hover:text-blue-600"
+                      >
+                        <Plus className="w-8 h-8 mb-2" />
+                        <span className="text-sm font-medium">画像を追加</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+                
+                {facilityImages.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <UploadCloud className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                    <p className="text-sm">まだ画像がアップロードされていません</p>
+                    <p className="text-xs mt-1">最初の画像がメイン画像として使用されます</p>
+                  </div>
+                )}
+              </div>
+
               {/* 保存ボタン */}
               <div className="flex justify-end">
                 <Button type="submit" isLoading={isSubmitting}>
@@ -630,6 +900,18 @@ export default function FacilityEdit() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* ImageCropper Modal */}
+          {showImageCropper && selectedImageFile && (
+            <ImageCropper
+              imageFile={selectedImageFile}
+              onCropComplete={handleCropComplete}
+              onCancel={handleCropCancel}
+              aspectRatio={1} // 1:1比率でクロップ
+              maxWidth={400}
+              maxHeight={400}
+            />
           )}
         </div>
       </div>
