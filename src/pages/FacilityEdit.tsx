@@ -556,7 +556,7 @@ export default function FacilityEdit() {
         if (profileData?.role === 'admin') {
           console.log('管理者権限でRPC強制削除を実行...');
           const { error: rpcError } = await supabase.rpc('force_delete_facility', {
-            facility_id: facility.id
+            target_facility_id: facility.id
           });
           
           if (rpcError) {
