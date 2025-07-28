@@ -165,8 +165,8 @@ export function MapView({
     const thumbnailHtml = imageUrl ? `
       <div style="
         width: 100%;
-        height: 120px;
-        margin: 0px 0px 4px 0px;
+        height: 100px;
+        margin: 0px 0px 2px 0px;
         border-radius: 8px;
         overflow: hidden;
         background: #f3f4f6;
@@ -187,7 +187,7 @@ export function MapView({
       <div style="
         width: 100%;
         height: 80px;
-        margin: 0px 0px 4px 0px;
+        margin: 0px 0px 2px 0px;
         border-radius: 8px;
         background: #f3f4f6;
         display: flex;
@@ -228,8 +228,8 @@ export function MapView({
       <div style="
         min-width: 220px;
         max-width: 260px;
-        min-height: 280px;
-        padding: 2px 12px 20px 12px;
+        min-height: 260px;
+        padding: 0px 12px 20px 12px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       ">
         ${thumbnailHtml}
