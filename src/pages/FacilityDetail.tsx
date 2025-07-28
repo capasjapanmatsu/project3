@@ -71,7 +71,7 @@ export function FacilityDetail() {
       setIsLoading(true);
       setError(null);
 
-      console.log('Fetching facility data for ID:', facilityId);
+      console.log('🔍 Fetching facility data for ID:', facilityId);
 
       // 施設の基本情報、画像、アクティブなクーポンを並列取得
       const [facilityResult, imagesResult, couponsResult] = await Promise.all([
@@ -100,26 +100,40 @@ export function FacilityDetail() {
           .order('created_at', { ascending: false })
       ]);
 
-      console.log('Facility result:', facilityResult);
+      console.log('📋 Facility result:', facilityResult);
+      console.log('🖼️ Images result:', imagesResult);
+      console.log('🎫 Coupons result:', couponsResult);
 
       if (facilityResult.error) {
-        console.error('Facility query error:', facilityResult.error);
-        throw facilityResult.error;
+        console.error('❌ Facility query error:', facilityResult.error);
+        throw new Error(`施設データ取得エラー: ${facilityResult.error.message}`);
       }
 
       if (!facilityResult.data) {
-        console.log('No facility data found');
+        console.log('⚠️ No facility data found');
         setError('施設が見つかりません');
         return;
       }
 
-      console.log('Facility data:', facilityResult.data);
+      if (imagesResult.error) {
+        console.error('❌ Images query error:', imagesResult.error);
+        // 画像エラーは致命的ではないので続行
+      }
+
+      if (couponsResult.error) {
+        console.error('❌ Coupons query error:', couponsResult.error);
+        // クーポンエラーは致命的ではないので続行
+      }
+
+      console.log('✅ Facility data:', facilityResult.data);
+      console.log('🖼️ Images data:', imagesResult.data);
+      console.log('🎫 Coupons data:', couponsResult.data);
 
       // カテゴリ情報を個別に取得
       let categoryInfo = null;
       const categoryId = (facilityResult.data as any)?.category_id || (facilityResult.data as any)?.category;
       
-      console.log('Category ID:', categoryId);
+      console.log('🏷️ Category ID:', categoryId);
       
       if (categoryId) {
         const { data: categoryData, error: categoryError } = await supabase
@@ -129,22 +143,26 @@ export function FacilityDetail() {
           .single();
         
         if (categoryError) {
-          console.error('Category query error:', categoryError);
+          console.error('❌ Category query error:', categoryError);
+          // カテゴリエラーも致命的ではないので続行
         } else {
           categoryInfo = categoryData;
-          console.log('Category info:', categoryInfo);
+          console.log('✅ Category info:', categoryInfo);
         }
       }
 
-      setFacility({
+      const finalFacilityData = {
         ...facilityResult.data,
         category_info: categoryInfo,
         images: imagesResult.data || [],
         coupons: couponsResult.data || []
-      });
+      };
+
+      console.log('🎯 Final facility data:', finalFacilityData);
+      setFacility(finalFacilityData);
 
     } catch (err) {
-      console.error('施設データの取得に失敗:', err);
+      console.error('💥 施設データの取得に失敗:', err);
       const errorMessage = err instanceof Error ? err.message : '不明なエラーが発生しました';
       setError(`施設データの取得に失敗しました: ${errorMessage}`);
     } finally {
@@ -155,6 +173,8 @@ export function FacilityDetail() {
   const fetchUserCoupons = async () => {
     if (!user) return;
     
+    console.log('🎫 Fetching user coupons for user:', user.id, 'facility:', facilityId);
+    
     try {
       const { data, error } = await supabase
         .from('user_coupons')
@@ -163,12 +183,13 @@ export function FacilityDetail() {
         .eq('facility_id', facilityId);
 
       if (error) {
-        console.error('User coupons fetch error:', error);
+        console.error('❌ User coupons fetch error:', error);
       } else {
+        console.log('✅ User coupons data:', data);
         setUserCoupons(data || []);
       }
     } catch (error) {
-      console.error('Error fetching user coupons:', error);
+      console.error('💥 Error fetching user coupons:', error);
     }
   };
 
@@ -178,6 +199,7 @@ export function FacilityDetail() {
       return;
     }
 
+    console.log('🎫 Attempting to obtain coupon:', couponId, 'for user:', user.id);
     setObtainingCouponId(couponId);
     
     try {
@@ -187,9 +209,15 @@ export function FacilityDetail() {
           p_user_id: user.id
         });
 
-      if (error) throw error;
+      console.log('🎫 Obtain coupon result:', { data, error });
+
+      if (error) {
+        console.error('❌ Obtain coupon error:', error);
+        throw new Error(`クーポン取得エラー: ${error.message}`);
+      }
 
       if (data === 'success') {
+        console.log('✅ Coupon obtained successfully!');
         // クーポン取得成功
         await fetchUserCoupons(); // ユーザークーポンを再取得
         
@@ -208,12 +236,14 @@ export function FacilityDetail() {
           'already_obtained': 'すでに取得済みのクーポンです'
         };
         
-        const message = errorMessages[data as keyof typeof errorMessages] || '不明なエラーが発生しました';
+        const message = errorMessages[data as keyof typeof errorMessages] || `不明なエラー: ${data}`;
+        console.error('❌ Coupon obtain failed:', message);
         setError(message);
       }
     } catch (error) {
-      console.error('Coupon obtain error:', error);
-      setError('クーポンの取得に失敗しました');
+      console.error('💥 Coupon obtain error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'クーポンの取得に失敗しました';
+      setError(errorMessage);
     } finally {
       setObtainingCouponId(null);
     }
