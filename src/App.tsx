@@ -68,6 +68,9 @@ const DogParkList = React.lazy(() => import('./pages/DogParkList').then(module =
 const DogParkDetail = React.lazy(() => import('./pages/DogParkDetail').then(module => ({ default: module.DogParkDetail })));
 const DogParkRules = React.lazy(() => import('./pages/DogParkRules').then(module => ({ default: module.DogParkRules })));
 
+// 施設関連ページ
+const FacilityDetail = React.lazy(() => import('./pages/FacilityDetail').then(module => ({ default: module.FacilityDetail })));
+
 // ショッピング関連ページ
 const PetShop = React.lazy(() => import('./pages/PetShop').then(module => ({ default: module.PetShop })));
 const Cart = React.lazy(() => import('./pages/Cart').then(module => ({ default: module.Cart })));
@@ -234,6 +237,11 @@ const App: React.FC = () => {
           <Route path="/parks/:id" element={
             <Suspense fallback={<PageSkeleton />}>
               <DogParkDetail />
+            </Suspense>
+          } />
+          <Route path="/facilities/:id" element={
+            <Suspense fallback={<PageSkeleton />}>
+              <FacilityDetail />
             </Suspense>
           } />
           <Route path="/rules" element={

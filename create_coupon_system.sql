@@ -105,8 +105,8 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 6. クーポン取得用のRPC関数
-CREATE OR REPLACE FUNCTION obtain_coupon(coupon_uuid UUID)
-RETURNS JSON AS $$
+CREATE OR REPLACE FUNCTION obtain_coupon(p_coupon_id UUID, p_user_id UUID)
+RETURNS TEXT AS $$
 DECLARE
     coupon_record facility_coupons%ROWTYPE;
     user_coupon_record user_coupons%ROWTYPE;
@@ -115,22 +115,32 @@ BEGIN
     -- クーポンの存在確認と有効性チェック
     SELECT * INTO coupon_record
     FROM facility_coupons
-    WHERE id = coupon_uuid
+    WHERE id = p_coupon_id
         AND is_active = true
         AND start_date <= NOW()
         AND end_date >= NOW();
     
     IF NOT FOUND THEN
-        RETURN json_build_object('success', false, 'error', 'クーポンが見つからないか、有効期限が切れています。');
+        RETURN 'coupon_not_found';
+    END IF;
+    
+    -- 期限切れチェック
+    IF coupon_record.end_date < NOW() THEN
+        RETURN 'coupon_expired';
+    END IF;
+    
+    -- アクティブ状態チェック
+    IF NOT coupon_record.is_active THEN
+        RETURN 'coupon_inactive';
     END IF;
     
     -- 既に取得済みかチェック
     SELECT * INTO user_coupon_record
     FROM user_coupons
-    WHERE user_id = auth.uid() AND coupon_id = coupon_uuid;
+    WHERE user_id = p_user_id AND coupon_id = p_coupon_id;
     
     IF FOUND THEN
-        RETURN json_build_object('success', false, 'error', 'このクーポンは既に取得済みです。');
+        RETURN 'already_obtained';
     END IF;
     
     -- QRコード用のユニークトークン生成
@@ -138,13 +148,9 @@ BEGIN
     
     -- クーポン取得レコード作成
     INSERT INTO user_coupons (user_id, coupon_id, qr_code_token)
-    VALUES (auth.uid(), coupon_uuid, qr_token);
+    VALUES (p_user_id, p_coupon_id, qr_token);
     
-    RETURN json_build_object(
-        'success', true,
-        'message', 'クーポンを取得しました！',
-        'qr_token', qr_token
-    );
+    RETURN 'success';
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
