@@ -70,25 +70,73 @@ export function MapView({
     </svg>
   `;
 
-  // 【Phase 2】詳細ボタン付きInfoWindowコンテンツを生成する関数
+  // 【Phase 3】距離計算機能を追加
+  // Haversine公式で2点間の距離を計算
+  const calculateDistance = useCallback((lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371; // 地球の半径（km）
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }, []);
+
+  // 距離を適切な単位で表示する関数
+  const formatDistance = useCallback((distance: number): string => {
+    if (distance < 1) {
+      return `${Math.round(distance * 1000)}m`;
+    } else {
+      return `${distance.toFixed(1)}km`;
+    }
+  }, []);
+
+  // 【Phase 3】距離計算付きInfoWindowコンテンツを生成する関数
   const createSimpleInfoWindowContent = useCallback((item: DogPark | PetFacility, type: 'park' | 'facility'): string => {
     const itemName = item.name || '名前未設定';
     const detailPath = type === 'park' ? `/parks/${item.id}` : `/facilities/${item.id}`;
     
+    // 現在地がある場合は距離を計算
+    let distanceText = '';
+    if (currentLocation && item.latitude && item.longitude) {
+      const distance = calculateDistance(
+        currentLocation.lat,
+        currentLocation.lng,
+        item.latitude,
+        item.longitude
+      );
+      distanceText = `
+        <p style="
+          font-size: 12px;
+          color: #6b7280;
+          margin: 4px 0 8px 0;
+          display: flex;
+          align-items: center;
+        ">
+          <span style="margin-right: 4px;">📍</span>
+          現在地から ${formatDistance(distance)}
+        </p>
+      `;
+    }
+    
     return `
       <div style="
-        min-width: 180px;
-        max-width: 220px;
-        padding: 10px;
+        min-width: 200px;
+        max-width: 240px;
+        padding: 12px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       ">
         <h3 style="
           font-size: 14px;
           font-weight: 600;
-          margin: 0 0 8px 0;
+          margin: 0 0 4px 0;
           color: #1f2937;
           line-height: 1.3;
         ">${itemName}</h3>
+        
+        ${distanceText}
         
         <button
           onclick="window.infoWindowNavigate('${detailPath}')"
@@ -97,8 +145,8 @@ export function MapView({
             background: #3b82f6;
             color: white;
             border: none;
-            border-radius: 4px;
-            padding: 6px 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
             font-size: 12px;
             font-weight: 500;
             cursor: pointer;
@@ -111,7 +159,7 @@ export function MapView({
         </button>
       </div>
     `;
-  }, []);
+  }, [currentLocation, calculateDistance, formatDistance]);
 
   // 【Phase 2】InfoWindowのナビゲーション用グローバル関数を設定
   useEffect(() => {
