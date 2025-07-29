@@ -133,11 +133,19 @@ export function DogParkList() {
     });
   }, [parks, userLocation]);
 
-  // カテゴリフィルター機能
+  // カテゴリフィルター機能（一時的に全施設表示）
   const filteredFacilities = useMemo(() => {
-    let filtered = facilities.filter(facility => 
-      selectedCategories.includes(facility.category)
-    );
+    // デバッグ用ログ
+    console.log('🏢 All facilities:', facilities);
+    console.log('📋 Selected categories:', selectedCategories);
+    
+    // 一時的に全ての施設を表示（カテゴリーフィルター無効化）
+    let filtered = facilities; // 全施設を表示
+    
+    // 各施設のカテゴリー情報をログ出力
+    facilities.forEach(facility => {
+      console.log(`施設: ${facility.name}, カテゴリー: ${facility.category}, カテゴリー名: ${facility.category_name}`);
+    });
 
     // 距離順でソート（位置情報がある場合）
     if (userLocation && filtered.length > 0) {
@@ -158,6 +166,7 @@ export function DogParkList() {
       });
     }
 
+    console.log('🎯 Filtered facilities:', filtered);
     return filtered;
   }, [facilities, selectedCategories, userLocation]);
 
