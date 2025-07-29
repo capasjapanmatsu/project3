@@ -862,8 +862,11 @@ export default function FacilityRegistration() {
                 <AlertCircle className="w-5 h-5 text-blue-500 mr-2 mt-0.5" />
                 <div className="text-sm text-blue-800">
                   <p className="font-medium mb-1">登録者情報の確認</p>
-                  <p className="text-xs">
+                  <p className="text-xs mb-2">
                     アカウント情報から自動取得されました。変更が必要な場合は編集できます。
+                  </p>
+                  <p className="text-xs font-medium text-blue-600">
+                    ⚠️ ここにこの情報は公開されません
                   </p>
                 </div>
               </div>
