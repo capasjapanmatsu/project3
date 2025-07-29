@@ -3,6 +3,7 @@ import {
     Eye,
     Gift,
     Image as ImageIcon,
+    Info,
     Plus,
     Save,
     Trash2,
@@ -715,7 +716,15 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
                       {coupon.is_active ? '有効' : '無効'}
                     </span>
                     <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
-                      {coupon.usage_limit_type === 'once' ? '1回限り' : '何回でも'}
+                      {(() => {
+                        console.log('Coupon usage_limit_type debug:', {
+                          id: coupon.id,
+                          usage_limit_type: coupon.usage_limit_type,
+                          typeof: typeof coupon.usage_limit_type,
+                          comparison: coupon.usage_limit_type === 'once'
+                        });
+                        return coupon.usage_limit_type === 'once' ? '1回限り' : '何回でも';
+                      })()}
                     </span>
                   </div>
 
@@ -790,6 +799,54 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
           ))
         )}
       </div>
+
+      {/* クーポンについての説明 */}
+      <Card className="mt-6">
+        <div className="p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center">
+            <Info className="w-5 h-5 mr-2 text-blue-600" />
+            クーポンについて
+          </h3>
+          <div className="space-y-3 text-sm text-gray-700">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-semibold text-blue-800 mb-2">📱 クーポンの表示方法</h4>
+              <p className="text-blue-700">
+                クーポンはスマートフォンの画面に表示され、お客様が店舗で提示します。
+              </p>
+            </div>
+            
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h4 className="font-semibold text-yellow-800 mb-2">🔒 1回限りクーポンの仕組み</h4>
+              <p className="text-yellow-700 mb-2">
+                「おひとり様1回限り」のクーポンは、1ユーザーにつき1回のみ取得可能です。
+              </p>
+              <p className="text-yellow-700 mb-2">
+                • お客様がクーポンを表示した段階で自動削除されます
+              </p>
+              <p className="text-yellow-700">
+                • 2回目以降は使用できなくなり、再表示もできません
+              </p>
+            </div>
+            
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h4 className="font-semibold text-green-800 mb-2">♻️ 何回でもクーポンの仕組み</h4>
+              <p className="text-green-700 mb-2">
+                「何回でも」のクーポンは、有効期限内であれば何度でも使用可能です。
+              </p>
+              <p className="text-green-700">
+                • 同じお客様が複数回利用できます（期限内）
+              </p>
+            </div>
+            
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <h4 className="font-semibold text-gray-800 mb-2">⏰ 有効期限について</h4>
+              <p className="text-gray-700">
+                設定した有効期限を過ぎると、クーポンは自動的に無効になります。
+              </p>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* 画像クロッパー */}
       {showImageCropper && couponImageFile && (
