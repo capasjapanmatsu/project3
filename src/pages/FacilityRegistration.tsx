@@ -195,12 +195,16 @@ export default function FacilityRegistration() {
     // ファイルサイズチェック（5MB制限）
     if (file.size > 5 * 1024 * 1024) {
       setError('画像ファイルのサイズは5MB以下にしてください');
+      // input要素をリセット
+      event.target.value = '';
       return;
     }
 
     // ファイル形式チェック
     if (!file.type.startsWith('image/')) {
       setError('画像ファイルを選択してください');
+      // input要素をリセット
+      event.target.value = '';
       return;
     }
 
@@ -210,6 +214,9 @@ export default function FacilityRegistration() {
       imageIndex: index,
       originalFile: file
     });
+    
+    // input要素をリセット（同じファイルを再選択可能にする）
+    event.target.value = '';
   };
 
   // トリミング完了ハンドラー
@@ -285,6 +292,13 @@ export default function FacilityRegistration() {
         imageFiles: newImageFiles
       };
     });
+    
+    // 関連するinput要素をリセット
+    const inputId = index === 0 ? 'mainImage' : `additionalImage${index}`;
+    const inputElement = document.getElementById(inputId) as HTMLInputElement;
+    if (inputElement) {
+      inputElement.value = '';
+    }
   };
 
   // ユーザー情報の編集ハンドラー
@@ -778,6 +792,7 @@ export default function FacilityRegistration() {
                 </label>
                 {userInfo.isEditing ? (
                   <Input
+                    label=""
                     name="name"
                     value={userInfo.name}
                     onChange={handleUserInfoChange}
