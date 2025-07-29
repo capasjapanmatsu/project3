@@ -280,7 +280,7 @@ export default function AdminFacilityApproval() {
     }
   };
 
-  // 削除機能（RPC関数使用版）
+  // 削除機能
   const handleDelete = async (facilityId: string, facilityName: string) => {
     const confirmDelete = window.confirm(
       `「${facilityName}」を完全に削除してもよろしいですか？\n\n` +
@@ -299,19 +299,14 @@ export default function AdminFacilityApproval() {
       setError('');
       setSuccess('');
 
-      console.log('🗑️ RPC削除処理開始:', facilityId, facilityName);
-
       // 管理者専用のRPC関数を使用して削除
       const { data: result, error: rpcError } = await supabase
         .rpc('admin_delete_facility', {
           facility_id_param: facilityId
         });
 
-      console.log('🔄 RPC削除結果:', { result, rpcError });
-
       if (rpcError) {
-        console.error('❌ RPC実行エラー:', rpcError);
-        throw new Error(`RPC実行エラー: ${rpcError.message}`);
+        throw new Error(`削除処理エラー: ${rpcError.message}`);
       }
 
       if (!result) {
@@ -319,11 +314,9 @@ export default function AdminFacilityApproval() {
       }
 
       if (!result.success) {
-        console.error('❌ 削除失敗:', result.error);
         throw new Error(result.error || '削除に失敗しました');
       }
 
-      console.log('✅ 削除成功:', result);
       showSuccess(result.message || `施設「${facilityName}」を削除しました`);
       
       // モーダルを閉じる
@@ -333,7 +326,6 @@ export default function AdminFacilityApproval() {
       await fetchApplications();
 
     } catch (error) {
-      console.error('❌ 削除処理エラー:', error);
       const errorMessage = error instanceof Error ? error.message : '施設の削除に失敗しました';
       showError(`削除エラー: ${errorMessage}`);
     } finally {
