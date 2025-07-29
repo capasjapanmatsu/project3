@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 import { useMaintenance } from '../context/MaintenanceContext';
 import { BottomNavigation } from './BottomNavigation';
+import FloatingActionButton from './FloatingActionButton';
 import { Footer } from './Footer';
 import MaintenanceScreen from './MaintenanceScreen';
 import { Navbar } from './Navbar';
@@ -70,6 +71,9 @@ const Layout = ({ children }: LayoutProps) => {
         </main>
         <Footer />
         <BottomNavigation />
+        
+        {/* フローティングアクションボタン */}
+        <FloatingActionButton />
       </div>
     </HelmetProvider>
   );
