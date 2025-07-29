@@ -167,18 +167,54 @@ export default function FacilityRegistration() {
       });
       
       const userMetadata = user.user_metadata || {};
-      const userName = userMetadata.name || userMetadata.full_name || userMetadata.display_name || '';
-      const userAddress = userMetadata.address || '';
+      console.log('🔍 user_metadata詳細分析:', {
+        全キー: Object.keys(userMetadata),
+        全データ: userMetadata,
+        name候補: {
+          name: userMetadata.name,
+          full_name: userMetadata.full_name,
+          display_name: userMetadata.display_name,
+          given_name: userMetadata.given_name,
+          family_name: userMetadata.family_name,
+          nickname: userMetadata.nickname
+        },
+        address候補: {
+          address: userMetadata.address,
+          location: userMetadata.location,
+          postal_address: userMetadata.postal_address,
+          street_address: userMetadata.street_address,
+          formatted_address: userMetadata.formatted_address
+        }
+      });
+      
+      // より多くのフィールドから名前を取得
+      const userName = userMetadata.name || 
+                      userMetadata.full_name || 
+                      userMetadata.display_name || 
+                      userMetadata.given_name ||
+                      userMetadata.nickname ||
+                      (userMetadata.given_name && userMetadata.family_name ? 
+                        `${userMetadata.family_name} ${userMetadata.given_name}` : '') ||
+                      '';
+                      
+      // より多くのフィールドから住所を取得
+      const userAddress = userMetadata.address || 
+                         userMetadata.location || 
+                         userMetadata.postal_address ||
+                         userMetadata.street_address ||
+                         userMetadata.formatted_address ||
+                         '';
       
       console.log('✅ 認証ユーザーから取得した情報:', {
         name: userName,
-        address: userAddress
+        address: userAddress,
+        emailFallback: user.email // 最終手段としてemailを表示
       });
       
       setUserInfo({
         name: userName,
         address: userAddress,
-        isEditing: false
+        isEditing: !userName || !userAddress // 情報が不完全な場合は編集モードにする
       });
     } else {
       console.log('❌ userProfileと認証ユーザーが未定義');
