@@ -20,6 +20,7 @@ import AdminMaintenanceManagement from '../components/admin/AdminMaintenanceMana
 import useAuth from '../context/AuthContext';
 import { FraudDetectionResult, getFraudDetectionStats, getHighRiskUsers } from '../utils/adminFraudDetection';
 import { supabase } from '../utils/supabase';
+import AdminFacilityApproval from './AdminFacilityApproval';
 
 interface AdminStats {
   totalUsers: number;
@@ -62,7 +63,7 @@ interface FraudStats {
 export function AdminDashboard() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'parks' | 'vaccines' | 'users' | 'maintenance' | 'fraud'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'parks' | 'facilities' | 'users' | 'maintenance' | 'fraud'>('overview');
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalParks: 0,
@@ -381,6 +382,7 @@ export function AdminDashboard() {
           {[
             { id: 'overview', label: '概要', icon: BarChart4 },
             { id: 'parks', label: 'ドッグラン', icon: Building },
+            { id: 'facilities', label: 'その他施設', icon: Building },
             { id: 'users', label: 'ユーザー', icon: Users },
             { id: 'fraud', label: '不正検知', icon: ShieldAlert },
             { id: 'maintenance', label: 'メンテナンス', icon: Settings }
@@ -606,6 +608,11 @@ export function AdminDashboard() {
               </div>
             </Card>
           </div>
+        )}
+
+        {/* 施設承認管理タブ */}
+        {activeTab === 'facilities' && (
+          <AdminFacilityApproval />
         )}
 
         {/* 既存のタブ内容 */}
