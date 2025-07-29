@@ -88,7 +88,7 @@ export function FacilityDetail() {
         // 画像データを取得（pet_facility_imagesのみ）
         supabase
           .from('pet_facility_images')
-          .select('id, facility_id, image_data, image_type, display_order, created_at')
+          .select('id, facility_id, image_url, image_type, display_order, created_at, alt_text')
           .eq('facility_id', facilityId)
           .order('display_order', { ascending: true }),
         
@@ -378,6 +378,56 @@ export function FacilityDetail() {
 
           {/* メインヒーローエリア */}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* 画像ギャラリー（一番上） */}
+            {facility.images && facility.images.length > 0 && (
+              <div className="mb-8">
+                {/* スワイプ対応の画像ギャラリー */}
+                <div className="relative">
+                  <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide" style={{ scrollSnapType: 'x mandatory' }}>
+                    {facility.images.map((image, index) => (
+                      <div
+                        key={index}
+                        className="flex-shrink-0 w-[calc(50%-8px)] aspect-[4/3] rounded-2xl overflow-hidden shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
+                        style={{ scrollSnapAlign: 'start' }}
+                        onClick={() => {
+                          setSelectedImageIndex(index);
+                          setShowImageModal(true);
+                        }}
+                      >
+                        <img
+                          src={image.image_url}
+                          alt={image.alt_text || `${facility.name}の画像${index + 1}`}
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* 画像数インジケーター */}
+                  <div className="flex justify-center mt-4 space-x-2">
+                    {facility.images.map((_, index) => (
+                      <button
+                        key={index}
+                        className={`w-2 h-2 rounded-full transition-colors ${
+                          index === selectedImageIndex 
+                            ? 'bg-blue-500' 
+                            : 'bg-gray-300 hover:bg-gray-400'
+                        }`}
+                        onClick={() => {
+                          setSelectedImageIndex(index);
+                          setShowImageModal(true);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               {/* 左側：施設情報 */}
               <div className="space-y-6">
@@ -440,75 +490,7 @@ export function FacilityDetail() {
                 )}
               </div>
 
-              {/* 右側：メイン画像 */}
-              <div className="lg:sticky lg:top-24">
-                {facility.images && facility.images.length > 0 ? (
-                  <div className="space-y-4">
-                    {/* メイン画像 */}
-                    <div 
-                      className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl cursor-pointer group"
-                      onClick={() => {
-                        setSelectedImageIndex(0);
-                        setShowImageModal(true);
-                      }}
-                    >
-                      <img
-                        src={facility.images[0].image_data} // image_urlからimage_dataに変更
-                        alt={facility.images[0].description || `${facility.name}のメイン画像`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300" />
-                      <div className="absolute top-4 right-4 bg-white bg-opacity-90 px-3 py-1 rounded-full text-sm font-medium text-gray-700">
-                        {facility.images.length}枚の写真
-                      </div>
-                    </div>
-
-                    {/* サムネイル画像ギャラリー */}
-                    {facility.images.length > 1 && (
-                      <div className="grid grid-cols-4 gap-2">
-                        {facility.images.slice(1, 5).map((image, index) => (
-                          <div
-                            key={index}
-                            className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
-                            onClick={() => {
-                              setSelectedImageIndex(index + 1);
-                              setShowImageModal(true);
-                            }}
-                          >
-                            <img
-                              src={image.image_data} // image_urlからimage_dataに変更
-                              alt={image.description || `${facility.name}の画像${index + 2}`}
-                              className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
-                            />
-                          </div>
-                        ))}
-                        
-                        {/* さらに多くの画像がある場合の表示 */}
-                        {facility.images.length > 5 && (
-                          <div
-                            className="aspect-square rounded-lg bg-gray-900 bg-opacity-75 flex items-center justify-center cursor-pointer hover:bg-opacity-60 transition-all"
-                            onClick={() => {
-                              setSelectedImageIndex(5);
-                              setShowImageModal(true);
-                            }}
-                          >
-                            <span className="text-white font-medium text-sm">
-                              +{facility.images.length - 4}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="aspect-[4/3] rounded-2xl bg-gray-100 flex items-center justify-center">
-                    <div className="text-center">
-                      <Building className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">画像がありません</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+              {/* 右側の画像セクションを削除 */}
             </div>
           </div>
         </div>
@@ -693,8 +675,8 @@ export function FacilityDetail() {
               
               <div className="relative">
                 <img
-                  src={facility.images[selectedImageIndex].image_data} // image_urlからimage_dataに変更
-                  alt={facility.images[selectedImageIndex].description || `施設画像`}
+                  src={facility.images[selectedImageIndex].image_url} // image_urlからimage_dataに変更
+                  alt={facility.images[selectedImageIndex].alt_text || `施設画像`}
                   className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
                 />
                 
@@ -718,9 +700,9 @@ export function FacilityDetail() {
               
               <div className="text-center mt-4 text-white">
                 <p>{selectedImageIndex + 1} / {facility.images.length}</p>
-                {facility.images[selectedImageIndex].description && (
+                {facility.images[selectedImageIndex].alt_text && (
                   <p className="text-sm text-gray-300 mt-2">
-                    {facility.images[selectedImageIndex].description}
+                    {facility.images[selectedImageIndex].alt_text}
                   </p>
                 )}
               </div>
