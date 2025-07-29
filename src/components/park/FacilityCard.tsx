@@ -4,7 +4,6 @@ import {
     Coffee,
     ExternalLink,
     Gift,
-    Heart,
     Home,
     MapPin,
     Navigation,
@@ -212,68 +211,8 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
 
   return (
     <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden cursor-pointer border border-gray-200">
-      {/* サムネイル画像セクション */}
-      <div className="relative aspect-[4/3] bg-gray-100">
-        {imageLoading ? (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          </div>
-        ) : mainImage ? (
-          <img
-            src={mainImage.image_url}
-            alt={mainImage.alt_text || `${facility.name}のメイン画像`}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              const parent = target.parentElement;
-              if (parent) {
-                parent.innerHTML = `
-                  <div class="w-full h-full bg-gray-200 flex items-center justify-center">
-                    <div class="text-center">
-                      <svg class="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                      </svg>
-                      <p class="text-sm text-gray-500">画像なし</p>
-                    </div>
-                  </div>
-                `;
-              }
-            }}
-          />
-        ) : (
-          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-            <div className="text-center">
-              <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">画像なし</p>
-            </div>
-          </div>
-        )}
-
-        {/* 画像数表示 */}
-        {facilityImages.length > 1 && (
-          <div className="absolute top-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
-            {facilityImages.length}枚
-          </div>
-        )}
-
-        {/* お気に入りボタン（将来実装用） */}
-        {user && (
-          <div className="absolute top-2 left-2">
-            <button
-              className="p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                // お気に入り機能の実装
-              }}
-            >
-              <Heart className="w-4 h-4 text-gray-600 hover:text-red-500" />
-            </button>
-          </div>
-        )}
-      </div>
-
+      {/* メイン画像セクションを削除 */}
+      
       <div className="p-4">
         {/* カテゴリとステータス */}
         <div className="flex items-center justify-between mb-2">
@@ -295,9 +234,9 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
 
         {/* 施設名 */}
         <div className="flex items-center mb-2">
-          {/* 小さなサムネイル画像（左側） */}
+          {/* サムネイル画像（2倍サイズ） */}
           {mainImage && (
-            <div className="w-12 h-12 rounded-lg overflow-hidden border border-gray-200 shadow-sm mr-3 flex-shrink-0">
+            <div className="w-24 h-24 rounded-lg overflow-hidden border border-gray-200 shadow-sm mr-4 flex-shrink-0">
               <img
                 src={mainImage.image_url}
                 alt={`${facility.name}のサムネイル`}
