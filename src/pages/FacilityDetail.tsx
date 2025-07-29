@@ -75,8 +75,45 @@ export function FacilityDetail() {
 
       console.log('🖼️ 施設画像取得開始:', facilityId);
 
-      // 施設の基本情報、画像、アクティブなクーポンを並列取得
-      const [facilityResult, imagesResult, couponsResult] = await Promise.all([
+      // 画像データを両テーブルから取得
+      const [facilityImagesResult, petFacilityImagesResult] = await Promise.all([
+        // facility_imagesテーブルから取得
+        supabase
+          .from('facility_images')
+          .select('id, facility_id, image_url, image_type, created_at')
+          .eq('facility_id', facilityId)
+          .order('created_at', { ascending: true }),
+        
+        // pet_facility_imagesテーブルから取得  
+        supabase
+          .from('pet_facility_images')
+          .select('id, facility_id, image_data, image_type, display_order, created_at')
+          .eq('facility_id', facilityId)
+          .order('display_order', { ascending: true })
+      ]);
+
+      // 両テーブルの画像データを統合
+      const allImages = [
+        // facility_imagesのデータ（image_urlを使用）
+        ...(facilityImagesResult.data || []).map(img => ({
+          ...img,
+          image_url: img.image_url
+        })),
+        // pet_facility_imagesのデータ（image_dataをimage_urlとして使用）
+        ...(petFacilityImagesResult.data || []).map(img => ({
+          ...img,
+          image_url: img.image_data // base64データをimage_urlとして扱う
+        }))
+      ];
+
+      console.log('🖼️ 統合画像データ:', {
+        facilityImagesCount: facilityImagesResult.data?.length || 0,
+        petFacilityImagesCount: petFacilityImagesResult.data?.length || 0,
+        totalImages: allImages.length
+      });
+
+      // 施設の基本情報、統合画像、アクティブなクーポンを並列取得
+      const [facilityResult, couponsResult] = await Promise.all([
         // 施設基本情報
         supabase
           .from('pet_facilities')
@@ -84,13 +121,6 @@ export function FacilityDetail() {
           .eq('id', facilityId)
           .eq('status', 'approved')
           .single(),
-        
-        // 画像データを取得
-        supabase
-          .from('pet_facility_images')
-          .select('*')
-          .eq('facility_id', facilityId)
-          .order('created_at', { ascending: true }),
         
         // アクティブなクーポン
         supabase
@@ -112,7 +142,7 @@ export function FacilityDetail() {
       ]);
 
       console.log('📋 Facility result:', facilityResult);
-      console.log('🖼️ Images result:', imagesResult);
+      console.log('🖼️ Images result:', allImages);
       console.log('🎫 Coupons result:', couponsResult);
 
       if (facilityResult.error) {
@@ -126,8 +156,8 @@ export function FacilityDetail() {
         return;
       }
 
-      if (imagesResult.error) {
-        console.error('❌ Images query error:', imagesResult.error);
+      if (allImages.error) {
+        console.error('❌ Images query error:', allImages.error);
         // 画像エラーは致命的ではないので続行
       }
 
@@ -137,7 +167,7 @@ export function FacilityDetail() {
       }
 
       console.log('✅ Facility data:', facilityResult.data);
-      console.log('🖼️ Images data:', imagesResult.data);
+      console.log('🖼️ Images data:', allImages);
       console.log('🎫 Coupons data:', couponsResult.data);
 
       // カテゴリ情報を個別に取得
@@ -181,14 +211,14 @@ export function FacilityDetail() {
       setFacility({
         ...facilityResult.data,
         category_info: categoryInfo,
-        images: imagesResult.data || [],
+        images: allImages || [],
         coupons: couponsResult.data || []
       } as any);
 
       console.log('🏗️ 最終的な施設データ:', {
         facilityName: (facilityResult.data as any)?.name,
         categoryInfo,
-        imagesCount: (imagesResult.data || []).length,
+        imagesCount: (allImages || []).length,
         couponsCount: (couponsResult.data || []).length,
         address: (facilityResult.data as any)?.address,
         phone: (facilityResult.data as any)?.phone,

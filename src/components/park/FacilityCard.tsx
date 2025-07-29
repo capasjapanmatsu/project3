@@ -62,27 +62,58 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
       setImageLoading(true);
       console.log('🖼️ 施設画像取得開始:', facility.id, facility.name);
       
-      const { data: images, error: imagesError } = await supabase
-        .from('pet_facility_images')
-        .select('*')
-        .eq('facility_id', facility.id)
-        .order('created_at', { ascending: true })
-        .limit(1); // メイン画像のみ取得
+      // 両テーブルから画像データを取得
+      const [facilityImagesResult, petFacilityImagesResult] = await Promise.all([
+        // facility_imagesテーブルから取得
+        supabase
+          .from('facility_images')
+          .select('id, facility_id, image_url, image_type, created_at')
+          .eq('facility_id', facility.id)
+          .order('created_at', { ascending: true })
+          .limit(1),
+        
+        // pet_facility_imagesテーブルから取得  
+        supabase
+          .from('pet_facility_images')
+          .select('id, facility_id, image_data, image_type, display_order, created_at')
+          .eq('facility_id', facility.id)
+          .order('display_order', { ascending: true })
+          .limit(1)
+      ]);
+
+      // 両テーブルの画像データを統合（メイン画像のみ）
+      const allImages = [
+        // facility_imagesのデータ（image_urlを使用）
+        ...(facilityImagesResult.data || []).map(img => ({
+          ...img,
+          image_url: img.image_url
+        })),
+        // pet_facility_imagesのデータ（image_dataをimage_urlとして使用）
+        ...(petFacilityImagesResult.data || []).map(img => ({
+          ...img,
+          image_url: img.image_data // base64データをimage_urlとして扱う
+        }))
+      ];
 
       console.log('🖼️ 画像取得結果:', {
         facilityId: facility.id,
         facilityName: facility.name,
-        imagesCount: images?.length || 0,
-        images: images,
-        error: imagesError
+        facilityImagesCount: facilityImagesResult.data?.length || 0,
+        petFacilityImagesCount: petFacilityImagesResult.data?.length || 0,
+        totalImages: allImages.length,
+        images: allImages
       });
 
-      if (imagesError) {
-        console.error('❌ 施設画像の取得に失敗:', imagesError);
-      } else {
-        console.log('✅ 施設画像の取得成功:', images?.length || 0, '枚');
-        setFacilityImages(images || []);
+      if (facilityImagesResult.error) {
+        console.error('❌ facility_images取得エラー:', facilityImagesResult.error);
       }
+      if (petFacilityImagesResult.error) {
+        console.error('❌ pet_facility_images取得エラー:', petFacilityImagesResult.error);
+      }
+      
+      console.log('✅ 施設画像の取得成功:', allImages.length, '枚');
+      setFacilityImages(allImages);
+      
     } catch (error) {
       console.error('💥 施設画像の取得中にエラーが発生:', error);
     } finally {
