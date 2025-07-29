@@ -140,91 +140,132 @@ export default function FacilityRegistration() {
     console.log('📋 ユーザープロファイル確認:', userProfile);
     console.log('👤 認証ユーザー確認:', user);
     
-    if (userProfile) {
-      // userProfileの全プロパティをログ出力
-      console.log('👤 利用可能なプロフィールフィールド:', Object.keys(userProfile));
-      
-      const userName = userProfile.name || userProfile.display_name || userProfile.full_name || '';
-      const userAddress = userProfile.address || userProfile.location || userProfile.postal_address || '';
-      
-      console.log('✅ プロファイルから取得した情報:', {
-        name: userName,
-        address: userAddress,
-        originalProfile: userProfile
-      });
-      
-      setUserInfo({
-        name: userName,
-        address: userAddress,
-        isEditing: false
-      });
-    } else if (user) {
-      // userProfileがない場合は、認証ユーザーの基本情報を使用
-      console.log('📧 認証ユーザーから情報取得:', {
-        email: user.email,
-        user_metadata: user.user_metadata,
-        app_metadata: user.app_metadata
-      });
-      
-      const userMetadata = user.user_metadata || {};
-      console.log('🔍 user_metadata詳細分析:', {
-        全キー: Object.keys(userMetadata),
-        全データ: userMetadata,
-        name候補: {
-          name: userMetadata.name,
-          full_name: userMetadata.full_name,
-          display_name: userMetadata.display_name,
-          given_name: userMetadata.given_name,
-          family_name: userMetadata.family_name,
-          nickname: userMetadata.nickname
-        },
-        address候補: {
-          address: userMetadata.address,
-          location: userMetadata.location,
-          postal_address: userMetadata.postal_address,
-          street_address: userMetadata.street_address,
-          formatted_address: userMetadata.formatted_address
+    const fetchUserProfile = async () => {
+      if (userProfile) {
+        // userProfileの全プロパティをログ出力
+        console.log('👤 利用可能なプロフィールフィールド:', Object.keys(userProfile));
+        
+        const userName = userProfile.name || userProfile.display_name || userProfile.full_name || '';
+        const userAddress = userProfile.address || userProfile.location || userProfile.postal_address || '';
+        
+        console.log('✅ プロファイルから取得した情報:', {
+          name: userName,
+          address: userAddress,
+          originalProfile: userProfile
+        });
+        
+        setUserInfo({
+          name: userName,
+          address: userAddress,
+          isEditing: false
+        });
+      } else if (user) {
+        console.log('🔄 userProfileがnullのため、Supabaseから直接取得を試行');
+        
+        try {
+          // Supabaseから直接プロフィール情報を取得
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          
+          console.log('📋 Supabaseから取得したプロフィール:', { profile, error });
+          
+          if (profile && !error) {
+            const userName = profile.name || profile.display_name || profile.full_name || '';
+            const userAddress = profile.address || profile.location || profile.postal_address || '';
+            
+            console.log('✅ Supabaseから取得した情報:', {
+              name: userName,
+              address: userAddress,
+              profileData: profile
+            });
+            
+            setUserInfo({
+              name: userName,
+              address: userAddress,
+              isEditing: !userName || !userAddress
+            });
+          } else {
+            // Supabaseにプロフィールがない場合、user_metadataを確認
+            console.log('📧 認証ユーザーから情報取得:', {
+              email: user.email,
+              user_metadata: user.user_metadata,
+              app_metadata: user.app_metadata
+            });
+            
+            const userMetadata = user.user_metadata || {};
+            console.log('🔍 user_metadata詳細分析:', {
+              全キー: Object.keys(userMetadata),
+              全データ: userMetadata,
+              name候補: {
+                name: userMetadata.name,
+                full_name: userMetadata.full_name,
+                display_name: userMetadata.display_name,
+                given_name: userMetadata.given_name,
+                family_name: userMetadata.family_name,
+                nickname: userMetadata.nickname
+              },
+              address候補: {
+                address: userMetadata.address,
+                location: userMetadata.location,
+                postal_address: userMetadata.postal_address,
+                street_address: userMetadata.street_address,
+                formatted_address: userMetadata.formatted_address
+              }
+            });
+            
+            // より多くのフィールドから名前を取得
+            const userName = userMetadata.name || 
+                            userMetadata.full_name || 
+                            userMetadata.display_name || 
+                            userMetadata.given_name ||
+                            userMetadata.nickname ||
+                            (userMetadata.given_name && userMetadata.family_name ? 
+                              `${userMetadata.family_name} ${userMetadata.given_name}` : '') ||
+                            '';
+                            
+            // より多くのフィールドから住所を取得
+            const userAddress = userMetadata.address || 
+                               userMetadata.location || 
+                               userMetadata.postal_address ||
+                               userMetadata.street_address ||
+                               userMetadata.formatted_address ||
+                               '';
+            
+            console.log('✅ 認証ユーザーから取得した情報:', {
+              name: userName,
+              address: userAddress,
+              emailFallback: user.email // 最終手段としてemailを表示
+            });
+            
+            setUserInfo({
+              name: userName,
+              address: userAddress,
+              isEditing: !userName || !userAddress // 情報が不完全な場合は編集モードにする
+            });
+          }
+        } catch (error) {
+          console.error('❌ プロフィール取得エラー:', error);
+          setUserInfo({
+            name: '',
+            address: '',
+            isEditing: true
+          });
         }
-      });
-      
-      // より多くのフィールドから名前を取得
-      const userName = userMetadata.name || 
-                      userMetadata.full_name || 
-                      userMetadata.display_name || 
-                      userMetadata.given_name ||
-                      userMetadata.nickname ||
-                      (userMetadata.given_name && userMetadata.family_name ? 
-                        `${userMetadata.family_name} ${userMetadata.given_name}` : '') ||
-                      '';
-                      
-      // より多くのフィールドから住所を取得
-      const userAddress = userMetadata.address || 
-                         userMetadata.location || 
-                         userMetadata.postal_address ||
-                         userMetadata.street_address ||
-                         userMetadata.formatted_address ||
-                         '';
-      
-      console.log('✅ 認証ユーザーから取得した情報:', {
-        name: userName,
-        address: userAddress,
-        emailFallback: user.email // 最終手段としてemailを表示
-      });
-      
-      setUserInfo({
-        name: userName,
-        address: userAddress,
-        isEditing: !userName || !userAddress // 情報が不完全な場合は編集モードにする
-      });
-    } else {
-      console.log('❌ userProfileと認証ユーザーが未定義');
-      // デフォルト値を設定（手動入力可能）
-      setUserInfo({
-        name: '',
-        address: '',
-        isEditing: true // 自動入力できない場合は編集モードにする
-      });
-    }
+      } else {
+        console.log('❌ userProfileと認証ユーザーが未定義');
+        // デフォルト値を設定（手動入力可能）
+        setUserInfo({
+          name: '',
+          address: '',
+          isEditing: true // 自動入力できない場合は編集モードにする
+        });
+      }
+    };
+    
+    fetchUserProfile();
   }, [userProfile, user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
