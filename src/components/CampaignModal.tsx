@@ -17,11 +17,11 @@ const CampaignModal: React.FC<CampaignModalProps> = ({ isOpen, onClose }) => {
     if (isOpen) {
       setShouldShow(true);
       // 少し遅延してアニメーション開始
-      setTimeout(() => setIsAnimating(true), 10);
+      setTimeout(() => setIsAnimating(true), 50);
     } else {
       setIsAnimating(false);
       // アニメーション完了後に非表示
-      setTimeout(() => setShouldShow(false), 300);
+      setTimeout(() => setShouldShow(false), 500);
     }
   }, [isOpen]);
 
@@ -29,12 +29,12 @@ const CampaignModal: React.FC<CampaignModalProps> = ({ isOpen, onClose }) => {
 
   const handleClose = () => {
     setIsAnimating(false);
-    setTimeout(() => onClose(), 300);
+    setTimeout(() => onClose(), 500);
   };
 
   const handleSubscribeClick = () => {
     handleClose();
-    setTimeout(() => navigate('/subscription-intro'), 300);
+    setTimeout(() => navigate('/subscription-intro'), 500);
   };
 
   const handleLaterClick = () => {
@@ -45,17 +45,17 @@ const CampaignModal: React.FC<CampaignModalProps> = ({ isOpen, onClose }) => {
     <>
       {/* バックドロップ */}
       <div 
-        className={`fixed inset-0 bg-black z-50 flex items-end sm:items-center justify-center p-4 transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black z-50 flex items-end sm:items-center justify-center p-4 transition-opacity duration-500 ease-in-out ${
           isAnimating ? 'bg-opacity-50' : 'bg-opacity-0'
         }`}
         onClick={handleClose}
       >
         {/* モーダル本体 */}
         <div 
-          className={`bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden transition-all duration-300 ease-out ${
+          className={`bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden transition-all duration-500 ease-out ${
             isAnimating 
               ? 'translate-y-0 opacity-100 scale-100' 
-              : 'translate-y-full sm:translate-y-8 opacity-0 scale-95'
+              : 'translate-y-full sm:translate-y-12 opacity-0 scale-95'
           }`}
           onClick={(e) => e.stopPropagation()}
         >
