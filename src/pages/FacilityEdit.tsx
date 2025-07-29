@@ -682,7 +682,7 @@ export default function FacilityEdit() {
                   <div key={rowIndex} className="grid grid-cols-7 gap-1">
                     {row.map((date, dayIndex) => {
                       if (!date) {
-                        return <div key={`empty-${rowIndex}-${dayIndex}`} className="h-8"></div>;
+                        return <div key={`empty-${monthIndex}-${rowIndex}-${dayIndex}`} className="h-8"></div>;
                       }
                       
                       const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
