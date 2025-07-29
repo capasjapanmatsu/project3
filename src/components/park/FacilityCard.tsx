@@ -60,6 +60,8 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
   const fetchFacilityImages = async () => {
     try {
       setImageLoading(true);
+      console.log('🖼️ 施設画像取得開始:', facility.id, facility.name);
+      
       const { data: images, error: imagesError } = await supabase
         .from('facility_images')
         .select('*')
@@ -67,13 +69,22 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
         .order('created_at', { ascending: true })
         .limit(1); // メイン画像のみ取得
 
+      console.log('🖼️ 画像取得結果:', {
+        facilityId: facility.id,
+        facilityName: facility.name,
+        imagesCount: images?.length || 0,
+        images: images,
+        error: imagesError
+      });
+
       if (imagesError) {
-        console.error('施設画像の取得に失敗:', imagesError);
+        console.error('❌ 施設画像の取得に失敗:', imagesError);
       } else {
+        console.log('✅ 施設画像の取得成功:', images?.length || 0, '枚');
         setFacilityImages(images || []);
       }
     } catch (error) {
-      console.error('施設画像の取得中にエラーが発生:', error);
+      console.error('💥 施設画像の取得中にエラーが発生:', error);
     } finally {
       setImageLoading(false);
     }

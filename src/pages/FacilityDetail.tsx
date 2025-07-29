@@ -133,33 +133,56 @@ export function FacilityDetail() {
       let categoryInfo = null;
       const categoryId = (facilityResult.data as any)?.category_id || (facilityResult.data as any)?.category;
       
-      console.log('🏷️ Category ID:', categoryId);
+      console.log('🏷️ カテゴリID取得:', {
+        categoryId,
+        facilityData: facilityResult.data,
+        categoryIdField: (facilityResult.data as any)?.category_id,
+        categoryField: (facilityResult.data as any)?.category
+      });
       
       if (categoryId) {
-        const { data: categoryData, error: categoryError } = await supabase
-          .from('facility_categories')
-          .select('*')
-          .eq('id', categoryId)
-          .single();
+        // カテゴリIDがUUIDの場合とstring名の場合を両方対応
+        let categoryQuery = supabase.from('facility_categories').select('*');
+        
+        // UUIDの形式かチェック（36文字でハイフンを含む）
+        const isUUID = typeof categoryId === 'string' && 
+                      categoryId.length === 36 && 
+                      categoryId.includes('-');
+        
+        if (isUUID) {
+          categoryQuery = categoryQuery.eq('id', categoryId);
+        } else {
+          categoryQuery = categoryQuery.eq('name', categoryId);
+        }
+        
+        console.log('🔍 カテゴリクエリ実行:', { categoryId, isUUID });
+        
+        const { data: categoryData, error: categoryError } = await categoryQuery.single();
         
         if (categoryError) {
-          console.error('❌ Category query error:', categoryError);
-          // カテゴリエラーも致命的ではないので続行
+          console.error('❌ カテゴリクエリエラー:', categoryError);
         } else {
           categoryInfo = categoryData;
-          console.log('✅ Category info:', categoryInfo);
+          console.log('✅ カテゴリ情報取得成功:', categoryInfo);
         }
       }
 
-      const finalFacilityData = {
+      setFacility({
         ...facilityResult.data,
         category_info: categoryInfo,
         images: imagesResult.data || [],
         coupons: couponsResult.data || []
-      };
+      } as any);
 
-      console.log('🎯 Final facility data:', finalFacilityData);
-      setFacility(finalFacilityData);
+      console.log('🏗️ 最終的な施設データ:', {
+        facilityName: (facilityResult.data as any)?.name,
+        categoryInfo,
+        imagesCount: (imagesResult.data || []).length,
+        couponsCount: (couponsResult.data || []).length,
+        address: (facilityResult.data as any)?.address,
+        phone: (facilityResult.data as any)?.phone,
+        website: (facilityResult.data as any)?.website_url
+      });
 
     } catch (err) {
       console.error('💥 施設データの取得に失敗:', err);
