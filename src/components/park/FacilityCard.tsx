@@ -338,6 +338,23 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
           </div>
         )}
 
+        {/* 小さなプレビュー画像 */}
+        {mainImage && (
+          <div className="flex justify-center mb-3">
+            <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+              <img
+                src={mainImage.image_data}
+                alt={`${facility.name}のプレビュー`}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* 電話番号 */}
         {facility.phone && (
           <div className="flex items-center text-gray-600 text-sm mb-3">
