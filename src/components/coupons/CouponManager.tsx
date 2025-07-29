@@ -38,7 +38,7 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
     discount_type: 'amount',
     start_date: '',
     end_date: '',
-    usage_limit_type: 'unlimited'
+    usage_limit_type: 'once'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [couponImageFile, setCouponImageFile] = useState<File | null>(null);
@@ -93,7 +93,7 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
       discount_type: 'amount',
       start_date: '',
       end_date: '',
-      usage_limit_type: 'unlimited'
+      usage_limit_type: 'once'
     });
     setCouponImageFile(null);
     setImagePreview('');
