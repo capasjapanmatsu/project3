@@ -73,6 +73,8 @@ export function FacilityDetail() {
 
       console.log('🔍 Fetching facility data for ID:', facilityId);
 
+      console.log('🖼️ 施設画像取得開始:', facilityId);
+
       // 施設の基本情報、画像、アクティブなクーポンを並列取得
       const [facilityResult, imagesResult, couponsResult] = await Promise.all([
         // 施設基本情報
@@ -83,9 +85,9 @@ export function FacilityDetail() {
           .eq('status', 'approved')
           .single(),
         
-        // 施設画像
+        // 画像データを取得
         supabase
-          .from('facility_images')
+          .from('pet_facility_images')
           .select('*')
           .eq('facility_id', facilityId)
           .order('created_at', { ascending: true }),
@@ -93,10 +95,19 @@ export function FacilityDetail() {
         // アクティブなクーポン
         supabase
           .from('facility_coupons')
-          .select('*')
+          .select(`
+            id,
+            service_content,
+            discount_value,
+            validity_start,
+            validity_end,
+            usage_limit,
+            coupon_image_url,
+            created_at
+          `)
           .eq('facility_id', facilityId)
           .eq('is_active', true)
-          .gte('end_date', new Date().toISOString().split('T')[0])
+          .gte('validity_end', new Date().toISOString())
           .order('created_at', { ascending: false })
       ]);
 
@@ -518,7 +529,7 @@ export function FacilityDetail() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {facility.coupons.map((coupon) => {
                   const userCoupon = userCoupons.find(uc => uc.coupon_id === coupon.id);
-                  const isExpired = new Date(coupon.end_date) < new Date();
+                  const isExpired = new Date(coupon.validity_end) < new Date();
                   const canObtain = !isExpired && !userCoupon && coupon.is_active;
 
                   return (
@@ -603,7 +614,7 @@ export function FacilityDetail() {
                             <div className="space-y-3 text-sm">
                               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                                 <Calendar className="w-4 h-4 text-blue-500" />
-                                <span className="text-gray-700">有効期限: {new Date(coupon.end_date).toLocaleDateString('ja-JP')}</span>
+                                <span className="text-gray-700">有効期限: {new Date(coupon.validity_end).toLocaleDateString('ja-JP')}</span>
                               </div>
                               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                                 <Users className="w-4 h-4 text-green-500" />

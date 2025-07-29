@@ -63,7 +63,7 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
       console.log('🖼️ 施設画像取得開始:', facility.id, facility.name);
       
       const { data: images, error: imagesError } = await supabase
-        .from('facility_images')
+        .from('pet_facility_images')
         .select('*')
         .eq('facility_id', facility.id)
         .order('created_at', { ascending: true })
