@@ -111,19 +111,12 @@ export function FacilityDetail() {
       setIsLoading(true);
       setError(null);
 
-      // 施設基本情報、画像、アクティブなクーポンを並列取得
-      const [facilityResult, imagesResult, couponsResult, reviewsResult, reviewSummaryResult, userDogsResult] = await Promise.all([
+      // 基本的な施設情報のみを取得（エラー回避のため簡素化）
+      const [facilityResult, imagesResult, couponsResult] = await Promise.all([
         // 施設基本情報
         supabase
           .from('pet_facilities')
-          .select(`
-            *,
-            facility_categories (
-              id,
-              name,
-              description
-            )
-          `)
+          .select('*')
           .eq('id', facilityId)
           .eq('status', 'approved')
           .single(),
@@ -142,28 +135,7 @@ export function FacilityDetail() {
           .eq('facility_id', facilityId)
           .eq('is_active', true)
           .gte('validity_end', new Date().toISOString())
-          .order('created_at', { ascending: false }),
-
-        // レビュー取得
-        supabase
-          .from('facility_reviews')
-          .select('*')
-          .eq('facility_id', facilityId)
-          .order('created_at', { ascending: false }),
-
-        // レビュー統計取得
-        supabase
-          .from('facility_rating_summary')
-          .select('*')
-          .eq('facility_id', facilityId)
-          .single(),
-
-        // ユーザーの犬情報取得（レビュー投稿用）
-        user ? supabase
-          .from('dogs')
-          .select('id, name, gender')
-          .eq('owner_id', user.id)
-          .eq('is_approved', true) : Promise.resolve({ data: [], error: null })
+          .order('created_at', { ascending: false })
       ]);
 
       if (facilityResult.error) throw facilityResult.error;
@@ -174,19 +146,16 @@ export function FacilityDetail() {
       // 取得したデータを設定
       const facilityData: FacilityWithDetails = {
         ...facilityResult.data,
-        category_info: (facilityResult.data as any).facility_categories,
         images: imagesResult.data || [],
         coupons: couponsResult.data || []
       };
 
       setFacility(facilityData);
-      setReviews(reviewsResult.data || []);
-      setReviewSummary(reviewSummaryResult.data);
-      setUserDogs(userDogsResult.data || []);
       
-      if (userDogsResult.data && userDogsResult.data.length > 0) {
-        setSelectedDogId(userDogsResult.data[0].id);
-      }
+      // レビュー機能は一時的に無効化
+      setReviews([]);
+      setReviewSummary(null);
+      setUserDogs([]);
 
       // ユーザーが既に取得したクーポンをチェック
       if (user && couponsResult.data && couponsResult.data.length > 0) {
@@ -802,7 +771,8 @@ export function FacilityDetail() {
             </div>
           )}
 
-          {/* レビューセクション */}
+          {/* レビューセクション - 一時的に無効化 */}
+          {false && (
           <div className="mb-12">
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">
@@ -1007,6 +977,7 @@ export function FacilityDetail() {
               )}
             </div>
           </div>
+        )}
         </div>
 
         {/* 画像拡大モーダル */}
