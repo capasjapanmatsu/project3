@@ -138,6 +138,7 @@ export default function FacilityRegistration() {
   // userProfileが変更された時にuserInfoを自動設定
   useEffect(() => {
     console.log('📋 ユーザープロファイル確認:', userProfile);
+    console.log('👤 認証ユーザー確認:', user);
     
     if (userProfile) {
       // userProfileの全プロパティをログ出力
@@ -146,7 +147,7 @@ export default function FacilityRegistration() {
       const userName = userProfile.name || userProfile.display_name || userProfile.full_name || '';
       const userAddress = userProfile.address || userProfile.location || userProfile.postal_address || '';
       
-      console.log('✅ 取得した情報:', {
+      console.log('✅ プロファイルから取得した情報:', {
         name: userName,
         address: userAddress,
         originalProfile: userProfile
@@ -157,10 +158,38 @@ export default function FacilityRegistration() {
         address: userAddress,
         isEditing: false
       });
+    } else if (user) {
+      // userProfileがない場合は、認証ユーザーの基本情報を使用
+      console.log('📧 認証ユーザーから情報取得:', {
+        email: user.email,
+        user_metadata: user.user_metadata,
+        app_metadata: user.app_metadata
+      });
+      
+      const userMetadata = user.user_metadata || {};
+      const userName = userMetadata.name || userMetadata.full_name || userMetadata.display_name || '';
+      const userAddress = userMetadata.address || '';
+      
+      console.log('✅ 認証ユーザーから取得した情報:', {
+        name: userName,
+        address: userAddress
+      });
+      
+      setUserInfo({
+        name: userName,
+        address: userAddress,
+        isEditing: false
+      });
     } else {
-      console.log('❌ userProfileが未定義');
+      console.log('❌ userProfileと認証ユーザーが未定義');
+      // デフォルト値を設定（手動入力可能）
+      setUserInfo({
+        name: '',
+        address: '',
+        isEditing: true // 自動入力できない場合は編集モードにする
+      });
     }
-  }, [userProfile]);
+  }, [userProfile, user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
