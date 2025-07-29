@@ -242,12 +242,12 @@ export default function FacilityEdit() {
       setIsUploadingImage(true);
       setError('');
 
-      // 画像をSupabase Storageにアップロード（正しいバケット名を使用）
+      // 画像をSupabase Storageにアップロード（vaccine-certsバケットを使用）
       const timestamp = Date.now();
       const filename = `facility_${facility.id}_${timestamp}.jpg`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('pet-facility-images')
+        .from('vaccine-certs')
         .upload(filename, croppedFile, {
           contentType: 'image/jpeg',
           upsert: true
@@ -256,7 +256,7 @@ export default function FacilityEdit() {
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage
-        .from('pet-facility-images')
+        .from('vaccine-certs')
         .getPublicUrl(filename);
 
       const imageUrl = urlData.publicUrl;
