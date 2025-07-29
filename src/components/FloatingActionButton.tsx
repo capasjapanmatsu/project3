@@ -81,7 +81,8 @@ export const FloatingActionButton: React.FC = () => {
         .is('used_at', null)
         .gte('facility_coupons.validity_end', new Date().toISOString());
 
-      // ユーザーの犬のワクチン証明書を取得
+      // ユーザーの犬のワクチン証明書を取得（一時的に無効化）
+      /*
       const { data: vaccinesData } = await supabase
         .from('vaccine_certificates')
         .select(`
@@ -91,9 +92,11 @@ export const FloatingActionButton: React.FC = () => {
         .eq('dogs.owner_id', user.id)
         .eq('status', 'approved')
         .gte('expiry_date', new Date().toISOString().split('T')[0]);
+      */
 
       setUserCoupons(couponsData || []);
-      setVaccineCertificates(vaccinesData || []);
+      // setVaccineCertificates(vaccinesData || []);
+      setVaccineCertificates([]); // 一時的に空配列
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
@@ -102,7 +105,28 @@ export const FloatingActionButton: React.FC = () => {
   };
 
   const handleCouponSelect = (coupon: UserCoupon) => {
-    setSelectedCoupon(coupon);
+    // CouponDisplayコンポーネントが期待する形式に変換
+    const transformedCoupon = {
+      ...coupon,
+      coupon: {
+        id: coupon.facility_coupons.id,
+        facility_id: coupon.facility_coupons.facility_id,
+        title: coupon.facility_coupons.title,
+        service_content: coupon.facility_coupons.service_content,
+        discount_value: coupon.facility_coupons.discount_value,
+        discount_type: coupon.facility_coupons.discount_type,
+        description: coupon.facility_coupons.description,
+        validity_start: coupon.facility_coupons.validity_start,
+        validity_end: coupon.facility_coupons.validity_end,
+        usage_limit_type: coupon.facility_coupons.usage_limit_type,
+        coupon_image_url: coupon.facility_coupons.coupon_image_url,
+        is_active: true,
+        created_at: '',
+        updated_at: ''
+      }
+    };
+    
+    setSelectedCoupon(transformedCoupon as any);
     setShowCouponSelect(false);
     setShowCouponDisplay(true);
     setIsOpen(false);
@@ -149,7 +173,8 @@ export const FloatingActionButton: React.FC = () => {
               </span>
             </button>
 
-            {/* ワクチン証明書表示ボタン */}
+            {/* ワクチン証明書表示ボタン - 一時的に無効化 */}
+            {false && (
             <button
               onClick={() => {
                 setShowVaccineSelect(true);
@@ -162,6 +187,7 @@ export const FloatingActionButton: React.FC = () => {
                 ワクチン証明書 ({vaccineCertificates.length})
               </span>
             </button>
+            )}
           </div>
         )}
 
