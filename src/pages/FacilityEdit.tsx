@@ -4,6 +4,8 @@ import {
     Building,
     Calendar,
     CheckCircle,
+    ChevronLeft,
+    ChevronRight,
     Clock,
     Eye,
     Gift,
@@ -578,59 +580,151 @@ export default function FacilityEdit() {
 
   // 営業日カレンダーの日付をレンダリングする関数
   const renderCalendar = () => {
-    const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-    const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
-    const startDayOfWeek = firstDayOfMonth.getDay(); // 0: 日曜日, 6: 土曜日
-
-    const calendarDays: (Date | null)[] = [];
-    for (let i = 0; i < startDayOfWeek; i++) {
-      calendarDays.push(null); // 先月の日付を埋める
-    }
-    for (let i = 1; i <= daysInMonth; i++) {
-      calendarDays.push(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i));
-    }
-
-    const rows: (Date | null)[][] = [];
-    for (let i = 0; i < calendarDays.length; i += 7) {
-      rows.push(calendarDays.slice(i, i + 7));
+    const monthsToShow = 3; // 3か月分表示
+    const calendarMonths = [];
+    
+    for (let monthOffset = 0; monthOffset < monthsToShow; monthOffset++) {
+      const targetMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + monthOffset, 1);
+      const firstDayOfMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1);
+      const daysInMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate();
+      const startDayOfWeek = firstDayOfMonth.getDay(); // 0: 日曜日, 6: 土曜日
+      
+      const calendarDays: (Date | null)[] = [];
+      for (let i = 0; i < startDayOfWeek; i++) {
+        calendarDays.push(null); // 先月の日付を埋める
+      }
+      for (let i = 1; i <= daysInMonth; i++) {
+        calendarDays.push(new Date(targetMonth.getFullYear(), targetMonth.getMonth(), i));
+      }
+      
+      const rows: (Date | null)[][] = [];
+      for (let i = 0; i < calendarDays.length; i += 7) {
+        rows.push(calendarDays.slice(i, i + 7));
+      }
+      
+      calendarMonths.push({
+        month: targetMonth,
+        rows: rows
+      });
     }
 
     return (
-      <div className="grid grid-cols-7 gap-2">
-        {['日', '月', '火', '水', '木', '金', '土'].map(day => (
-          <div key={day} className="text-center text-sm font-medium text-gray-600">{day}</div>
-        ))}
-        {rows.map((row, index) => (
-          <div key={index} className="grid grid-cols-7 gap-2">
-            {row.map(date => (
-              <button
-                key={date?.toISOString() || 'empty'}
-                onClick={() => {
-                  if (date) {
-                    const year = date.getFullYear();
-                    const month = date.getMonth();
-                    const day = date.getDate();
-                    const selectedDate = `${year}-${month + 1}-${day}`;
-                    setSpecificClosedDates(prev => {
-                      if (prev.includes(selectedDate)) {
-                        return prev.filter(d => d !== selectedDate);
-                      } else {
-                        return [...prev, selectedDate];
+      <div className="space-y-6">
+        {/* 月切り替えボタン */}
+        <div className="flex items-center justify-between">
+          <Button
+            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+            variant="outline"
+            size="sm"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            前月
+          </Button>
+          <span className="text-lg font-semibold">
+            {currentMonth.getFullYear()}年{currentMonth.getMonth() + 1}月から{monthsToShow}か月分
+          </span>
+          <Button
+            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+            variant="outline"
+            size="sm"
+          >
+            次月
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* 3か月分のカレンダー */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {calendarMonths.map((monthData, monthIndex) => (
+            <div key={monthIndex} className="border border-gray-200 rounded-lg p-4">
+              <h4 className="text-center font-semibold mb-4">
+                {monthData.month.getFullYear()}年{monthData.month.getMonth() + 1}月
+              </h4>
+              
+              {/* 曜日ヘッダー */}
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {['日', '月', '火', '水', '木', '金', '土'].map((day, index) => (
+                  <div key={day} className={`text-center text-xs font-medium py-1 ${
+                    index === 0 ? 'text-red-500' : index === 6 ? 'text-blue-500' : 'text-gray-600'
+                  }`}>
+                    {day}
+                  </div>
+                ))}
+              </div>
+              
+              {/* カレンダー日付 */}
+              <div className="space-y-1">
+                {monthData.rows.map((row, rowIndex) => (
+                  <div key={rowIndex} className="grid grid-cols-7 gap-1">
+                    {row.map((date, dayIndex) => {
+                      if (!date) {
+                        return <div key={`empty-${rowIndex}-${dayIndex}`} className="h-8"></div>;
                       }
-                    });
-                  }
-                }}
-                className={`py-2 px-3 text-sm rounded-md border-2 transition-colors ${
-                  date && specificClosedDates.includes(`${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`)
-                    ? 'bg-red-100 border-red-300 text-red-700'
-                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                {date ? date.getDate() : ''}
-              </button>
-            ))}
+                      
+                      const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                      const dayOfWeek = date.getDay();
+                      const isWeeklyClosedDay = weeklyClosedDays[dayOfWeek];
+                      const isSpecificClosedDay = specificClosedDates.includes(dateString);
+                      const isToday = new Date().toDateString() === date.toDateString();
+                      const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
+                      
+                      return (
+                        <button
+                          key={dateString}
+                          onClick={() => {
+                            if (!isPast) {
+                              if (isSpecificClosedDay) {
+                                setSpecificClosedDates(prev => prev.filter(d => d !== dateString));
+                              } else {
+                                setSpecificClosedDates(prev => [...prev, dateString]);
+                              }
+                            }
+                          }}
+                          disabled={isPast}
+                          className={`h-8 text-xs rounded transition-colors ${
+                            isPast
+                              ? 'text-gray-300 cursor-not-allowed'
+                              : isWeeklyClosedDay && isSpecificClosedDay
+                              ? 'bg-purple-100 border-purple-300 text-purple-700 border' // 定休日かつ特定休業日
+                              : isWeeklyClosedDay
+                              ? 'bg-red-100 border-red-300 text-red-700 border' // 定休日
+                              : isSpecificClosedDay
+                              ? 'bg-orange-100 border-orange-300 text-orange-700 border' // 特定休業日
+                              : isToday
+                              ? 'bg-blue-100 border-blue-300 text-blue-700 border font-bold' // 今日
+                              : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 border'
+                          }`}
+                        >
+                          {date.getDate()}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* 凡例 */}
+        <div className="flex flex-wrap gap-4 text-xs">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
+            <span>定休日</span>
           </div>
-        ))}
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-orange-100 border border-orange-300 rounded"></div>
+            <span>特定休業日</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-purple-100 border border-purple-300 rounded"></div>
+            <span>定休日+特定休業日</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
+            <span>今日</span>
+          </div>
+        </div>
       </div>
     );
   };
