@@ -198,6 +198,11 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
     });
     setImagePreview(coupon.coupon_image_url || '');
     setShowCreateForm(true);
+    
+    // 編集フォーム表示後、ページの一番上にスクロール
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
   };
 
   const handleDelete = async (couponId: string) => {
@@ -273,7 +278,13 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
           <p className="text-sm text-gray-600 mt-1">お客様向けのクーポンを作成・管理できます</p>
         </div>
         <Button 
-          onClick={() => setShowCreateForm(true)}
+          onClick={() => {
+            setShowCreateForm(true);
+            // フォーム表示後、ページの一番上にスクロール
+            setTimeout(() => {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 100);
+          }}
           className="flex items-center"
         >
           <Plus className="w-4 h-4 mr-2" />
