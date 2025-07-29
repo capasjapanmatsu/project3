@@ -299,6 +299,8 @@ export default function AdminFacilityApproval() {
       setError('');
       setSuccess('');
 
+      console.log('🗑️ 削除処理開始:', facilityId, facilityName);
+
       // 施設が存在するか確認
       const { data: existingFacility, error: checkError } = await supabase
         .from('pet_facilities')
@@ -307,6 +309,7 @@ export default function AdminFacilityApproval() {
         .single();
 
       if (checkError) {
+        console.error('❌ 施設確認エラー:', checkError);
         throw new Error(`施設の確認に失敗しました: ${checkError.message}`);
       }
 
@@ -314,47 +317,75 @@ export default function AdminFacilityApproval() {
         throw new Error('指定された施設が見つかりません');
       }
 
-      // 関連する施設画像を削除（テーブルが存在する場合）
+      console.log('✅ 削除対象施設確認:', existingFacility);
+
+      // 関連する施設画像を削除（両方のテーブルを試行）
       try {
+        // pet_facility_imagesテーブルから削除
+        const { error: petImagesError } = await supabase
+          .from('pet_facility_images')
+          .delete()
+          .eq('facility_id', facilityId);
+
+        if (petImagesError && petImagesError.code !== '42P01') {
+          console.warn('ペット施設画像削除エラー:', petImagesError.message);
+        }
+
+        // facility_imagesテーブルから削除（存在する場合）
         const { error: imagesError } = await supabase
           .from('facility_images')
           .delete()
           .eq('facility_id', facilityId);
 
-        // テーブルが存在しない場合のエラーは無視
         if (imagesError && imagesError.code !== '42P01') {
-          console.warn('画像削除エラーですが処理を続行します:', imagesError.message);
+          console.warn('施設画像削除エラー:', imagesError.message);
         }
       } catch (error) {
         console.warn('施設画像削除処理をスキップ:', error);
       }
 
       // メイン施設データを削除
+      console.log('🗑️ メイン施設データ削除実行中...');
       const { data: deletedData, error: facilityError } = await supabase
         .from('pet_facilities')
         .delete()
         .eq('id', facilityId)
         .select();
 
+      console.log('削除結果:', { deletedData, facilityError });
+
       if (facilityError) {
+        console.error('❌ 施設削除エラー:', facilityError);
         throw new Error(`施設の削除に失敗しました: ${facilityError.message}`);
       }
 
-      if (!deletedData || deletedData.length === 0) {
-        // 削除確認のため再度検索
+      // 削除成功の判定を改善
+      if (deletedData && deletedData.length > 0) {
+        console.log('✅ 削除成功:', deletedData);
+        showSuccess(`施設「${facilityName}」を削除しました`);
+      } else {
+        // 削除データが返されない場合は、再度確認
+        console.log('🔍 削除確認のため再検索...');
         const { data: checkDeleted, error: verifyError } = await supabase
           .from('pet_facilities')
           .select('id')
           .eq('id', facilityId);
           
+        console.log('削除確認結果:', { checkDeleted, verifyError });
+
         if (verifyError) {
+          console.error('❌ 削除確認エラー:', verifyError);
           throw new Error(`削除の確認に失敗しました: ${verifyError.message}`);
-        } else if (checkDeleted && checkDeleted.length > 0) {
+        } 
+        
+        if (checkDeleted && checkDeleted.length > 0) {
+          console.error('❌ 施設がまだ存在:', checkDeleted);
           throw new Error('削除に失敗しました。施設がまだ存在しています。');
+        } else {
+          console.log('✅ 削除確認完了 - 施設は存在しません');
+          showSuccess(`施設「${facilityName}」を削除しました`);
         }
       }
-
-      showSuccess(`施設「${facilityName}」を削除しました`);
       
       // モーダルを閉じる
       setSelectedApplication(null);
@@ -368,7 +399,6 @@ export default function AdminFacilityApproval() {
       showError(`削除エラー: ${errorMessage}`);
     } finally {
       setDeletingId(null);
-      console.log('🏁 削除処理終了');
     }
   };
 
