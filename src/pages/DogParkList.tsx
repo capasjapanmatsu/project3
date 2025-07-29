@@ -312,7 +312,46 @@ export function DogParkList() {
 
   // エラー状態
   if (currentError) {
-    return <ErrorState error={currentError} onRetry={handleManualUpdate} />;
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <ErrorState 
+          title="データの取得に失敗しました"
+          description={`${currentError}\n\n以下をお試しください：\n1. ページを再読み込みしてください\n2. しばらく時間をおいてから再度アクセスしてください\n3. 問題が続く場合は管理者にお問い合わせください`}
+          onRetry={handleManualUpdate}
+        />
+        
+        {/* デバッグ情報（開発環境） */}
+        {import.meta.env.DEV && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded">
+              <h3 className="font-bold mb-2">デバッグ情報（エラー状態）</h3>
+              <div className="text-sm space-y-1">
+                <p><strong>現在のビュー:</strong> {activeView}</p>
+                <p><strong>エラー内容:</strong> {currentError}</p>
+                <p><strong>ドッグランデータ:</strong> {parks.length}件</p>
+                <p><strong>施設データ:</strong> {facilities.length}件</p>
+                <p><strong>ローディング状態:</strong> {isCurrentlyLoading ? '読み込み中' : '完了'}</p>
+              </div>
+              
+              <div className="mt-3 space-x-2">
+                <button
+                  onClick={handleManualUpdate}
+                  className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+                >
+                  データを再取得
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700"
+                >
+                  ページ再読み込み
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   // データが空の場合

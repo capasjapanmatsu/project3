@@ -151,14 +151,7 @@ export function useFacilityData() {
 
       const { data, error: queryError } = await supabase
         .from('pet_facilities')
-        .select(`
-          *,
-          facility_categories (
-            id,
-            name,
-            name_ja
-          )
-        `)
+        .select('*')
         .eq('status', 'approved')
         .order('name');
 
