@@ -187,14 +187,14 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
   const handleEdit = (coupon: FacilityCoupon) => {
     setEditingCoupon(coupon);
     setFormData({
-      title: coupon.title,
-      description: coupon.description,
-      service_content: coupon.service_content,
-      discount_value: coupon.discount_value,
-      discount_type: coupon.discount_type,
-      start_date: coupon.start_date.split('T')[0],
-      end_date: coupon.end_date.split('T')[0],
-      usage_limit_type: coupon.usage_limit_type
+      title: coupon.title || '',
+      description: coupon.description || '',
+      service_content: coupon.service_content || '',
+      discount_value: coupon.discount_value || 0,
+      discount_type: coupon.discount_type || 'percentage',
+      start_date: coupon.start_date ? coupon.start_date.split('T')[0] : '',
+      end_date: coupon.end_date ? coupon.end_date.split('T')[0] : '',
+      usage_limit_type: coupon.usage_limit_type || 'unlimited'
     });
     setImagePreview(coupon.coupon_image_url || '');
     setShowCreateForm(true);
