@@ -1,6 +1,7 @@
 import {
     AlertTriangle,
     ArrowLeft,
+    Building,
     CheckCircle,
     FileCheck,
     MapPin,
@@ -8,20 +9,21 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AdminParkApproval } from '../components/admin/AdminParkApproval';
-import { AdminVaccineApproval } from '../components/admin/AdminVaccineApproval';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import { AdminParkApproval } from '../components/admin/AdminParkApproval';
+import { AdminVaccineApproval } from '../components/admin/AdminVaccineApproval';
 import useAuth from '../context/AuthContext';
 import { useAdminData } from '../hooks/useAdminData';
 import { checkAndSetAdminUser, directUpdateUserType } from '../utils/adminUtils';
+import AdminFacilityApproval from './AdminFacilityApproval';
 
 export function AdminManagement() {
   const { user, isAdmin, userProfile } = useAuth();
   const navigate = useNavigate();
   
   // 状態管理
-  const [activeTab, setActiveTab] = useState<'parks' | 'vaccines'>('vaccines');
+  const [activeTab, setActiveTab] = useState<'parks' | 'vaccines' | 'facilities'>('vaccines');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -211,6 +213,17 @@ export function AdminManagement() {
               <FileCheck className="w-4 h-4 inline mr-2" />
               ワクチン証明書審査
             </button>
+            <button
+              className={`px-4 py-2 font-medium ${
+                activeTab === 'facilities'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              onClick={() => setActiveTab('facilities')}
+            >
+              <Building className="w-4 h-4 inline mr-2" />
+              施設審査
+            </button>
           </div>
 
           {/* タブコンテンツ */}
@@ -231,6 +244,10 @@ export function AdminManagement() {
                 onApprovalComplete={handleApprovalComplete}
                 onError={handleError}
               />
+            )}
+
+            {activeTab === 'facilities' && (
+              <AdminFacilityApproval />
             )}
           </div>
         </>

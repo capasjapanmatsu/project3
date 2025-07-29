@@ -281,19 +281,23 @@ export function AdminDashboard() {
                 </Link>
               )}
 
-              {stats.pendingFacilities > 0 && (
-                <Link to="/admin/facility-approval" className="block">
-                  <div className="bg-white rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600">施設承認待ち</p>
-                        <p className="text-2xl font-bold text-red-600">{stats.pendingFacilities}</p>
-                      </div>
-                      <Building className="w-8 h-8 text-red-500" />
+              {/* 施設承認管理 - 常時表示 */}
+              <Link to="/admin/facility-approval" className="block">
+                <div className="bg-white rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">施設承認管理</p>
+                      <p className={`text-2xl font-bold ${stats.pendingFacilities > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {stats.pendingFacilities > 0 ? stats.pendingFacilities : '0'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {stats.pendingFacilities > 0 ? '件の承認待ち' : '承認待ちなし'}
+                      </p>
                     </div>
+                    <Building className={`w-8 h-8 ${stats.pendingFacilities > 0 ? 'text-red-500' : 'text-green-500'}`} />
                   </div>
-                </Link>
-              )}
+                </div>
+              </Link>
 
               {(fraudStats?.totalHighRiskUsers || 0) > 0 && (
                 <Link to="/admin/users?filter=high_risk" className="block">
