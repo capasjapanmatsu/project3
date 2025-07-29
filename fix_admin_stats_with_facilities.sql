@@ -1,7 +1,6 @@
--- 管理者統計の修正マイグレーション
--- 問題：予約数とサブスクリプション数の取得ロジックが正しくない
+-- 管理者統計にpending_facilitiesを追加する修正
+-- 施設承認管理カードが表示されるように修正
 
--- 修正版のget_admin_stats関数
 CREATE OR REPLACE FUNCTION get_admin_stats()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -45,7 +44,7 @@ BEGIN
       active_legacy_subscriptions := 0;
   END;
 
-  -- Gather statistics
+  -- Gather statistics (pending_facilitiesを追加)
   SELECT jsonb_build_object(
     'total_users', (SELECT COUNT(*) FROM profiles),
     'total_parks', (SELECT COUNT(*) FROM dog_parks),
@@ -71,4 +70,4 @@ END;
 $$;
 
 -- 関数にコメントを追加
-COMMENT ON FUNCTION get_admin_stats() IS 'Fixed admin statistics function - uses created_at for reservations and supports both subscription tables'; 
+COMMENT ON FUNCTION get_admin_stats() IS 'Admin statistics function with pending_facilities support for facility approval management';

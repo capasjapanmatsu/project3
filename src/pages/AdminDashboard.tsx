@@ -9,6 +9,7 @@ import {
     Settings,
     Shield,
     ShieldAlert,
+    ShoppingBag,
     Users
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -467,7 +468,7 @@ export function AdminDashboard() {
             {/* クイックアクション */}
             <Card className="p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">クイックアクション</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Link to="/admin/users">
                   <Button className="w-full justify-start">
                     <Users className="w-4 h-4 mr-2" />
@@ -484,6 +485,12 @@ export function AdminDashboard() {
                   <Button className="w-full justify-start">
                     <BarChart4 className="w-4 h-4 mr-2" />
                     売上レポート
+                  </Button>
+                </Link>
+                <Link to="/admin/shop">
+                  <Button className="w-full justify-start">
+                    <ShoppingBag className="w-4 h-4 mr-2" />
+                    ショップ管理
                   </Button>
                 </Link>
               </div>
