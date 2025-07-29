@@ -192,6 +192,30 @@ export default function FacilityEdit() {
         description: facilityData.description || ''
       });
       
+      // 営業日データの初期化
+      if (facilityData.opening_time) setOpeningTime(facilityData.opening_time);
+      if (facilityData.closing_time) setClosingTime(facilityData.closing_time);
+      if (facilityData.weekly_closed_days) {
+        try {
+          const closedDays = JSON.parse(facilityData.weekly_closed_days);
+          if (Array.isArray(closedDays) && closedDays.length === 7) {
+            setWeeklyClosedDays(closedDays);
+          }
+        } catch (e) {
+          console.warn('Failed to parse weekly_closed_days:', e);
+        }
+      }
+      if (facilityData.specific_closed_dates) {
+        try {
+          const closedDates = JSON.parse(facilityData.specific_closed_dates);
+          if (Array.isArray(closedDates)) {
+            setSpecificClosedDates(closedDates);
+          }
+        } catch (e) {
+          console.warn('Failed to parse specific_closed_dates:', e);
+        }
+      }
+      
       if (facilityData.identity_document_url) {
         // 身分証明書プレビューは削除されました
       }
