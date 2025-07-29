@@ -137,12 +137,28 @@ export default function FacilityRegistration() {
 
   // userProfileが変更された時にuserInfoを自動設定
   useEffect(() => {
+    console.log('📋 ユーザープロファイル確認:', userProfile);
+    
     if (userProfile) {
+      // userProfileの全プロパティをログ出力
+      console.log('👤 利用可能なプロフィールフィールド:', Object.keys(userProfile));
+      
+      const userName = userProfile.name || userProfile.display_name || userProfile.full_name || '';
+      const userAddress = userProfile.address || userProfile.location || userProfile.postal_address || '';
+      
+      console.log('✅ 取得した情報:', {
+        name: userName,
+        address: userAddress,
+        originalProfile: userProfile
+      });
+      
       setUserInfo({
-        name: userProfile.name || userProfile.display_name || '',
-        address: (userProfile.address as string) || '',
+        name: userName,
+        address: userAddress,
         isEditing: false
       });
+    } else {
+      console.log('❌ userProfileが未定義');
     }
   }, [userProfile]);
 
@@ -190,16 +206,13 @@ export default function FacilityRegistration() {
   // 画像選択ハンドラー（トリミング対応）
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = event.target.files?.[0];
-    console.log('🖼️ 画像選択開始:', { index, file: file?.name, size: file?.size, type: file?.type });
     
     if (!file) {
-      console.log('❌ ファイルが選択されていません');
       return;
     }
 
     // ファイルサイズチェック（5MB制限）
     if (file.size > 5 * 1024 * 1024) {
-      console.log('❌ ファイルサイズエラー:', file.size);
       setError('画像ファイルのサイズは5MB以下にしてください');
       // input要素をリセット
       event.target.value = '';
@@ -208,26 +221,17 @@ export default function FacilityRegistration() {
 
     // ファイル形式チェック
     if (!file.type.startsWith('image/')) {
-      console.log('❌ ファイル形式エラー:', file.type);
       setError('画像ファイルを選択してください');
       // input要素をリセット
       event.target.value = '';
       return;
     }
-
-    console.log('✅ バリデーション通過、トリミング画面を開く');
     
     // トリミング画面を開く
     setCropperState({
       isOpen: true,
       imageIndex: index,
       originalFile: file
-    });
-    
-    console.log('✅ cropperState設定完了:', {
-      isOpen: true,
-      imageIndex: index,
-      originalFile: file.name
     });
     
     // input要素をリセット（同じファイルを再選択可能にする）
@@ -672,7 +676,7 @@ export default function FacilityRegistration() {
                       <img
                         src={formData.images[0]}
                         alt="メイン画像プレビュー"
-                        className="w-48 h-36 object-cover rounded-lg border border-gray-300"
+                        className="w-full aspect-square object-cover rounded-lg border border-gray-300"
                       />
                       <button
                         type="button"
@@ -732,7 +736,7 @@ export default function FacilityRegistration() {
                           <img
                             src={formData.images[index]}
                             alt={`追加画像${index}プレビュー`}
-                            className="w-full h-32 object-cover rounded-lg border border-gray-300"
+                            className="w-full aspect-square object-cover rounded-lg border border-gray-300"
                           />
                           <button
                             type="button"
