@@ -2,7 +2,9 @@ import {
     AlertCircle,
     ArrowLeft,
     Building,
+    Calendar,
     CheckCircle,
+    Clock,
     Eye,
     Gift,
     Image as ImageIcon,
@@ -142,7 +144,14 @@ export default function FacilityEdit() {
   });
   
   // タブ管理用のstate
-  const [activeTab, setActiveTab] = useState<'info' | 'images' | 'coupons'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'images' | 'coupons' | 'schedule'>('info');
+
+  // 営業日管理用のstate
+  const [weeklyClosedDays, setWeeklyClosedDays] = useState<boolean[]>([false, false, false, false, false, false, false]); // 日月火水木金土
+  const [openingTime, setOpeningTime] = useState('09:00');
+  const [closingTime, setClosingTime] = useState('18:00');
+  const [specificClosedDates, setSpecificClosedDates] = useState<string[]>([]);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   useEffect(() => {
     if (!user || !facilityId) {
@@ -567,6 +576,108 @@ export default function FacilityEdit() {
     }
   };
 
+  // 営業日カレンダーの日付をレンダリングする関数
+  const renderCalendar = () => {
+    const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+    const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+    const startDayOfWeek = firstDayOfMonth.getDay(); // 0: 日曜日, 6: 土曜日
+
+    const calendarDays: (Date | null)[] = [];
+    for (let i = 0; i < startDayOfWeek; i++) {
+      calendarDays.push(null); // 先月の日付を埋める
+    }
+    for (let i = 1; i <= daysInMonth; i++) {
+      calendarDays.push(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i));
+    }
+
+    const rows: (Date | null)[][] = [];
+    for (let i = 0; i < calendarDays.length; i += 7) {
+      rows.push(calendarDays.slice(i, i + 7));
+    }
+
+    return (
+      <div className="grid grid-cols-7 gap-2">
+        {['日', '月', '火', '水', '木', '金', '土'].map(day => (
+          <div key={day} className="text-center text-sm font-medium text-gray-600">{day}</div>
+        ))}
+        {rows.map((row, index) => (
+          <div key={index} className="grid grid-cols-7 gap-2">
+            {row.map(date => (
+              <button
+                key={date?.toISOString() || 'empty'}
+                onClick={() => {
+                  if (date) {
+                    const year = date.getFullYear();
+                    const month = date.getMonth();
+                    const day = date.getDate();
+                    const selectedDate = `${year}-${month + 1}-${day}`;
+                    setSpecificClosedDates(prev => {
+                      if (prev.includes(selectedDate)) {
+                        return prev.filter(d => d !== selectedDate);
+                      } else {
+                        return [...prev, selectedDate];
+                      }
+                    });
+                  }
+                }}
+                className={`py-2 px-3 text-sm rounded-md border-2 transition-colors ${
+                  date && specificClosedDates.includes(`${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`)
+                    ? 'bg-red-100 border-red-300 text-red-700'
+                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {date ? date.getDate() : ''}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // 営業日設定を保存する関数
+  const handleScheduleSave = async () => {
+    if (!facility) return;
+
+    try {
+      setIsSubmitting(true);
+      setError('');
+      setSuccess('');
+
+      // 営業時間を保存
+      const { error: openingHoursError } = await supabase
+        .from('pet_facilities')
+        .update({
+          opening_time: openingTime,
+          closing_time: closingTime,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', facility.id);
+
+      if (openingHoursError) throw openingHoursError;
+
+      // 定休日を保存
+      const { error: closedDaysError } = await supabase
+        .from('pet_facilities')
+        .update({
+          weekly_closed_days: JSON.stringify(weeklyClosedDays),
+          specific_closed_dates: JSON.stringify(specificClosedDates),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', facility.id);
+
+      if (closedDaysError) throw closedDaysError;
+
+      setSuccess('営業日設定が保存されました。');
+      setTimeout(() => setSuccess(''), 3000);
+
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '営業日設定の保存に失敗しました。');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
       <SEO 
@@ -661,6 +772,17 @@ export default function FacilityEdit() {
                 >
                   <Gift className="w-4 h-4 inline mr-2" />
                   クーポン管理
+                </button>
+                <button
+                  onClick={() => setActiveTab('schedule')}
+                  className={`py-4 px-2 border-b-2 font-medium text-sm ${
+                    activeTab === 'schedule'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Calendar className="w-4 h-4 inline mr-2" />
+                  営業日管理
                 </button>
               </nav>
             </div>
@@ -955,10 +1077,115 @@ export default function FacilityEdit() {
               )}
 
               {activeTab === 'coupons' && facility && (
-                <CouponManager 
-                  facilityId={facility.id} 
-                  facilityName={facility.name}
-                />
+                <div>
+                  <CouponManager 
+                    facilityId={facility.id} 
+                    facilityName={facility.name}
+                  />
+                </div>
+              )}
+              
+              {/* 営業日管理タブ */}
+              {activeTab === 'schedule' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-semibold mb-6 flex items-center">
+                      <Calendar className="w-6 h-6 text-blue-600 mr-2" />
+                      営業日管理
+                    </h2>
+                    <p className="text-sm text-gray-500 mb-6">
+                      施設の営業時間と休業日を設定できます。
+                    </p>
+                  </div>
+
+                  {/* 営業時間設定 */}
+                  <Card className="p-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center">
+                      <Clock className="w-5 h-5 text-green-600 mr-2" />
+                      営業時間
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          開店時間
+                        </label>
+                        <input
+                          type="time"
+                          value={openingTime}
+                          onChange={(e) => setOpeningTime(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          閉店時間
+                        </label>
+                        <input
+                          type="time"
+                          value={closingTime}
+                          onChange={(e) => setClosingTime(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* 定休日設定 */}
+                  <Card className="p-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center">
+                      <Calendar className="w-5 h-5 text-red-600 mr-2" />
+                      定休日設定
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-4">
+                      毎週の定休日を設定してください。選択した曜日は自動的にカレンダーでも休業日として表示されます。
+                    </p>
+                    <div className="grid grid-cols-7 gap-2">
+                      {['日', '月', '火', '水', '木', '金', '土'].map((day, index) => (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            const newClosedDays = [...weeklyClosedDays];
+                            newClosedDays[index] = !newClosedDays[index];
+                            setWeeklyClosedDays(newClosedDays);
+                          }}
+                          className={`py-3 px-2 text-sm font-medium rounded-lg border-2 transition-colors ${
+                            weeklyClosedDays[index]
+                              ? 'bg-red-100 border-red-300 text-red-700'
+                              : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          {day}
+                          {weeklyClosedDays[index] && (
+                            <div className="text-xs mt-1">定休日</div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </Card>
+
+                  {/* カレンダー */}
+                  <Card className="p-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center">
+                      <Calendar className="w-5 h-5 text-blue-600 mr-2" />
+                      休業日カレンダー
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-4">
+                      特定の日付をクリックして臨時休業日を設定できます。定休日設定で選択した曜日は自動的に表示されます。
+                    </p>
+                    {renderCalendar()}
+                  </Card>
+
+                  {/* 保存ボタン */}
+                  <div className="flex justify-end space-x-3">
+                    <Button
+                      onClick={handleScheduleSave}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      営業日設定を保存
+                    </Button>
+                  </div>
+                </div>
               )}
             </div>
           </div>
