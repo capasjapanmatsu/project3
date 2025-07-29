@@ -510,32 +510,32 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
                             
                             {/* 店舗名（2番目） */}
                             <div className="text-white">
-                              <h2 className="text-sm font-bold leading-tight">
+                              <h2 className="text-lg font-bold leading-tight">
                                 {facilityName}
                               </h2>
                             </div>
                             
                             {/* クーポンタイトル */}
                             <div className="text-white">
-                              <h3 className="text-base font-bold leading-tight">
+                              <h3 className="text-xl font-bold leading-tight">
                                 {formData.title || 'クーポンタイトル'}
                               </h3>
                             </div>
                             
                             {/* サービス内容 */}
                             <div className="text-white/90">
-                              <p className="text-sm leading-tight">
+                              <p className="text-base leading-tight">
                                 {formData.service_content || 'サービス内容'}
                               </p>
                             </div>
                             
                             {/* 割引表示 */}
                             {(formData.discount_value && formData.discount_type) && (
-                              <div className="bg-white text-red-600 px-4 py-2 rounded-lg shadow-md">
-                                <span className="text-2xl font-bold">
+                              <div className="bg-white text-red-600 px-6 py-3 rounded-lg shadow-md">
+                                <span className="text-4xl font-bold">
                                   {formData.discount_value}{formData.discount_type === 'amount' ? '円' : '%'}
                                 </span>
-                                <span className="text-sm ml-1 font-medium">
+                                <span className="text-lg ml-2 font-medium">
                                   OFF
                                 </span>
                               </div>
@@ -543,10 +543,19 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
                             
                             {/* 詳細説明 */}
                             <div className="border-t border-white/30 pt-2">
-                              <p className="text-xs text-white/80">
+                              <p className="text-sm text-white/80">
                                 {formData.description || '詳細説明'}
                               </p>
                             </div>
+                            
+                            {/* 有効期限 */}
+                            {(formData.start_date && formData.end_date) && (
+                              <div className="border-t border-white/30 pt-2 mt-2">
+                                <p className="text-xs text-white/90 font-medium">
+                                  有効期限: {new Date(formData.start_date).toLocaleDateString()} 〜 {new Date(formData.end_date).toLocaleDateString()}
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -636,32 +645,32 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
                           
                           {/* 店舗名（2番目） */}
                           <div className="text-white">
-                            <h2 className="text-sm font-bold leading-tight">
+                            <h2 className="text-lg font-bold leading-tight">
                               {facilityName}
                             </h2>
                           </div>
                           
                           {/* クーポンタイトル */}
                           <div className="text-white">
-                            <h3 className="text-base font-bold leading-tight">
+                            <h3 className="text-xl font-bold leading-tight">
                               {coupon.title}
                             </h3>
                           </div>
                           
                           {/* サービス内容 */}
                           <div className="text-white/90">
-                            <p className="text-sm leading-tight">
+                            <p className="text-base leading-tight">
                               {coupon.service_content}
                             </p>
                           </div>
                           
                           {/* 割引表示 */}
                           {(coupon.discount_value && coupon.discount_type) && (
-                            <div className="bg-white text-red-600 px-4 py-2 rounded-lg shadow-md">
-                              <span className="text-2xl font-bold">
+                            <div className="bg-white text-red-600 px-6 py-3 rounded-lg shadow-md">
+                              <span className="text-4xl font-bold">
                                 {coupon.discount_value}{coupon.discount_type === 'amount' ? '円' : '%'}
                               </span>
-                              <span className="text-sm ml-1 font-medium">
+                              <span className="text-lg ml-2 font-medium">
                                 OFF
                               </span>
                             </div>
@@ -670,8 +679,17 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
                           {/* 詳細説明 */}
                           {coupon.description && (
                             <div className="border-t border-white/30 pt-2">
-                              <p className="text-xs text-white/80">
+                              <p className="text-sm text-white/80">
                                 {coupon.description}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* 有効期限 */}
+                          {(coupon.start_date && coupon.end_date) && (
+                            <div className="border-t border-white/30 pt-2 mt-2">
+                              <p className="text-xs text-white/90 font-medium">
+                                有効期限: {new Date(coupon.start_date).toLocaleDateString()} 〜 {new Date(coupon.end_date).toLocaleDateString()}
                               </p>
                             </div>
                           )}
