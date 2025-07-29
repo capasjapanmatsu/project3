@@ -1,7 +1,6 @@
 // FacilityCard.tsx - ペット施設情報カードコンポーネント
 import {
     Building2,
-    Clock,
     Coffee,
     ExternalLink,
     Gift,
@@ -60,32 +59,24 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
   const fetchFacilityImages = async () => {
     try {
       setImageLoading(true);
-      console.log('🖼️ 施設画像取得開始:', facility.id, facility.name);
       
-      // pet_facility_imagesテーブルから画像データを取得（メイン画像のみ）
-      const { data: images, error: imagesError } = await supabase
+      const { data: imagesData, error: imagesError } = await supabase
         .from('pet_facility_images')
-        .select('id, facility_id, image_data, image_type, display_order, created_at')
+        .select('id, facility_id, image_url, image_type, display_order, created_at, alt_text')
         .eq('facility_id', facility.id)
-        .order('display_order', { ascending: true })
-        .limit(1);
-
-      console.log('🖼️ 画像取得結果:', {
-        facilityId: facility.id,
-        facilityName: facility.name,
-        imagesCount: images?.length || 0,
-        images: images
-      });
+        .order('display_order', { ascending: true });
 
       if (imagesError) {
-        console.error('❌ 施設画像の取得に失敗:', imagesError);
-      } else {
-        console.log('✅ 施設画像の取得成功:', images?.length || 0, '枚');
-        setFacilityImages(images || []);
+        console.error('Failed to fetch facility images:', imagesError);
+        setFacilityImages([]);
+        return;
       }
-      
+
+      console.log('Facility images response:', imagesData);
+      setFacilityImages(imagesData || []);
     } catch (error) {
-      console.error('💥 施設画像の取得中にエラーが発生:', error);
+      console.error('Error fetching facility images:', error);
+      setFacilityImages([]);
     } finally {
       setImageLoading(false);
     }
@@ -229,7 +220,7 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
           </div>
         ) : mainImage ? (
           <img
-            src={mainImage.image_data} // image_urlからimage_dataに変更
+            src={mainImage.image_url}
             alt={mainImage.alt_text || `${facility.name}のメイン画像`}
             className="w-full h-full object-cover"
             onError={(e) => {
@@ -303,9 +294,26 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
         </div>
 
         {/* 施設名 */}
-        <h3 className="font-semibold text-lg text-gray-900 mb-2 line-clamp-2">
-          {facility.name}
-        </h3>
+        <div className="flex items-center mb-2">
+          {/* 小さなサムネイル画像（左側） */}
+          {mainImage && (
+            <div className="w-12 h-12 rounded-lg overflow-hidden border border-gray-200 shadow-sm mr-3 flex-shrink-0">
+              <img
+                src={mainImage.image_url}
+                alt={`${facility.name}のサムネイル`}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+          
+          <h3 className="font-semibold text-lg text-gray-900 line-clamp-2 flex-1">
+            {facility.name}
+          </h3>
+        </div>
 
         {/* 評価 */}
         {facility.rating && (
@@ -327,31 +335,6 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
           <div className="flex items-center text-gray-600 text-sm mb-2">
             <Navigation className="w-4 h-4 mr-1" />
             <span>現在地から {formatDistance(distance)}</span>
-          </div>
-        )}
-
-        {/* 営業時間 */}
-        {facility.opening_hours && facility.closing_hours && (
-          <div className="flex items-center text-gray-600 text-sm mb-2">
-            <Clock className="w-4 h-4 mr-1" />
-            <span>{facility.opening_hours} - {facility.closing_hours}</span>
-          </div>
-        )}
-
-        {/* 小さなプレビュー画像 */}
-        {mainImage && (
-          <div className="flex justify-center mb-3">
-            <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
-              <img
-                src={mainImage.image_data}
-                alt={`${facility.name}のプレビュー`}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
-              />
-            </div>
           </div>
         )}
 
