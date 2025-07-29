@@ -242,12 +242,12 @@ export default function FacilityEdit() {
       setIsUploadingImage(true);
       setError('');
 
-      // 画像をSupabase Storageにアップロード
+      // 画像をSupabase Storageにアップロード（正しいバケット名を使用）
       const timestamp = Date.now();
       const filename = `facility_${facility.id}_${timestamp}.jpg`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('vaccine-certs')
+        .from('pet-facility-images')
         .upload(filename, croppedFile, {
           contentType: 'image/jpeg',
           upsert: true
@@ -256,15 +256,25 @@ export default function FacilityEdit() {
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage
-        .from('vaccine-certs')
+        .from('pet-facility-images')
         .getPublicUrl(filename);
 
       const imageUrl = urlData.publicUrl;
 
       // 新しい画像の場合
       if (currentImageIndex === null) {
-        const newDisplayOrder = facilityImages.length;
-        const imageType = facilityImages.length === 0 ? 'main' : 'additional';
+        // 最新の画像データを取得して正確なdisplay_orderを計算
+        const { data: currentImages, error: fetchError } = await supabase
+          .from('pet_facility_images')
+          .select('display_order')
+          .eq('facility_id', facility.id)
+          .order('display_order', { ascending: false })
+          .limit(1);
+
+        if (fetchError) throw fetchError;
+
+        const newDisplayOrder = currentImages.length > 0 ? currentImages[0].display_order + 1 : 0;
+        const imageType = newDisplayOrder === 0 ? 'main' : 'additional';
 
         const { data: imageData, error: imageError } = await supabase
           .from('pet_facility_images')
@@ -279,7 +289,7 @@ export default function FacilityEdit() {
 
         if (imageError) throw imageError;
 
-        setFacilityImages(prev => [...prev, imageData]);
+        setFacilityImages(prev => [...prev, imageData].sort((a, b) => a.display_order - b.display_order));
       } else {
         // 既存画像の更新
         const imageToUpdate = facilityImages[currentImageIndex];
@@ -305,6 +315,7 @@ export default function FacilityEdit() {
       setTimeout(() => setSuccess(''), 3000);
 
     } catch (error) {
+      console.error('Image upload error:', error);
       setError('画像のアップロードに失敗しました。');
     } finally {
       setIsUploadingImage(false);
