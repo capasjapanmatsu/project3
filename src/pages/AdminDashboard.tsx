@@ -21,6 +21,7 @@ import useAuth from '../context/AuthContext';
 import { FraudDetectionResult, getFraudDetectionStats, getHighRiskUsers } from '../utils/adminFraudDetection';
 import { supabase } from '../utils/supabase';
 import AdminFacilityApproval from './AdminFacilityApproval';
+import { AdminParkManagement } from './AdminParkManagement';
 
 interface AdminStats {
   totalUsers: number;
@@ -615,30 +616,9 @@ export function AdminDashboard() {
           <AdminFacilityApproval />
         )}
 
-        {/* 既存のタブ内容 */}
+        {/* ドッグラン承認管理タブ */}
         {activeTab === 'parks' && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">ドッグラン承認管理</h3>
-            <p className="text-gray-600">
-              詳細なドッグラン管理は
-              <Link to="/admin/parks" className="text-blue-600 hover:text-blue-800 mx-1">
-                ドッグラン管理ページ
-              </Link>
-              で行えます。
-            </p>
-            {stats.pendingParks > 0 && (
-              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-700">
-                  <strong>{stats.pendingParks}件</strong>のドッグラン承認待ちがあります。
-                </p>
-                <Link to="/admin/parks">
-                  <Button size="sm" className="mt-2">
-                    今すぐ確認する
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </Card>
+          <AdminParkManagement />
         )}
 
         {activeTab === 'users' && (
