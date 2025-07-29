@@ -320,26 +320,58 @@ export function MapView({
 
       // ペット施設のマーカーを追加
       if (activeView === 'facilities' && facilities) {
-        facilities.forEach(facility => {
+        console.log('🎯 [MapView] 施設マーカー追加開始');
+        console.log('🎯 [MapView] activeView:', activeView);
+        console.log('🎯 [MapView] facilities配列:', facilities);
+        console.log('🎯 [MapView] facilities数:', facilities.length);
+        
+        let addedMarkersCount = 0;
+        
+        facilities.forEach((facility, index) => {
+          console.log(`🎯 [MapView] 施設${index + 1}:`, {
+            name: facility.name,
+            latitude: facility.latitude,
+            longitude: facility.longitude,
+            category: facility.category,
+            hasCoordinates: !!(facility.latitude && facility.longitude)
+          });
+          
           if (facility.latitude && facility.longitude) {
-            const marker = new windowObj.google.maps.Marker({
-              position: { lat: facility.latitude!, lng: facility.longitude! },
-              map: map,
-              title: facility.name,
-              icon: {
-                url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(facilityIcon)}`,
-                scaledSize: new windowObj.google.maps.Size(36, 50),
-                anchor: new windowObj.google.maps.Point(18, 50)
-              }
-            });
-            
-            // 【段階的復活】シンプルなマーカークリックイベントを追加
-            marker.addListener('click', () => {
-              const content = createSimpleInfoWindowContent(facility, 'facility');
-              newInfoWindow.setContent(content);
-              newInfoWindow.open(map, marker);
-            });
+            try {
+              const marker = new windowObj.google.maps.Marker({
+                position: { lat: facility.latitude!, lng: facility.longitude! },
+                map: map,
+                title: facility.name,
+                icon: {
+                  url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(facilityIcon)}`,
+                  scaledSize: new windowObj.google.maps.Size(36, 50),
+                  anchor: new windowObj.google.maps.Point(18, 50)
+                }
+              });
+              
+              addedMarkersCount++;
+              console.log(`✅ [MapView] 施設マーカー追加成功: ${facility.name}`);
+              
+              // 【段階的復活】シンプルなマーカークリックイベントを追加
+              marker.addListener('click', () => {
+                const content = createSimpleInfoWindowContent(facility, 'facility');
+                newInfoWindow.setContent(content);
+                newInfoWindow.open(map, marker);
+              });
+            } catch (error) {
+              console.error(`❌ [MapView] 施設マーカー追加失敗: ${facility.name}`, error);
+            }
+          } else {
+            console.warn(`⚠️ [MapView] 座標なし: ${facility.name}`);
           }
+        });
+        
+        console.log(`🎯 [MapView] 施設マーカー追加完了: ${addedMarkersCount}/${facilities.length}個`);
+      } else {
+        console.log('🎯 [MapView] 施設マーカー追加スキップ:', {
+          activeView,
+          hasFacilities: !!facilities,
+          facilitiesLength: facilities ? facilities.length : 0
         });
       }
 

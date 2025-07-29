@@ -135,20 +135,32 @@ export function DogParkList() {
 
   // カテゴリフィルター機能（一時的に全施設表示）
   const filteredFacilities = useMemo(() => {
-    // デバッグ用ログ
-    console.log('🏢 All facilities:', facilities);
-    console.log('📋 Selected categories:', selectedCategories);
+    // 詳細デバッグ用ログ
+    console.log('🏢 [DogParkList] filteredFacilities処理開始');
+    console.log('🏢 [DogParkList] facilities配列:', facilities);
+    console.log('🏢 [DogParkList] facilities数:', facilities.length);
+    console.log('🏢 [DogParkList] selectedCategories:', selectedCategories);
+    console.log('🏢 [DogParkList] userLocation:', userLocation);
     
     // 一時的に全ての施設を表示（カテゴリーフィルター無効化）
     let filtered = facilities; // 全施設を表示
     
-    // 各施設のカテゴリー情報をログ出力
-    facilities.forEach(facility => {
-      console.log(`施設: ${facility.name}, カテゴリー: ${facility.category}, カテゴリー名: ${facility.category_name}`);
+    // 各施設の詳細情報をログ出力
+    facilities.forEach((facility, index) => {
+      console.log(`🏢 [DogParkList] 施設${index + 1}:`, {
+        name: facility.name,
+        category: facility.category,
+        category_name: facility.category_name,
+        latitude: facility.latitude,
+        longitude: facility.longitude,
+        status: facility.status,
+        hasCoordinates: !!(facility.latitude && facility.longitude)
+      });
     });
 
     // 距離順でソート（位置情報がある場合）
     if (userLocation && filtered.length > 0) {
+      console.log('🏢 [DogParkList] 距離順ソート実行');
       filtered = filtered.sort((a, b) => {
         const distanceA = calculateDistance(
           userLocation.lat, 
@@ -166,7 +178,8 @@ export function DogParkList() {
       });
     }
 
-    console.log('🎯 Filtered facilities:', filtered);
+    console.log('🏢 [DogParkList] filteredFacilities結果:', filtered);
+    console.log('🏢 [DogParkList] filteredFacilities数:', filtered.length);
     return filtered;
   }, [facilities, selectedCategories, userLocation]);
 

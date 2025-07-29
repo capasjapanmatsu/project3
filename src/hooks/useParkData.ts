@@ -147,54 +147,83 @@ export function useFacilityData() {
       setFacilitiesLoading(true);
       setError(null);
 
-      console.log('🏢 Fetching facilities from database...');
+      console.log('🏢 [useFacilityData] Fetching facilities from database...');
 
       const { data, error: queryError } = await supabase
         .from('pet_facilities')
-        .select('*')
+        .select(`
+          *,
+          facility_categories (
+            id,
+            name,
+            name_ja
+          )
+        `)
         .eq('status', 'approved')
         .order('name');
 
       if (queryError) {
-        console.error('Database query error:', queryError);
+        console.error('🏢 [useFacilityData] Database query error:', queryError);
         throw queryError;
       }
 
-      console.log('🏢 Database response:', data);
+      console.log('🏢 [useFacilityData] Database response:', data);
+      console.log('🏢 [useFacilityData] Retrieved facilities count:', data?.length || 0);
 
       // データの型安全性を確保
-      const facilitiesData: PetFacility[] = (data as PetFacilityResponse[] || []).map((facility) => ({
-        id: facility.id || '',
-        name: facility.name || '',
-        description: facility.description || '',
-        category: facility.category_id || 'other',
-        address: facility.address || '',
-        latitude: Number(facility.latitude) || 0,
-        longitude: Number(facility.longitude) || 0,
-        phone: facility.phone || '',
-        website: facility.website || '',
-        status: facility.status as 'pending' | 'approved' | 'rejected' | 'suspended' || 'pending',
-        created_at: facility.created_at || '',
-        category_name: facility.facility_categories?.name_ja || '',
-      }));
+      const facilitiesData: PetFacility[] = (data as PetFacilityResponse[] || []).map((facility, index) => {
+        // 座標の詳細チェック
+        const hasValidCoordinates = facility.latitude && facility.longitude && 
+                                   facility.latitude !== 0 && facility.longitude !== 0;
+        
+        console.log(`🏢 [useFacilityData] 施設${index + 1} "${facility.name}":`, {
+          raw_latitude: facility.latitude,
+          raw_longitude: facility.longitude,
+          category_id: facility.category_id,
+          category_info: facility.facility_categories,
+          hasValidCoordinates
+        });
+        
+        return {
+          id: facility.id || '',
+          name: facility.name || '',
+          description: facility.description || '',
+          category: facility.category_id || 'other',
+          address: facility.address || '',
+          latitude: hasValidCoordinates ? Number(facility.latitude) : null,
+          longitude: hasValidCoordinates ? Number(facility.longitude) : null,
+          phone: facility.phone || '',
+          website: facility.website || '',
+          status: facility.status as 'pending' | 'approved' | 'rejected' | 'suspended' || 'pending',
+          created_at: facility.created_at || '',
+          category_name: facility.facility_categories?.name_ja || facility.facility_categories?.name || '',
+        };
+      });
 
-      console.log(`✅ Successfully fetched ${facilitiesData.length} facilities`);
+      console.log(`✅ [useFacilityData] Successfully processed ${facilitiesData.length} facilities`);
+      
+      // 座標を持つ施設の数をカウント
+      const facilitiesWithCoordinates = facilitiesData.filter(f => f.latitude && f.longitude);
+      console.log(`📍 [useFacilityData] Facilities with coordinates: ${facilitiesWithCoordinates.length}/${facilitiesData.length}`);
+      
       setFacilities(facilitiesData);
       
       // 開発環境でのデバッグ情報
       if (import.meta.env.DEV) {
-        console.log('取得した施設一覧:', facilitiesData.map(f => ({ 
+        console.log('🏢 [useFacilityData] 取得した施設一覧:', facilitiesData.map(f => ({ 
           id: f.id, 
           name: f.name, 
-          category: f.category, 
-          address: f.address 
+          category: f.category,
+          category_name: f.category_name,
+          address: f.address,
+          coordinates: f.latitude && f.longitude ? `${f.latitude}, ${f.longitude}` : 'なし'
         })));
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '施設データの取得に失敗しました';
       setError(errorMessage);
       
-      console.error('🔥 Facility data fetch error:', err);
+      console.error('🔥 [useFacilityData] Facility data fetch error:', err);
       
       // エラー時は空配列を設定（実際のデータが取得できない場合）
       setFacilities([]);
