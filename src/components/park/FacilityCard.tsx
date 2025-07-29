@@ -62,57 +62,27 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
       setImageLoading(true);
       console.log('🖼️ 施設画像取得開始:', facility.id, facility.name);
       
-      // 両テーブルから画像データを取得
-      const [facilityImagesResult, petFacilityImagesResult] = await Promise.all([
-        // facility_imagesテーブルから取得
-        supabase
-          .from('facility_images')
-          .select('id, facility_id, image_url, image_type, created_at')
-          .eq('facility_id', facility.id)
-          .order('created_at', { ascending: true })
-          .limit(1),
-        
-        // pet_facility_imagesテーブルから取得  
-        supabase
-          .from('pet_facility_images')
-          .select('id, facility_id, image_data, image_type, display_order, created_at')
-          .eq('facility_id', facility.id)
-          .order('display_order', { ascending: true })
-          .limit(1)
-      ]);
-
-      // 両テーブルの画像データを統合（メイン画像のみ）
-      const allImages = [
-        // facility_imagesのデータ（image_urlを使用）
-        ...(facilityImagesResult.data || []).map(img => ({
-          ...img,
-          image_url: img.image_url
-        })),
-        // pet_facility_imagesのデータ（image_dataをimage_urlとして使用）
-        ...(petFacilityImagesResult.data || []).map(img => ({
-          ...img,
-          image_url: img.image_data // base64データをimage_urlとして扱う
-        }))
-      ];
+      // pet_facility_imagesテーブルから画像データを取得（メイン画像のみ）
+      const { data: images, error: imagesError } = await supabase
+        .from('pet_facility_images')
+        .select('id, facility_id, image_data, image_type, display_order, created_at')
+        .eq('facility_id', facility.id)
+        .order('display_order', { ascending: true })
+        .limit(1);
 
       console.log('🖼️ 画像取得結果:', {
         facilityId: facility.id,
         facilityName: facility.name,
-        facilityImagesCount: facilityImagesResult.data?.length || 0,
-        petFacilityImagesCount: petFacilityImagesResult.data?.length || 0,
-        totalImages: allImages.length,
-        images: allImages
+        imagesCount: images?.length || 0,
+        images: images
       });
 
-      if (facilityImagesResult.error) {
-        console.error('❌ facility_images取得エラー:', facilityImagesResult.error);
+      if (imagesError) {
+        console.error('❌ 施設画像の取得に失敗:', imagesError);
+      } else {
+        console.log('✅ 施設画像の取得成功:', images?.length || 0, '枚');
+        setFacilityImages(images || []);
       }
-      if (petFacilityImagesResult.error) {
-        console.error('❌ pet_facility_images取得エラー:', petFacilityImagesResult.error);
-      }
-      
-      console.log('✅ 施設画像の取得成功:', allImages.length, '枚');
-      setFacilityImages(allImages);
       
     } catch (error) {
       console.error('💥 施設画像の取得中にエラーが発生:', error);
@@ -259,11 +229,10 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
           </div>
         ) : mainImage ? (
           <img
-            src={mainImage.image_url}
-            alt={mainImage.description || `${facility.name}のメイン画像`}
+            src={mainImage.image_data} // image_urlからimage_dataに変更
+            alt={mainImage.alt_text || `${facility.name}のメイン画像`}
             className="w-full h-full object-cover"
             onError={(e) => {
-              // 画像読み込みエラー時のフォールバック
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
               const parent = target.parentElement;

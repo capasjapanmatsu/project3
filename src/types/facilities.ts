@@ -39,9 +39,14 @@ export interface FacilityHour {
 export interface FacilityImage {
   id: string;
   facility_id: string;
-  image_url: string;
+  image_url?: string; // 旧式（facility_imagesテーブル用、互換性のため残す）
+  image_data?: string; // 新式（pet_facility_imagesテーブル用、base64データ）
+  image_type?: string;
+  display_order?: number;
+  alt_text?: string;
   description?: string;
   created_at: string;
+  updated_at?: string;
 }
 
 /**
