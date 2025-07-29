@@ -4,10 +4,12 @@ import {
     Calendar,
     ChevronLeft,
     ChevronRight,
+    Clock,
     ExternalLink,
     Gift,
     MapPin,
     Phone,
+    Star,
     Ticket,
     Users,
     X
@@ -27,6 +29,32 @@ interface FacilityWithDetails extends PetFacility {
   category_info?: FacilityCategory;
   images?: FacilityImage[];
   coupons?: FacilityCoupon[];
+  opening_time?: string;
+  closing_time?: string;
+  weekly_closed_days?: string;
+  specific_closed_dates?: string;
+}
+
+interface FacilityReview {
+  id: string;
+  facility_id: string;
+  user_id: string;
+  dog_name: string;
+  rating: number;
+  comment: string;
+  visit_date: string;
+  created_at: string;
+}
+
+interface ReviewSummary {
+  facility_id: string;
+  review_count: number;
+  average_rating: number;
+  rating_5_count: number;
+  rating_4_count: number;
+  rating_3_count: number;
+  rating_2_count: number;
+  rating_1_count: number;
 }
 
 export function FacilityDetail() {
@@ -43,6 +71,19 @@ export function FacilityDetail() {
   const [showCouponDisplay, setShowCouponDisplay] = useState(false);
   const [displayingCoupon, setDisplayingCoupon] = useState<UserCoupon | null>(null);
   const [obtainingCouponId, setObtainingCouponId] = useState<string | null>(null);
+  
+  // レビュー機能のstate
+  const [reviews, setReviews] = useState<FacilityReview[]>([]);
+  const [reviewSummary, setReviewSummary] = useState<ReviewSummary | null>(null);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [newReview, setNewReview] = useState({
+    rating: 5,
+    comment: '',
+    visit_date: new Date().toISOString().split('T')[0]
+  });
+  const [userDogs, setUserDogs] = useState<any[]>([]);
+  const [selectedDogId, setSelectedDogId] = useState<string>('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   // カテゴリの日本語マッピング
   const CATEGORY_LABELS: { [key: string]: string } = {
@@ -58,147 +99,110 @@ export function FacilityDetail() {
   };
 
   useEffect(() => {
-    if (facilityId) {
-      void fetchFacilityData();
-      if (user) {
-        void fetchUserCoupons();
-      }
+    if (!facilityId) {
+      navigate('/dog-park-list');
+      return;
     }
-  }, [facilityId, user]);
+    fetchFacilityData();
+  }, [facilityId, navigate]);
 
   const fetchFacilityData = async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      console.log('🔍 Fetching facility data for ID:', facilityId);
-
-      console.log('🖼️ 施設画像取得開始:', facilityId);
-
-      // 施設の基本情報、画像、アクティブなクーポンを並列取得
-      const [facilityResult, imagesResult, couponsResult] = await Promise.all([
+      // 施設基本情報、画像、アクティブなクーポンを並列取得
+      const [facilityResult, imagesResult, couponsResult, reviewsResult, reviewSummaryResult, userDogsResult] = await Promise.all([
         // 施設基本情報
         supabase
           .from('pet_facilities')
-          .select('*')
+          .select(`
+            *,
+            facility_categories (
+              id,
+              name,
+              description
+            )
+          `)
           .eq('id', facilityId)
           .eq('status', 'approved')
           .single(),
-        
-        // 画像データを取得（pet_facility_imagesのみ）
+
+        // 施設画像
         supabase
           .from('pet_facility_images')
           .select('id, facility_id, image_url, image_type, display_order, created_at, alt_text')
           .eq('facility_id', facilityId)
           .order('display_order', { ascending: true }),
-        
+
         // アクティブなクーポン
         supabase
           .from('facility_coupons')
-          .select(`
-            id,
-            service_content,
-            discount_value,
-            validity_start,
-            validity_end,
-            usage_limit,
-            coupon_image_url,
-            created_at
-          `)
+          .select('*')
           .eq('facility_id', facilityId)
           .eq('is_active', true)
           .gte('validity_end', new Date().toISOString())
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: false }),
+
+        // レビュー取得
+        supabase
+          .from('facility_reviews')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .order('created_at', { ascending: false }),
+
+        // レビュー統計取得
+        supabase
+          .from('facility_rating_summary')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .single(),
+
+        // ユーザーの犬情報取得（レビュー投稿用）
+        user ? supabase
+          .from('dogs')
+          .select('id, name, gender')
+          .eq('owner_id', user.id)
+          .eq('is_approved', true) : Promise.resolve({ data: [], error: null })
       ]);
 
-      console.log('📋 Facility result:', facilityResult);
-      console.log('🖼️ Images result:', imagesResult);
-      console.log('🎫 Coupons result:', couponsResult);
-
-      if (facilityResult.error) {
-        console.error('❌ Facility query error:', facilityResult.error);
-        throw new Error(`施設データ取得エラー: ${facilityResult.error.message}`);
-      }
-
+      if (facilityResult.error) throw facilityResult.error;
       if (!facilityResult.data) {
-        console.log('⚠️ No facility data found');
-        setError('施設が見つかりません');
-        return;
+        throw new Error('施設が見つかりません');
       }
 
-      if (imagesResult.error) {
-        console.error('❌ Images query error:', imagesResult.error);
-        // 画像エラーは致命的ではないので続行
-      }
-
-      if (couponsResult.error) {
-        console.error('❌ Coupons query error:', couponsResult.error);
-        // クーポンエラーは致命的ではないので続行
-      }
-
-      console.log('✅ Facility data:', facilityResult.data);
-      console.log('🖼️ Images data:', imagesResult.data);
-      console.log('🎫 Coupons data:', couponsResult.data);
-
-      // カテゴリ情報を個別に取得
-      let categoryInfo = null;
-      const categoryId = (facilityResult.data as any)?.category_id || (facilityResult.data as any)?.category;
-      
-      console.log('🏷️ カテゴリID取得:', {
-        categoryId,
-        facilityData: facilityResult.data,
-        categoryIdField: (facilityResult.data as any)?.category_id,
-        categoryField: (facilityResult.data as any)?.category
-      });
-      
-      if (categoryId) {
-        // カテゴリIDがUUIDの場合とstring名の場合を両方対応
-        let categoryQuery = supabase.from('facility_categories').select('*');
-        
-        // UUIDの形式かチェック（36文字でハイフンを含む）
-        const isUUID = typeof categoryId === 'string' && 
-                      categoryId.length === 36 && 
-                      categoryId.includes('-');
-        
-        if (isUUID) {
-          categoryQuery = categoryQuery.eq('id', categoryId);
-        } else {
-          categoryQuery = categoryQuery.eq('name', categoryId);
-        }
-        
-        console.log('🔍 カテゴリクエリ実行:', { categoryId, isUUID });
-        
-        const { data: categoryData, error: categoryError } = await categoryQuery.single();
-        
-        if (categoryError) {
-          console.error('❌ カテゴリクエリエラー:', categoryError);
-        } else {
-          categoryInfo = categoryData;
-          console.log('✅ カテゴリ情報取得成功:', categoryInfo);
-        }
-      }
-
-      setFacility({
+      // 取得したデータを設定
+      const facilityData: FacilityWithDetails = {
         ...facilityResult.data,
-        category_info: categoryInfo,
+        category_info: (facilityResult.data as any).facility_categories,
         images: imagesResult.data || [],
         coupons: couponsResult.data || []
-      } as any);
+      };
 
-      console.log('🏗️ 最終的な施設データ:', {
-        facilityName: (facilityResult.data as any)?.name,
-        categoryInfo,
-        imagesCount: (imagesResult.data || []).length,
-        couponsCount: (couponsResult.data || []).length,
-        address: (facilityResult.data as any)?.address,
-        phone: (facilityResult.data as any)?.phone,
-        website: (facilityResult.data as any)?.website_url
-      });
+      setFacility(facilityData);
+      setReviews(reviewsResult.data || []);
+      setReviewSummary(reviewSummaryResult.data);
+      setUserDogs(userDogsResult.data || []);
+      
+      if (userDogsResult.data && userDogsResult.data.length > 0) {
+        setSelectedDogId(userDogsResult.data[0].id);
+      }
 
-    } catch (err) {
-      console.error('💥 施設データの取得に失敗:', err);
-      const errorMessage = err instanceof Error ? err.message : '不明なエラーが発生しました';
-      setError(`施設データの取得に失敗しました: ${errorMessage}`);
+      // ユーザーが既に取得したクーポンをチェック
+      if (user && couponsResult.data && couponsResult.data.length > 0) {
+        const couponIds = couponsResult.data.map(c => c.id);
+        const { data: userCouponsData } = await supabase
+          .from('user_coupons')
+          .select('*')
+          .eq('user_id', user.id)
+          .in('coupon_id', couponIds);
+
+        setUserCoupons(userCouponsData || []);
+      }
+
+    } catch (error) {
+      console.error('Error fetching facility data:', error);
+      setError(error instanceof Error ? error.message : '施設情報の取得に失敗しました');
     } finally {
       setIsLoading(false);
     }
@@ -302,6 +306,65 @@ export function FacilityDetail() {
         prev === 0 ? facility.images!.length - 1 : prev - 1
       );
     }
+  };
+
+  // 営業時間・定休日の表示用ヘルパー関数
+  const formatOperatingHours = () => {
+    if (!facility?.opening_time || !facility?.closing_time) {
+      return '営業時間の情報がありません';
+    }
+    return `${facility.opening_time.slice(0, 5)} 〜 ${facility.closing_time.slice(0, 5)}`;
+  };
+
+  const getClosedDaysText = () => {
+    if (!facility?.weekly_closed_days) return '定休日の情報がありません';
+    
+    try {
+      const closedDays = JSON.parse(facility.weekly_closed_days);
+      const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+      const closedDayNames = closedDays
+        .map((isClosed: boolean, index: number) => isClosed ? dayNames[index] : null)
+        .filter((day: string | null) => day !== null);
+      
+      if (closedDayNames.length === 0) return '年中無休';
+      return `${closedDayNames.join('・')}曜日`;
+    } catch {
+      return '定休日の情報がありません';
+    }
+  };
+
+  const isOpenToday = () => {
+    if (!facility?.weekly_closed_days) return null;
+    
+    try {
+      const closedDays = JSON.parse(facility.weekly_closed_days);
+      const today = new Date().getDay();
+      return !closedDays[today];
+    } catch {
+      return null;
+    }
+  };
+
+  // 星評価表示コンポーネント
+  const StarRating = ({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'md' | 'lg' }) => {
+    const sizeClasses = {
+      sm: 'w-4 h-4',
+      md: 'w-5 h-5',
+      lg: 'w-6 h-6'
+    };
+
+    return (
+      <div className="flex items-center space-x-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`${sizeClasses[size]} ${
+              star <= rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+            }`}
+          />
+        ))}
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -488,6 +551,84 @@ export function FacilityDetail() {
                     </p>
                   </div>
                 )}
+
+                {/* 営業時間・定休日 */}
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <Clock className="w-5 h-5 text-blue-500 mr-2" />
+                    営業時間・定休日
+                  </h3>
+                  
+                  {/* 営業時間 */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <span className="font-medium text-gray-900">営業時間</span>
+                      <span className="text-gray-700">{formatOperatingHours()}</span>
+                    </div>
+                    
+                    {/* 定休日 */}
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <span className="font-medium text-gray-900">定休日</span>
+                      <span className="text-gray-700">{getClosedDaysText()}</span>
+                    </div>
+                    
+                    {/* 本日の営業状況 */}
+                    {isOpenToday() !== null && (
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span className="font-medium text-gray-900">本日の営業</span>
+                        <span className={`font-semibold ${
+                          isOpenToday() ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {isOpenToday() ? '営業中' : '定休日'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 評価・レビュー概要 */}
+                {reviewSummary && (
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <Star className="w-5 h-5 text-yellow-400 mr-2" />
+                      評価・レビュー
+                    </h3>
+                    
+                    <div className="flex items-center space-x-4 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <StarRating rating={Math.round(reviewSummary.average_rating)} size="lg" />
+                        <span className="text-2xl font-bold text-gray-900">
+                          {reviewSummary.average_rating}
+                        </span>
+                      </div>
+                      <span className="text-gray-600">
+                        ({reviewSummary.review_count}件のレビュー)
+                      </span>
+                    </div>
+                    
+                    {/* 評価分布 */}
+                    <div className="space-y-2">
+                      {[5, 4, 3, 2, 1].map(rating => {
+                        const count = reviewSummary[`rating_${rating}_count` as keyof ReviewSummary] as number;
+                        const percentage = reviewSummary.review_count > 0 ? (count / reviewSummary.review_count) * 100 : 0;
+                        
+                        return (
+                          <div key={rating} className="flex items-center space-x-2 text-sm">
+                            <span className="w-3 text-gray-600">{rating}</span>
+                            <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                            <div className="flex-1 bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-yellow-400 h-2 rounded-full"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            <span className="w-8 text-gray-600 text-right">{count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 右側の画像セクションを削除 */}
@@ -660,9 +801,215 @@ export function FacilityDetail() {
               </div>
             </div>
           )}
+
+          {/* レビューセクション */}
+          <div className="mb-12">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                <Star className="w-8 h-8 inline mr-3 text-yellow-400" />
+                レビュー・評価
+              </h2>
+              <p className="text-gray-600">他の飼い主さんの体験談をご覧ください</p>
+            </div>
+
+            {/* レビュー投稿ボタン */}
+            {user && userDogs.length > 0 && (
+              <div className="text-center mb-8">
+                <Button
+                  onClick={() => setShowReviewForm(true)}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Star className="w-4 h-4 mr-2" />
+                  レビューを投稿する
+                </Button>
+              </div>
+            )}
+
+            {/* レビュー投稿フォーム */}
+            {showReviewForm && (
+              <Card className="p-6 mb-8 border-blue-200 bg-blue-50">
+                <h3 className="text-lg font-semibold mb-4">レビューを投稿</h3>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!user || !selectedDogId) return;
+
+                    setIsSubmittingReview(true);
+                    try {
+                      const selectedDog = userDogs.find(d => d.id === selectedDogId);
+                      const dogName = selectedDog ? `${selectedDog.name}${selectedDog.gender === 'male' ? 'くん' : 'ちゃん'}の飼い主さん` : 'ワンちゃんの飼い主さん';
+
+                      const { error } = await supabase
+                        .from('facility_reviews')
+                        .insert({
+                          facility_id: facilityId,
+                          user_id: user.id,
+                          dog_name: dogName,
+                          rating: newReview.rating,
+                          comment: newReview.comment,
+                          visit_date: newReview.visit_date
+                        });
+
+                      if (error) throw error;
+
+                      // フォームをリセット
+                      setNewReview({
+                        rating: 5,
+                        comment: '',
+                        visit_date: new Date().toISOString().split('T')[0]
+                      });
+                      setShowReviewForm(false);
+                      
+                      // データを再取得
+                      await fetchFacilityData();
+                      
+                      alert('レビューを投稿しました！');
+                    } catch (error) {
+                      console.error('Error submitting review:', error);
+                      alert('レビューの投稿に失敗しました。');
+                    } finally {
+                      setIsSubmittingReview(false);
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  {/* ワンちゃん選択 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      レビュー投稿するワンちゃん
+                    </label>
+                    <select
+                      value={selectedDogId}
+                      onChange={(e) => setSelectedDogId(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      {userDogs.map(dog => (
+                        <option key={dog.id} value={dog.id}>
+                          {dog.name}{dog.gender === 'male' ? 'くん' : 'ちゃん'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 評価 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      評価
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      {[1, 2, 3, 4, 5].map((rating) => (
+                        <button
+                          key={rating}
+                          type="button"
+                          onClick={() => setNewReview(prev => ({ ...prev, rating }))}
+                          className="p-1"
+                        >
+                          <Star
+                            className={`w-8 h-8 ${
+                              rating <= newReview.rating
+                                ? 'text-yellow-400 fill-current'
+                                : 'text-gray-300'
+                            }`}
+                          />
+                        </button>
+                      ))}
+                      <span className="ml-2 text-sm text-gray-600">
+                        ({newReview.rating}点)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 訪問日 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      訪問日
+                    </label>
+                    <input
+                      type="date"
+                      value={newReview.visit_date}
+                      onChange={(e) => setNewReview(prev => ({ ...prev, visit_date: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+
+                  {/* コメント */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      コメント
+                    </label>
+                    <textarea
+                      value={newReview.comment}
+                      onChange={(e) => setNewReview(prev => ({ ...prev, comment: e.target.value }))}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="施設の感想をお聞かせください..."
+                      required
+                    />
+                  </div>
+
+                  {/* ボタン */}
+                  <div className="flex space-x-3">
+                    <Button
+                      type="submit"
+                      disabled={isSubmittingReview}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {isSubmittingReview ? '投稿中...' : '投稿する'}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => setShowReviewForm(false)}
+                      className="bg-gray-300 hover:bg-gray-400 text-gray-700"
+                    >
+                      キャンセル
+                    </Button>
+                  </div>
+                </form>
+              </Card>
+            )}
+
+            {/* レビュー一覧 */}
+            <div className="space-y-6">
+              {reviews.length > 0 ? (
+                reviews.map((review) => (
+                  <Card key={review.id} className="p-6">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                          <Users className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{review.dog_name}</p>
+                          <p className="text-sm text-gray-500">
+                            訪問日: {new Date(review.visit_date).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <StarRating rating={review.rating} size="sm" />
+                        <span className="text-sm text-gray-600">({review.rating}点)</span>
+                      </div>
+                    </div>
+                    <p className="text-gray-700 leading-relaxed">{review.comment}</p>
+                    <p className="text-xs text-gray-400 mt-3">
+                      投稿日: {new Date(review.created_at).toLocaleDateString()}
+                    </p>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center py-12">
+                  <Star className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-xl text-gray-500 mb-2">まだレビューがありません</p>
+                  <p className="text-gray-400">最初のレビューを投稿してみませんか？</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* 画像モーダル */}
+        {/* 画像拡大モーダル */}
         {showImageModal && facility.images && facility.images.length > 0 && (
           <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
             <div className="relative max-w-4xl w-full">
