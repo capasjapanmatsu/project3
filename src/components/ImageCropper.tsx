@@ -31,9 +31,19 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
 
   // 初期ファイルがある場合の処理
   useEffect(() => {
+    console.log('🔍 ImageCropper useEffect実行:', { imageFile: imageFile?.name });
+    
     if (imageFile) {
+      console.log('📁 ファイル詳細:', {
+        name: imageFile.name,
+        size: imageFile.size,
+        type: imageFile.type,
+        lastModified: imageFile.lastModified
+      });
+      
       // ファイル形式チェック
       if (!imageFile.type.startsWith('image/')) {
+        console.log('❌ ImageCropper: ファイル形式エラー');
         alert('画像ファイルを選択してください。');
         onCancel();
         return;
@@ -41,20 +51,33 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
 
       // ファイルサイズチェック（10MB未満）
       if (imageFile.size > 10 * 1024 * 1024) {
+        console.log('❌ ImageCropper: ファイルサイズエラー');
         alert('ファイルサイズは10MB未満にしてください。');
         onCancel();
         return;
       }
 
+      console.log('✅ ImageCropper: バリデーション通過、ファイル読み込み開始');
       setCrop(undefined);
       const reader = new FileReader();
       reader.addEventListener('load', () => {
         const result = reader.result;
+        console.log('📖 FileReader完了:', { result: typeof result, length: result?.toString().length });
         if (result && typeof result === 'string') {
+          console.log('✅ 画像データURL設定完了');
           setImageSrc(result);
+        } else {
+          console.log('❌ ファイル読み込み結果が無効');
         }
       });
+      
+      reader.addEventListener('error', (error) => {
+        console.error('❌ FileReader エラー:', error);
+      });
+      
       reader.readAsDataURL(imageFile);
+    } else {
+      console.log('❌ imageFileが未定義');
     }
   }, [imageFile, onCancel]);
 

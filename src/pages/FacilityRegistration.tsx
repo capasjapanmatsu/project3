@@ -190,10 +190,16 @@ export default function FacilityRegistration() {
   // 画像選択ハンドラー（トリミング対応）
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    console.log('🖼️ 画像選択開始:', { index, file: file?.name, size: file?.size, type: file?.type });
+    
+    if (!file) {
+      console.log('❌ ファイルが選択されていません');
+      return;
+    }
 
     // ファイルサイズチェック（5MB制限）
     if (file.size > 5 * 1024 * 1024) {
+      console.log('❌ ファイルサイズエラー:', file.size);
       setError('画像ファイルのサイズは5MB以下にしてください');
       // input要素をリセット
       event.target.value = '';
@@ -202,17 +208,26 @@ export default function FacilityRegistration() {
 
     // ファイル形式チェック
     if (!file.type.startsWith('image/')) {
+      console.log('❌ ファイル形式エラー:', file.type);
       setError('画像ファイルを選択してください');
       // input要素をリセット
       event.target.value = '';
       return;
     }
 
+    console.log('✅ バリデーション通過、トリミング画面を開く');
+    
     // トリミング画面を開く
     setCropperState({
       isOpen: true,
       imageIndex: index,
       originalFile: file
+    });
+    
+    console.log('✅ cropperState設定完了:', {
+      isOpen: true,
+      imageIndex: index,
+      originalFile: file.name
     });
     
     // input要素をリセット（同じファイルを再選択可能にする）
@@ -872,7 +887,7 @@ export default function FacilityRegistration() {
       {/* 画像トリミングモーダル */}
       {cropperState.isOpen && cropperState.originalFile && (
         <ImageCropper
-          image={cropperState.originalFile}
+          imageFile={cropperState.originalFile}
           aspectRatio={1}
           onCropComplete={handleCropComplete}
           onCancel={() => setCropperState({
