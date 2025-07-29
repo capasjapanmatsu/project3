@@ -336,7 +336,8 @@ export function MapView({
             hasCoordinates: !!(facility.latitude && facility.longitude)
           });
           
-          if (facility.latitude && facility.longitude) {
+          if (facility.latitude && facility.longitude && 
+              facility.latitude !== 0 && facility.longitude !== 0) {
             try {
               const marker = new windowObj.google.maps.Marker({
                 position: { lat: facility.latitude!, lng: facility.longitude! },
