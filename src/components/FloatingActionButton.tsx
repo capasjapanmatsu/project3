@@ -111,61 +111,87 @@ export const FloatingActionButton = () => {
     <>
       {/* フローティングアクションボタン */}
       <div className="fixed bottom-32 right-4 z-40">
-        {/* サブメニュー */}
+        {/* サブメニュー（下から上へ表示） */}
         {isOpen && (
-          <div className="absolute bottom-16 -right-8 space-y-3 animate-in slide-in-from-right duration-300">
-            {/* クーポン表示ボタン */}
-            <button
-              onClick={() => {
-                console.log('🎫 [FAB Debug] Coupon button clicked');
-                // データを最新に更新してからカウント表示
-                fetchUserData().then(() => {
-                  alert(`クーポン機能：${userCoupons.length}件のクーポンがあります`);
-                });
-                setIsOpen(false);
-              }}
-              className="flex items-center bg-pink-500 hover:bg-pink-600 text-white rounded-full px-8 py-3 shadow-lg transform transition-all duration-200 hover:scale-105 hover:-translate-x-1 min-w-[140px]"
-            >
-              <Gift className="w-5 h-5 mr-2" />
-              <span className="text-sm font-medium whitespace-nowrap">
-                クーポン ({userCoupons.length})
-              </span>
-            </button>
-
-            {/* JPパスポート機能ボタン */}
+          <div className="absolute bottom-20 -right-16 flex flex-col space-y-3 animate-in slide-in-from-right duration-300">
+            {/* JPパスポート機能ボタン（上位置） */}
             <button
               onClick={() => {
                 console.log('📋 [FAB Debug] JP Passport button clicked');
                 setIsOpen(false);
                 navigate('/jp-passport');
               }}
-              className="flex items-center bg-emerald-500 hover:bg-emerald-600 text-white rounded-full px-8 py-3 shadow-lg transform transition-all duration-200 hover:scale-105 hover:-translate-x-1 min-w-[140px]"
+              className="flex items-center bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full px-6 py-4 shadow-xl transform transition-all duration-300 hover:scale-105 hover:-translate-x-2 min-w-[160px] border-2 border-white/20"
             >
-              <Shield className="w-5 h-5 mr-2" />
-              <span className="text-sm font-medium whitespace-nowrap">
-                JPパスポート
-              </span>
+              <Shield className="w-5 h-5 mr-3 drop-shadow-sm" />
+              <div className="text-left">
+                <span className="text-sm font-bold whitespace-nowrap block">JPパスポート</span>
+                <span className="text-xs opacity-90 whitespace-nowrap block">ワクチン証明書</span>
+              </div>
+            </button>
+
+            {/* 区切りライン */}
+            <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent opacity-50"></div>
+
+            {/* クーポン機能ボタン（下位置・慎重な操作用） */}
+            <button
+              onClick={() => {
+                console.log('🎫 [FAB Debug] Coupon button clicked');
+                
+                // 確認ダイアログを表示
+                const shouldShow = window.confirm(
+                  `現在 ${userCoupons.length} 件のクーポンを保有しています。\n\nクーポン一覧を表示しますか？\n\n※店舗でのご利用時のみクリックしてください`
+                );
+                
+                if (shouldShow) {
+                  // データを最新に更新してからナビゲート
+                  void fetchUserData().then(() => {
+                    navigate('/my-coupons');
+                  });
+                }
+                setIsOpen(false);
+              }}
+              className="flex items-center bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-full px-6 py-4 shadow-xl transform transition-all duration-300 hover:scale-105 hover:-translate-x-2 min-w-[160px] border-2 border-white/20"
+            >
+              <Gift className="w-5 h-5 mr-3 drop-shadow-sm" />
+              <div className="text-left">
+                <span className="text-sm font-bold whitespace-nowrap block">クーポン ({userCoupons.length})</span>
+                <span className="text-xs opacity-90 whitespace-nowrap block">店舗利用時のみ</span>
+              </div>
             </button>
           </div>
         )}
 
-        {/* メインボタン - 丸いデザイン */}
+        {/* メインボタン - プレミアムデザイン */}
         <button
           onClick={() => {
             console.log('🔘 [FAB Debug] Main button clicked, isOpen:', isOpen);
             setIsOpen(!isOpen);
           }}
-          className={`w-16 h-16 rounded-full shadow-xl flex items-center justify-center transform transition-all duration-300 ${
+          className={`w-20 h-20 rounded-full shadow-2xl flex items-center justify-center transform transition-all duration-300 border-4 border-white/30 backdrop-blur-sm ${
             isOpen
-              ? 'bg-red-500 hover:bg-red-600 rotate-45'
-              : 'bg-gradient-to-br from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 hover:scale-110'
-          } border-4 border-white`}
+              ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rotate-45 scale-95'
+              : 'bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-700 hover:via-blue-600 hover:to-indigo-700 hover:scale-110 hover:shadow-blue-500/25'
+          }`}
+          style={{
+            boxShadow: isOpen 
+              ? '0 20px 40px rgba(239, 68, 68, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2)'
+              : '0 20px 40px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2)'
+          }}
         >
-          {isOpen ? (
-            <X className="w-6 h-6 text-white" />
-          ) : (
-            <Plus className="w-6 h-6 text-white" />
-          )}
+          <div className="relative">
+            {isOpen ? (
+              <X className="w-7 h-7 text-white drop-shadow-lg" />
+            ) : (
+              <Plus className="w-7 h-7 text-white drop-shadow-lg" />
+            )}
+            {/* 保有クーポン数の小さなバッジ */}
+            {!isOpen && userCoupons.length > 0 && (
+              <span className="absolute -top-2 -right-2 bg-pink-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-lg">
+                {userCoupons.length}
+              </span>
+            )}
+          </div>
         </button>
       </div>
 
