@@ -355,9 +355,9 @@ export function FacilityDetail() {
             <div className="text-red-500 text-6xl mb-4">⚠️</div>
             <h1 className="text-xl font-bold text-gray-900 mb-2">エラーが発生しました</h1>
             <p className="text-gray-600 mb-4">{error}</p>
-            <Button onClick={() => navigate('/facilities')} variant="outline">
+            <Button onClick={() => navigate('/parks')} variant="outline">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              施設一覧に戻る
+              ドッグラン・施設一覧に戻る
             </Button>
           </div>
         </Card>
@@ -373,9 +373,9 @@ export function FacilityDetail() {
             <div className="text-gray-400 text-6xl mb-4">🏢</div>
             <h1 className="text-xl font-bold text-gray-900 mb-2">施設が見つかりません</h1>
             <p className="text-gray-600 mb-4">指定された施設は存在しないか、現在利用できません。</p>
-            <Button onClick={() => navigate('/facilities')} variant="outline">
+            <Button onClick={() => navigate('/parks')} variant="outline">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              施設一覧に戻る
+              ドッグラン・施設一覧に戻る
             </Button>
           </div>
         </Card>
@@ -398,11 +398,18 @@ export function FacilityDetail() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-center justify-between h-16">
                 <button
-                  onClick={() => navigate('/facilities')}
+                  onClick={() => {
+                    // ブラウザ履歴で戻れる場合は戻る、そうでなければドッグラン一覧へ
+                    if (window.history.length > 1) {
+                      window.history.back();
+                    } else {
+                      navigate('/parks');
+                    }
+                  }}
                   className="flex items-center text-gray-600 hover:text-blue-600 transition-colors"
                 >
                   <ArrowLeft className="w-5 h-5 mr-2" />
-                  施設一覧に戻る
+                  戻る
                 </button>
               </div>
             </div>
