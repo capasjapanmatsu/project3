@@ -882,6 +882,22 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
                 設定した有効期限を過ぎると、クーポンは自動的に無効になります。
               </p>
             </div>
+            
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <h4 className="font-semibold text-purple-800 mb-2">🔄 クーポン編集時の再取得機能</h4>
+              <p className="text-purple-700 mb-2">
+                店舗がクーポンを編集（有効期限延長など）した場合、新しいバージョンとして作成されます。
+              </p>
+              <p className="text-purple-700 mb-2">
+                • <strong>1回限りクーポンを使用済み</strong>のお客様も、編集後は<strong>新しいクーポンとして再取得可能</strong>になります
+              </p>
+              <p className="text-purple-700 mb-2">
+                • 編集前の古いクーポンは自動的に無効化され、新しいクーポンIDが生成されます
+              </p>
+              <p className="text-purple-700">
+                • これにより、有効期限延長などの際にお客様が不利益を被ることなく、継続してクーポンをご利用いただけます
+              </p>
+            </div>
           </div>
         </div>
       </Card>
