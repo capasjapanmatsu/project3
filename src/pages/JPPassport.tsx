@@ -10,20 +10,31 @@ interface Dog {
   name: string;
   breed: string;
   image_url?: string;
-  rabies_vaccination_date?: string;
+}
+
+interface VaccineCertification {
+  id: string;
+  dog_id: string;
+  rabies_vaccine_image?: string;
+  combo_vaccine_image?: string;
   rabies_expiry_date?: string;
-  mixed_vaccination_date?: string;
-  mixed_expiry_date?: string;
+  combo_expiry_date?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+}
+
+interface DogWithVaccines extends Dog {
+  vaccine_certifications: VaccineCertification[];
 }
 
 export function JPPassport() {
   const { user } = useAuth();
-  const [dogs, setDogs] = useState<Dog[]>([]);
+  const [dogs, setDogs] = useState<DogWithVaccines[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
-      fetchDogsData();
+      void fetchDogsData();
     }
   }, [user]);
 
@@ -32,6 +43,7 @@ export function JPPassport() {
 
     try {
       setIsLoading(true);
+      console.log('🔍 [JP Passport] Fetching dogs and vaccine data...');
       
       const { data, error } = await supabase
         .from('dogs')
@@ -40,21 +52,28 @@ export function JPPassport() {
           name,
           breed,
           image_url,
-          rabies_vaccination_date,
-          rabies_expiry_date,
-          mixed_vaccination_date,
-          mixed_expiry_date
+          vaccine_certifications (
+            id,
+            dog_id,
+            rabies_vaccine_image,
+            combo_vaccine_image,
+            rabies_expiry_date,
+            combo_expiry_date,
+            status,
+            created_at
+          )
         `)
         .eq('owner_id', user.id)
         .order('name');
 
       if (error) {
-        console.error('Error fetching dogs:', error);
+        console.error('❌ [JP Passport] Error fetching dogs:', error);
       } else {
+        console.log('✅ [JP Passport] Dogs fetched:', data);
         setDogs(data || []);
       }
     } catch (error) {
-      console.error('Error in fetchDogsData:', error);
+      console.error('❌ [JP Passport] Error in fetchDogsData:', error);
     } finally {
       setIsLoading(false);
     }
@@ -81,6 +100,21 @@ export function JPPassport() {
     if (days < 0) return 'text-red-600';
     if (days <= 30) return 'text-yellow-600';
     return 'text-green-600';
+  };
+
+  // 最新の承認済みワクチン情報を取得
+  const getLatestApprovedVaccine = (vaccinations: VaccineCertification[], type: 'rabies' | 'combo') => {
+    const approved = vaccinations
+      .filter(v => v.status === 'approved')
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    return approved.find(v => {
+      if (type === 'rabies') {
+        return v.rabies_expiry_date;
+      } else {
+        return v.combo_expiry_date;
+      }
+    });
   };
 
   if (isLoading) {
@@ -141,113 +175,118 @@ export function JPPassport() {
           </Card>
         ) : (
           <div className="space-y-6">
-            {dogs.map((dog) => (
-              <Card key={dog.id} className="overflow-hidden">
-                <div className="p-6">
-                  {/* 犬の基本情報 */}
-                  <div className="flex items-start mb-6">
-                    <div className="flex-shrink-0 mr-4">
-                      {dog.image_url ? (
-                        <img
-                          src={dog.image_url}
-                          alt={dog.name}
-                          className="w-20 h-20 object-cover rounded-lg border-2 border-gray-200"
-                        />
-                      ) : (
-                        <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
-                          <span className="text-gray-400 text-xs">画像なし</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-gray-900 mb-1">{dog.name}</h3>
-                      <p className="text-gray-600 mb-2">{dog.breed}</p>
-                      <div className="flex items-center">
-                        <Shield className="w-4 h-4 text-emerald-600 mr-1" />
-                        <span className="text-sm text-emerald-600 font-medium">
-                          公式認証済み
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ワクチン情報 */}
-                  <div className="space-y-4">
-                    {/* 狂犬病ワクチン */}
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-semibold text-gray-900 flex items-center">
-                          💉 狂犬病ワクチン
-                        </h4>
-                        {isVaccineValid(dog.rabies_expiry_date) ? (
-                          <CheckCircle className="w-6 h-6 text-green-500" />
+            {dogs.map((dog) => {
+              const latestRabies = getLatestApprovedVaccine(dog.vaccine_certifications, 'rabies');
+              const latestCombo = getLatestApprovedVaccine(dog.vaccine_certifications, 'combo');
+              
+              return (
+                <Card key={dog.id} className="overflow-hidden">
+                  <div className="p-6">
+                    {/* 犬の基本情報 */}
+                    <div className="flex items-start mb-6">
+                      <div className="flex-shrink-0 mr-4">
+                        {dog.image_url ? (
+                          <img
+                            src={dog.image_url}
+                            alt={dog.name}
+                            className="w-20 h-20 object-cover rounded-lg border-2 border-gray-200"
+                          />
                         ) : (
-                          <XCircle className="w-6 h-6 text-red-500" />
+                          <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+                            <span className="text-gray-400 text-xs">画像なし</span>
+                          </div>
                         )}
                       </div>
-                      {dog.rabies_vaccination_date && dog.rabies_expiry_date ? (
-                        <div className="space-y-1 text-sm">
-                          <p className="text-gray-600">
-                            接種日: {new Date(dog.rabies_vaccination_date).toLocaleDateString()}
-                          </p>
-                          <p className={`font-medium ${getExpiryColor(dog.rabies_expiry_date)}`}>
-                            有効期限: {new Date(dog.rabies_expiry_date).toLocaleDateString()}
-                            {isVaccineValid(dog.rabies_expiry_date) && (
-                              <span className="ml-2 text-green-600">✓ 有効</span>
-                            )}
-                            {!isVaccineValid(dog.rabies_expiry_date) && (
-                              <span className="ml-2 text-red-600">✗ 期限切れ</span>
-                            )}
-                          </p>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-gray-900 mb-1">{dog.name}</h3>
+                        <p className="text-gray-600 mb-2">{dog.breed}</p>
+                        <div className="flex items-center">
+                          <Shield className="w-4 h-4 text-emerald-600 mr-1" />
+                          <span className="text-sm text-emerald-600 font-medium">
+                            公式認証済み
+                          </span>
                         </div>
-                      ) : (
-                        <p className="text-red-500 text-sm">ワクチン情報が未登録です</p>
-                      )}
+                      </div>
                     </div>
 
-                    {/* 混合ワクチン */}
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-semibold text-gray-900 flex items-center">
-                          💊 混合ワクチン
-                        </h4>
-                        {isVaccineValid(dog.mixed_expiry_date) ? (
-                          <CheckCircle className="w-6 h-6 text-green-500" />
+                    {/* ワクチン情報 */}
+                    <div className="space-y-4">
+                      {/* 狂犬病ワクチン */}
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-semibold text-gray-900 flex items-center">
+                            💉 狂犬病ワクチン
+                          </h4>
+                          {isVaccineValid(latestRabies?.rabies_expiry_date) ? (
+                            <CheckCircle className="w-6 h-6 text-green-500" />
+                          ) : (
+                            <XCircle className="w-6 h-6 text-red-500" />
+                          )}
+                        </div>
+                        {latestRabies && latestRabies.rabies_expiry_date ? (
+                          <div className="space-y-1 text-sm">
+                            <p className={`font-medium ${getExpiryColor(latestRabies.rabies_expiry_date)}`}>
+                              有効期限: {new Date(latestRabies.rabies_expiry_date).toLocaleDateString()}
+                              {isVaccineValid(latestRabies.rabies_expiry_date) && (
+                                <span className="ml-2 text-green-600">✓ 有効</span>
+                              )}
+                              {!isVaccineValid(latestRabies.rabies_expiry_date) && (
+                                <span className="ml-2 text-red-600">✗ 期限切れ</span>
+                              )}
+                            </p>
+                            <p className="text-gray-600 text-xs">
+                              承認日: {new Date(latestRabies.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
                         ) : (
-                          <XCircle className="w-6 h-6 text-red-500" />
+                          <p className="text-red-500 text-sm">ワクチン情報が未登録または未承認です</p>
                         )}
                       </div>
-                      {dog.mixed_vaccination_date && dog.mixed_expiry_date ? (
-                        <div className="space-y-1 text-sm">
-                          <p className="text-gray-600">
-                            接種日: {new Date(dog.mixed_vaccination_date).toLocaleDateString()}
-                          </p>
-                          <p className={`font-medium ${getExpiryColor(dog.mixed_expiry_date)}`}>
-                            有効期限: {new Date(dog.mixed_expiry_date).toLocaleDateString()}
-                            {isVaccineValid(dog.mixed_expiry_date) && (
-                              <span className="ml-2 text-green-600">✓ 有効</span>
-                            )}
-                            {!isVaccineValid(dog.mixed_expiry_date) && (
-                              <span className="ml-2 text-red-600">✗ 期限切れ</span>
-                            )}
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="text-red-500 text-sm">ワクチン情報が未登録です</p>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* パスポート認証情報 */}
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>ドッグパークJP公式認証</span>
-                      <span>ID: {dog.id.substring(0, 8).toUpperCase()}</span>
+                      {/* 混合ワクチン */}
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-semibold text-gray-900 flex items-center">
+                            💊 混合ワクチン
+                          </h4>
+                          {isVaccineValid(latestCombo?.combo_expiry_date) ? (
+                            <CheckCircle className="w-6 h-6 text-green-500" />
+                          ) : (
+                            <XCircle className="w-6 h-6 text-red-500" />
+                          )}
+                        </div>
+                        {latestCombo && latestCombo.combo_expiry_date ? (
+                          <div className="space-y-1 text-sm">
+                            <p className={`font-medium ${getExpiryColor(latestCombo.combo_expiry_date)}`}>
+                              有効期限: {new Date(latestCombo.combo_expiry_date).toLocaleDateString()}
+                              {isVaccineValid(latestCombo.combo_expiry_date) && (
+                                <span className="ml-2 text-green-600">✓ 有効</span>
+                              )}
+                              {!isVaccineValid(latestCombo.combo_expiry_date) && (
+                                <span className="ml-2 text-red-600">✗ 期限切れ</span>
+                              )}
+                            </p>
+                            <p className="text-gray-600 text-xs">
+                              承認日: {new Date(latestCombo.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-red-500 text-sm">ワクチン情報が未登録または未承認です</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* パスポート認証情報 */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>ドッグパークJP公式認証</span>
+                        <span>ID: {dog.id.substring(0, 8).toUpperCase()}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         )}
 
