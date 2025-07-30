@@ -186,7 +186,7 @@ export function JPPassport() {
                     <img
                       src="/images/passport-watermark.png"
                       alt=""
-                      className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-10 scale-75 ${
+                      className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-20 scale-75 ${
                         index % 3 === 0 ? 'rotate-12' : 
                         index % 3 === 1 ? 'rotate-6' : 
                         '-rotate-6'
