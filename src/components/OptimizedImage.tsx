@@ -276,7 +276,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           srcSet={generateSrcSet(currentSrc)}
           sizes={calculateSizes()}
           // Performance hints
-          fetchPriority={priority ? 'high' : 'low'}
+          fetchpriority={priority ? 'high' : 'low'}
         />
       )}
       

@@ -12,10 +12,11 @@ import {
     PawPrint,
     Shield
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import LazyImage from '../components/LazyImage';
 import VaccineBadge, { getVaccineStatusFromDog } from '../components/VaccineBadge';
 import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
@@ -278,7 +279,7 @@ export function AccessControl() {
   }, [userLocation, parks]);
 
   // 犬の選択処理
-  const handleDogSelection = (dogId: string) => {
+  const handleDogSelection = useCallback((dogId: string) => {
     setSelectedDogs(prev => {
       if (prev.includes(dogId)) {
         return prev.filter(id => id !== dogId);
@@ -287,10 +288,10 @@ export function AccessControl() {
       }
       return prev;
     });
-  };
+  }, []);
 
   // 選択された犬の名前を取得
-  const getSelectedDogNames = () => {
+  const getSelectedDogNames = useCallback(() => {
     return selectedDogs
       .map(id => {
         const dog = dogs.find(d => d.id === id);
@@ -298,15 +299,15 @@ export function AccessControl() {
       })
       .filter(Boolean)
       .join('、');
-  };
+  }, [selectedDogs, dogs]);
 
   // 犬の性別に応じた敬称を取得する関数
-  const getDogHonorific = (gender: string) => {
+  const getDogHonorific = useCallback((gender: string) => {
     return gender === 'オス' ? 'くん' : 'ちゃん';
-  };
+  }, []);
 
   // 決済状況に応じたメッセージ
-  const getPaymentStatusMessage = () => {
+  const getPaymentStatusMessage = useMemo(() => {
     if (!paymentStatus) return '';
     
     if (paymentStatus.hasSubscription) {
@@ -317,7 +318,7 @@ export function AccessControl() {
     } else {
       return '⚠️ 利用にはサブスクリプションまたはワンデイパスが必要です';
     }
-  };
+  }, [paymentStatus]);
 
   if (isLoading) {
     return (
@@ -359,7 +360,7 @@ export function AccessControl() {
         <Card className="p-4 mb-6 bg-blue-50 border-blue-200">
           <div className="flex items-center">
             <CreditCard className="w-5 h-5 text-blue-600 mr-2" />
-            <span className="text-sm text-blue-800">{getPaymentStatusMessage()}</span>
+            <span className="text-sm text-blue-800">{getPaymentStatusMessage}</span>
           </div>
         </Card>
       )}
@@ -420,10 +421,15 @@ export function AccessControl() {
                           <div className="flex items-center space-x-3">
                             <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
                               {dog.image_url ? (
-                                <img 
+                                <LazyImage
                                   src={dog.image_url} 
                                   alt={dog.name}
-                                  className="w-full h-full object-cover"
+                                  width={48}
+                                  height={48}
+                                  loading="lazy"
+                                  priority={false}
+                                  className="w-full h-full object-cover rounded-full"
+                                  placeholderSrc="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjQiIGN5PSIyNCIgcj0iMjQiIGZpbGw9IiNGM0Y0RjYiLz4KPHN2ZyB4PSIxNiIgeT0iMTYiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KPGVsbGlwc2UgY3g9IjEyIiBjeT0iMTMiIHJ4PSIxMCIgcnk9IjQiLz4KPHBhdGggZD0ibTEyIDEzIDQuNS05IDQuNSA5Ii8+CjxwYXRoIGQ9Im0xMiAxMyA0LjUtOUw3IDEzIi8+CjxwYXRoIGQ9Im0xMiAxM0w3IDQgNy41IDEzIi8+Cjwvc3ZnPgo8L3N2Zz4K"
                                 />
                               ) : (
                                 <PawPrint className="w-6 h-6 text-gray-500" />
@@ -449,7 +455,7 @@ export function AccessControl() {
                 {selectedDogs.length > 0 && (
                   <div className="p-3 bg-green-50 rounded-lg">
                     <p className="text-sm text-green-800">
-                      <strong>選択中:</strong> {getSelectedDogNames()}
+                      <strong>選択中:</strong> {getSelectedDogNames}
                     </p>
                   </div>
                 )}
@@ -664,7 +670,7 @@ export function AccessControl() {
                         <strong>施設:</strong> {selectedPark.name}
                       </p>
                       <p className="text-sm text-gray-600 mb-1">
-                        <strong>ワンちゃん:</strong> {getSelectedDogNames()}
+                        <strong>ワンちゃん:</strong> {getSelectedDogNames}
                       </p>
                       {userLocation && (
                         <p className="text-sm text-gray-600">

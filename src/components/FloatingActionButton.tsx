@@ -29,21 +29,15 @@ interface UserCoupon {
 }
 
 export const FloatingActionButton = () => {
-  console.log('🚀 [FAB Debug] FloatingActionButton component called!');
-  
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [userCoupons, setUserCoupons] = useState<UserCoupon[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  console.log('🔍 [FAB Debug] Component rendered');
-  console.log('🔍 [FAB Debug] user:', user);
-
   // データ取得
   useEffect(() => {
     if (user) {
-      console.log('🔍 [FAB Debug] User found, fetching data');
       void fetchUserData();
     }
   }, [user]);
@@ -53,7 +47,6 @@ export const FloatingActionButton = () => {
 
     try {
       setIsLoading(true);
-      console.log('🔍 [FAB Debug] Fetching user coupons...');
 
       // ユーザーのクーポンを取得（正しいカラム名を使用）
       const { data: couponsData, error } = await supabase
@@ -70,13 +63,12 @@ export const FloatingActionButton = () => {
         .gte('facility_coupons.end_date', new Date().toISOString());
 
       if (error) {
-        console.error('🔍 [FAB Debug] Error fetching coupons:', error);
+        console.error('Error fetching coupons:', error);
       } else {
-        console.log('🔍 [FAB Debug] Coupons fetched:', couponsData);
         setUserCoupons(couponsData || []);
       }
     } catch (error) {
-      console.error('🔍 [FAB Debug] Error in fetchUserData:', error);
+      console.error('Error in fetchUserData:', error);
     } finally {
       setIsLoading(false);
     }
@@ -86,7 +78,6 @@ export const FloatingActionButton = () => {
   useEffect(() => {
     const handleFocus = () => {
       if (user) {
-        console.log('🔄 [FAB Debug] Page focused, refreshing coupon data');
         void fetchUserData();
       }
     };
@@ -101,11 +92,8 @@ export const FloatingActionButton = () => {
 
   // ログインしていない場合は表示しない
   if (!user) {
-    console.log('❌ [FAB Debug] User not found, not rendering FAB');
     return null;
   }
-
-  console.log('✅ [FAB Debug] User found, rendering FAB');
 
   return (
     <>
@@ -113,15 +101,14 @@ export const FloatingActionButton = () => {
       <div className="fixed bottom-28 right-4 z-40">
         {/* サブメニュー（下から上へ表示） */}
         {isOpen && (
-          <div className="absolute bottom-24 -right-20 flex flex-col space-y-3 animate-in slide-in-from-right duration-300">
+          <div className="absolute bottom-24 -right-28 flex flex-col space-y-3 animate-in slide-in-from-right duration-300">
             {/* JPパスポート機能ボタン（上位置） */}
             <button
               onClick={() => {
-                console.log('📋 [FAB Debug] JP Passport button clicked');
                 setIsOpen(false);
                 navigate('/jp-passport');
               }}
-              className="flex items-center bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full px-8 py-4 shadow-xl transform transition-all duration-300 hover:scale-105 hover:-translate-x-2 min-w-[200px] border-2 border-white/20"
+              className="flex items-center bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full px-12 py-4 shadow-xl transform transition-all duration-300 hover:scale-105 hover:-translate-x-2 min-w-[300px] border-2 border-white/20"
             >
               <Shield className="w-5 h-5 mr-3 drop-shadow-sm" />
               <div className="text-left">
@@ -136,7 +123,6 @@ export const FloatingActionButton = () => {
             {/* クーポン機能ボタン（下位置・慎重な操作用） */}
             <button
               onClick={() => {
-                console.log('🎫 [FAB Debug] Coupon button clicked');
                 
                 // データを最新に更新してからナビゲート（ダイアログなし）
                 void fetchUserData().then(() => {
@@ -144,12 +130,12 @@ export const FloatingActionButton = () => {
                 });
                 setIsOpen(false);
               }}
-              className="flex items-center bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-full px-8 py-4 shadow-xl transform transition-all duration-300 hover:scale-105 hover:-translate-x-2 min-w-[200px] border-2 border-white/20"
+              className="flex items-center bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-full px-12 py-4 shadow-xl transform transition-all duration-300 hover:scale-105 hover:-translate-x-2 min-w-[300px] border-2 border-white/20"
             >
               <Gift className="w-5 h-5 mr-3 drop-shadow-sm" />
               <div className="text-left">
                 <span className="text-sm font-bold whitespace-nowrap block">クーポン ({userCoupons.length})</span>
-                <span className="text-xs opacity-90 whitespace-nowrap block">店舗利用時のみクリック</span>
+                <span className="text-xs opacity-90 whitespace-nowrap block">店舗利用時に表示</span>
               </div>
             </button>
           </div>
@@ -158,7 +144,6 @@ export const FloatingActionButton = () => {
         {/* メインボタン - 小さくしてプレミアムデザイン */}
         <button
           onClick={() => {
-            console.log('🔘 [FAB Debug] Main button clicked, isOpen:', isOpen);
             setIsOpen(!isOpen);
           }}
           className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transform transition-all duration-300 border-4 border-white/30 backdrop-blur-sm ${
@@ -193,7 +178,6 @@ export const FloatingActionButton = () => {
         <div
           className="fixed inset-0 bg-black bg-opacity-25 z-30"
           onClick={() => {
-            console.log('🌆 [FAB Debug] Background overlay clicked');
             setIsOpen(false);
           }}
         />

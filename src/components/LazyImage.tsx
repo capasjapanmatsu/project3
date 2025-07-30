@@ -14,7 +14,7 @@ interface LazyImageProps {
     sizes?: string;
     loading?: 'lazy' | 'eager';
     decoding?: 'async' | 'sync' | 'auto';
-    fetchPriority?: 'high' | 'low' | 'auto';
+    fetchpriority?: 'high' | 'low' | 'auto'; // 小文字に変更
 }
 
 const LazyImage: React.FC<LazyImageProps> = ({
@@ -30,7 +30,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
     sizes,
     loading = 'lazy',
     decoding = 'async',
-    fetchPriority = 'auto',
+    fetchpriority = 'auto',
 }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [isInView, setIsInView] = useState(priority); // 優先画像は即座に読み込み
@@ -127,7 +127,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
                     sizes={sizes}
                     loading={priority ? 'eager' : loading}
                     decoding={decoding}
-                    fetchPriority={priority ? 'high' : fetchPriority}
+                    fetchpriority={priority ? 'high' : fetchpriority}
                     onLoad={handleLoad}
                     onError={handleError}
                     className={`

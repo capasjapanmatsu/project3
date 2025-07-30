@@ -631,17 +631,6 @@ export function FacilityDetail() {
                   const isExpired = new Date(coupon.validity_end) < new Date();
                   const canObtain = !isExpired && !userCoupon && coupon.is_active;
 
-                  // デバッグ情報をコンソールに出力
-                  console.log('🎫 [Coupon Debug]', {
-                    couponId: coupon.id,
-                    couponTitle: coupon.title,
-                    isExpired: isExpired,
-                    validityEnd: coupon.validity_end,
-                    userCoupon: !!userCoupon,
-                    isActive: coupon.is_active,
-                    canObtain: canObtain
-                  });
-
                   return (
                     <Card key={coupon.id} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
                       <div className="p-6">

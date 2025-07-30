@@ -157,8 +157,6 @@ const SimplePage = ({ title, children }: { title: string; children: React.ReactN
 
 // メインレイアウトコンポーネント
 const Layout = ({ children }: { children: React.ReactNode }) => {
-  console.log('🏗️ [App Layout Debug] Layout component rendering');
-  
   return (
     <HelmetProvider>
       <GoogleMapsProvider>

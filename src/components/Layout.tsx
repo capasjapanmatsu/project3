@@ -61,9 +61,7 @@ const Layout = ({ children }: LayoutProps) => {
   }
 
   // 通常のレイアウトを表示
-  console.log('🏗️ [Layout Debug] Normal layout rendering');
-  console.log('🏗️ [Layout Debug] user:', user);
-  console.log('🏗️ [Layout Debug] isAdmin:', isAdmin);
+
   
   return (
     <HelmetProvider>
