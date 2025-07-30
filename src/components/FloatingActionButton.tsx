@@ -138,17 +138,10 @@ export const FloatingActionButton = () => {
               onClick={() => {
                 console.log('🎫 [FAB Debug] Coupon button clicked');
                 
-                // 確認ダイアログを表示
-                const shouldShow = window.confirm(
-                  `現在 ${userCoupons.length} 件のクーポンを保有しています。\n\nクーポン一覧を表示しますか？\n\n※店舗でのご利用時のみクリックしてください`
-                );
-                
-                if (shouldShow) {
-                  // データを最新に更新してからナビゲート
-                  void fetchUserData().then(() => {
-                    navigate('/my-coupons');
-                  });
-                }
+                // データを最新に更新してからナビゲート（ダイアログなし）
+                void fetchUserData().then(() => {
+                  navigate('/my-coupons');
+                });
                 setIsOpen(false);
               }}
               className="flex items-center bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-full px-8 py-4 shadow-xl transform transition-all duration-300 hover:scale-105 hover:-translate-x-2 min-w-[200px] border-2 border-white/20"
