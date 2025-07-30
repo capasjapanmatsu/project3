@@ -176,29 +176,7 @@
 [context.production]
   command = "npm run build"
   
-# 環境変数の設定例
-[build.processing]
-  skip_processing = false
-  
-[build.processing.css]
-  bundle = true
-  minify = true
-  
-[build.processing.js]
-  bundle = true
-  minify = true
-  
-[build.processing.html]
-  pretty_urls = true
-  
-[build.processing.images]
-  compress = true
-
-# Form処理の設定（必要に応じて）
-[forms]
-  settings = false
-
-# Functions設定（必要に応じて）
+# エッジ関数の設定
 [functions]
   directory = "netlify/functions"
   
