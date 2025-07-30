@@ -187,4 +187,9 @@ export default defineConfig({
   // より詳細なログ設定（トップレベル）
   logLevel: 'info',
   clearScreen: false, // ログを消去しない
+  // 環境変数の明示的定義
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
+  },
+  envPrefix: ['VITE_'],
 });

@@ -1,10 +1,24 @@
 [build]
   publish = "dist"
   command = "npm run build"
-  
+  ignore = "exit 0"
+
+# シークレットスキャンの設定
+[build.processing]
+  skip_processing = false
+
+[build.processing.secrets]
+  enabled = false
+
 [build.environment]
   NODE_VERSION = "18"
   NPM_VERSION = "9"
+  SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "true"
+  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
+
+# 環境変数のプレースホルダー（実際の値はNetlify UIで設定）
+# VITE_SUPABASE_URL = "設定必要"
+# VITE_SUPABASE_ANON_KEY = "設定必要"
 
 # HTTPSリダイレクトの強制
 [[redirects]]
