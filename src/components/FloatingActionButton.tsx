@@ -113,7 +113,7 @@ export const FloatingActionButton = () => {
       <div className="fixed bottom-28 right-4 z-40">
         {/* サブメニュー（下から上へ表示） */}
         {isOpen && (
-          <div className="absolute bottom-18 -right-20 flex flex-col space-y-3 animate-in slide-in-from-right duration-300">
+          <div className="absolute bottom-24 -right-20 flex flex-col space-y-3 animate-in slide-in-from-right duration-300">
             {/* JPパスポート機能ボタン（上位置） */}
             <button
               onClick={() => {
