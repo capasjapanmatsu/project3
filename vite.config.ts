@@ -177,7 +177,7 @@ export default defineConfig({
     // 事前バンドリング設定
     force: process.env.NODE_ENV === 'development',
   },
-  // Tree Shaking強化
+  // Tree Shaking強化 & 環境変数定義
   define: {
     // 開発時のみ有効な機能を無効化
     __DEV__: process.env.NODE_ENV === 'development',
@@ -187,9 +187,5 @@ export default defineConfig({
   // より詳細なログ設定（トップレベル）
   logLevel: 'info',
   clearScreen: false, // ログを消去しない
-  // 環境変数の明示的定義
-  define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
-  },
   envPrefix: ['VITE_'],
 });
