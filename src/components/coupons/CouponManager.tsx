@@ -114,6 +114,11 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
       if (!formData.start_date) throw new Error('開始日を入力してください。');
       if (!formData.end_date) throw new Error('終了日を入力してください。');
       
+      // 無料プレゼント以外の場合は割引値が必要
+      if (formData.discount_type !== 'free_gift' && (!formData.discount_value || formData.discount_value <= 0)) {
+        throw new Error(`${formData.discount_type === 'amount' ? '割引金額' : '割引率'}を入力してください。`);
+      }
+      
       const startDate = new Date(formData.start_date);
       const endDate = new Date(formData.end_date);
       if (endDate <= startDate) throw new Error('終了日は開始日より後である必要があります。');
@@ -347,22 +352,32 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
                     <div className="flex space-x-2 items-center">
                       <select
                         value={formData.discount_type}
-                        onChange={(e) => setFormData({...formData, discount_type: e.target.value as 'amount' | 'percentage'})}
+                        onChange={(e) => setFormData({...formData, discount_type: e.target.value as 'amount' | 'percentage' | 'free_gift'})}
                         className="border border-gray-300 rounded-md px-3 py-2 text-sm"
                       >
                         <option value="amount">金額</option>
                         <option value="percentage">割引率</option>
+                        <option value="free_gift">無料プレゼント</option>
                       </select>
-                      <input
-                        type="number"
-                        value={formData.discount_value || ''}
-                        onChange={(e) => setFormData({...formData, discount_value: e.target.value ? parseInt(e.target.value) : undefined})}
-                        placeholder={formData.discount_type === 'amount' ? '500' : '10'}
-                        className="w-24 text-lg font-medium text-center border border-gray-300 rounded-md px-3 py-2"
-                      />
-                      <span className="flex items-center text-lg text-gray-700 font-medium">
-                        {formData.discount_type === 'amount' ? '円' : '%'}
-                      </span>
+                      {formData.discount_type !== 'free_gift' && (
+                        <>
+                          <input
+                            type="number"
+                            value={formData.discount_value || ''}
+                            onChange={(e) => setFormData({...formData, discount_value: e.target.value ? parseInt(e.target.value) : undefined})}
+                            placeholder={formData.discount_type === 'amount' ? '500' : '10'}
+                            className="w-24 text-lg font-medium text-center border border-gray-300 rounded-md px-3 py-2"
+                          />
+                          <span className="flex items-center text-lg text-gray-700 font-medium">
+                            {formData.discount_type === 'amount' ? '円' : '%'}
+                          </span>
+                        </>
+                      )}
+                      {formData.discount_type === 'free_gift' && (
+                        <span className="text-lg text-green-600 font-medium">
+                          🎁 無料プレゼント
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -543,7 +558,16 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
                             </div>
                             
                             {/* 割引表示 */}
-                            {(formData.discount_value && formData.discount_type) && (
+                            {formData.discount_type === 'free_gift' ? (
+                              <div className="bg-white text-green-600 px-6 py-3 rounded-lg shadow-md">
+                                <span className="text-4xl font-bold">
+                                  🎁
+                                </span>
+                                <span className="text-lg ml-2 font-medium">
+                                  無料プレゼント
+                                </span>
+                              </div>
+                            ) : (formData.discount_value && formData.discount_type) && (
                               <div className="bg-white text-red-600 px-6 py-3 rounded-lg shadow-md">
                                 <span className="text-4xl font-bold">
                                   {formData.discount_value}{formData.discount_type === 'amount' ? '円' : '%'}
