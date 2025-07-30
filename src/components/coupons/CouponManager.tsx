@@ -56,27 +56,18 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
 
       const { data, error } = await supabase
         .from('facility_coupons')
-        .select(`
-          *,
-          original_id,
-          version,
-          is_superseded,
-          superseded_by
-        `)
+        .select('*')
         .eq('facility_id', facilityId)
-        .order('version', { ascending: false })
+        .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       console.log('✅ [Coupon] Coupons fetched:', data?.length || 0);
-      
-      // アクティブなクーポン（supersededでない）のみを表示
-      const activeCoupons = (data || []).filter(coupon => !coupon.is_superseded);
-      setCoupons(activeCoupons);
+      setCoupons(data || []);
 
       // 統計情報を取得
-      for (const coupon of activeCoupons) {
+      for (const coupon of (data || [])) {
         const { data: statsData } = await supabase
           .rpc('get_coupon_stats', { coupon_id: coupon.id });
         
@@ -167,31 +158,14 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
       };
 
       if (editingCoupon) {
-        // クーポン編集時は新バージョンを作成
-        console.log('🔄 [Coupon] Creating new version for coupon:', editingCoupon.id);
-        
-        const { data: versionResult, error: versionError } = await supabase
-          .rpc('create_new_coupon_version', {
-            p_coupon_id: editingCoupon.id,
-            p_title: formData.title.trim(),
-            p_description: formData.description.trim(),
-            p_service_content: formData.service_content.trim(),
-            p_coupon_image_url: couponImageUrl || null,
-            p_discount_value: formData.discount_value || null,
-            p_discount_type: formData.discount_type,
-            p_start_date: formData.start_date,
-            p_end_date: formData.end_date,
-            p_usage_limit_type: formData.usage_limit_type
-          });
+        // 一時的に従来の更新処理に戻す
+        const { error } = await supabase
+          .from('facility_coupons')
+          .update(couponData)
+          .eq('id', editingCoupon.id);
 
-        if (versionError) throw versionError;
-
-        if (versionResult?.success) {
-          setSuccess(`クーポンが更新されました！（新バージョン ${versionResult.version} として作成）\n既存ユーザーも再取得可能になりました。`);
-          console.log('✅ [Coupon] New version created:', versionResult);
-        } else {
-          throw new Error(versionResult?.error || 'バージョン作成に失敗しました');
-        }
+        if (error) throw error;
+        setSuccess('クーポンが更新されました！');
       } else {
         // 新規作成
         const { error } = await supabase
