@@ -110,6 +110,7 @@ const UserDashboard = React.lazy(() => import('./pages/UserDashboard').then(modu
 const DogRegistration = React.lazy(() => import('./pages/DogRegistration').then(module => ({ default: module.DogRegistration })));
 const DogManagement = React.lazy(() => import('./pages/DogManagement').then(module => ({ default: module.DogManagement })));
 const DogProfile = React.lazy(() => import('./pages/DogProfile').then(module => ({ default: module.DogProfile })));
+const JPPassport = React.lazy(() => import('./pages/JPPassport').then(module => ({ default: module.JPPassport })));
 const ProfileSettings = React.lazy(() => import('./pages/ProfileSettings').then(module => ({ default: module.ProfileSettings })));
 const PaymentMethodSettings = React.lazy(() => import('./pages/PaymentMethodSettings').then(module => ({ default: module.PaymentMethodSettings })));
 const DogParkHistory = React.lazy(() => import('./pages/DogParkHistory').then(module => ({ default: module.DogParkHistory })));
@@ -405,6 +406,13 @@ const App: React.FC = () => {
             <ProtectedRoute>
               <Suspense fallback={<DashboardSkeleton />}>
                 <DogProfile />
+              </Suspense>
+            </ProtectedRoute>
+          } />
+          <Route path="/jp-passport" element={
+            <ProtectedRoute>
+              <Suspense fallback={<DashboardSkeleton />}>
+                <JPPassport />
               </Suspense>
             </ProtectedRoute>
           } />

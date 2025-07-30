@@ -1,5 +1,6 @@
 import { Gift, Plus, Shield, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 
@@ -31,6 +32,7 @@ export const FloatingActionButton = () => {
   console.log('🚀 [FAB Debug] FloatingActionButton component called!');
   
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [userCoupons, setUserCoupons] = useState<UserCoupon[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -118,8 +120,8 @@ export const FloatingActionButton = () => {
             <button
               onClick={() => {
                 console.log('📋 [FAB Debug] JP Passport button clicked');
-                alert('JPパスポート機能：ワンちゃんの健康証明を簡単提示！\n\n• ワクチン接種記録の管理\n• 有効期限の自動チェック\n• 施設での簡単提示\n• 信頼性の高いデジタル証明');
                 setIsOpen(false);
+                navigate('/jp-passport');
               }}
               className="flex items-center bg-emerald-500 hover:bg-emerald-600 text-white rounded-full px-8 py-3 shadow-lg transform transition-all duration-200 hover:scale-105 hover:-translate-x-1 min-w-[140px]"
             >
