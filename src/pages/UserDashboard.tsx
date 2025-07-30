@@ -227,7 +227,7 @@ export function UserDashboard() {
           `)
           .eq('user_id', user?.id)
           .is('used_at', null)
-          .gte('facility_coupons.validity_end', new Date().toISOString())
+          .gte('facility_coupons.end_date', new Date().toISOString())
           .then(response => {
             if (response.data) {
               setUserCoupons(response.data);
@@ -634,7 +634,7 @@ export function UserDashboard() {
                           {coupon.facility_coupons?.discount_type === 'amount' ? '円' : '%'} OFF
                         </span>
                         <span className="text-xs text-gray-500">
-                          {new Date(coupon.facility_coupons?.validity_end).toLocaleDateString()}まで
+                          {new Date(coupon.facility_coupons?.end_date).toLocaleDateString()}まで
                         </span>
                       </div>
                     </div>

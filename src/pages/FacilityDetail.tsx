@@ -134,7 +134,7 @@ export function FacilityDetail() {
           .select('*')
           .eq('facility_id', facilityId)
           .eq('is_active', true)
-          .gte('validity_end', new Date().toISOString())
+          .gte('end_date', new Date().toISOString())
           .order('created_at', { ascending: false })
       ]);
 
@@ -628,8 +628,19 @@ export function FacilityDetail() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {facility.coupons.map((coupon) => {
                   const userCoupon = userCoupons.find(uc => uc.coupon_id === coupon.id);
-                  const isExpired = new Date(coupon.validity_end) < new Date();
+                  const isExpired = new Date(coupon.end_date) < new Date();
                   const canObtain = !isExpired && !userCoupon && coupon.is_active;
+
+                  // デバッグ情報をコンソールに出力
+                  console.log('🎫 [Coupon Debug]', {
+                    couponId: coupon.id,
+                    couponTitle: coupon.title,
+                    isExpired: isExpired,
+                    endDate: coupon.end_date,
+                    userCoupon: !!userCoupon,
+                    isActive: coupon.is_active,
+                    canObtain: canObtain
+                  });
 
                   return (
                     <Card key={coupon.id} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
@@ -713,7 +724,7 @@ export function FacilityDetail() {
                             <div className="space-y-3 text-sm">
                               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                                 <Calendar className="w-4 h-4 text-blue-500" />
-                                <span className="text-gray-700">有効期限: {new Date(coupon.validity_end).toLocaleDateString('ja-JP')}</span>
+                                <span className="text-gray-700">有効期限: {new Date(coupon.end_date).toLocaleDateString('ja-JP')}</span>
                               </div>
                               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                                 <Users className="w-4 h-4 text-green-500" />
