@@ -8,7 +8,7 @@ export interface FacilityCoupon {
   service_content: string;
   coupon_image_url?: string;
   discount_value?: number;
-  discount_type: 'amount' | 'percentage';
+  discount_type: 'amount' | 'percentage' | 'free_gift';
   start_date: string;
   end_date: string;
   usage_limit_type: 'once' | 'unlimited';
