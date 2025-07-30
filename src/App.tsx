@@ -7,6 +7,7 @@ import { MaintenanceProvider } from './context/MaintenanceContext';
 // レイアウトコンポーネント
 import { BottomNavigation } from './components/BottomNavigation';
 import CampaignModal from './components/CampaignModal';
+import FloatingActionButton from './components/FloatingActionButton';
 import { Footer } from './components/Footer';
 import { GoogleMapsProvider } from './components/GoogleMapsProvider';
 import { DashboardSkeleton, PageSkeleton, ShopSkeleton } from './components/LoadingStates';
@@ -155,6 +156,8 @@ const SimplePage = ({ title, children }: { title: string; children: React.ReactN
 
 // メインレイアウトコンポーネント
 const Layout = ({ children }: { children: React.ReactNode }) => {
+  console.log('🏗️ [App Layout Debug] Layout component rendering');
+  
   return (
     <HelmetProvider>
       <GoogleMapsProvider>
@@ -166,6 +169,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           </main>
           <Footer />
           <BottomNavigation />
+          
+          {/* フローティングアクションボタン */}
+          <FloatingActionButton />
         </div>
       </GoogleMapsProvider>
     </HelmetProvider>

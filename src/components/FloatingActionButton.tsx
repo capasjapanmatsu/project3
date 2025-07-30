@@ -1,5 +1,5 @@
 import { Gift, Plus, Shield, X } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 
@@ -27,7 +27,9 @@ interface UserCoupon {
   };
 }
 
-export const FloatingActionButton: React.FC = () => {
+export const FloatingActionButton = () => {
+  console.log('🚀 [FAB Debug] FloatingActionButton component called!');
+  
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [userCoupons, setUserCoupons] = useState<UserCoupon[]>([]);
@@ -93,10 +95,10 @@ export const FloatingActionButton: React.FC = () => {
   return (
     <>
       {/* フローティングアクションボタン */}
-      <div className="fixed bottom-6 right-6 z-40">
+      <div className="fixed bottom-32 right-4 z-40">
         {/* サブメニュー */}
         {isOpen && (
-          <div className="absolute bottom-16 right-0 space-y-3 animate-in slide-in-from-bottom duration-200">
+          <div className="absolute bottom-16 -right-8 space-y-3 animate-in slide-in-from-right duration-300">
             {/* クーポン表示ボタン */}
             <button
               onClick={() => {
@@ -104,7 +106,7 @@ export const FloatingActionButton: React.FC = () => {
                 alert(`クーポン機能：${userCoupons.length}件のクーポンがあります`);
                 setIsOpen(false);
               }}
-              className="flex items-center bg-pink-500 hover:bg-pink-600 text-white rounded-full px-4 py-3 shadow-lg transform transition-all duration-200 hover:scale-105"
+              className="flex items-center bg-pink-500 hover:bg-pink-600 text-white rounded-full px-8 py-3 shadow-lg transform transition-all duration-200 hover:scale-105 hover:-translate-x-1 min-w-[140px]"
             >
               <Gift className="w-5 h-5 mr-2" />
               <span className="text-sm font-medium whitespace-nowrap">
@@ -112,34 +114,34 @@ export const FloatingActionButton: React.FC = () => {
               </span>
             </button>
 
-            {/* 将来のスポンサー機能ボタン */}
+            {/* JPパスポート機能ボタン */}
             <button
               onClick={() => {
-                console.log('💰 [FAB Debug] Sponsor button clicked');
-                alert('スポンサー機能は準備中です');
+                console.log('📋 [FAB Debug] JP Passport button clicked');
+                alert('JPパスポート機能：ワンちゃんの健康証明を簡単提示！\n\n• ワクチン接種記録の管理\n• 有効期限の自動チェック\n• 施設での簡単提示\n• 信頼性の高いデジタル証明');
                 setIsOpen(false);
               }}
-              className="flex items-center bg-purple-500 hover:bg-purple-600 text-white rounded-full px-4 py-3 shadow-lg transform transition-all duration-200 hover:scale-105"
+              className="flex items-center bg-emerald-500 hover:bg-emerald-600 text-white rounded-full px-8 py-3 shadow-lg transform transition-all duration-200 hover:scale-105 hover:-translate-x-1 min-w-[140px]"
             >
               <Shield className="w-5 h-5 mr-2" />
               <span className="text-sm font-medium whitespace-nowrap">
-                スポンサー
+                JPパスポート
               </span>
             </button>
           </div>
         )}
 
-        {/* メインボタン */}
+        {/* メインボタン - 丸いデザイン */}
         <button
           onClick={() => {
             console.log('🔘 [FAB Debug] Main button clicked, isOpen:', isOpen);
             setIsOpen(!isOpen);
           }}
-          className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transform transition-all duration-200 ${
+          className={`w-16 h-16 rounded-full shadow-xl flex items-center justify-center transform transition-all duration-300 ${
             isOpen
               ? 'bg-red-500 hover:bg-red-600 rotate-45'
-              : 'bg-blue-600 hover:bg-blue-700 hover:scale-110'
-          }`}
+              : 'bg-gradient-to-br from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 hover:scale-110'
+          } border-4 border-white`}
         >
           {isOpen ? (
             <X className="w-6 h-6 text-white" />
@@ -163,4 +165,6 @@ export const FloatingActionButton: React.FC = () => {
   );
 };
 
-export default FloatingActionButton; 
+export default FloatingActionButton;
+
+// Force reload - modification test 
