@@ -221,7 +221,7 @@ export function UserDashboard() {
           .select(`
             *,
             facility_coupons (
-              *,
+              id, facility_id, title, service_content, discount_value, discount_type, description, start_date, end_date, usage_limit_type, coupon_image_url,
               pet_facilities (name)
             )
           `)
@@ -232,10 +232,11 @@ export function UserDashboard() {
             if (response.data) {
               setUserCoupons(response.data);
               setValidCouponsCount(response.data.length);
+              console.log('✅ [Dashboard] Coupons loaded:', response.data.length);
             }
           })
-          .catch(() => {
-            // User coupons not available
+          .catch((error) => {
+            console.error('❌ [Dashboard] Error loading coupons:', error);
           })
       ]);
       
@@ -601,12 +602,24 @@ export function UserDashboard() {
             <Gift className="w-6 h-6 text-pink-600 mr-2" />
             保有クーポン ({validCouponsCount}枚)
           </h2>
-          <Link to="/my-coupons">
-            <Button size="sm" className="bg-pink-600 hover:bg-pink-700 text-white">
-              <Ticket className="w-4 h-4 mr-1" />
-              一覧表示
-            </Button>
-          </Link>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => {
+                console.log('🔄 [Dashboard] Refreshing coupon data');
+                void fetchDashboardData();
+              }}
+              className="px-3 py-1 text-sm bg-pink-100 hover:bg-pink-200 text-pink-700 rounded-md transition-colors"
+              title="クーポンデータを更新"
+            >
+              🔄
+            </button>
+            <Link to="/my-coupons">
+              <Button size="sm" className="bg-pink-600 hover:bg-pink-700 text-white">
+                <Ticket className="w-4 h-4 mr-1" />
+                一覧表示
+              </Button>
+            </Link>
+          </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

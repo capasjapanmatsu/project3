@@ -55,19 +55,19 @@ export const FloatingActionButton = () => {
       setIsLoading(true);
       console.log('🔍 [FAB Debug] Fetching user coupons...');
 
-      // ユーザーのクーポンを取得
+      // ユーザーのクーポンを取得（正しいカラム名を使用）
       const { data: couponsData, error } = await supabase
         .from('user_coupons')
         .select(`
           *,
           facility_coupons (
-            *,
+            id, facility_id, title, service_content, discount_value, discount_type, description, start_date, end_date, usage_limit_type, coupon_image_url,
             pet_facilities (name)
           )
         `)
         .eq('user_id', user.id)
         .is('used_at', null)
-        .gte('facility_coupons.validity_end', new Date().toISOString());
+        .gte('facility_coupons.end_date', new Date().toISOString());
 
       if (error) {
         console.error('🔍 [FAB Debug] Error fetching coupons:', error);
@@ -81,6 +81,19 @@ export const FloatingActionButton = () => {
       setIsLoading(false);
     }
   };
+
+  // ページフォーカス時にデータを自動更新
+  useEffect(() => {
+    const handleFocus = () => {
+      if (user) {
+        console.log('🔄 [FAB Debug] Page focused, refreshing coupon data');
+        void fetchUserData();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [user]);
 
   const closeAllModals = () => {
     setIsOpen(false);
@@ -105,7 +118,10 @@ export const FloatingActionButton = () => {
             <button
               onClick={() => {
                 console.log('🎫 [FAB Debug] Coupon button clicked');
-                alert(`クーポン機能：${userCoupons.length}件のクーポンがあります`);
+                // データを最新に更新してからカウント表示
+                fetchUserData().then(() => {
+                  alert(`クーポン機能：${userCoupons.length}件のクーポンがあります`);
+                });
                 setIsOpen(false);
               }}
               className="flex items-center bg-pink-500 hover:bg-pink-600 text-white rounded-full px-8 py-3 shadow-lg transform transition-all duration-200 hover:scale-105 hover:-translate-x-1 min-w-[140px]"
