@@ -110,10 +110,10 @@ export const FloatingActionButton = () => {
   return (
     <>
       {/* フローティングアクションボタン */}
-      <div className="fixed bottom-32 right-4 z-40">
+      <div className="fixed bottom-28 right-4 z-40">
         {/* サブメニュー（下から上へ表示） */}
         {isOpen && (
-          <div className="absolute bottom-20 -right-16 flex flex-col space-y-3 animate-in slide-in-from-right duration-300">
+          <div className="absolute bottom-18 -right-20 flex flex-col space-y-3 animate-in slide-in-from-right duration-300">
             {/* JPパスポート機能ボタン（上位置） */}
             <button
               onClick={() => {
@@ -121,12 +121,12 @@ export const FloatingActionButton = () => {
                 setIsOpen(false);
                 navigate('/jp-passport');
               }}
-              className="flex items-center bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full px-6 py-4 shadow-xl transform transition-all duration-300 hover:scale-105 hover:-translate-x-2 min-w-[160px] border-2 border-white/20"
+              className="flex items-center bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full px-8 py-4 shadow-xl transform transition-all duration-300 hover:scale-105 hover:-translate-x-2 min-w-[200px] border-2 border-white/20"
             >
               <Shield className="w-5 h-5 mr-3 drop-shadow-sm" />
               <div className="text-left">
                 <span className="text-sm font-bold whitespace-nowrap block">JPパスポート</span>
-                <span className="text-xs opacity-90 whitespace-nowrap block">ワクチン証明書</span>
+                <span className="text-xs opacity-90 whitespace-nowrap block">ワクチン証明書表示</span>
               </div>
             </button>
 
@@ -151,39 +151,39 @@ export const FloatingActionButton = () => {
                 }
                 setIsOpen(false);
               }}
-              className="flex items-center bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-full px-6 py-4 shadow-xl transform transition-all duration-300 hover:scale-105 hover:-translate-x-2 min-w-[160px] border-2 border-white/20"
+              className="flex items-center bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-full px-8 py-4 shadow-xl transform transition-all duration-300 hover:scale-105 hover:-translate-x-2 min-w-[200px] border-2 border-white/20"
             >
               <Gift className="w-5 h-5 mr-3 drop-shadow-sm" />
               <div className="text-left">
                 <span className="text-sm font-bold whitespace-nowrap block">クーポン ({userCoupons.length})</span>
-                <span className="text-xs opacity-90 whitespace-nowrap block">店舗利用時のみ</span>
+                <span className="text-xs opacity-90 whitespace-nowrap block">店舗利用時のみクリック</span>
               </div>
             </button>
           </div>
         )}
 
-        {/* メインボタン - プレミアムデザイン */}
+        {/* メインボタン - 小さくしてプレミアムデザイン */}
         <button
           onClick={() => {
             console.log('🔘 [FAB Debug] Main button clicked, isOpen:', isOpen);
             setIsOpen(!isOpen);
           }}
-          className={`w-20 h-20 rounded-full shadow-2xl flex items-center justify-center transform transition-all duration-300 border-4 border-white/30 backdrop-blur-sm ${
+          className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transform transition-all duration-300 border-4 border-white/30 backdrop-blur-sm ${
             isOpen
               ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rotate-45 scale-95'
               : 'bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-700 hover:via-blue-600 hover:to-indigo-700 hover:scale-110 hover:shadow-blue-500/25'
           }`}
           style={{
             boxShadow: isOpen 
-              ? '0 20px 40px rgba(239, 68, 68, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2)'
-              : '0 20px 40px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2)'
+              ? '0 15px 30px rgba(239, 68, 68, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2)'
+              : '0 15px 30px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2)'
           }}
         >
           <div className="relative">
             {isOpen ? (
-              <X className="w-7 h-7 text-white drop-shadow-lg" />
+              <X className="w-6 h-6 text-white drop-shadow-lg" />
             ) : (
-              <Plus className="w-7 h-7 text-white drop-shadow-lg" />
+              <Plus className="w-6 h-6 text-white drop-shadow-lg" />
             )}
             {/* 保有クーポン数の小さなバッジ */}
             {!isOpen && userCoupons.length > 0 && (
