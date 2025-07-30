@@ -175,14 +175,70 @@ export function JPPassport() {
           </Card>
         ) : (
           <div className="space-y-6">
-            {dogs.map((dog) => {
+            {dogs.map((dog, index) => {
               const latestRabies = getLatestApprovedVaccine(dog.vaccine_certifications, 'rabies');
               const latestCombo = getLatestApprovedVaccine(dog.vaccine_certifications, 'combo');
               
               return (
-                <Card key={dog.id} className="overflow-hidden">
-                  <div className="p-6">
-                    {/* 犬の基本情報 */}
+                <Card key={dog.id} className="relative overflow-hidden">
+                  {/* 透かしロゴ（カードごとに少し異なるローテーション） */}
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-10 scale-75 ${
+                      index % 3 === 0 ? 'rotate-12' : 
+                      index % 3 === 1 ? 'rotate-6' : 
+                      '-rotate-6'
+                    }`}>
+                      <div className="bg-gradient-to-b from-blue-900 via-blue-800 to-blue-700 text-yellow-300 p-12 rounded-2xl shadow-2xl border-8 border-yellow-300 min-w-[280px]">
+                        {/* タイトル */}
+                        <div className="text-center mb-6">
+                          <h1 className="text-4xl font-bold tracking-wider mb-2 font-serif">MY DOG</h1>
+                        </div>
+                        
+                        {/* 中央のシールド・ロゴ */}
+                        <div className="flex justify-center mb-6">
+                          <div className="relative">
+                            {/* メインシールド */}
+                            <div className="w-28 h-32 bg-gradient-to-b from-yellow-200 to-yellow-400 rounded-t-full border-8 border-yellow-300 shadow-2xl flex items-center justify-center relative">
+                              {/* 王冠装飾 */}
+                              <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
+                                <div className="w-8 h-6 bg-yellow-300 rounded-t-full border-4 border-yellow-400"></div>
+                                <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-yellow-500 rounded-full"></div>
+                              </div>
+                              
+                              {/* 肉球アイコン */}
+                              <div className="relative mt-4">
+                                <div className="w-6 h-6 bg-blue-800 rounded-full mb-2 mx-auto"></div>
+                                <div className="flex justify-center space-x-1">
+                                  <div className="w-3 h-3 bg-blue-800 rounded-full"></div>
+                                  <div className="w-3 h-3 bg-blue-800 rounded-full"></div>
+                                  <div className="w-3 h-3 bg-blue-800 rounded-full"></div>
+                                  <div className="w-3 h-3 bg-blue-800 rounded-full"></div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* 装飾的なスクロール */}
+                            <div className="absolute -top-4 -left-4 w-8 h-8 border-4 border-yellow-300 rounded-full opacity-60"></div>
+                            <div className="absolute -top-4 -right-4 w-8 h-8 border-4 border-yellow-300 rounded-full opacity-60"></div>
+                            <div className="absolute -bottom-4 -left-4 w-8 h-8 border-4 border-yellow-300 rounded-full opacity-60"></div>
+                            <div className="absolute -bottom-4 -right-4 w-8 h-8 border-4 border-yellow-300 rounded-full opacity-60"></div>
+                          </div>
+                        </div>
+                        
+                        {/* 下部タイトル */}
+                        <div className="text-center">
+                          <h2 className="text-4xl font-bold tracking-wider font-serif">PASSPORT</h2>
+                        </div>
+                        
+                        {/* 装飾ライン */}
+                        <div className="mt-4 flex justify-center">
+                          <div className="w-32 h-1 bg-gradient-to-r from-transparent via-yellow-300 to-transparent"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="p-6 relative z-10">
                     <div className="flex items-start mb-6">
                       <div className="flex-shrink-0 mr-4">
                         {dog.image_url ? (
