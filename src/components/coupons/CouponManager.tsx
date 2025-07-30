@@ -52,34 +52,44 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
   const fetchCoupons = async () => {
     try {
       setIsLoading(true);
+      console.log('🔍 [Coupon] Fetching coupons for facility:', facilityId);
+
       const { data, error } = await supabase
         .from('facility_coupons')
-        .select('*')
+        .select(`
+          *,
+          original_id,
+          version,
+          is_superseded,
+          superseded_by
+        `)
         .eq('facility_id', facilityId)
+        .order('version', { ascending: false })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      setCoupons(data || []);
+      console.log('✅ [Coupon] Coupons fetched:', data?.length || 0);
+      
+      // アクティブなクーポン（supersededでない）のみを表示
+      const activeCoupons = (data || []).filter(coupon => !coupon.is_superseded);
+      setCoupons(activeCoupons);
 
-      // 各クーポンの統計情報を取得
-      if (data?.length) {
-        const statsPromises = data.map(async (coupon) => {
-          const { data: stats } = await supabase
-            .rpc('get_coupon_stats', { coupon_uuid: coupon.id });
-          return { couponId: coupon.id, stats };
-        });
-
-        const statsResults = await Promise.all(statsPromises);
-        const statsMap = statsResults.reduce((acc, { couponId, stats }) => {
-          acc[couponId] = stats;
-          return acc;
-        }, {} as Record<string, CouponStats>);
-
-        setCouponStats(statsMap);
+      // 統計情報を取得
+      for (const coupon of activeCoupons) {
+        const { data: statsData } = await supabase
+          .rpc('get_coupon_stats', { coupon_id: coupon.id });
+        
+        if (statsData) {
+          setCouponStats(prev => ({
+            ...prev,
+            [coupon.id]: statsData
+          }));
+        }
       }
     } catch (error) {
-      setError('クーポン情報の取得に失敗しました。');
+      console.error('❌ [Coupon] Error fetching coupons:', error);
+      setError('クーポンの取得に失敗しました。');
     } finally {
       setIsLoading(false);
     }
@@ -157,14 +167,31 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
       };
 
       if (editingCoupon) {
-        // 更新
-        const { error } = await supabase
-          .from('facility_coupons')
-          .update(couponData)
-          .eq('id', editingCoupon.id);
+        // クーポン編集時は新バージョンを作成
+        console.log('🔄 [Coupon] Creating new version for coupon:', editingCoupon.id);
+        
+        const { data: versionResult, error: versionError } = await supabase
+          .rpc('create_new_coupon_version', {
+            p_coupon_id: editingCoupon.id,
+            p_title: formData.title.trim(),
+            p_description: formData.description.trim(),
+            p_service_content: formData.service_content.trim(),
+            p_coupon_image_url: couponImageUrl || null,
+            p_discount_value: formData.discount_value || null,
+            p_discount_type: formData.discount_type,
+            p_start_date: formData.start_date,
+            p_end_date: formData.end_date,
+            p_usage_limit_type: formData.usage_limit_type
+          });
 
-        if (error) throw error;
-        setSuccess('クーポンが更新されました！');
+        if (versionError) throw versionError;
+
+        if (versionResult?.success) {
+          setSuccess(`クーポンが更新されました！（新バージョン ${versionResult.version} として作成）\n既存ユーザーも再取得可能になりました。`);
+          console.log('✅ [Coupon] New version created:', versionResult);
+        } else {
+          throw new Error(versionResult?.error || 'バージョン作成に失敗しました');
+        }
       } else {
         // 新規作成
         const { error } = await supabase

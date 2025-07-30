@@ -15,6 +15,10 @@ export interface FacilityCoupon {
   max_uses?: number;
   current_uses: number;
   is_active: boolean;
+  original_id?: string;  // バージョン管理用
+  version?: number;      // バージョン番号
+  is_superseded?: boolean; // 古いバージョンかどうか
+  superseded_by?: string;  // 新しいバージョンのID
   created_at: string;
   updated_at: string;
 }
