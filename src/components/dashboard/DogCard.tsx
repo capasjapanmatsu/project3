@@ -1,4 +1,5 @@
 import { Camera, Edit, FileText, PawPrint, Shield, Trash2, Upload, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { dogBreeds } from '../../data/dogBreeds';
 import type { Dog } from '../../types';
 import Button from '../Button';
@@ -41,6 +42,15 @@ export function DogCard({ dog, onEdit }: DogCardProps) {
         </div>
       </div>
       <div className="flex space-x-2">
+        <Link to="/jp-passport">
+          <Button 
+            size="sm" 
+            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-0"
+            title="JPパスポートを確認"
+          >
+            <Shield className="w-4 h-4" />
+          </Button>
+        </Link>
         <Button 
           size="sm" 
           className="bg-blue-50 hover:bg-blue-100 text-blue-600 border-0"

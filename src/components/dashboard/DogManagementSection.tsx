@@ -1,5 +1,6 @@
-import { Plus } from 'lucide-react';
+import { Plus, Shield } from 'lucide-react';
 import React from 'react';
+import { Link } from 'react-router-dom';
 import type { Dog } from '../../types';
 import Card from '../Card';
 import { DogCard, DogEditModal } from './DogCard';
@@ -71,13 +72,24 @@ export const DogManagementSection: React.FC<DogManagementSectionProps> = ({
           <span className="mr-2">🐕</span>
           登録済みの愛犬
         </h2>
-        <a
-          href="/dog-registration"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          愛犬を登録
-        </a>
+        <div className="flex space-x-3">
+          {dogs.length > 0 && (
+            <Link
+              to="/jp-passport"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center"
+            >
+              <Shield className="w-4 h-4 mr-2" />
+              JPパスポート
+            </Link>
+          )}
+          <a
+            href="/dog-registration"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            愛犬を登録
+          </a>
+        </div>
       </div>
 
       {dogs.length === 0 ? (
