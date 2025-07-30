@@ -153,12 +153,10 @@ export function MyCoupons() {
 
           {/* ヘッダー */}
           <div className="text-center mb-8">
-            <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-3xl p-6 shadow-xl">
-              <h1 className="text-4xl font-bold flex items-center justify-center">
-                <Ticket className="w-10 h-10 mr-4" />
-                マイクーポン
-              </h1>
-            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-4 flex items-center justify-center">
+              <Ticket className="w-8 h-8 mr-3 text-pink-500" />
+              マイクーポン
+            </h1>
           </div>
 
           {/* エラーメッセージ */}
@@ -169,17 +167,17 @@ export function MyCoupons() {
           )}
 
           {/* タブナビゲーション */}
-          <div className="bg-white rounded-2xl shadow-lg border mb-8 overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border mb-6 overflow-hidden">
             <nav className="flex">
               <button
                 onClick={() => setActiveTab('available')}
-                className={`flex-1 py-5 px-6 font-bold text-center transition-all duration-300 ${
+                className={`flex-1 py-3 px-4 font-medium text-center transition-all duration-300 ${
                   activeTab === 'available'
-                    ? 'bg-green-500 text-white shadow-lg'
+                    ? 'bg-green-500 text-white shadow-md'
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <Gift className="w-5 h-5 inline mr-2" />
+                <Gift className="w-4 h-4 inline mr-2" />
                 利用可能
                 <span className={`ml-2 text-xs px-2 py-1 rounded-full font-medium ${
                   activeTab === 'available' 
@@ -192,13 +190,13 @@ export function MyCoupons() {
               
               <button
                 onClick={() => setActiveTab('used')}
-                className={`flex-1 py-5 px-6 font-bold text-center transition-all duration-300 ${
+                className={`flex-1 py-3 px-4 font-medium text-center transition-all duration-300 ${
                   activeTab === 'used'
-                    ? 'bg-gray-500 text-white shadow-lg'
+                    ? 'bg-gray-500 text-white shadow-md'
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <Ticket className="w-5 h-5 inline mr-2" />
+                <Ticket className="w-4 h-4 inline mr-2" />
                 使用済み
                 <span className={`ml-2 text-xs px-2 py-1 rounded-full font-medium ${
                   activeTab === 'used' 
@@ -211,13 +209,13 @@ export function MyCoupons() {
               
               <button
                 onClick={() => setActiveTab('expired')}
-                className={`flex-1 py-5 px-6 font-bold text-center transition-all duration-300 ${
+                className={`flex-1 py-3 px-4 font-medium text-center transition-all duration-300 ${
                   activeTab === 'expired'
-                    ? 'bg-red-500 text-white shadow-lg'
+                    ? 'bg-red-500 text-white shadow-md'
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <Calendar className="w-5 h-5 inline mr-2" />
+                <Calendar className="w-4 h-4 inline mr-2" />
                 期限切れ
                 <span className={`ml-2 text-xs px-2 py-1 rounded-full font-medium ${
                   activeTab === 'expired' 
@@ -265,7 +263,7 @@ export function MyCoupons() {
                   <div className="bg-gradient-to-r from-pink-50 to-purple-50 px-4 py-3 border-b border-pink-100">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <h3 className="text-lg font-bold text-gray-900">{coupon.coupon.title}</h3>
+                        <h3 className="text-xl font-bold text-gray-900">{coupon.coupon.title}</h3>
                         {getStatusBadge(coupon)}
                       </div>
                       {formatDiscount(coupon.coupon) && (
