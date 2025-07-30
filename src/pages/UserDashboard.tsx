@@ -6,10 +6,12 @@ import {
     Clock,
     Crown,
     Edit,
+    Gift,
     Globe,
     Heart,
     MapPin,
     ShoppingBag,
+    Ticket,
     User,
     Users
 } from 'lucide-react';
@@ -85,6 +87,10 @@ export function UserDashboard() {
   const [facilities, setFacilities] = useState<any[]>([]);
   const [selectedFacility, setSelectedFacility] = useState<any | null>(null);
   const [showFacilityModal, setShowFacilityModal] = useState(false);
+
+  // クーポン管理用のstate
+  const [userCoupons, setUserCoupons] = useState<any[]>([]);
+  const [validCouponsCount, setValidCouponsCount] = useState(0);
 
   // Subscription hook
   const { isActive: hasSubscription } = useSubscription();
@@ -207,6 +213,29 @@ export function UserDashboard() {
           })
           .catch(() => {
             // Dog likes table not available
+          }),
+        
+        // クーポンデータの取得
+        supabase
+          .from('user_coupons')
+          .select(`
+            *,
+            facility_coupons (
+              *,
+              pet_facilities (name)
+            )
+          `)
+          .eq('user_id', user?.id)
+          .is('used_at', null)
+          .gte('facility_coupons.validity_end', new Date().toISOString())
+          .then(response => {
+            if (response.data) {
+              setUserCoupons(response.data);
+              setValidCouponsCount(response.data.length);
+            }
+          })
+          .catch(() => {
+            // User coupons not available
           })
       ]);
       
@@ -564,6 +593,73 @@ export function UserDashboard() {
         onRabiesExpiryDateChange={setRabiesExpiryDate}
         onComboExpiryDateChange={setComboExpiryDate}
       />
+
+      {/* User Coupons Section */}
+      <Card className="p-6 bg-gradient-to-br from-pink-50 to-purple-50 border-pink-200">
+        <div className="mb-4 flex justify-between items-center">
+          <h2 className="text-xl font-semibold flex items-center">
+            <Gift className="w-6 h-6 text-pink-600 mr-2" />
+            保有クーポン ({validCouponsCount}枚)
+          </h2>
+          <Link to="/my-coupons">
+            <Button size="sm" className="bg-pink-600 hover:bg-pink-700 text-white">
+              <Ticket className="w-4 h-4 mr-1" />
+              一覧表示
+            </Button>
+          </Link>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {userCoupons.length === 0 ? (
+            <div className="col-span-full text-center py-8">
+              <Gift className="w-12 h-12 text-pink-300 mx-auto mb-3" />
+              <p className="text-pink-600 font-medium mb-2">利用可能なクーポンがありません</p>
+              <p className="text-pink-500 text-sm">施設でクーポンを取得してみましょう</p>
+            </div>
+          ) : (
+            <>
+              {userCoupons.slice(0, 6).map((coupon: any) => (
+                <div key={coupon.id} className="p-4 bg-white rounded-lg border border-pink-100 shadow-sm">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-1 text-gray-900">
+                        {coupon.facility_coupons?.title || 'クーポン'}
+                      </h3>
+                      <p className="text-sm text-pink-600 font-medium mb-2">
+                        {coupon.facility_coupons?.pet_facilities?.name || '店舗名'}
+                      </p>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
+                          {coupon.facility_coupons?.discount_value}
+                          {coupon.facility_coupons?.discount_type === 'amount' ? '円' : '%'} OFF
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(coupon.facility_coupons?.validity_end).toLocaleDateString()}まで
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {coupon.facility_coupons?.description && (
+                    <p className="text-gray-600 mb-3 text-sm line-clamp-2">
+                      {coupon.facility_coupons.description}
+                    </p>
+                  )}
+                </div>
+              ))}
+              {userCoupons.length > 6 && (
+                <div className="col-span-full text-center mt-4">
+                  <Link to="/my-coupons">
+                    <Button variant="secondary" size="sm">
+                      すべて表示 ({userCoupons.length}枚)
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </Card>
 
       {/* Owned Parks Management Section with Modern Styling */}
       <Card className="p-6 bg-gradient-to-br from-green-50 to-blue-50 border-green-200">

@@ -72,17 +72,24 @@ export function MyCoupons() {
   };
 
   const handleShowCoupon = (coupon: CouponWithFacility) => {
-    if (coupon.is_used && coupon.coupon.usage_limit_type === 'once') {
-      alert('このクーポンは既に使用済みです。');
-      return;
-    }
-
     // 有効期限チェック
     const now = new Date();
     const endDate = new Date(coupon.coupon.end_date);
     if (endDate < now) {
       alert('このクーポンは有効期限が切れています。');
       return;
+    }
+
+    // 1回限定クーポンの警告
+    if (coupon.coupon.usage_limit_type === 'once') {
+      const confirmMessage = `【重要】1回限定クーポンです\n\n` +
+        `このクーポンは1度表示すると消えてしまい、再取得はできません。\n` +
+        `店頭で店員さんに見せるときのみ表示してください。\n\n` +
+        `本当にクーポンを表示しますか？`;
+      
+      if (!confirm(confirmMessage)) {
+        return;
+      }
     }
 
     setDisplayingCoupon(coupon);
@@ -278,6 +285,17 @@ export function MyCoupons() {
                         </div>
 
                         <div className="flex items-center">
+                          <Ticket className="w-4 h-4 mr-2 text-gray-400" />
+                          <span className={`text-sm font-medium ${
+                            coupon.coupon.usage_limit_type === 'once' 
+                              ? 'text-red-600' 
+                              : 'text-green-600'
+                          }`}>
+                            {coupon.coupon.usage_limit_type === 'once' ? '1回限定' : '何回でも'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center">
                           <Clock className="w-4 h-4 mr-2 text-gray-400" />
                           <span className="text-gray-600">
                             取得日: {new Date(coupon.obtained_at).toLocaleDateString('ja-JP')}
@@ -301,13 +319,22 @@ export function MyCoupons() {
 
                     <div className="ml-4">
                       {activeTab === 'available' && (
-                        <Button
-                          onClick={() => handleShowCoupon(coupon)}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <Gift className="w-4 h-4 mr-2" />
-                          クーポンを表示
-                        </Button>
+                        <>
+                          <Button
+                            onClick={() => handleShowCoupon(coupon)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <Gift className="w-4 h-4 mr-2" />
+                            クーポンを表示
+                          </Button>
+                          
+                          {coupon.coupon.usage_limit_type === 'once' && (
+                            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                              <div className="font-medium mb-1">⚠️ 1回限定クーポン</div>
+                              <div>1度表示すると消えてしまい再取得ができません。店頭で店員さんに見せるときに表示してください。</div>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
