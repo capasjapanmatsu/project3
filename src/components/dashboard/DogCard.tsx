@@ -4,6 +4,7 @@ import { dogBreeds } from '../../data/dogBreeds';
 import type { Dog } from '../../types';
 import Button from '../Button';
 import Input from '../Input';
+import LazyImage from '../LazyImage';
 import Select from '../Select';
 import VaccineBadge, { getVaccineStatusFromDog } from '../VaccineBadge';
 
@@ -21,10 +22,15 @@ export function DogCard({ dog, onEdit }: DogCardProps) {
       <div className="flex items-center space-x-4">
         <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
           {dog.image_url ? (
-            <img 
+            <LazyImage
               src={dog.image_url} 
               alt={dog.name}
-              className="w-full h-full object-cover"
+              width={64}
+              height={64}
+              loading="lazy"
+              priority={false}
+              className="w-full h-full object-cover rounded-full"
+              placeholderSrc="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMzIiIGZpbGw9IiNGM0Y0RjYiLz4KPHN2ZyB4PSIyNCIgeT0iMjQiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KPGVsbGlwc2UgY3g9IjEyIiBjeT0iMTMiIHJ4PSIxMCIgcnk9IjQiLz4KPHBhdGggZD0ibTEyIDEzIDQuNS05IDQuNSA5Ii8+CjxwYXRoIGQ9Im0xMiAxMyA0LjUtOUw3IDEzIi8+CjxwYXRoIGQ9Im0xMiAxM0w3IDQgNy41IDEzIi8+Cjwvc3ZnPgo8L3N2Zz4K"
             />
           ) : (
             <PawPrint className="w-8 h-8 text-gray-500" />

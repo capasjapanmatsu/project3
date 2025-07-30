@@ -15,7 +15,7 @@ import {
     User,
     Users
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -96,7 +96,7 @@ export function UserDashboard() {
   const { isActive: hasSubscription } = useSubscription();
 
   // 🚀 Enhanced Data Fetching (3段階最適化)
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setGlobalLoading(true);
       setIsLoading(true);
@@ -232,7 +232,6 @@ export function UserDashboard() {
             if (response.data) {
               setUserCoupons(response.data);
               setValidCouponsCount(response.data.length);
-              console.log('✅ [Dashboard] Coupons loaded:', response.data.length);
             }
           })
           .catch((error) => {
@@ -252,11 +251,10 @@ export function UserDashboard() {
     } finally {
       setGlobalLoading(false);
     }
-  };
+  }, [user?.id, zustandUser, setUser, setGlobalLoading, addNotification]);
 
   // 🚦 Data Loading (認証チェックはProtectedRouteが担当)
   useEffect(() => {
-    console.log('🔐 UserDashboard: User authenticated, fetching data');
     // Data fetching
     fetchDashboardData();
 
@@ -276,7 +274,7 @@ export function UserDashboard() {
         setSuccess('');
       }, 5000);
     }
-  }, [location]);
+  }, [location, fetchDashboardData, addNotification]);
 
   // 🐕 Dog Management Handlers  
   const handleDogSelect = (dog: Dog) => {
@@ -605,7 +603,6 @@ export function UserDashboard() {
           <div className="flex space-x-2">
             <button
               onClick={() => {
-                console.log('🔄 [Dashboard] Refreshing coupon data');
                 void fetchDashboardData();
               }}
               className="px-3 py-1 text-sm bg-pink-100 hover:bg-pink-200 text-pink-700 rounded-md transition-colors"
