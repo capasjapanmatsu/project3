@@ -609,6 +609,45 @@ export function ParkManagement() {
                     </div>
                   </div>
                 </Card>
+
+                {/* メンテナンス管理 */}
+                <Card className="p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-semibold flex items-center">
+                      <Wrench className="w-6 h-6 text-blue-600 mr-2" />
+                      メンテナンス管理
+                    </h2>
+                    <Button
+                      onClick={() => setShowMaintenanceForm(true)}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      メンテナンス予定を追加
+                    </Button>
+                  </div>
+
+                  {/* メンテナンス予定がない場合の表示 */}
+                  <div className="text-center py-8">
+                    <Wrench className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500 font-medium">メンテナンス予定がありません</p>
+                    <p className="text-gray-400 text-sm">施設のメンテナンス予定を追加してください</p>
+                  </div>
+
+                  <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                      <div className="text-sm text-yellow-800">
+                        <p className="font-medium mb-1">メンテナンス機能について</p>
+                        <ul className="space-y-1">
+                          <li>• メンテナンス中は新規予約を受け付けません</li>
+                          <li>• 既存の予約がある場合は事前に利用者に連絡してください</li>
+                          <li>• 緊急メンテナンスの場合は即座に施設が利用停止になります</li>
+                          <li>• ユーザー通知を有効にすると、利用者にメール通知が送信されます</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
               </div>
             )}
 
@@ -1037,213 +1076,7 @@ export function ParkManagement() {
               </div>
             )}
 
-            {/* メンテナンス管理 */}
-            <Card className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold flex items-center">
-                  <Wrench className="w-6 h-6 text-blue-600 mr-2" />
-                  メンテナンス管理
-                </h2>
-                <Button
-                  onClick={() => setShowMaintenanceForm(true)}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  メンテナンス予定を追加
-                </Button>
-              </div>
-
-              {/* メンテナンス作成フォーム */}
-              {showMaintenanceForm && (
-                <Card className="p-4 mb-6 bg-blue-50 border-blue-200">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-blue-900">新しいメンテナンス予定</h3>
-                    <button
-                      onClick={() => setShowMaintenanceForm(false)}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  <form onSubmit={handleCreateMaintenance} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          メンテナンス内容 *
-                        </label>
-                        <input
-                          type="text"
-                          value={maintenanceForm.title}
-                          onChange={(e) => setMaintenanceForm(prev => ({ ...prev, title: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="例：設備点検・清掃作業"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          開始日時 * (日本時間)
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={maintenanceForm.start_date}
-                          onChange={(e) => setMaintenanceForm(prev => ({ ...prev, start_date: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          required
-                        />
-                        <p className="text-xs text-gray-500 mt-1">日本時間で入力してください</p>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          終了日時 * (日本時間)
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={maintenanceForm.end_date}
-                          onChange={(e) => setMaintenanceForm(prev => ({ ...prev, end_date: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          required
-                        />
-                        <p className="text-xs text-gray-500 mt-1">日本時間で入力してください</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        詳細説明
-                      </label>
-                      <textarea
-                        value={maintenanceForm.description}
-                        onChange={(e) => setMaintenanceForm(prev => ({ ...prev, description: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        rows={3}
-                        placeholder="メンテナンス内容の詳細説明（任意）"
-                      />
-                    </div>
-
-                    <div className="flex items-center space-x-6">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={maintenanceForm.is_emergency}
-                          onChange={(e) => setMaintenanceForm(prev => ({ ...prev, is_emergency: e.target.checked }))}
-                          className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                        />
-                        <span className="text-sm text-gray-700">緊急メンテナンス</span>
-                      </label>
-
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={maintenanceForm.notify_users}
-                          onChange={(e) => setMaintenanceForm(prev => ({ ...prev, notify_users: e.target.checked }))}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-700">ユーザーに通知</span>
-                      </label>
-                    </div>
-
-                    <div className="flex justify-end space-x-3">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={() => setShowMaintenanceForm(false)}
-                      >
-                        キャンセル
-                      </Button>
-                      <Button
-                        type="submit"
-                        isLoading={isMaintenanceLoading}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        作成
-                      </Button>
-                    </div>
-                  </form>
-                </Card>
-              )}
-
-              {/* メンテナンススケジュール一覧 */}
-              <div className="space-y-4">
-                {maintenanceSchedules.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <Wrench className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-lg font-medium mb-2">メンテナンス予定がありません</p>
-                    <p className="text-sm">施設のメンテナンス予定を追加してください</p>
-                  </div>
-                ) : (
-                  maintenanceSchedules.map((maintenance) => {
-                    const status = getMaintenanceStatus(maintenance);
-                    return (
-                      <Card key={maintenance.id} className="p-4">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <h3 className="font-semibold text-lg">{maintenance.title}</h3>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium text-white ${status.color}`}>
-                                {status.label}
-                              </span>
-                              {maintenance.is_emergency && (
-                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                  緊急
-                                </span>
-                              )}
-                            </div>
-                            
-                            {maintenance.description && (
-                              <p className="text-gray-600 mb-3">{maintenance.description}</p>
-                            )}
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                              <div>
-                                <span className="font-medium">開始:</span>{' '}
-                                {formatMaintenanceDate(maintenance.start_date)}
-                              </div>
-                              <div>
-                                <span className="font-medium">終了:</span>{' '}
-                                {formatMaintenanceDate(maintenance.end_date)}
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center space-x-2">
-                            {maintenance.status === 'scheduled' && (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => handleDeleteMaintenance(maintenance.id)}
-                                className="text-red-600 hover:text-red-800"
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </Card>
-                    );
-                  })
-                )}
-              </div>
-
-              <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
-                <div className="flex items-start space-x-3">
-                  <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                  <div className="text-sm text-yellow-800">
-                    <p className="font-medium mb-1">メンテナンス機能について</p>
-                    <ul className="space-y-1">
-                      <li>• メンテナンス中は新規予約を受け付けません</li>
-                      <li>• 既存の予約がある場合は事前に利用者に連絡してください</li>
-                      <li>• 緊急メンテナンスの場合は即座に施設が利用停止になります</li>
-                      <li>• ユーザー通知を有効にすると、利用者にメール通知が送信されます</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </Card>
-            
+            {/* 運営サポート */}
             <Card className="p-6 bg-gray-50">
               <div className="flex items-start space-x-3">
                 <FileText className="w-6 h-6 text-gray-600 mt-1" />
