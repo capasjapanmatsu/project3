@@ -16,7 +16,9 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "test": "echo 'No tests specified' && exit 0",
-    "create-test-data": "npx tsx scripts/create-test-data.ts"
+    "create-test-data": "npx tsx scripts/create-test-data.ts",
+    "geocode-facilities": "node scripts/geocode-facilities.js",
+    "geocode-test": "node scripts/geocode-facilities.js --test"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.2",
@@ -84,4 +86,6 @@
     "vite-plugin-pwa": "^0.17.4",
     "workbox-window": "^7.0.0"
   }
+}
+
 }

@@ -10,6 +10,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
 import useAuth from '../context/AuthContext';
+import { geocodeAddress } from '../utils/geocoding';
 import { supabase } from '../utils/supabase';
 
 interface FacilityForm {
@@ -259,6 +260,23 @@ export default function FacilityRegistration() {
       setIsLoading(true);
       setError('');
 
+      // 住所から緯度・経度を取得
+      console.log(`📍 住所をジオコーディング中: ${formData.address}`);
+      const formattedAddress = formatAddressForGeocoding(formData.address);
+      const geocodeResult = await geocodeAddress(formattedAddress);
+      
+      let latitude = null;
+      let longitude = null;
+      
+      if (geocodeResult) {
+        latitude = geocodeResult.latitude;
+        longitude = geocodeResult.longitude;
+        console.log(`✅ ジオコーディング成功: ${latitude}, ${longitude}`);
+      } else {
+        console.warn('⚠️ ジオコーディングに失敗しました。住所のみで登録を続行します。');
+        // ジオコーディング失敗でも登録は続行（住所のみ保存）
+      }
+
       // 施設情報を登録
       const { data: facilityData, error: facilityError } = await supabase
         .from('pet_facilities')
@@ -266,6 +284,8 @@ export default function FacilityRegistration() {
           name: formData.name,
           category_id: formData.category_id,
           address: formData.address,
+          latitude: latitude,
+          longitude: longitude,
           phone: formData.phone || null,
           website: formData.website || null,
           description: formData.description || null,
@@ -277,7 +297,11 @@ export default function FacilityRegistration() {
 
       if (facilityError) throw facilityError;
 
-      setSuccessMessage('施設の申請が正常に送信されました。承認をお待ちください。');
+      const successMsg = geocodeResult 
+        ? '施設の申請が正常に送信されました。地図上での正確な位置も設定されています。承認をお待ちください。'
+        : '施設の申請が正常に送信されました。（位置情報は後ほど設定されます）承認をお待ちください。';
+      
+      setSuccessMessage(successMsg);
       
       // フォームをリセット
       setFormData({
@@ -539,6 +563,30 @@ export default function FacilityRegistration() {
                 <Button 
                   type="button"
                   variant="secondary"
+                  onClick={() => setUserInfo(prev => ({ ...prev, isEditing: true }))}
+                >
+                  編集
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* 申請ボタン */}
+        <div className="flex justify-end">
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="px-8 py-3 text-lg"
+          >
+            {isLoading ? '申請中...' : '申請を送信'}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
                   onClick={() => setUserInfo(prev => ({ ...prev, isEditing: true }))}
                 >
                   編集

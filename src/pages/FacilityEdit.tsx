@@ -10,6 +10,7 @@ import {
     Eye,
     Gift,
     Image as ImageIcon,
+    MapPin,
     Plus,
     Save,
     Trash2,
@@ -21,6 +22,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import ImageCropper from '../components/ImageCropper'; // ImageCropperコンポーネントを追加
 import Input from '../components/Input';
+import { LocationEditMap } from '../components/LocationEditMap';
 import { SEO } from '../components/SEO';
 import { CouponManager } from '../components/coupons/CouponManager';
 import useAuth from '../context/AuthContext';
@@ -103,6 +105,8 @@ interface PetFacility {
   identity_status: string;
   created_at: string;
   updated_at: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 interface FacilityCategory {
@@ -142,11 +146,13 @@ export default function FacilityEdit() {
     address: '',
     phone: '',
     website: '',
-    description: ''
+    description: '',
+    latitude: null as number | null,
+    longitude: null as number | null
   });
   
   // タブ管理用のstate
-  const [activeTab, setActiveTab] = useState<'info' | 'images' | 'coupons' | 'schedule'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'images' | 'coupons' | 'schedule' | 'location'>('info');
 
   // 営業日管理用のstate
   const [weeklyClosedDays, setWeeklyClosedDays] = useState<boolean[]>([false, false, false, false, false, false, false]); // 日月火水木金土
@@ -189,7 +195,9 @@ export default function FacilityEdit() {
         address: facilityData.address || '',
         phone: facilityData.phone || '',
         website: facilityData.website || '',
-        description: facilityData.description || ''
+        description: facilityData.description || '',
+        latitude: facilityData.latitude || null,
+        longitude: facilityData.longitude || null
       });
       
       // 営業日データの初期化
@@ -445,6 +453,8 @@ export default function FacilityEdit() {
           phone: formData.phone.trim(),
           website: formData.website.trim() || null,
           description: formData.description.trim() || null,
+          latitude: formData.latitude,
+          longitude: formData.longitude,
           updated_at: new Date().toISOString()
         })
         .eq('id', facility.id);
@@ -902,6 +912,17 @@ export default function FacilityEdit() {
                   <Calendar className="w-4 h-4 inline mr-2" />
                   営業日管理
                 </button>
+                <button
+                  onClick={() => setActiveTab('location')}
+                  className={`py-4 px-2 border-b-2 font-medium text-sm ${
+                    activeTab === 'location'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <MapPin className="w-4 h-4 inline mr-2" />
+                  位置調整
+                </button>
               </nav>
             </div>
 
@@ -1302,6 +1323,57 @@ export default function FacilityEdit() {
                       <Save className="w-4 h-4 mr-2" />
                       営業日設定を保存
                     </Button>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'location' && (
+                <div>
+                  <h2 className="text-xl font-semibold mb-6 flex items-center">
+                    <MapPin className="w-6 h-6 text-blue-600 mr-2" />
+                    施設の位置調整
+                  </h2>
+                  
+                  <div className="space-y-6">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <p className="text-blue-800 text-sm">
+                        <strong>位置調整について:</strong><br />
+                        住所から自動的にマップ上の位置を特定しますが、正確でない場合があります。<br />
+                        赤いマーカーをドラッグして、実際の施設位置に調整してください。
+                      </p>
+                    </div>
+                    
+                    <LocationEditMap
+                      initialAddress={formData.address}
+                      initialLatitude={formData.latitude || undefined}
+                      initialLongitude={formData.longitude || undefined}
+                      onLocationChange={(lat, lng, address) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          latitude: lat,
+                          longitude: lng,
+                          ...(address && address !== prev.address ? { address } : {})
+                        }));
+                      }}
+                    />
+                    
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={isSubmitting || !formData.latitude || !formData.longitude}
+                        className="min-w-[120px]"
+                      >
+                        {isSubmitting ? (
+                          <div className="flex items-center">
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                            保存中...
+                          </div>
+                        ) : (
+                          '位置を保存'
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
