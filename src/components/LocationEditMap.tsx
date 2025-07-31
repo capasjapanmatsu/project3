@@ -2,8 +2,8 @@ import { Loader } from '@googlemaps/js-api-loader';
 import { MapPin, Search } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { geocodeAddress } from '../utils/geocoding';
-import { Button } from './Button';
-import { Input } from './Input';
+import Button from './Button';
+import Input from './Input';
 
 interface LocationEditMapProps {
   initialAddress?: string;
