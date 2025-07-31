@@ -29,6 +29,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import ImageCropper from '../components/ImageCropper'; // ImageCropperコンポーネントを追加
+import { LocationEditMap } from '../components/LocationEditMap';
 import { PinCodeGenerator } from '../components/PinCodeGenerator';
 import useAuth from '../context/AuthContext';
 import type { DogPark, SmartLock } from '../types';
@@ -1258,6 +1259,94 @@ export function ParkManagement() {
               </div>
             </Card>
           </>
+        )}
+
+        {/* 位置調整タブ */}
+        {activeTab === 'location' && (
+          <div className="space-y-6">
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-6 flex items-center">
+                <MapPin className="w-6 h-6 text-blue-600 mr-2" />
+                ドッグランの位置調整
+              </h3>
+              
+              <div className="space-y-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-blue-800 text-sm">
+                    <strong>位置調整について:</strong><br />
+                    住所から自動的にマップ上の位置を特定しますが、正確でない場合があります。<br />
+                    赤いマーカーをドラッグして、実際のドッグランの位置に調整してください。
+                  </p>
+                </div>
+                
+                {park && (
+                  <LocationEditMap
+                    initialAddress={park.address}
+                    initialLatitude={editForm.latitude || undefined}
+                    initialLongitude={editForm.longitude || undefined}
+                    onLocationChange={(lat, lng, address) => {
+                      setEditForm(prev => ({
+                        ...prev,
+                        latitude: lat,
+                        longitude: lng
+                      }));
+                    }}
+                  />
+                )}
+                
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      if (!park || !editForm.latitude || !editForm.longitude) return;
+                      
+                      try {
+                        setIsEditLoading(true);
+                        
+                        const { error } = await supabase
+                          .from('dog_parks')
+                          .update({
+                            latitude: editForm.latitude,
+                            longitude: editForm.longitude,
+                            updated_at: new Date().toISOString()
+                          })
+                          .eq('id', park.id);
+                        
+                        if (error) throw error;
+                        
+                        setSuccess('位置情報を更新しました。');
+                        
+                        // パークデータを再取得
+                        await fetchParkData();
+                        
+                        // 3秒後に成功メッセージを消す
+                        setTimeout(() => {
+                          setSuccess('');
+                        }, 3000);
+                        
+                      } catch (error) {
+                        console.error('Error updating location:', error);
+                        setError('位置情報の更新に失敗しました。');
+                      } finally {
+                        setIsEditLoading(false);
+                      }
+                    }}
+                    disabled={isEditLoading || !editForm.latitude || !editForm.longitude}
+                    className="min-w-[120px]"
+                  >
+                    {isEditLoading ? (
+                      <div className="flex items-center">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        保存中...
+                      </div>
+                    ) : (
+                      '位置を保存'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
         )}
       </div>
 
