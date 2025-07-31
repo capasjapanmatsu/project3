@@ -149,9 +149,18 @@ export function useFacilityData() {
 
       console.log('🏢 [useFacilityData] Fetching facilities from database...');
 
+      // 施設データと画像データをJOINで取得
       const { data, error: queryError } = await supabase
         .from('pet_facilities')
-        .select('*')
+        .select(`
+          *,
+          pet_facility_images (
+            id,
+            image_url,
+            image_type,
+            display_order
+          )
+        `)
         .eq('status', 'approved')
         .order('name');
 
@@ -164,17 +173,28 @@ export function useFacilityData() {
       console.log('🏢 [useFacilityData] Retrieved facilities count:', data?.length || 0);
 
       // データの型安全性を確保
-      const facilitiesData: PetFacility[] = (data as PetFacilityResponse[] || []).map((facility, index) => {
+      const facilitiesData: PetFacility[] = (data as any[] || []).map((facility, index) => {
         // 座標の詳細チェック
         const hasValidCoordinates = facility.latitude && facility.longitude && 
                                    facility.latitude !== 0 && facility.longitude !== 0;
+        
+        // 画像データの処理
+        const images = facility.pet_facility_images || [];
+        
+        // メイン画像を取得（display_orderが最小の画像、またはimage_typeが'main'の画像）
+        const mainImage = images.find((img: any) => img.image_type === 'main') || 
+                         images.sort((a: any, b: any) => (a.display_order || 999) - (b.display_order || 999))[0];
+        
+        const mainImageUrl = mainImage?.image_url || '';
         
         console.log(`🏢 [useFacilityData] 施設${index + 1} "${facility.name}":`, {
           raw_latitude: facility.latitude,
           raw_longitude: facility.longitude,
           category_id: facility.category_id,
           category_info: facility.facility_categories,
-          hasValidCoordinates
+          hasValidCoordinates,
+          images_count: images.length,
+          main_image_url: mainImageUrl
         });
         
         return {
@@ -190,6 +210,11 @@ export function useFacilityData() {
           status: facility.status as 'pending' | 'approved' | 'rejected' | 'suspended' || 'pending',
           created_at: facility.created_at || '',
           category_name: facility.facility_categories?.name_ja || facility.facility_categories?.name || '',
+          // MapViewで期待される画像フィールドを追加
+          main_image_url: mainImageUrl,
+          image_url: mainImageUrl,
+          thumbnail_url: mainImageUrl,
+          images: images
         };
       });
 
@@ -198,6 +223,9 @@ export function useFacilityData() {
       // 座標を持つ施設の数をカウント
       const facilitiesWithCoordinates = facilitiesData.filter(f => f.latitude && f.longitude);
       console.log(`📍 [useFacilityData] Facilities with coordinates: ${facilitiesWithCoordinates.length}/${facilitiesData.length}`);
+      
+      const facilitiesWithImages = facilitiesData.filter(f => f.main_image_url);
+      console.log(`🖼️ [useFacilityData] Facilities with images: ${facilitiesWithImages.length}/${facilitiesData.length}`);
       
       setFacilities(facilitiesData);
       
@@ -209,7 +237,8 @@ export function useFacilityData() {
           category: f.category,
           category_name: f.category_name,
           address: f.address,
-          coordinates: f.latitude && f.longitude ? `${f.latitude}, ${f.longitude}` : 'なし'
+          coordinates: f.latitude && f.longitude ? `${f.latitude}, ${f.longitude}` : 'なし',
+          has_image: !!f.main_image_url
         })));
       }
     } catch (err) {

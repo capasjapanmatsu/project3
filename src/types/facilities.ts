@@ -24,6 +24,11 @@ export interface PetFacility {
   status: 'pending' | 'approved' | 'rejected' | 'suspended';
   created_at: string;
   category_name?: string; // JOINしたカテゴリーの日本語名
+  // 画像関連フィールド（MapViewで使用）
+  main_image_url?: string;
+  image_url?: string;
+  thumbnail_url?: string;
+  images?: FacilityImage[];
 }
 
 export interface FacilityHour {
