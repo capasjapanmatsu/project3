@@ -586,27 +586,3 @@ export default function FacilityRegistration() {
     </div>
   );
 }
-
-                  onClick={() => setUserInfo(prev => ({ ...prev, isEditing: true }))}
-                >
-                  編集
-                </Button>
-              )}
-            </div>
-          </div>
-        </Card>
-
-        {/* 申請ボタン */}
-        <div className="flex justify-end">
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className="px-8 py-3 text-lg"
-          >
-            {isLoading ? '申請中...' : '申請を送信'}
-          </Button>
-        </div>
-      </form>
-    </div>
-  );
-}
