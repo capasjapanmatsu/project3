@@ -172,7 +172,7 @@ export function ParkManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'stats' | 'pins' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'stats' | 'pins' | 'settings' | 'location'>('overview');
   const [smartLocks, setSmartLocks] = useState<SmartLock[]>([]);
   const [selectedLock, setSelectedLock] = useState<SmartLock | null>(null);
   const [pinPurpose, setPinPurpose] = useState<'entry' | 'exit'>('entry');
@@ -214,7 +214,9 @@ export function ParkManagement() {
     private_booths: false,
     private_booth_count: 0,
     facility_details: '',
-    description: ''
+    description: '',
+    latitude: null as number | null,
+    longitude: null as number | null
   });
 
   // 施設画像管理用のstate
@@ -258,6 +260,27 @@ export function ParkManagement() {
       }
 
       setPark(parkData);
+
+      // editFormに既存データを設定
+      setEditForm({
+        max_capacity: parkData.max_capacity || 0,
+        facilities: {
+          parking: parkData.facilities?.parking || false,
+          shower: parkData.facilities?.shower || false,
+          restroom: parkData.facilities?.restroom || false,
+          agility: parkData.facilities?.agility || false,
+          rest_area: parkData.facilities?.rest_area || false,
+          water_station: parkData.facilities?.water_station || false,
+        },
+        large_dog_area: parkData.large_dog_area || false,
+        small_dog_area: parkData.small_dog_area || false,
+        private_booths: parkData.private_booths || false,
+        private_booth_count: parkData.private_booth_count || 0,
+        facility_details: parkData.facility_details || '',
+        description: parkData.description || '',
+        latitude: parkData.latitude || null,
+        longitude: parkData.longitude || null
+      });
 
       // スマートロック情報も取得
       const { data: lockData, error: lockError } = await supabase
@@ -479,6 +502,17 @@ export function ParkManagement() {
                   >
                     <Settings className="w-4 h-4 inline mr-2" />
                     設定
+                  </button>
+                  <button
+                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === 'location'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                    onClick={() => setActiveTab('location')}
+                  >
+                    <MapPin className="w-4 h-4 inline mr-2" />
+                    位置調整
                   </button>
                 </div>
               </div>
