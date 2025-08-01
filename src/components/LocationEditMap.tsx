@@ -133,6 +133,55 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
     void initMap();
   }, [initMap]);
 
+  // 初期住所が設定されているが座標が未設定の場合、自動ジオコーディング
+  useEffect(() => {
+    const performInitialGeocoding = async () => {
+      if (initialAddress && 
+          (!initialLatitude || !initialLongitude) && 
+          !isGeocoding && 
+          googleMapRef.current && 
+          markerRef.current) {
+        
+        console.log('初期住所での自動ジオコーディングを実行:', initialAddress);
+        
+        try {
+          setIsGeocoding(true);
+          const result = await geocodeAddress(initialAddress);
+          
+          if (result) {
+            const newLat = result.latitude;
+            const newLng = result.longitude;
+            
+            // マップとマーカーの位置を更新
+            const newPosition = { lat: newLat, lng: newLng };
+            googleMapRef.current.setCenter(newPosition);
+            googleMapRef.current.setZoom(16);
+            markerRef.current.setPosition(newPosition);
+            
+            setLatitude(newLat);
+            setLongitude(newLng);
+            onLocationChange(newLat, newLng, result.formatted_address);
+            
+            console.log('初期ジオコーディング成功:', newLat, newLng);
+          } else {
+            console.log('初期ジオコーディング失敗:', initialAddress);
+          }
+        } catch (error) {
+          console.error('初期ジオコーディングエラー:', error);
+        } finally {
+          setIsGeocoding(false);
+        }
+      }
+    };
+
+    // マップが初期化されてから少し待って実行
+    const timer = setTimeout(() => {
+      void performInitialGeocoding();
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [initialAddress, initialLatitude, initialLongitude, isGeocoding, onLocationChange]);
+
   // エンターキーでの検索
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
