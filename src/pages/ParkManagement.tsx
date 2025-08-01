@@ -1138,26 +1138,19 @@ export function ParkManagement() {
                       
                       try {
                         setIsEditLoading(true);
+                        setError('');
                         
-                        console.log('Attempting to update location:', {
-                          parkId: park.id,
-                          latitude: editForm.latitude,
-                          longitude: editForm.longitude
-                        });
-                        
-                        const { data, error } = await supabase
+                        // 施設情報を更新
+                        const { error: updateError } = await supabase
                           .from('dog_parks')
                           .update({
                             latitude: editForm.latitude,
                             longitude: editForm.longitude,
                             updated_at: new Date().toISOString()
                           })
-                          .eq('id', park.id)
-                          .select();
+                          .eq('id', park.id);
                         
-                        console.log('Update response:', { data, error });
-                        
-                        if (error) throw error;
+                        if (updateError) throw updateError;
                         
                         setSuccess('位置情報を更新しました。');
                         
