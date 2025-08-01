@@ -122,6 +122,7 @@ const ParkRegistration = React.lazy(() => import('./pages/ParkRegistration'));
 const ParkRegistrationAgreement = React.lazy(() => import('./pages/ParkRegistrationAgreement'));
 const ParkRegistrationSecondStage = React.lazy(() => import('./pages/ParkRegistrationSecondStage').then(module => ({ default: module.ParkRegistrationSecondStage })));
 const ParkManagement = React.lazy(() => import('./pages/ParkManagement').then(module => ({ default: module.ParkManagement })));
+const ParkEdit = React.lazy(() => import('./pages/ParkEdit'));
 const ParkPublishingSetup = React.lazy(() => import('./pages/ParkPublishingSetup').then(module => ({ default: module.ParkPublishingSetup })));
 const FacilityRegistration = React.lazy(() => import('./pages/FacilityRegistration'));
 const FacilityEdit = React.lazy(() => import('./pages/FacilityEdit'));
@@ -488,6 +489,13 @@ const App: React.FC = () => {
             <ProtectedRoute>
               <Suspense fallback={<DashboardSkeleton />}>
                 <ParkManagement />
+              </Suspense>
+            </ProtectedRoute>
+          } />
+          <Route path="/parks/:id/edit" element={
+            <ProtectedRoute>
+              <Suspense fallback={<DashboardSkeleton />}>
+                <ParkEdit />
               </Suspense>
             </ProtectedRoute>
           } />
