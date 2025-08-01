@@ -690,67 +690,17 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
         return;
       }
 
+      console.log('✅ ステータス更新完了:', nextStatus);
 
-      // 通知を送信（一時的に無効化）
-      /*
-      try {
-        const { error: notificationError } = await supabase
-          .from('notifications')
-          .insert([
-            {
-              user_id: park.owner_id,
-              title: notificationTitle,
-              message: notificationMessage,
-              type: 'park_approved',
-              created_at: new Date().toISOString(),
-              read: false
-            }
-          ]);
-
-        if (notificationError) {
-          console.error('❌ 通知送信エラー:', notificationError);
-        } else {
-        }
-      } catch (notificationError) {
-        console.error('❌ 通知送信エラー:', notificationError);
-      }
-      */
-
+      // 承認処理が成功した場合は、データを強制的に再取得
+      await fetchParks();
+      
       showSuccess(successMessage);
-
-      // 承認後にリストを更新
-      const updatedParks = parks.map(p =>
-        p.id === parkId
-          ? { ...p, status: nextStatus as any }
-          : p
-      );
-
-      setParks(updatedParks);
-
-      // リストを再フィルタリング
+      
+      // 1秒後にページを再読み込みして最新状態を確実に反映
       setTimeout(() => {
-        // 状態が更新された後にフィルタリングを実行
-        const applicationStatuses = ['pending', 'first_stage_passed', 'second_stage_waiting', 'second_stage_review', 'smart_lock_testing'];
-        const filteredData = updatedParks.filter(park => {
-          const matchesSearch = !searchTerm ||
-            park.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            park.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            park.owner_name.toLowerCase().includes(searchTerm.toLowerCase());
-
-          const matchesStatus = filterStatus === 'all' || park.status === filterStatus;
-
-          return matchesSearch && matchesStatus;
-        });
-
-        const pending = filteredData.filter(park => applicationStatuses.includes(park.status));
-        setPendingParks(pending);
-
-        console.log('ステータス変更完了:', {
-          totalParks: updatedParks.length,
-          pendingParks: pending.length,
-          updatedStatus: nextStatus
-        });
-      }, 100);
+        window.location.reload();
+      }, 1000);
 
 
     } catch (error) {
