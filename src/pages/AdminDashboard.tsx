@@ -112,6 +112,8 @@ export function AdminDashboard() {
 
       const typedStatsData = statsData as AdminStatsResponse | null;
 
+      console.log('📊 管理者統計データ:', typedStatsData);
+
       if (typedStatsData) {
         setStats({
           totalUsers: typedStatsData.total_users || 0,
@@ -127,6 +129,8 @@ export function AdminDashboard() {
           newUsersThisMonth: typedStatsData.new_users_this_month || 0,
           unreadMessages: typedStatsData.unread_messages || 0
         });
+        
+        console.log('🔢 申請中件数 - ドッグラン:', typedStatsData.pending_parks, 'その他施設:', typedStatsData.pending_facilities);
       }
 
     } catch (error) {
@@ -394,7 +398,7 @@ export function AdminDashboard() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors relative ${
+                className={`relative flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                   activeTab === tab.id
                     ? 'bg-blue-100 text-blue-700'
                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
@@ -403,7 +407,7 @@ export function AdminDashboard() {
                 <Icon className="w-4 h-4 mr-2" />
                 {tab.label}
                 {hasBadge && (
-                  <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center">
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg border-2 border-white">
                     {tab.badge}
                   </span>
                 )}

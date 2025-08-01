@@ -48,7 +48,7 @@ BEGIN
   SELECT jsonb_build_object(
     'total_users', (SELECT COUNT(*) FROM profiles),
     'total_parks', (SELECT COUNT(*) FROM dog_parks),
-    'pending_parks', (SELECT COUNT(*) FROM dog_parks WHERE status = 'pending'),
+    'pending_parks', (SELECT COUNT(*) FROM dog_parks WHERE status IN ('pending', 'second_stage_waiting', 'second_stage_review', 'smart_lock_testing')),
     'pending_vaccines', (SELECT COUNT(*) FROM vaccine_certifications WHERE status = 'pending'),
     'pending_facilities', (SELECT COUNT(*) FROM pet_facilities WHERE status = 'pending'),
     -- 今月の予約数（created_atベース）
