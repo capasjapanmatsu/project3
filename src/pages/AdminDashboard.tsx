@@ -382,18 +382,19 @@ export function AdminDashboard() {
         <div className="flex space-x-1 mb-6">
           {[
             { id: 'overview', label: '概要', icon: BarChart4 },
-            { id: 'parks', label: 'ドッグラン', icon: Building },
-            { id: 'facilities', label: 'その他施設', icon: Building },
+            { id: 'parks', label: 'ドッグラン', icon: Building, badge: stats.pendingParks },
+            { id: 'facilities', label: 'その他施設', icon: Building, badge: stats.pendingFacilities },
             { id: 'users', label: 'ユーザー', icon: Users },
             { id: 'fraud', label: '不正検知', icon: ShieldAlert },
             { id: 'maintenance', label: 'メンテナンス', icon: Settings }
           ].map((tab) => {
             const Icon = tab.icon;
+            const hasBadge = tab.badge && tab.badge > 0;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors relative ${
                   activeTab === tab.id
                     ? 'bg-blue-100 text-blue-700'
                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
@@ -401,6 +402,11 @@ export function AdminDashboard() {
               >
                 <Icon className="w-4 h-4 mr-2" />
                 {tab.label}
+                {hasBadge && (
+                  <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center">
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             );
           })}
