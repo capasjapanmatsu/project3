@@ -218,7 +218,8 @@ export function ParkManagement() {
     description: '',
     address: '',
     latitude: null as number | null,
-    longitude: null as number | null
+    longitude: null as number | null,
+    is_public: false, // 公開・非公開状態
   });
 
   // 施設画像管理用のstate
@@ -282,7 +283,8 @@ export function ParkManagement() {
         description: parkData.description || '',
         address: parkData.address || '',
         latitude: parkData.latitude || null,
-        longitude: parkData.longitude || null
+        longitude: parkData.longitude || null,
+        is_public: parkData.is_public || false,
       });
       
       // スマートロック情報も取得
@@ -368,6 +370,42 @@ export function ParkManagement() {
   const handlePinError = (errorMessage: string) => {
     setError(errorMessage);
     setTimeout(() => setError(''), 5000);
+  };
+
+  // 公開・非公開切り替え関数
+  const handlePublicToggle = async (isPublic: boolean) => {
+    if (!parkId || !user) return;
+
+    try {
+      setIsToggleLoading(true);
+      setError('');
+
+      const { error: updateError } = await supabase
+        .from('dog_parks')
+        .update({ 
+          is_public: isPublic,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', parkId)
+        .eq('owner_id', user.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // editFormとparkデータを更新
+      setEditForm(prev => ({ ...prev, is_public: isPublic }));
+      setPark(prev => prev ? { ...prev, is_public: isPublic } : null);
+
+      setSuccess(isPublic ? 'ドッグランを公開しました' : 'ドッグランを非公開にしました');
+      setTimeout(() => setSuccess(''), 3000);
+
+    } catch (error: any) {
+      console.error('公開設定更新エラー:', error);
+      setError('公開設定の更新に失敗しました: ' + error.message);
+    } finally {
+      setIsToggleLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -574,6 +612,65 @@ export function ParkManagement() {
               </div>
             </div>
           </Card>
+
+          {/* 公開・非公開設定 */}
+          {park?.status === 'approved' && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-6 flex items-center">
+                <Eye className="w-6 h-6 text-blue-600 mr-2" />
+                公開設定
+              </h2>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">ドッグラン一覧に表示</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {editForm.is_public 
+                        ? 'ドッグラン一覧やマップに表示されます。利用者が検索・予約できます。'
+                        : 'ドッグラン一覧に表示されません。直接URLを知る人のみアクセス可能です。'
+                      }
+                    </p>
+                  </div>
+                  
+                  <div className="ml-4">
+                    <button
+                      type="button"
+                      disabled={isToggleLoading}
+                      onClick={() => handlePublicToggle(!editForm.is_public)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                        editForm.is_public ? 'bg-blue-600' : 'bg-gray-200'
+                      } ${isToggleLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          editForm.is_public ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2 text-sm">
+                  <div className={`w-3 h-3 rounded-full ${editForm.is_public ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                  <span className="font-medium">
+                    {editForm.is_public ? '公開中' : '非公開'}
+                  </span>
+                </div>
+                
+                {!editForm.is_public && (
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start">
+                      <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 mr-2" />
+                      <div className="text-sm text-yellow-800">
+                        <strong>注意:</strong> 非公開設定中は、ドッグランが一覧に表示されず、新しい利用者からの予約を受け付けできません。
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
 
           {/* 今日の統計 */}
           <Card className="p-6">

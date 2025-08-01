@@ -627,9 +627,9 @@ export function AdminParkManagement() {
           notificationMessage = `${park.name}の第二審査が開始されました。`;
           break;
         case 'second_stage_review':
-          nextStatus = 'smart_lock_testing';
-          confirmMessage = 'このドッグランの第二審査を承認してもよろしいですか？';
-          successMessage = 'ドッグランの第二審査を承認しました。';
+          nextStatus = 'approved';
+          confirmMessage = 'このドッグランの第二審査を承認してもよろしいですか？\n承認後はデフォルトで非公開状態になり、オーナーが公開設定を行う必要があります。';
+          successMessage = 'ドッグランの第二審査を承認しました。オーナーが公開設定を行うまで非公開状態です。';
           notificationTitle = 'ドッグラン第二審査承認';
           notificationMessage = `${park.name}の第二審査が承認されました。`;
           break;
@@ -655,9 +655,16 @@ export function AdminParkManagement() {
 
 
       // ステータス更新を実行
+      const updateData: any = { status: nextStatus };
+      
+      // 第二審査承認時はデフォルトで非公開に設定
+      if (nextStatus === 'approved') {
+        updateData.is_public = false;
+      }
+      
       const { error: updateError } = await supabase
         .from('dog_parks')
-        .update({ status: nextStatus })
+        .update(updateData)
         .eq('id', parkId);
 
       if (updateError) {

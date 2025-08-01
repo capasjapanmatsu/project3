@@ -65,6 +65,7 @@ export function useParkData() {
           )
         `)
         .eq('status', 'approved')
+        .eq('is_public', true)
         .order('created_at', { ascending: false });
 
       if (queryError) {

@@ -91,6 +91,7 @@ export const useDogParks = () => {
         .from('dog_parks')
         .select('*')
         .eq('status', 'approved')
+        .eq('is_public', true)
         .order('name');
       
       if (error) throw error;
