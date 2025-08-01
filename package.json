@@ -18,6 +18,7 @@
     "test": "echo 'No tests specified' && exit 0",
     "create-test-data": "npx tsx scripts/create-test-data.ts",
     "geocode-facilities": "node scripts/geocode-facilities.js",
+    "geocode-dog-parks": "node scripts/geocode-dog-parks.js",
     "geocode-test": "node scripts/geocode-facilities.js --test"
   },
   "dependencies": {

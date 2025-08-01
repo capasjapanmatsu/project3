@@ -1147,7 +1147,8 @@ export function ParkManagement() {
                           .from('dog_parks')
                           .update({
                             latitude: editForm.latitude,
-                            longitude: editForm.longitude
+                            longitude: editForm.longitude,
+                            updated_at: new Date().toISOString()
                           })
                           .eq('id', park.id);
                         
