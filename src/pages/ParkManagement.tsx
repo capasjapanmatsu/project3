@@ -249,20 +249,20 @@ export function ParkManagement() {
     try {
       setIsLoading(true);
       setError('');
-
+      
       const { data: parkData, error: parkError } = await supabase
         .from('dog_parks')
         .select('*')
         .eq('id', parkId)
         .eq('owner_id', user.id)
         .single();
-
+      
       if (parkError) {
         throw new Error('ドッグランが見つかりません');
       }
-
+      
       setPark(parkData);
-
+      
       // editFormに既存データを設定
       setEditForm({
         max_capacity: parkData.max_capacity || 0,
@@ -284,20 +284,20 @@ export function ParkManagement() {
         latitude: parkData.latitude || null,
         longitude: parkData.longitude || null
       });
-
+      
       // スマートロック情報も取得
       const { data: lockData, error: lockError } = await supabase
         .from('smart_locks')
         .select('*')
         .eq('park_id', parkId);
-
+      
       if (!lockError && lockData) {
         setSmartLocks(lockData);
         if (lockData.length > 0) {
           setSelectedLock(lockData[0]);
         }
       }
-
+      
     } catch (error) {
       console.error('Error fetching park data:', error);
       setError((error as Error).message || 'データの取得に失敗しました');
@@ -397,9 +397,9 @@ export function ParkManagement() {
       <div className="bg-white border-b">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <Link to="/my-parks-management" className="flex items-center text-blue-600 hover:text-blue-800">
-            <ArrowLeft className="w-4 h-4 mr-2" />
+          <ArrowLeft className="w-4 h-4 mr-2" />
             管理中ドッグラン一覧に戻る
-          </Link>
+        </Link>
         </div>
       </div>
 
@@ -417,95 +417,95 @@ export function ParkManagement() {
             {/* Park Header */}
             <div className="bg-white rounded-lg border p-6 mb-6">
               <div className="flex justify-between items-start mb-4">
-                <div>
+          <div>
                   <h1 className="text-2xl font-bold text-gray-900">{park.name}</h1>
                   <p className="text-gray-600 mt-1">{park.address}</p>
                   <div className="flex items-center mt-2">
                     <Star className="w-4 h-4 text-yellow-400 fill-current mr-1" />
                     <span className="text-sm font-medium">{park.average_rating.toFixed(1)}</span>
                     <span className="text-sm text-gray-500 ml-1">({park.review_count}件)</span>
-                  </div>
                 </div>
+          </div>
 
-                <div className="flex space-x-3">
-                  <Link to={`/parks/${park.id}`}>
-                    <Button variant="secondary" className="min-w-[100px]">
-                      <Eye className="w-4 h-4 mr-2" />
-                      公開ページ
-                    </Button>
-                  </Link>
-                  <Button onClick={() => setShowEditForm(true)} className="min-w-[100px]">
-                    <Edit className="w-4 h-4 mr-2" />
-                    設定編集
-                  </Button>
-                </div>
-              </div>
-            </div>
+          <div className="flex space-x-3">
+            <Link to={`/parks/${park.id}`}>
+              <Button variant="secondary" className="min-w-[100px]">
+                <Eye className="w-4 h-4 mr-2" />
+                公開ページ
+              </Button>
+            </Link>
+            <Button onClick={() => setShowEditForm(true)} className="min-w-[100px]">
+              <Edit className="w-4 h-4 mr-2" />
+              設定編集
+            </Button>
+          </div>
+        </div>
+      </div>
 
             {/* 既存のコンテンツ */}
-            {/* エラー・成功メッセージ */}
-            {error && (
-              <div className="bg-red-100 border border-red-300 text-red-800 rounded-lg p-4 flex items-start">
-                <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
-                <p>{error}</p>
-              </div>
-            )}
-            
-            {success && (
-              <div className="bg-green-100 border border-green-300 text-green-800 rounded-lg p-4 flex items-start">
-                <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
-                <p>{success}</p>
-              </div>
-            )}
+      {/* エラー・成功メッセージ */}
+      {error && (
+        <div className="bg-red-100 border border-red-300 text-red-800 rounded-lg p-4 flex items-start">
+          <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+          <p>{error}</p>
+        </div>
+      )}
+      
+      {success && (
+        <div className="bg-green-100 border border-green-300 text-green-800 rounded-lg p-4 flex items-start">
+          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
+          <p>{success}</p>
+        </div>
+      )}
 
-            {/* タブナビゲーション */}
+      {/* タブナビゲーション */}
             <Card className="mb-6">
               <div className="border-b border-gray-200">
                 <div className="flex space-x-8 px-6">
-                  <button
+        <button
                     className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                      activeTab === 'overview'
+            activeTab === 'overview'
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                    onClick={() => setActiveTab('overview')}
-                  >
-                    <Building className="w-4 h-4 inline mr-2" />
+          }`}
+          onClick={() => setActiveTab('overview')}
+        >
+          <Building className="w-4 h-4 inline mr-2" />
                     概要・メンテナンス
-                  </button>
-                  <button
+        </button>
+        <button
                     className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                      activeTab === 'stats'
+            activeTab === 'stats'
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                    onClick={() => setActiveTab('stats')}
-                  >
-                    <Star className="w-4 h-4 inline mr-2" />
-                    統計・収益
-                  </button>
-                  <button
+          }`}
+          onClick={() => setActiveTab('stats')}
+        >
+          <Star className="w-4 h-4 inline mr-2" />
+          統計・収益
+        </button>
+        <button
                     className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                      activeTab === 'pins'
+            activeTab === 'pins'
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                    onClick={() => setActiveTab('pins')}
-                  >
-                    <Key className="w-4 h-4 inline mr-2" />
-                    PINコード管理
-                  </button>
-                  <button
+          }`}
+          onClick={() => setActiveTab('pins')}
+        >
+          <Key className="w-4 h-4 inline mr-2" />
+          PINコード管理
+        </button>
+        <button
                     className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                      activeTab === 'settings'
+            activeTab === 'settings'
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                    onClick={() => setActiveTab('settings')}
-                  >
-                    <Settings className="w-4 h-4 inline mr-2" />
-                    設定
-                  </button>
+          }`}
+          onClick={() => setActiveTab('settings')}
+        >
+          <Settings className="w-4 h-4 inline mr-2" />
+          設定
+        </button>
                   <button
                     className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
                       activeTab === 'location'
@@ -517,123 +517,123 @@ export function ParkManagement() {
                     <MapPin className="w-4 h-4 inline mr-2" />
                     位置調整
                   </button>
-                </div>
+      </div>
               </div>
             </Card>
 
-            {/* 概要タブ */}
-            {activeTab === 'overview' && (
-              <div className="space-y-6">
-                {/* 基本情報 */}
-                <Card className="p-6">
-                  <h2 className="text-xl font-semibold mb-6 flex items-center">
-                    <FileText className="w-6 h-6 text-blue-600 mr-2" />
-                    基本情報
-                  </h2>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="font-semibold mb-3">施設情報</h3>
-                      <div className="space-y-2 text-sm">
-                        <p><span className="font-medium">住所:</span> {park.address}</p>
-                        <p><span className="font-medium">ステータス:</span> {park.status === 'approved' ? '運営中' : '審査中'}</p>
+      {/* 概要タブ */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          {/* 基本情報 */}
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-6 flex items-center">
+              <FileText className="w-6 h-6 text-blue-600 mr-2" />
+              基本情報
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-semibold mb-3">施設情報</h3>
+                <div className="space-y-2 text-sm">
+                  <p><span className="font-medium">住所:</span> {park.address}</p>
+                  <p><span className="font-medium">ステータス:</span> {park.status === 'approved' ? '運営中' : '審査中'}</p>
                         <p><span className="font-medium">料金:</span> ¥{park.price || '800'}/日</p>
                         <p><span className="font-medium">最大収容人数:</span> {(park as any).max_capacity || '未設定'}人</p>
                         <p><span className="font-medium">現在の利用者数:</span> {park.current_occupancy || 0}人</p>
                         <p><span className="font-medium">評価:</span> ★{park.average_rating?.toFixed(1) || '0.0'} ({park.review_count || 0}件)</p>
-                      </div>
-                    </div>
+                </div>
+              </div>
 
-                    <div>
-                      <h3 className="font-semibold mb-3">設備情報</h3>
-                      <div className="grid grid-cols-2 gap-2">
-                        {Object.entries({
-                          parking: '駐車場',
-                          shower: 'シャワー設備',
-                          restroom: 'トイレ',
-                          agility: 'アジリティ設備',
-                          rest_area: '休憩スペース',
-                          water_station: '給水設備',
-                        }).map(([key, label]) => (
-                          <div key={key} className="flex items-center space-x-2">
-                            <div className={`w-4 h-4 rounded ${
+              <div>
+                <h3 className="font-semibold mb-3">設備情報</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries({
+                    parking: '駐車場',
+                    shower: 'シャワー設備',
+                    restroom: 'トイレ',
+                    agility: 'アジリティ設備',
+                    rest_area: '休憩スペース',
+                    water_station: '給水設備',
+                  }).map(([key, label]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <div className={`w-4 h-4 rounded ${
                               (park as any).facilities?.[key] 
-                                ? 'bg-green-500' 
-                                : 'bg-gray-300'
-                            }`} />
-                            <span className="text-sm">{label}</span>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      <div className="mt-4 space-y-2">
+                          ? 'bg-green-500' 
+                          : 'bg-gray-300'
+                      }`} />
+                      <span className="text-sm">{label}</span>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="mt-4 space-y-2">
                         <p><span className="font-medium">大型犬エリア:</span> {(park as any).large_dog_area ? 'あり' : 'なし'}</p>
                         <p><span className="font-medium">小型犬エリア:</span> {(park as any).small_dog_area ? 'あり' : 'なし'}</p>
                         <p><span className="font-medium">プライベートブース:</span> {(park as any).private_booths ? `${(park as any).private_booth_count || 1}室` : 'なし'}</p>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
+                </div>
+              </div>
+            </div>
+          </Card>
 
-                {/* 今日の統計 */}
-                <Card className="p-6">
-                  <h2 className="text-xl font-semibold mb-6 flex items-center">
-                    <Calendar className="w-6 h-6 text-blue-600 mr-2" />
-                    今日の統計
-                  </h2>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Calendar className="w-5 h-5 text-blue-600" />
-                        <h4 className="font-medium text-blue-900">今日の予約</h4>
-                      </div>
-                      <p className="text-2xl font-bold text-blue-600">5件</p>
-                      <p className="text-xs text-blue-700 mt-1">前日比 +2件</p>
-                    </div>
-                    
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <DollarSign className="w-5 h-5 text-green-600" />
-                        <h4 className="font-medium text-green-900">今日の収益</h4>
-                      </div>
-                      <p className="text-2xl font-bold text-green-600">¥4,000</p>
-                      <p className="text-xs text-green-700 mt-1">前日比 +¥1,600</p>
-                    </div>
-                    
-                    <div className="bg-purple-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Users className="w-5 h-5 text-purple-600" />
-                        <h4 className="font-medium text-purple-900">利用者数</h4>
-                      </div>
-                      <p className="text-2xl font-bold text-purple-600">{park.current_occupancy}人</p>
-                      <p className="text-xs text-purple-700 mt-1">最大: {park.max_capacity}人</p>
-                    </div>
-                  </div>
-                </Card>
+          {/* 今日の統計 */}
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-6 flex items-center">
+              <Calendar className="w-6 h-6 text-blue-600 mr-2" />
+              今日の統計
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Calendar className="w-5 h-5 text-blue-600" />
+                  <h4 className="font-medium text-blue-900">今日の予約</h4>
+                </div>
+                <p className="text-2xl font-bold text-blue-600">5件</p>
+                <p className="text-xs text-blue-700 mt-1">前日比 +2件</p>
+              </div>
+              
+              <div className="bg-green-50 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <DollarSign className="w-5 h-5 text-green-600" />
+                  <h4 className="font-medium text-green-900">今日の収益</h4>
+                </div>
+                <p className="text-2xl font-bold text-green-600">¥4,000</p>
+                <p className="text-xs text-green-700 mt-1">前日比 +¥1,600</p>
+              </div>
+              
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Users className="w-5 h-5 text-purple-600" />
+                  <h4 className="font-medium text-purple-900">利用者数</h4>
+                </div>
+                <p className="text-2xl font-bold text-purple-600">{park.current_occupancy}人</p>
+                <p className="text-xs text-purple-700 mt-1">最大: {park.max_capacity}人</p>
+              </div>
+            </div>
+          </Card>
 
                 {/* メンテナンス管理 */}
-                <Card className="p-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-semibold flex items-center">
+          <Card className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold flex items-center">
                       <Wrench className="w-6 h-6 text-blue-600 mr-2" />
                       メンテナンス管理
-                    </h2>
+              </h2>
                     <Button
                       onClick={() => setShowMaintenanceForm(true)}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
                       <Plus className="w-4 h-4 mr-2" />
                       メンテナンス予定を追加
-                    </Button>
-                  </div>
-
+                </Button>
+            </div>
+            
                   {/* メンテナンス予定がない場合の表示 */}
                   <div className="text-center py-8">
                     <Wrench className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500 font-medium">メンテナンス予定がありません</p>
                     <p className="text-gray-400 text-sm">施設のメンテナンス予定を追加してください</p>
-                  </div>
+                </div>
 
                   <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
                     <div className="flex items-start space-x-3">
@@ -646,233 +646,233 @@ export function ParkManagement() {
                           <li>• 緊急メンテナンスの場合は即座に施設が利用停止になります</li>
                           <li>• ユーザー通知を有効にすると、利用者にメール通知が送信されます</li>
                         </ul>
-                      </div>
-                    </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* 統計・収益タブ */}
+      {activeTab === 'stats' && (
+        <div className="space-y-6">
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-6 flex items-center">
+              <Star className="w-6 h-6 text-blue-600 mr-2" />
+              利用統計
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Calendar className="w-5 h-5 text-blue-600" />
+                  <h4 className="font-medium text-blue-900">今月の予約</h4>
+                </div>
+                <p className="text-2xl font-bold text-blue-600">32件</p>
+                <p className="text-xs text-blue-700 mt-1">前月比 +12%</p>
+              </div>
+              
+              <div className="bg-green-50 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <DollarSign className="w-5 h-5 text-green-600" />
+                  <h4 className="font-medium text-green-900">今月の収益</h4>
+                </div>
+                <p className="text-2xl font-bold text-green-600">¥25,600</p>
+                <p className="text-xs text-green-700 mt-1">前月比 +8%</p>
+              </div>
+              
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Users className="w-5 h-5 text-purple-600" />
+                  <h4 className="font-medium text-purple-900">利用者数</h4>
+                </div>
+                <p className="text-2xl font-bold text-purple-600">128人</p>
+                <p className="text-xs text-purple-700 mt-1">前月比 +15%</p>
+              </div>
+            </div>
+            
+            <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+              <p className="text-gray-500">利用統計グラフ（実装予定）</p>
+            </div>
+          </Card>
+          
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-6 flex items-center">
+              <DollarSign className="w-6 h-6 text-blue-600 mr-2" />
+              収益情報
+            </h2>
+            
+            <div className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-blue-900 mb-3">収益配分</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-blue-800 mb-1">オーナー取り分（80%）</p>
+                    <p className="text-2xl font-bold text-blue-600">¥20,480</p>
                   </div>
-                </Card>
+                  <div>
+                    <p className="text-sm text-blue-800 mb-1">プラットフォーム手数料（20%）</p>
+                    <p className="text-2xl font-bold text-blue-600">¥5,120</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-green-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-green-900 mb-3">収益内訳</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-green-800 mb-1">通常利用</p>
+                    <p className="text-xl font-bold text-green-600">¥12,800</p>
+                    <p className="text-xs text-green-700">16件</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-green-800 mb-1">施設貸し切り</p>
+                    <p className="text-xl font-bold text-green-600">¥8,800</p>
+                    <p className="text-xs text-green-700">2件</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-green-800 mb-1">プライベートブース</p>
+                    <p className="text-xl font-bold text-green-600">¥4,000</p>
+                    <p className="text-xs text-green-700">2件</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-purple-900 mb-3">振込情報</h3>
+                <p className="text-sm text-purple-800 mb-2">
+                  振込は毎月15日に前月分を一括で行います。振込手数料は当社負担です。
+                </p>
+                <Link to="/owner-payment-system">
+                  <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
+                    <DollarSign className="w-4 h-4 mr-2" />
+                    振込情報を確認
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* PINコード管理タブ */}
+      {activeTab === 'pins' && (
+        <div className="space-y-6">
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-6 flex items-center">
+              <Key className="w-6 h-6 text-blue-600 mr-2" />
+              オーナー用PINコード発行
+            </h2>
+            
+            <div className="bg-blue-50 p-4 rounded-lg mb-6">
+              <div className="flex items-start space-x-3">
+                <CheckCircle className="w-5 h-5 text-blue-600 mt-1 flex-shrink-0" />
+                <div className="text-sm text-blue-800">
+                  <p className="font-medium mb-1">オーナー特権</p>
+                  <p>オーナーは決済不要でPINコードを発行できます。施設の管理やメンテナンスに使用してください。</p>
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>PINコードは5分間有効です</li>
+                    <li>入場・退場それぞれでPINコードが必要です</li>
+                    <li>スタッフと共有することもできます</li>
+                    <li>管理用途なので決済は不要です</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            {/* 入退場切り替え */}
+            <div className="flex justify-center space-x-4 mb-4">
+              <button
+                className={`px-6 py-3 rounded-lg flex items-center space-x-2 ${
+                  pinPurpose === 'entry'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+                onClick={() => setPinPurpose('entry')}
+              >
+                <ArrowLeft className="w-5 h-5" />
+                <span>入場</span>
+              </button>
+              <button
+                className={`px-6 py-3 rounded-lg flex items-center space-x-2 ${
+                  pinPurpose === 'exit'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+                onClick={() => setPinPurpose('exit')}
+              >
+                <ArrowLeft className="w-5 h-5 rotate-180" />
+                <span>退場</span>
+              </button>
+            </div>
+            
+            {/* スマートロック選択 */}
+            {smartLocks.length > 0 && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  スマートロックを選択
+                </label>
+                <select
+                  value={selectedLock?.id || ''}
+                  onChange={(e) => {
+                    const lock = smartLocks.find(l => l.id === e.target.value);
+                    setSelectedLock(lock || null);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {smartLocks.map(lock => (
+                    <option key={lock.id} value={lock.id}>
+                      {lock.lock_name}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
 
-            {/* 統計・収益タブ */}
-            {activeTab === 'stats' && (
-              <div className="space-y-6">
-                <Card className="p-6">
-                  <h2 className="text-xl font-semibold mb-6 flex items-center">
-                    <Star className="w-6 h-6 text-blue-600 mr-2" />
-                    利用統計
-                  </h2>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Calendar className="w-5 h-5 text-blue-600" />
-                        <h4 className="font-medium text-blue-900">今月の予約</h4>
-                      </div>
-                      <p className="text-2xl font-bold text-blue-600">32件</p>
-                      <p className="text-xs text-blue-700 mt-1">前月比 +12%</p>
-                    </div>
-                    
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <DollarSign className="w-5 h-5 text-green-600" />
-                        <h4 className="font-medium text-green-900">今月の収益</h4>
-                      </div>
-                      <p className="text-2xl font-bold text-green-600">¥25,600</p>
-                      <p className="text-xs text-green-700 mt-1">前月比 +8%</p>
-                    </div>
-                    
-                    <div className="bg-purple-50 p-4 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Users className="w-5 h-5 text-purple-600" />
-                        <h4 className="font-medium text-purple-900">利用者数</h4>
-                      </div>
-                      <p className="text-2xl font-bold text-purple-600">128人</p>
-                      <p className="text-xs text-purple-700 mt-1">前月比 +15%</p>
-                    </div>
-                  </div>
-                  
-                  <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <p className="text-gray-500">利用統計グラフ（実装予定）</p>
-                  </div>
-                </Card>
-                
-                <Card className="p-6">
-                  <h2 className="text-xl font-semibold mb-6 flex items-center">
-                    <DollarSign className="w-6 h-6 text-blue-600 mr-2" />
-                    収益情報
-                  </h2>
-                  
-                  <div className="space-y-4">
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-blue-900 mb-3">収益配分</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-blue-800 mb-1">オーナー取り分（80%）</p>
-                          <p className="text-2xl font-bold text-blue-600">¥20,480</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-blue-800 mb-1">プラットフォーム手数料（20%）</p>
-                          <p className="text-2xl font-bold text-blue-600">¥5,120</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-green-900 mb-3">収益内訳</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <p className="text-sm text-green-800 mb-1">通常利用</p>
-                          <p className="text-xl font-bold text-green-600">¥12,800</p>
-                          <p className="text-xs text-green-700">16件</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-green-800 mb-1">施設貸し切り</p>
-                          <p className="text-xl font-bold text-green-600">¥8,800</p>
-                          <p className="text-xs text-green-700">2件</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-green-800 mb-1">プライベートブース</p>
-                          <p className="text-xl font-bold text-green-600">¥4,000</p>
-                          <p className="text-xs text-green-700">2件</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-purple-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-purple-900 mb-3">振込情報</h3>
-                      <p className="text-sm text-purple-800 mb-2">
-                        振込は毎月15日に前月分を一括で行います。振込手数料は当社負担です。
-                      </p>
-                      <Link to="/owner-payment-system">
-                        <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
-                          <DollarSign className="w-4 h-4 mr-2" />
-                          振込情報を確認
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                </Card>
+
+            
+            {/* PINコードジェネレーター */}
+            {selectedLock ? (
+              <div className="mt-6">
+                <PinCodeGenerator
+                  lockId={selectedLock.lock_id}
+                  parkName={park.name}
+                  purpose={pinPurpose}
+                  onSuccess={handlePinSuccess}
+                  onError={handlePinError}
+                />
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Key className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 mb-4">スマートロックが設定されていません</p>
+                <Button onClick={() => setActiveTab('settings')}>
+                  スマートロックを設定する
+                </Button>
               </div>
             )}
-
-            {/* PINコード管理タブ */}
-            {activeTab === 'pins' && (
-              <div className="space-y-6">
-                <Card className="p-6">
-                  <h2 className="text-xl font-semibold mb-6 flex items-center">
-                    <Key className="w-6 h-6 text-blue-600 mr-2" />
-                    オーナー用PINコード発行
-                  </h2>
-                  
-                  <div className="bg-blue-50 p-4 rounded-lg mb-6">
-                    <div className="flex items-start space-x-3">
-                      <CheckCircle className="w-5 h-5 text-blue-600 mt-1 flex-shrink-0" />
-                      <div className="text-sm text-blue-800">
-                        <p className="font-medium mb-1">オーナー特権</p>
-                        <p>オーナーは決済不要でPINコードを発行できます。施設の管理やメンテナンスに使用してください。</p>
-                        <ul className="list-disc list-inside mt-2 space-y-1">
-                          <li>PINコードは5分間有効です</li>
-                          <li>入場・退場それぞれでPINコードが必要です</li>
-                          <li>スタッフと共有することもできます</li>
-                          <li>管理用途なので決済は不要です</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* 入退場切り替え */}
-                  <div className="flex justify-center space-x-4 mb-4">
-                    <button
-                      className={`px-6 py-3 rounded-lg flex items-center space-x-2 ${
-                        pinPurpose === 'entry'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                      onClick={() => setPinPurpose('entry')}
-                    >
-                      <ArrowLeft className="w-5 h-5" />
-                      <span>入場</span>
-                    </button>
-                    <button
-                      className={`px-6 py-3 rounded-lg flex items-center space-x-2 ${
-                        pinPurpose === 'exit'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                      onClick={() => setPinPurpose('exit')}
-                    >
-                      <ArrowLeft className="w-5 h-5 rotate-180" />
-                      <span>退場</span>
-                    </button>
-                  </div>
-                  
-                  {/* スマートロック選択 */}
-                  {smartLocks.length > 0 && (
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        スマートロックを選択
-                      </label>
-                      <select
-                        value={selectedLock?.id || ''}
-                        onChange={(e) => {
-                          const lock = smartLocks.find(l => l.id === e.target.value);
-                          setSelectedLock(lock || null);
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        {smartLocks.map(lock => (
-                          <option key={lock.id} value={lock.id}>
-                            {lock.lock_name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-
-                  
-                  {/* PINコードジェネレーター */}
-                  {selectedLock ? (
-                    <div className="mt-6">
-                      <PinCodeGenerator
-                        lockId={selectedLock.lock_id}
-                        parkName={park.name}
-                        purpose={pinPurpose}
-                        onSuccess={handlePinSuccess}
-                        onError={handlePinError}
-                      />
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <Key className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600 mb-4">スマートロックが設定されていません</p>
-                      <Button onClick={() => setActiveTab('settings')}>
-                        スマートロックを設定する
-                      </Button>
-                    </div>
-                  )}
-                </Card>
-                
-                <Card className="p-6 bg-blue-50 border-blue-200">
-                  <div className="flex items-start space-x-3">
-                    <Key className="w-6 h-6 text-blue-600 mt-1" />
-                    <div>
-                      <h3 className="font-semibold text-blue-900 mb-2">PINコードについて</h3>
-                      <div className="text-sm text-blue-800 space-y-2">
-                        <p>• 利用者はPINコードを使用して入退場します</p>
-                        <p>• PINコードは5分間有効で、利用者が支払い後に発行されます</p>
-                        <p>• オーナーは決済不要でPINコードを発行できます</p>
-                        <p>• 施設貸し切りの場合、利用者は友達にPINコードを共有できます</p>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
+          </Card>
+          
+          <Card className="p-6 bg-blue-50 border-blue-200">
+            <div className="flex items-start space-x-3">
+              <Key className="w-6 h-6 text-blue-600 mt-1" />
+              <div>
+                <h3 className="font-semibold text-blue-900 mb-2">PINコードについて</h3>
+                <div className="text-sm text-blue-800 space-y-2">
+                  <p>• 利用者はPINコードを使用して入退場します</p>
+                  <p>• PINコードは5分間有効で、利用者が支払い後に発行されます</p>
+                  <p>• オーナーは決済不要でPINコードを発行できます</p>
+                  <p>• 施設貸し切りの場合、利用者は友達にPINコードを共有できます</p>
+                </div>
               </div>
-            )}
+            </div>
+          </Card>
+        </div>
+      )}
 
-            {/* 設定タブ */}
-            {activeTab === 'settings' && (
-              <div className="space-y-6">
+      {/* 設定タブ */}
+      {activeTab === 'settings' && (
+        <div className="space-y-6">
                 {/* 基本設定 */}
                 <Card className="p-6">
                   <h3 className="text-lg font-semibold mb-4 flex items-center">
@@ -925,7 +925,7 @@ export function ParkManagement() {
                               <h4 className="font-medium text-gray-900">
                                 {imageTypeConfig?.label || image.image_type}
                               </h4>
-                            </div>
+                  </div>
                             {image.is_approved === true && (
                               <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
                                 承認済み
@@ -936,7 +936,7 @@ export function ParkManagement() {
                                 却下
                               </span>
                             )}
-                          </div>
+                </div>
 
                           <p className="text-sm text-gray-600 mb-4">
                             {imageTypeConfig?.description || '画像をアップロードしてください'}
@@ -973,20 +973,20 @@ export function ParkManagement() {
                                   >
                                     <Trash2 className="w-4 h-4 text-red-600" />
                                   </button>
-                                </div>
-                              </div>
+                  </div>
+                </div>
 
                               {/* 却下理由の表示 */}
                               {image.is_approved === false && image.admin_notes && (
                                 <div className="p-3 bg-red-50 rounded-lg text-sm text-red-800">
                                   <p className="font-medium">却下理由:</p>
                                   <p>{image.admin_notes}</p>
-                                </div>
-                              )}
+                      </div>
+                    )}
 
                               {/* 画像入れ替えボタン */}
                               <div className="flex space-x-2">
-                                <input
+                        <input
                                   type="file"
                                   id={`replace-image-${image.image_type}`}
                                   accept="image/*"
@@ -1004,9 +1004,9 @@ export function ParkManagement() {
                                 >
                                   <Camera className="w-4 h-4 mr-2" />
                                   画像を入れ替える
-                                </label>
-                              </div>
-                            </div>
+                      </label>
+                  </div>
+                </div>
                           ) : (
                             /* 画像がない場合のアップロード */
                             <div className="space-y-3">
@@ -1032,27 +1032,27 @@ export function ParkManagement() {
                                     クリックして画像を選択
                                   </span>
                                 </label>
-                              </div>
+                </div>
 
                               {/* ファイル選択後のアップロードボタン */}
                               {image.file && (
                                 <div className="flex items-center justify-between bg-gray-50 p-3 rounded">
                                   <span className="text-sm truncate">{image.file.name}</span>
-                                  <Button
+                  <Button
                                     size="sm"
                                     onClick={() => handleImageUpload(image.image_type)}
                                     disabled={imageLoading}
                                   >
                                     {imageLoading ? 'アップロード中...' : 'アップロード'}
-                                  </Button>
-                                </div>
+                  </Button>
+                </div>
                               )}
-                            </div>
+              </div>
                           )}
-                        </div>
+              </div>
                       );
                     })}
-                  </div>
+              </div>
                 </Card>
 
                 {/* 料金設定 */}
@@ -1065,33 +1065,33 @@ export function ParkManagement() {
                     料金体系は全国統一です。変更はできません。
                   </p>
                   <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2">
                       <span className="font-medium">• 通常利用:</span>
                       <span>¥800/日 (固定)</span>
-                    </div>
+                </div>
                     <div className="flex items-center space-x-2">
                       <span className="font-medium">• 施設貸し切り:</span>
                       <span>¥4,400/時間 (固定)</span>
-                    </div>
-                  </div>
-                </Card>
               </div>
+            </div>
+          </Card>
+            </div>
             )}
 
             {/* 運営サポート */}
             <Card className="p-6 bg-gray-50">
               <div className="flex items-start space-x-3">
                 <FileText className="w-6 h-6 text-gray-600 mt-1" />
-                <div>
+                    <div>
                   <h3 className="font-semibold text-gray-900 mb-2">運営サポート</h3>
                   <div className="text-sm text-gray-700 space-y-1">
                     <p>• 設定に関するご質問は運営事務局までお問い合わせください</p>
                     <p>• スマートロックシステムの設置・設定サポートを提供しています</p>
                     <p>• 運営開始後も継続的なサポートを行います</p>
                     <p>• 📧 サポート窓口: info@dogparkjp.com</p>
-                  </div>
-                </div>
-              </div>
+                    </div>
+                    </div>
+                    </div>
             </Card>
           </>
         )}
@@ -1112,8 +1112,8 @@ export function ParkManagement() {
                     住所から自動的にマップ上の位置を特定しますが、正確でない場合があります。<br />
                     赤いマーカーをドラッグして、実際のドッグランの位置に調整してください。
                   </p>
-                </div>
-                
+                  </div>
+
                 {park && (
                   <LocationEditMap
                     initialAddress={editForm.address}
@@ -1130,8 +1130,8 @@ export function ParkManagement() {
                 )}
                 
                 <div className="flex justify-end">
-                  <Button
-                    type="button"
+                    <Button
+                      type="button"
                     onClick={async () => {
                       if (!park || !editForm.latitude || !editForm.longitude) {
                         console.log('Missing required data:', { park: !!park, latitude: editForm.latitude, longitude: editForm.longitude });
@@ -1188,12 +1188,12 @@ export function ParkManagement() {
                       '位置を保存'
                     )}
                   </Button>
-                </div>
-              </div>
-            </Card>
+                        </div>
+                      </div>
+                    </Card>
           </div>
-        )}
-      </div>
+              )}
+            </div>
 
       {/* Image Cropper Modal */}
       {showImageCropper && selectedImageFile && (
@@ -1223,8 +1223,8 @@ export function ParkManagement() {
                 alt="プレビュー"
                 className="max-h-full max-w-full object-contain"
               />
-            </div>
-          </div>
+                </div>
+              </div>
         </div>
       )}
     </div>

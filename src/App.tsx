@@ -53,7 +53,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
       </div>
     );
   }
-  
+
   return <>{children}</>;
 };
 
@@ -206,7 +206,7 @@ const App: React.FC = () => {
           isOpen={showCampaignModal} 
           onClose={handleCampaignModalClose} 
         />
-        <Routes>
+          <Routes>
           {/* 🏠 公開ページ（高速表示） */}
           <Route path="/" element={
             <Suspense fallback={<PageSkeleton />}>
@@ -643,7 +643,7 @@ const App: React.FC = () => {
               <NotFound />
             </Suspense>
           } />
-        </Routes>
+          </Routes>
       </Layout>
     </MaintenanceProvider>
   );
