@@ -693,7 +693,7 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
       console.log('✅ ステータス更新完了:', nextStatus);
 
       // 承認処理が成功した場合は、データを強制的に再取得
-      await fetchParks();
+      await adminData.refetch();
       
       showSuccess(successMessage);
       
@@ -1340,7 +1340,7 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
                     </div>
 
                     <div className="flex justify-end space-x-2">
-                      {(park.status === 'pending' || park.status === 'first_stage_passed' || park.status === 'second_stage_review') && (
+                      {(park.status === 'pending' || park.status === 'first_stage_passed' || park.status === 'second_stage_review' || park.status === 'second_stage_waiting') && (
                         <>
                           <Button
                             size="sm"
@@ -1350,6 +1350,7 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
                             <Check className="w-4 h-4 mr-1" />
                             {park.status === 'pending' ? '第一審査承認' :
                               park.status === 'second_stage_review' ? '第二審査承認' :
+                              park.status === 'second_stage_waiting' ? '第二審査承認' :
                                 '承認'}
                           </Button>
                           <Button
