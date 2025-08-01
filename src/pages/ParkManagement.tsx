@@ -1084,7 +1084,7 @@ export function ParkManagement() {
                   <h3 className="font-semibold text-gray-900 mb-2">運営サポート</h3>
                   <div className="text-sm text-gray-700 space-y-1">
                     <p>• 設定に関するご質問は運営事務局までお問い合わせください</p>
-                    <p>• QRコードシステムの設置・設定サポートを提供しています</p>
+                    <p>• スマートロックシステムの設置・設定サポートを提供しています</p>
                     <p>• 運営開始後も継続的なサポートを行います</p>
                     <p>• 📧 サポート窓口: info@dogparkjp.com</p>
                   </div>
