@@ -216,6 +216,7 @@ export function ParkManagement() {
     private_booth_count: 0,
     facility_details: '',
     description: '',
+    address: '',
     latitude: null as number | null,
     longitude: null as number | null
   });
@@ -279,6 +280,7 @@ export function ParkManagement() {
         private_booth_count: parkData.private_booth_count || 0,
         facility_details: parkData.facility_details || '',
         description: parkData.description || '',
+        address: parkData.address || '',
         latitude: parkData.latitude || null,
         longitude: parkData.longitude || null
       });
@@ -1114,7 +1116,7 @@ export function ParkManagement() {
                 
                 {park && (
                   <LocationEditMap
-                    initialAddress={park.address}
+                    initialAddress={editForm.address}
                     initialLatitude={editForm.latitude || undefined}
                     initialLongitude={editForm.longitude || undefined}
                     onLocationChange={(lat, lng, address) => {
