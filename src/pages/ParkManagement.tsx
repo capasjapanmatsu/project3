@@ -469,7 +469,7 @@ export function ParkManagement() {
                     onClick={() => setActiveTab('overview')}
                   >
                     <Building className="w-4 h-4 inline mr-2" />
-                    概要
+                    概要・メンテナンス
                   </button>
                   <button
                     className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
