@@ -1131,19 +1131,31 @@ export function ParkManagement() {
                   <Button
                     type="button"
                     onClick={async () => {
-                      if (!park || !editForm.latitude || !editForm.longitude) return;
+                      if (!park || !editForm.latitude || !editForm.longitude) {
+                        console.log('Missing required data:', { park: !!park, latitude: editForm.latitude, longitude: editForm.longitude });
+                        return;
+                      }
                       
                       try {
                         setIsEditLoading(true);
                         
-                        const { error } = await supabase
+                        console.log('Attempting to update location:', {
+                          parkId: park.id,
+                          latitude: editForm.latitude,
+                          longitude: editForm.longitude
+                        });
+                        
+                        const { data, error } = await supabase
                           .from('dog_parks')
                           .update({
                             latitude: editForm.latitude,
                             longitude: editForm.longitude,
                             updated_at: new Date().toISOString()
                           })
-                          .eq('id', park.id);
+                          .eq('id', park.id)
+                          .select();
+                        
+                        console.log('Update response:', { data, error });
                         
                         if (error) throw error;
                         
@@ -1159,7 +1171,12 @@ export function ParkManagement() {
                         
                       } catch (error) {
                         console.error('Error updating location:', error);
-                        setError('位置情報の更新に失敗しました。');
+                        const errorMessage = error instanceof Error 
+                          ? error.message 
+                          : typeof error === 'object' && error !== null && 'message' in error
+                          ? String((error as any).message)
+                          : '不明なエラーが発生しました';
+                        setError(`位置情報の更新に失敗しました: ${errorMessage}`);
                       } finally {
                         setIsEditLoading(false);
                       }
