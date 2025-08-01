@@ -275,7 +275,7 @@ export function ParkRegistrationSecondStage() {
   };
 
   // Image Cropper完了時の処理
-  const handleCropComplete = (croppedFile: File) => {
+  const handleCropComplete = async (croppedFile: File) => {
     // Update the images array with the cropped file
     setImages(prev => prev.map(img =>
       img.image_type === currentImageType
@@ -285,8 +285,29 @@ export function ParkRegistrationSecondStage() {
     
     // Image Cropperを閉じる
     setShowImageCropper(false);
+    
+    // 現在の画像タイプを保存
+    const imageTypeToUpload = currentImageType;
+    
     setCurrentImageType('');
     setSelectedImageFile(null);
+    
+    // トリミング完了後、自動的にアップロードを実行
+    if (imageTypeToUpload) {
+      try {
+        // 少し待ってから（状態更新の完了を待つため）
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await handleImageUpload(imageTypeToUpload);
+      } catch (error) {
+        console.error('自動アップロードエラー:', error);
+        // エラーが発生した場合は手動アップロードが必要であることを表示
+        setImages(prev => prev.map(img =>
+          img.image_type === imageTypeToUpload
+            ? { ...img, error: '自動アップロードに失敗しました。アップロードボタンを押してください。' }
+            : img
+        ));
+      }
+    }
   };
 
   // Image Cropperキャンセル時の処理
