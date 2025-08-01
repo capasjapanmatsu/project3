@@ -97,6 +97,10 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
 
   // 住所検索とジオコーディング
   const handleAddressSearch = useCallback(async () => {
+    // 🚫 一時的に住所検索を無効化
+    alert('住所検索機能は一時的に無効化されています。赤いマーカーを直接ドラッグして位置を調整してください。');
+    return;
+    
     if (!address.trim() || !googleMapRef.current || !markerRef.current) return;
 
     setIsGeocoding(true);
@@ -135,14 +139,27 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
 
   // 初期住所が設定されているが座標が未設定の場合、自動ジオコーディング
   useEffect(() => {
+    // 🚫 一時的に自動ジオコーディングを無効化
+    console.log('⚠️ 自動ジオコーディングは一時的に無効化されています');
+    return;
+    
     const performInitialGeocoding = async () => {
+      console.log('🏁 自動ジオコーディング条件チェック:', {
+        initialAddress,
+        initialLatitude,
+        initialLongitude,
+        hasGoogleMap: !!googleMapRef.current,
+        hasMarker: !!markerRef.current,
+        isGeocoding
+      });
+      
       if (initialAddress && 
           (!initialLatitude || !initialLongitude) && 
           !isGeocoding && 
           googleMapRef.current && 
           markerRef.current) {
         
-        console.log('初期住所での自動ジオコーディングを実行:', initialAddress);
+        console.log('🚀 初期住所での自動ジオコーディングを実行:', initialAddress);
         
         try {
           setIsGeocoding(true);
@@ -151,6 +168,8 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
           if (result) {
             const newLat = result.latitude;
             const newLng = result.longitude;
+            
+            console.log('📍 新しい座標:', { newLat, newLng });
             
             // マップとマーカーの位置を更新
             const newPosition = { lat: newLat, lng: newLng };
@@ -162,20 +181,23 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
             setLongitude(newLng);
             onLocationChange(newLat, newLng, result.formatted_address);
             
-            console.log('初期ジオコーディング成功:', newLat, newLng);
+            console.log('✅ 初期ジオコーディング成功:', newLat, newLng);
           } else {
-            console.log('初期ジオコーディング失敗:', initialAddress);
+            console.log('❌ 初期ジオコーディング失敗:', initialAddress);
           }
         } catch (error) {
-          console.error('初期ジオコーディングエラー:', error);
+          console.error('💥 初期ジオコーディングエラー:', error);
         } finally {
           setIsGeocoding(false);
         }
+      } else {
+        console.log('⏭️ 自動ジオコーディングをスキップ');
       }
     };
 
     // マップが初期化されてから少し待って実行
     const timer = setTimeout(() => {
+      console.log('⏰ 自動ジオコーディング実行タイマー開始');
       void performInitialGeocoding();
     }, 1000);
 

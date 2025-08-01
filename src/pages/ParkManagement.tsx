@@ -1109,10 +1109,11 @@ export function ParkManagement() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-blue-800 text-sm">
                     <strong>位置調整について:</strong><br />
-                    住所から自動的にマップ上の位置を特定しますが、正確でない場合があります。<br />
-                    赤いマーカーをドラッグして、実際のドッグランの位置に調整してください。
+                    ⚠️ 現在、住所検索機能は一時的に無効化されています。<br />
+                    <strong>赤いマーカーを直接ドラッグ</strong>して、実際のドッグランの位置に調整してください。<br />
+                    マーカーをドラッグした後、「位置を保存」ボタンで座標を保存できます。
                   </p>
-                  </div>
+                </div>
 
                 {park && (
                   <LocationEditMap
