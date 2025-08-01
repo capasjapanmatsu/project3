@@ -249,23 +249,11 @@ export function MyParksManagement() {
             </Button>
           </div>
           
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center">
-                <Building className="w-8 h-8 text-green-600 mr-3" />
-                管理中ドッグラン一覧
-              </h1>
-              <p className="text-gray-600 mt-2">
-                あなたが管理するドッグラン ({ownedParks.length}施設) の詳細管理
-              </p>
-            </div>
-            
-            <Link to="/park-registration">
-              <Button className="bg-green-600 hover:bg-green-700">
-                <Building className="w-4 h-4 mr-2" />
-                新規ドッグラン登録
-              </Button>
-            </Link>
+          <div>
+            <h1 className="text-3xl font-bold flex items-center">
+              <Building className="w-8 h-8 text-green-600 mr-3" />
+              管理中ドッグラン一覧
+            </h1>
           </div>
 
           {/* 新規ドッグラン募集バナー */}
