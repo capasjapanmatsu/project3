@@ -163,21 +163,19 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         {/* 上部：白い背景エリア（ロゴ） */}
         <div className="bg-white px-6 py-4 shadow-sm">
           <div className="flex items-center">
-            {/* ロゴアイコン */}
-            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
-              <img
-                src="/icons/icon_android_48x48.png"
-                alt="ドッグパーク"
-                className="w-8 h-8 sm:w-10 sm:h-10"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  const parent = (e.target as HTMLElement).parentElement;
-                  if (parent) {
-                    parent.innerHTML = '<span class="text-white text-xl sm:text-2xl">🐕</span>';
-                  }
-                }}
-              />
-            </div>
+            {/* ロゴアイコン（青い丸なし） */}
+            <img
+              src="/icons/icon_android_48x48.png"
+              alt="ドッグパーク"
+              className="w-12 h-12 sm:w-16 sm:h-16"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+                const parent = (e.target as HTMLElement).parentElement;
+                if (parent) {
+                  parent.innerHTML = '<span class="text-4xl sm:text-5xl">🐕</span>';
+                }
+              }}
+            />
             
             {/* テキスト部分 */}
             <div className="ml-4">
@@ -213,7 +211,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           />
 
           {/* 画像上のオーバーレイとメッセージ */}
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-end justify-center pb-32">
             <div className="text-center px-4 w-full">
               {/* 背景（透明度を上げて、角丸なし、端から端まで） */}
               <div className="bg-white/20 backdrop-blur-sm py-8">
