@@ -234,28 +234,59 @@ export function ParkManagement() {
   // ウォークスルー関連state
   const [showWalkthrough, setShowWalkthrough] = useState(false);
 
+  // テスト用: URLパラメータでウォークスルーを強制表示
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('test_walkthrough') === 'true') {
+      console.log('🧪 テストモード: ウォークスルーを強制表示');
+      setShowWalkthrough(true);
+    }
+  }, []);
+
   // ウォークスルー発動条件の判定
   const checkWalkthroughEligibility = useCallback(async () => {
-    if (!parkId || !user || !park) return;
+    console.log('🔍 ウォークスルー判定開始:', { parkId, userId: user?.id, parkStatus: park?.status });
+    
+    if (!parkId || !user || !park) {
+      console.log('❌ ウォークスルー判定: 必要なデータが不足', { parkId, user: !!user, park: !!park });
+      return;
+    }
 
     try {
+      console.log('🔍 プロフィール情報をチェック中...');
+      
       // park_management_walkthrough_completedフラグをチェック
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('park_management_walkthrough_completed')
         .eq('id', user.id)
         .single();
 
-      // 既にウォークスルーを完了している場合は表示しない
-      if (profile?.park_management_walkthrough_completed) {
-        console.log('🎯 ウォークスルー既に完了済み');
-        return;
+      if (profileError) {
+        console.log('⚠️ プロフィール取得エラー（カラムが存在しない可能性）:', profileError);
+        // カラムが存在しない場合は、ウォークスルー未完了として扱う
+        if (profileError.message.includes('column') && profileError.message.includes('does not exist')) {
+          console.log('🎯 park_management_walkthrough_completedカラムが存在しないため、ウォークスルーを表示');
+        } else {
+          throw profileError;
+        }
+      } else {
+        console.log('✅ プロフィール取得成功:', profile);
+        
+        // 既にウォークスルーを完了している場合は表示しない
+        if (profile?.park_management_walkthrough_completed) {
+          console.log('🎯 ウォークスルー既に完了済み');
+          return;
+        }
       }
 
       // ドッグランが第二審査承認済みかチェック
+      console.log('🔍 ドッグランステータスをチェック中...', park.status);
       if (park.status === 'second_approved') {
         console.log('🎯 ウォークスルー発動条件を満たしています');
         setShowWalkthrough(true);
+      } else {
+        console.log('❌ ドッグランが第二審査承認済みではありません:', park.status);
       }
     } catch (error) {
       console.error('ウォークスルー判定エラー:', error);
@@ -304,7 +335,7 @@ export function ParkManagement() {
   // ウォークスルーの発動を監視
   useEffect(() => {
     void checkWalkthroughEligibility();
-  }, [checkWalkthroughEligibility]);
+  }, [parkId, user, park]);
 
   // パークデータ取得関数
   const fetchParkData = async () => {

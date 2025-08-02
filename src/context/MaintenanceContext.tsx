@@ -54,39 +54,27 @@ export const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
   // メンテナンス状態を確認
   const checkMaintenanceStatus = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-
-      // メンテナンステーブルが存在するかチェック
-      const { data: tableExists } = await supabase
-        .from('information_schema.tables')
-        .select('table_name')
-        .eq('table_schema', 'public')
-        .eq('table_name', 'maintenance_schedules')
-        .single();
-
-      if (!tableExists) {
-        // テーブルが存在しない場合は正常稼働とする
-        setIsMaintenanceActive(false);
-        setMaintenanceInfo(null);
-        return;
-      }
-
+      console.log('🔍 Checking maintenance status...');
+      
       // 現在アクティブなメンテナンスを取得
       const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('maintenance_schedules')
         .select('*')
-        .or('end_time.is.null,end_time.gte.' + now)
-        .lte('start_time', now)
-        .eq('is_active', true)
+        .or(`end_date.is.null,end_date.gte.${now}`)
+        .lte('start_date', now)
+        .eq('status', 'active')
         .order('is_emergency', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
-        throw error;
+      if (error) {
+        // テーブルが存在しない場合やその他のエラーの場合は正常稼働とする
+        console.log('⚠️ メンテナンススケジュールテーブルにアクセスできません:', error.message);
+        setIsMaintenanceActive(false);
+        setMaintenanceInfo(null);
+        return;
       }
 
       if (data) {
