@@ -1,35 +1,36 @@
 import {
-    AlertTriangle,
-    ArrowLeft,
-    Building,
-    Calendar,
-    Camera,
-    CheckCircle,
-    DollarSign,
-    Edit,
-    Eye,
-    FileText,
-    Image as ImageIcon,
-    Key,
-    MapPin,
-    ParkingCircle,
-    Plus,
-    Settings,
-    Shield,
-    ShowerHead,
-    Star,
-    Trash2,
-    Upload,
-    Users,
-    Wrench,
-    X
+  AlertTriangle,
+  ArrowLeft,
+  Building,
+  Calendar,
+  Camera,
+  CheckCircle,
+  DollarSign,
+  Edit,
+  Eye,
+  FileText,
+  Image as ImageIcon,
+  Key,
+  MapPin,
+  ParkingCircle,
+  Plus,
+  Settings,
+  Shield,
+  ShowerHead,
+  Star,
+  Trash2,
+  Upload,
+  Users,
+  Wrench,
+  X
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import ImageCropper from '../components/ImageCropper'; // ImageCropperコンポーネントを追加
 import { LocationEditMap } from '../components/LocationEditMap';
+import { ParkManagementWalkthrough } from '../components/ParkManagementWalkthrough';
 import { PinCodeGenerator } from '../components/PinCodeGenerator';
 import useAuth from '../context/AuthContext';
 import type { DogPark, SmartLock } from '../types';
@@ -230,6 +231,63 @@ export function ParkManagement() {
   const [imageLoading, setImageLoading] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
 
+  // ウォークスルー関連state
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
+
+  // ウォークスルー発動条件の判定
+  const checkWalkthroughEligibility = useCallback(async () => {
+    if (!parkId || !user || !park) return;
+
+    try {
+      // park_management_walkthrough_completedフラグをチェック
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('park_management_walkthrough_completed')
+        .eq('id', user.id)
+        .single();
+
+      // 既にウォークスルーを完了している場合は表示しない
+      if (profile?.park_management_walkthrough_completed) {
+        console.log('🎯 ウォークスルー既に完了済み');
+        return;
+      }
+
+      // ドッグランが第二審査承認済みかチェック
+      if (park.status === 'second_approved') {
+        console.log('🎯 ウォークスルー発動条件を満たしています');
+        setShowWalkthrough(true);
+      }
+    } catch (error) {
+      console.error('ウォークスルー判定エラー:', error);
+    }
+  }, [parkId, user, park]);
+
+  // ウォークスルー完了時の処理
+  const handleWalkthroughComplete = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      await supabase
+        .from('profiles')
+        .update({ park_management_walkthrough_completed: true })
+        .eq('id', user.id);
+
+      setShowWalkthrough(false);
+      console.log('🎯 ウォークスルー完了をデータベースに保存');
+    } catch (error) {
+      console.error('ウォークスルー完了保存エラー:', error);
+    }
+  }, [user]);
+
+  // ウォークスルーのステップ変更処理
+  const handleWalkthroughStepChange = useCallback((stepId: string) => {
+    if (stepId === 'location') {
+      setActiveTab('location');
+    } else if (stepId === 'pins') {
+      setActiveTab('pins');
+    }
+  }, []);
+
   useEffect(() => {
     if (parkId && user) {
       void fetchParkData();
@@ -242,6 +300,11 @@ export function ParkManagement() {
       void fetchFacilityImages();
     }
   }, [park]);
+
+  // ウォークスルーの発動を監視
+  useEffect(() => {
+    void checkWalkthroughEligibility();
+  }, [checkWalkthroughEligibility]);
 
   // パークデータ取得関数
   const fetchParkData = async () => {
@@ -1324,6 +1387,15 @@ export function ParkManagement() {
                 </div>
               </div>
         </div>
+      )}
+
+      {/* ウォークスルー */}
+      {showWalkthrough && (
+        <ParkManagementWalkthrough
+          onComplete={handleWalkthroughComplete}
+          onClose={() => setShowWalkthrough(false)}
+          onStepChange={handleWalkthroughStepChange}
+        />
       )}
     </div>
   );
