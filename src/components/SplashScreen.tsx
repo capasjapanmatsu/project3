@@ -89,7 +89,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         {/* ワンちゃんアニメーション */}
         <div className="relative">
           <img
-            src="/images/splash-dog-running.png"
+            src="/images/splash-dog-running.jpg"
             alt="走るワンちゃん"
             className="w-32 h-32 object-contain transition-transform duration-100 ease-out"
             style={{ 
