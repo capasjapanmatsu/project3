@@ -41,8 +41,8 @@ export function ParkManagementWalkthrough({
   const steps: WalkthroughStep[] = [
     {
       id: 'welcome',
-      title: '🎉 第二審査承認おめでとうございます！',
-      message: 'いよいよドッグランオープンの準備です！まずは位置情報を正確に設定しましょう。',
+      title: '🎉 審査通過おめでとうございます！',
+      message: 'いよいよオープンです。次に案内する設定を見直しオープンしましょう。',
       targetSelector: '',
       position: 'bottom'
     },
@@ -131,6 +131,13 @@ export function ParkManagementWalkthrough({
 
   // タイピングアニメーション
   const typeMessage = useCallback((message: string) => {
+    console.log('⌨️ タイピング開始:', message);
+    
+    // 前のタイピングをクリア
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
     setIsTyping(true);
     setMessageText('');
     
@@ -139,8 +146,9 @@ export function ParkManagementWalkthrough({
       if (charIndex < message.length) {
         setMessageText(prev => prev + message[charIndex]);
         charIndex++;
-        typingTimeoutRef.current = setTimeout(typeChar, 30);
+        typingTimeoutRef.current = setTimeout(typeChar, 50); // 30ms → 50msに変更
       } else {
+        console.log('⌨️ タイピング完了');
         setIsTyping(false);
       }
     };
@@ -177,8 +185,10 @@ export function ParkManagementWalkthrough({
     
     console.log('🎯 ステップ変更:', currentStepData.id);
     
-    // タイピングアニメーション開始
-    typeMessage(currentStepData.message);
+    // 少し待ってからタイピングアニメーション開始（UIの安定化のため）
+    setTimeout(() => {
+      typeMessage(currentStepData.message);
+    }, 100);
     
     // アクションがある場合は実行
     if (currentStepData.action) {
@@ -188,7 +198,7 @@ export function ParkManagementWalkthrough({
     // ターゲット要素の設定
     setTimeout(() => {
       findAndSetTarget();
-    }, currentStepData.action ? 500 : 100);
+    }, currentStepData.action ? 600 : 200);
     
   }, [currentStep, currentStepData, typeMessage, findAndSetTarget]);
 
