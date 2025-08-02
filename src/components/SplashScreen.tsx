@@ -27,7 +27,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const message = 'さぁ　ワンちゃんと冒険に出かけよう！';
+  // メッセージを2行に分割
+  const message1 = 'さぁ　ワンちゃんと';
+  const message2 = '冒険に出かけよう！';
+  const fullMessage = message1 + message2;
 
   // URLクエリパラメータ処理
   const searchParams = new URLSearchParams(location.search);
@@ -36,11 +39,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
   // 文字ごとのふわっと浮上アニメーション
   const animateText = useCallback(() => {
-    const chars = new Array(message.length).fill(false);
+    const chars = new Array(fullMessage.length).fill(false);
     setTextCharacters(chars);
 
     // 一文字ずつ順番にふわっと表示
-    message.split('').forEach((_, index) => {
+    fullMessage.split('').forEach((_, index) => {
       setTimeout(() => {
         setTextCharacters(prev => {
           const newChars = [...prev];
@@ -53,8 +56,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     // 全文字表示完了後、ログインフォームをフェードイン
     setTimeout(() => {
       setShowLoginForm(true);
-    }, message.length * 120 + 1000);
-  }, [message]);
+    }, fullMessage.length * 120 + 1000);
+  }, [fullMessage]);
 
   // 画像の薄い→濃いアニメーション
   useEffect(() => {
@@ -153,71 +156,114 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       }}
     >
       <style>
-        {`@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@300;400;500&display=swap');`}
+        {`@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@300;400;500;700;900&display=swap');`}
       </style>
 
-      <div className="min-h-screen flex flex-col">
-        {/* ブランドロゴ */}
-        <div className="flex-shrink-0 text-center pt-8 pb-4">
-          <h1 className="text-3xl font-medium text-blue-400 opacity-80" style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}>
-            ドッグパークJP
-          </h1>
-        </div>
-
+      <div className="min-h-screen flex flex-col relative">
         {/* メインコンテンツエリア */}
-        <div className="flex-1 flex flex-col items-center justify-start px-4 space-y-8">
-          {/* ワンちゃん画像（レスポンシブ対応） */}
-          <div className="w-full flex justify-center relative">
+        <div className="flex-1 flex flex-col items-center justify-start relative">
+          {/* ワンちゃん画像（画面いっぱい） */}
+          <div className="w-full h-screen flex justify-center items-center relative overflow-hidden">
+            {/* 左上にロゴ */}
+            <div className="absolute top-6 left-6 z-10 flex items-center">
+              <img
+                src="/icons/icon.svg"
+                alt="ドッグパークJP"
+                className="w-12 h-12 sm:w-16 sm:h-16"
+                onError={(e) => {
+                  // アイコンが見つからない場合は絵文字を表示
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  const parent = (e.target as HTMLElement).parentElement;
+                  if (parent) {
+                    parent.innerHTML = '<div class="w-12 h-12 sm:w-16 sm:h-16 bg-blue-400 rounded-full flex items-center justify-center text-white text-2xl sm:text-3xl">🐕</div><h1 class="ml-3 text-lg sm:text-xl font-medium text-blue-400 opacity-90">ドッグパークJP</h1>';
+                  }
+                }}
+              />
+              <h1 className="ml-3 text-lg sm:text-xl font-medium text-blue-400 opacity-90">
+                ドッグパークJP
+              </h1>
+            </div>
+
+            {/* 画面いっぱいの画像 */}
             <img
               src="/images/splash-dog-running.jpg"
               alt="走るワンちゃん"
-              className="object-contain transition-opacity duration-1000 
-                         w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg 
-                         h-48 sm:h-56 md:h-64 lg:h-80"
+              className="w-full h-full object-cover transition-opacity duration-1000"
               style={{ 
                 opacity: imageOpacity,
-                filter: 'drop-shadow(0 15px 35px rgba(0,0,0,0.1))'
+                filter: 'drop-shadow(0 15px 35px rgba(0,0,0,0.2))'
               }}
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
                 const parent = (e.target as HTMLElement).parentElement;
                 if (parent) {
-                  parent.innerHTML = `<div class="text-6xl sm:text-8xl lg:text-9xl animate-bounce opacity-80">🐕</div>`;
+                  parent.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center"><div class="text-8xl sm:text-9xl animate-bounce opacity-80">🐕</div></div>';
                 }
               }}
             />
-          </div>
 
-          {/* ふわっと浮上するメッセージ */}
-          <div className="text-center px-4 relative">
-            <div className="absolute inset-0 bg-white/40 backdrop-blur-sm rounded-3xl shadow-lg" />
-            <h2 
-              className="relative text-2xl sm:text-3xl lg:text-4xl font-medium text-gray-700 leading-relaxed tracking-wide px-4 py-3"
-              style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}
-            >
-              {message.split('').map((char, index) => (
-                <span
-                  key={index}
-                  className={`inline-block transition-all duration-700 ease-out ${
-                    textCharacters[index] 
-                      ? 'opacity-100 translate-y-0 scale-100' 
-                      : 'opacity-0 translate-y-4 scale-95'
-                  }`}
-                  style={{
-                    textShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    transitionDelay: `${index * 50}ms`
-                  }}
-                >
-                  {char === '　' ? '\u00A0' : char}
-                </span>
-              ))}
-            </h2>
+            {/* 画像上のオーバーレイとメッセージ */}
+            <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+              <div className="text-center px-6 relative">
+                {/* 背景ぼかし */}
+                <div className="absolute inset-0 bg-white/60 backdrop-blur-md rounded-3xl shadow-2xl" />
+                
+                {/* 2行のメッセージ */}
+                <div className="relative space-y-2 py-8 px-6">
+                  {/* 1行目: さぁ　ワンちゃんと */}
+                  <h2 
+                    className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-800 leading-tight tracking-wide"
+                    style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}
+                  >
+                    {message1.split('').map((char, index) => (
+                      <span
+                        key={index}
+                        className={`inline-block transition-all duration-700 ease-out ${
+                          textCharacters[index] 
+                            ? 'opacity-100 translate-y-0 scale-100' 
+                            : 'opacity-0 translate-y-4 scale-95'
+                        }`}
+                        style={{
+                          textShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                          transitionDelay: `${index * 50}ms`
+                        }}
+                      >
+                        {char === '　' ? '\u00A0' : char}
+                      </span>
+                    ))}
+                  </h2>
+                  
+                  {/* 2行目: 冒険に出かけよう！ */}
+                  <h2 
+                    className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-800 leading-tight tracking-wide"
+                    style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}
+                  >
+                    {message2.split('').map((char, index) => (
+                      <span
+                        key={index + message1.length}
+                        className={`inline-block transition-all duration-700 ease-out ${
+                          textCharacters[index + message1.length] 
+                            ? 'opacity-100 translate-y-0 scale-100' 
+                            : 'opacity-0 translate-y-4 scale-95'
+                        }`}
+                        style={{
+                          textShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                          transitionDelay: `${(index + message1.length) * 50}ms`
+                        }}
+                      >
+                        {char}
+                      </span>
+                    ))}
+                  </h2>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* ログインフォーム（フェードイン） */}
-          <div className={`w-full max-w-md transition-all duration-800 ${
+          <div className={`w-full max-w-md mx-auto p-4 transition-all duration-800 ${
             showLoginForm ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}>
+          } ${showLoginForm ? '' : 'absolute top-full'}`}>
             {/* サブスクリプション誘導メッセージ */}
             {infoMessage && (
               <div className="mb-6 p-4 bg-blue-50/80 backdrop-blur-sm border border-blue-200/50 rounded-xl">
@@ -245,7 +291,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                       ? 'bg-blue-500 text-white shadow-sm' 
                       : 'text-blue-500 hover:bg-white/50'
                   }`}
-                  style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}
                 >
                   <Lock className="w-4 h-4 mr-2" />
                   パスワード
@@ -258,7 +303,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                       ? 'bg-blue-500 text-white shadow-sm' 
                       : 'text-blue-500 hover:bg-white/50'
                   }`}
-                  style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}
                 >
                   <Mail className="w-4 h-4 mr-2" />
                   マジックリンク
@@ -269,7 +313,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
               {error && (
                 <div className="mb-4 p-3 bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-lg flex items-center">
                   <AlertTriangle className="w-5 h-5 text-red-500 mr-2 flex-shrink-0" />
-                  <span className="text-sm text-red-700" style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}>{error}</span>
+                  <span className="text-sm text-red-700">{error}</span>
                 </div>
               )}
 
@@ -277,7 +321,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
               {isPasswordLogin ? (
                 <form onSubmit={(e) => { void handlePasswordLogin(e); }} className="space-y-4">
                   <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1" style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                       メールアドレス
                     </label>
                     <input
@@ -292,7 +336,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                     />
                   </div>
                   <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1" style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}>
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                       パスワード
                     </label>
                     <div className="relative">
@@ -324,7 +368,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                     type="submit"
                     disabled={isLoading || !email || !password}
                     className="w-full py-2 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}
                   >
                     {isLoading ? '処理中...' : 'ログイン'}
                   </button>
@@ -333,7 +376,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                 // マジックリンクログインフォーム
                 <form onSubmit={(e) => { void handleMagicLinkLogin(e); }} className="space-y-4">
                   <div>
-                    <label htmlFor="magic-email" className="block text-sm font-medium text-gray-700 mb-1" style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}>
+                    <label htmlFor="magic-email" className="block text-sm font-medium text-gray-700 mb-1">
                       メールアドレス
                     </label>
                     <input
@@ -351,11 +394,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                     type="submit"
                     disabled={isLoading || !email}
                     className="w-full py-2 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}
                   >
                     {isLoading ? '送信中...' : 'マジックリンクを送信'}
                   </button>
-                  <p className="text-xs text-gray-500 text-center" style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}>
+                  <p className="text-xs text-gray-500 text-center">
                     メールアドレスに送信されるリンクをクリックしてログインします
                   </p>
                 </form>
@@ -363,12 +405,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
               {/* 新規登録リンク */}
               <div className="mt-6 pt-4 border-t border-gray-200/50">
-                <p className="text-center text-sm text-gray-600" style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}>
+                <p className="text-center text-sm text-gray-600">
                   アカウントをお持ちでない方は{' '}
                   <button
                     onClick={() => navigate('/register')}
                     className="text-blue-500 hover:text-blue-700 underline font-medium inline-flex items-center"
-                    style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}
                   >
                     <UserPlus className="w-4 h-4 mr-1" />
                     こちらから新規登録
@@ -386,7 +427,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                     onComplete();
                   }}
                   className="text-sm text-blue-400 hover:text-blue-600 underline"
-                  style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}
                 >
                   スキップ（開発用）
                 </button>
@@ -396,11 +436,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
           {/* ローディングインジケーター（ログインフォーム表示前のみ） */}
           {!showLoginForm && (
-            <div className="flex items-center space-x-3 text-blue-300 opacity-70">
-              <div className="w-3 h-3 bg-gradient-to-r from-blue-300 to-indigo-300 rounded-full animate-pulse" />
-              <div className="w-3 h-3 bg-gradient-to-r from-blue-300 to-indigo-300 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
-              <div className="w-3 h-3 bg-gradient-to-r from-blue-300 to-indigo-300 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }} />
-              <span className="ml-4 text-lg font-light" style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}>
+            <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex items-center space-x-3 text-white opacity-80">
+              <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
+              <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
+              <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.6s' }} />
+              <span className="ml-4 text-lg font-light">
                 準備中...
               </span>
             </div>
@@ -409,7 +449,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
         {/* バージョン情報 */}
         <div className="flex-shrink-0 text-center pb-6">
-          <div className="text-sm text-blue-300 opacity-60" style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}>
+          <div className="text-sm text-blue-300 opacity-60">
             v1.0.0
           </div>
         </div>
