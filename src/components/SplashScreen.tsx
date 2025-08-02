@@ -9,88 +9,121 @@ interface SplashScreenProps {
   onComplete: () => void;
 }
 
-export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
-  // アニメーション状態
-  const [imageOpacity, setImageOpacity] = useState(0.3);
-  const [textCharacters, setTextCharacters] = useState<boolean[]>([]);
-  const [showLoginForm, setShowLoginForm] = useState(false);
-
-  // ログイン機能状態
+const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { signInWithMagicLink, signInWithPassword } = useAuth();
+
+  const [imageOpacity, setImageOpacity] = useState(0);
+  const [textCharacters, setTextCharacters] = useState<boolean[]>([]);
+  const [showLoginForm] = useState(true); // 常にログインフォームを表示
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isPasswordLogin, setIsPasswordLogin] = useState(true);
-  
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [isPasswordLogin, setIsPasswordLogin] = useState(false);
 
-  // メッセージを2行に分割
+  // プリロード関連の状態
+  const [preloadProgress, setPreloadProgress] = useState(0);
+  const [dogPosition, setDogPosition] = useState(0);
+  const [loadingTasks, setLoadingTasks] = useState<string[]>([]);
+  const [isPreloading, setIsPreloading] = useState(true);
+
   const message1 = 'さぁ　ワンちゃんと';
   const message2 = '冒険に出かけよう！';
-  const fullMessage = message1 + message2;
 
   // URLクエリパラメータ処理
   const searchParams = new URLSearchParams(location.search);
   const redirectTo = searchParams.get('redirect') || '/dashboard';
   const infoMessage = searchParams.get('message');
 
-  // 文字ごとのふわっと浮上アニメーション
+  // 文字アニメーション用のメモ化されたコールバック
   const animateText = useCallback(() => {
-    const chars = new Array(fullMessage.length).fill(false);
-    setTextCharacters(chars);
-
-    // 一文字ずつ順番にふわっと表示
-    fullMessage.split('').forEach((_, index) => {
-      setTimeout(() => {
+    const totalLength = message1.length + message2.length;
+    let currentIndex = 0;
+    
+    const showNextCharacter = () => {
+      if (currentIndex < totalLength) {
         setTextCharacters(prev => {
-          const newChars = [...prev];
-          newChars[index] = true;
-          return newChars;
+          const newArray = [...prev];
+          newArray[currentIndex] = true;
+          return newArray;
         });
-      }, index * 120);
-    });
+        currentIndex++;
+        setTimeout(showNextCharacter, 100);
+      }
+    };
+    
+    showNextCharacter();
+  }, [message1, message2]);
 
-    // 全文字表示完了後、ログインフォームをフェードイン
-    setTimeout(() => {
-      setShowLoginForm(true);
-    }, fullMessage.length * 120 + 1000);
-  }, [fullMessage]);
-
-  // 画像の薄い→濃いアニメーション
+  // 画像とテキストのアニメーション
   useEffect(() => {
     const imageAnimation = () => {
-      let opacity = 0.3;
       const fadeIn = () => {
-        if (opacity < 1.0) {
-          opacity += 0.015;
-          setImageOpacity(opacity);
-          requestAnimationFrame(fadeIn);
-        } else {
-          setTimeout(animateText, 500);
-        }
+        setImageOpacity(prev => {
+          const newOpacity = Math.min(prev + 0.02, 1);
+          if (newOpacity < 1) {
+            requestAnimationFrame(fadeIn);
+          } else {
+            setTimeout(animateText, 500);
+          }
+          return newOpacity;
+        });
       };
-      fadeIn();
-    };
-
-    // プリロード処理
-    const preloadRoutes = async () => {
-      try {
-        await Promise.allSettled([
-          import('../pages/Home'),
-          import('../context/AuthContext'),
-        ]);
-        console.log('🚀 主要コンポーネントのプリロード完了');
-      } catch (error) {
-        console.warn('プリロードエラー:', error);
-      }
+      requestAnimationFrame(fadeIn);
     };
 
     setTimeout(imageAnimation, 800);
-    void preloadRoutes();
   }, [animateText]);
+
+  // 拡張プリロード処理（進歩追跡付き）
+  useEffect(() => {
+    const preloadResources = async () => {
+      const tasks = [
+        { name: 'ホーム画面', loader: () => import('../pages/Home') },
+        { name: '認証システム', loader: () => import('../context/AuthContext') },
+        { name: 'ナビゲーション', loader: () => import('../components/Navbar') },
+        { name: 'フッター', loader: () => import('../components/Footer') },
+        { name: 'ダッシュボード', loader: () => import('../pages/Dashboard') },
+        { name: 'ドッグラン検索', loader: () => import('../pages/DogParkList') },
+        { name: 'ユーザー設定', loader: () => import('../pages/Settings') },
+        { name: 'プロフィール', loader: () => import('../pages/Profile') },
+      ];
+
+      setLoadingTasks(tasks.map(task => task.name));
+      let completedTasks = 0;
+
+      for (const task of tasks) {
+        try {
+          console.log(`🐕 ${task.name}を読み込み中...`);
+          await task.loader();
+          completedTasks++;
+          
+          const progress = (completedTasks / tasks.length) * 100;
+          setPreloadProgress(progress);
+          setDogPosition(progress);
+          
+          console.log(`✅ ${task.name}完了 (${Math.round(progress)}%)`);
+          
+          // 各タスク間に少し間隔を開ける
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (error) {
+          console.warn(`⚠️ ${task.name}の読み込みエラー:`, error);
+          completedTasks++;
+          const progress = (completedTasks / tasks.length) * 100;
+          setPreloadProgress(progress);
+          setDogPosition(progress);
+        }
+      }
+
+      console.log('🎉 全てのプリロード完了！');
+      setIsPreloading(false);
+    };
+
+    void preloadResources();
+  }, []);
 
   // 開発環境でのメールアドレス自動入力
   useEffect(() => {
@@ -190,7 +223,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           </div>
         </div>
 
-        {/* 下部：画像エリア */}
+        {/* 中央画像とメッセージ */}
         <div className="flex-1 relative">
           {/* 画面いっぱいの画像 */}
           <img
@@ -199,13 +232,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             className="w-full h-full object-cover transition-opacity duration-1000"
             style={{ 
               opacity: imageOpacity,
-              filter: 'drop-shadow(0 15px 35px rgba(0,0,0,0.2))'
             }}
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
               const parent = (e.target as HTMLElement).parentElement;
               if (parent) {
-                parent.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center"><div class="text-8xl sm:text-9xl animate-bounce opacity-80">🐕</div></div>';
+                parent.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-blue-200 to-green-200 flex items-center justify-center"><span class="text-8xl">🐕</span></div>';
               }
             }}
           />
@@ -270,18 +302,60 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             </div>
           </div>
 
-          {/* ローディングインジケーター（ログインフォーム表示前のみ） */}
-          {!showLoginForm && (
-            <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex items-center space-x-3 text-white opacity-80">
-              <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
-              <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
-              <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.6s' }} />
-              <span className="ml-4 text-lg font-light">
-                準備中...
-              </span>
+          {/* プリロード進行表示（プリロード中のみ） */}
+          {isPreloading && (
+            <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 w-80 max-w-[90vw]">
+              {/* プログレスバーコンテナ */}
+              <div className="bg-white/20 backdrop-blur-sm rounded-full p-2 shadow-lg">
+                {/* プログレスバー背景 */}
+                <div className="relative bg-white/30 rounded-full h-8 overflow-hidden">
+                  {/* プログレスバー */}
+                  <div 
+                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${preloadProgress}%` }}
+                  />
+                  
+                  {/* 走る犬のアイコン */}
+                  <div 
+                    className="absolute top-1/2 transform -translate-y-1/2 text-2xl transition-all duration-300 ease-out"
+                    style={{ 
+                      left: `calc(${dogPosition}% - 16px)`,
+                      transform: 'translateY(-50%)'
+                    }}
+                  >
+                    🐕‍🦺
+                  </div>
+                </div>
+              </div>
+              
+              {/* 進行状況テキスト */}
+              <div className="text-center mt-3">
+                <p className="text-white text-sm font-medium" style={{
+                  textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                }}>
+                  準備中... {Math.round(preloadProgress)}%
+                </p>
+                <p className="text-white/80 text-xs mt-1" style={{
+                  textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                }}>
+                  アプリを最適化しています
+                </p>
+              </div>
             </div>
           )}
         </div>
+
+        {/* ローディングインジケーター（ログインフォーム表示前のみ） */}
+        {!showLoginForm && (
+          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex items-center space-x-3 text-white opacity-80">
+            <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
+            <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
+            <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.6s' }} />
+            <span className="ml-4 text-lg font-light">
+              準備中...
+            </span>
+          </div>
+        )}
 
         {/* ログインフォーム（フェードイン） */}
         <div className={`w-full transition-all duration-800 ${
