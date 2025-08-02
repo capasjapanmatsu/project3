@@ -14,6 +14,7 @@ import { DashboardSkeleton, PageSkeleton, ShopSkeleton } from './components/Load
 import { Navbar } from './components/Navbar';
 import { SEO } from './components/SEO';
 import ScrollToTop from './components/ScrollToTop';
+import SplashScreen from './components/SplashScreen';
 
 // 保護されたルートコンポーネント
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -179,7 +180,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App: React.FC = () => {
-  // スプラッシュ画面の制御
+  // スプラッシュ画面の制御（Hooksはコンポーネントの最上部で宣言）
   const [showSplash, setShowSplash] = useState(() => {
     // 初回起動時のみスプラッシュ画面を表示
     const hasSeenSplash = localStorage.getItem('hasSeenSplash');
