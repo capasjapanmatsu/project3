@@ -1,5 +1,4 @@
 import { ReactNode, createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { supabase } from '../utils/supabase';
 
 interface MaintenanceSchedule {
   id: string;
@@ -52,49 +51,21 @@ export const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   // メンテナンス状態を確認
-  const checkMaintenanceStatus = useCallback(async () => {
+  const checkMaintenanceStatus = async () => {
+    console.log('🔍 Checking maintenance status...');
+    
     try {
-      console.log('🔍 Checking maintenance status...');
-      
-      // 現在アクティブなメンテナンスを取得
-      const now = new Date().toISOString();
-      const { data, error } = await supabase
-        .from('maintenance_schedules')
-        .select('*')
-        .or(`end_date.is.null,end_date.gte.${now}`)
-        .lte('start_date', now)
-        .eq('status', 'active')
-        .order('is_emergency', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error) {
-        // テーブルが存在しない場合やその他のエラーの場合は正常稼働とする
-        console.log('⚠️ メンテナンススケジュールテーブルにアクセスできません:', error.message);
-        setIsMaintenanceActive(false);
-        setMaintenanceInfo(null);
-        return;
-      }
-
-      if (data) {
-        setIsMaintenanceActive(true);
-        setMaintenanceInfo(data);
-      } else {
-        setIsMaintenanceActive(false);
-        setMaintenanceInfo(null);
-      }
-
+      // 一時的に無効化 - 常に正常稼働とする
+      console.log('⚠️ メンテナンス機能は一時的に無効化されています');
+      setIsMaintenanceActive(false);
+      setMaintenanceInfo(null);
     } catch (error) {
       console.error('Error checking maintenance status:', error);
       // エラー時は正常稼働とする（フェールセーフ）
       setIsMaintenanceActive(false);
       setMaintenanceInfo(null);
-      setError('メンテナンス状態の確認でエラーが発生しましたが、正常稼働します');
-    } finally {
-      setLoading(false);
     }
-  }, []);
+  };
 
   const refreshMaintenanceStatus = useCallback(async () => {
     await checkMaintenanceStatus();

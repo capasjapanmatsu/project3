@@ -280,13 +280,13 @@ export function ParkManagement() {
         }
       }
 
-      // ドッグランが第二審査承認済みかチェック
+      // ドッグランが承認済みかチェック
       console.log('🔍 ドッグランステータスをチェック中...', park.status);
-      if (park.status === 'second_approved') {
+      if (park.status === 'approved') {
         console.log('🎯 ウォークスルー発動条件を満たしています');
         setShowWalkthrough(true);
       } else {
-        console.log('❌ ドッグランが第二審査承認済みではありません:', park.status);
+        console.log('❌ ドッグランが承認済みではありません:', park.status);
       }
     } catch (error) {
       console.error('ウォークスルー判定エラー:', error);
