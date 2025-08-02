@@ -69,25 +69,25 @@ export function ParkManagementWalkthrough({
       targetSelector: '[data-walkthrough="location-map"]',
       position: 'top',
       action: () => {
-        // マップがポップオーバーの下に見えるよう調整
+        // ポップオーバーとマップが両方見えるよう調整
         setTimeout(() => {
           const mapElement = document.querySelector('[data-walkthrough="location-map"]');
           if (mapElement) {
             const rect = mapElement.getBoundingClientRect();
-            // ポップオーバーが上部（120px + 高さ約250px = 370px）の下にマップが見えるようスクロール
-            const scrollTop = window.pageYOffset + rect.top - 400; 
+            // ポップオーバー（80px + 高さ約300px = 380px）の下にマップが一部見えるようスクロール
+            const scrollTop = window.pageYOffset + rect.top - 420; 
             window.scrollTo({
               top: Math.max(0, scrollTop),
               behavior: 'smooth'
             });
           } else {
-            // マップ要素が見つからない場合は、位置調整セクションにスクロール
+            // マップ要素が見つからない場合は、位置調整セクション上部にスクロール
             window.scrollTo({
-              top: 600,
+              top: 500,
               behavior: 'smooth'
             });
           }
-        }, 300); // アニメーションの完了を待つ
+        }, 400); // アニメーションとハイライト効果の完了を待つ
       }
     },
     {
@@ -362,7 +362,9 @@ export function ParkManagementWalkthrough({
   return (
     <>
       {/* オーバーレイ - 他の要素を暗くする（少し明るく調整） */}
-      <div className="fixed inset-0 bg-black bg-opacity-50 z-40" />
+      <div className={`fixed inset-0 bg-black bg-opacity-50 ${
+        currentStepData.id === 'map-explanation' ? 'z-[10000]' : 'z-40'
+      }`} />
       
       {/* ターゲット要素のハイライト - FAB風に目立たせる */}
       {targetElement && (
@@ -402,14 +404,14 @@ export function ParkManagementWalkthrough({
       {/* ツールチップ */}
       <div 
         ref={tooltipRef}
-        className={`fixed z-50 transition-all duration-500 ease-out ${
+        className={`fixed transition-all duration-500 ease-out ${
           currentStepData.id === 'map-explanation' 
-            ? 'w-96 max-w-lg animate-expand' 
-            : 'w-80 max-w-sm'
+            ? 'w-96 max-w-lg animate-expand z-[10001]' // マップステップでは最前面
+            : 'w-80 max-w-sm z-50'
         }`}
         style={{
           top: currentStepData.id === 'map-explanation'
-            ? '120px' // マップステップでは固定位置（上部）
+            ? '80px' // マップステップでは上部固定（少し上に調整）
             : currentStepData.id === 'save-location'
             ? '200px' // 位置を保存ステップでは固定位置（中央上部）
             : targetElement && currentStepData.position === 'top' 
