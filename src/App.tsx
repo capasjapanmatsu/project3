@@ -14,7 +14,6 @@ import { DashboardSkeleton, PageSkeleton, ShopSkeleton } from './components/Load
 import { Navbar } from './components/Navbar';
 import { SEO } from './components/SEO';
 import ScrollToTop from './components/ScrollToTop';
-import SplashScreen from './components/SplashScreen';
 
 // 保護されたルートコンポーネント
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -187,18 +186,13 @@ const App: React.FC = () => {
     return !hasSeenSplash;
   });
 
+  const [showCampaignModal, setShowCampaignModal] = useState(false);
+
   const handleSplashComplete = () => {
     // スプラッシュ画面完了時の処理
     localStorage.setItem('hasSeenSplash', 'true');
     setShowSplash(false);
   };
-
-  // スプラッシュ画面表示中は他のコンテンツを隠す
-  if (showSplash) {
-    return <SplashScreen onComplete={handleSplashComplete} />;
-  }
-
-  const [showCampaignModal, setShowCampaignModal] = useState(false);
 
   // 初回訪問時のキャンペーンモーダル表示制御
   useEffect(() => {
