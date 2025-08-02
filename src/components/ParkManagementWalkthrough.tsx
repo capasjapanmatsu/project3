@@ -37,6 +37,7 @@ export function ParkManagementWalkthrough({
   
   const tooltipRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const isTypingRef = useRef(false); // タイピング状態をrefで管理
   
   const steps: WalkthroughStep[] = [
     {
@@ -146,7 +147,7 @@ export function ParkManagementWalkthrough({
       if (charIndex < message.length) {
         setMessageText(prev => prev + message[charIndex]);
         charIndex++;
-        typingTimeoutRef.current = setTimeout(typeChar, 50); // 30ms → 50msに変更
+        typingTimeoutRef.current = setTimeout(typeChar, 50);
       } else {
         console.log('⌨️ タイピング完了');
         setIsTyping(false);
@@ -154,7 +155,7 @@ export function ParkManagementWalkthrough({
     };
     
     typeChar();
-  }, []);
+  }, []); // 依存関係配列を空に戻す
 
   // ターゲット要素の検索と設定
   const findAndSetTarget = useCallback(() => {
@@ -200,7 +201,7 @@ export function ParkManagementWalkthrough({
       findAndSetTarget();
     }, currentStepData.action ? 600 : 200);
     
-  }, [currentStep, currentStepData, typeMessage, findAndSetTarget]);
+  }, [currentStep, typeMessage, findAndSetTarget]); // 依存関係配列をcurrentStepのみに変更
 
   // クリーンアップ
   useEffect(() => {
