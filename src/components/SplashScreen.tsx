@@ -211,65 +211,61 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           />
 
           {/* 画像上のオーバーレイとメッセージ */}
-          <div className="absolute bottom-0 left-0 right-0 pb-8">
+          <div className="absolute bottom-0 left-0 right-0 pb-4">
             <div className="text-center w-full">
-              {/* 背景（透明度を上げて、角丸なし、端から端まで） */}
-              <div className="bg-white/20 backdrop-blur-sm py-8">
+              {/* 2行のメッセージ（背景なし、強い白縁） */}
+              <div className="space-y-2 px-4">
+                {/* 1行目: さぁ　ワンちゃんと */}
+                <h2 
+                  className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
+                  style={{ 
+                    fontFamily: 'Zen Maru Gothic, sans-serif',
+                    color: '#355E3B',
+                    textShadow: '0 0 10px rgba(255,255,255,1), 0 0 20px rgba(255,255,255,1), 0 0 30px rgba(255,255,255,0.8), 2px 2px 4px rgba(255,255,255,1), -2px -2px 4px rgba(255,255,255,1), 2px -2px 4px rgba(255,255,255,1), -2px 2px 4px rgba(255,255,255,1)'
+                  }}
+                >
+                  {message1.split('').map((char, index) => (
+                    <span
+                      key={index}
+                      className={`inline-block transition-all duration-700 ease-out ${
+                        textCharacters[index] 
+                          ? 'opacity-100 translate-y-0 scale-100' 
+                          : 'opacity-0 translate-y-4 scale-95'
+                      }`}
+                      style={{
+                        transitionDelay: `${index * 50}ms`
+                      }}
+                    >
+                      {char === '　' ? '\u00A0' : char}
+                    </span>
+                  ))}
+                </h2>
                 
-                {/* 2行のメッセージ */}
-                <div className="space-y-2 px-4">
-                  {/* 1行目: さぁ　ワンちゃんと */}
-                  <h2 
-                    className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
-                    style={{ 
-                      fontFamily: 'Zen Maru Gothic, sans-serif',
-                      color: '#355E3B',
-                      textShadow: '0 0 8px rgba(255,255,255,0.8), 0 0 16px rgba(255,255,255,0.6), 0 0 24px rgba(255,255,255,0.4)'
-                    }}
-                  >
-                    {message1.split('').map((char, index) => (
-                      <span
-                        key={index}
-                        className={`inline-block transition-all duration-700 ease-out ${
-                          textCharacters[index] 
-                            ? 'opacity-100 translate-y-0 scale-100' 
-                            : 'opacity-0 translate-y-4 scale-95'
-                        }`}
-                        style={{
-                          transitionDelay: `${index * 50}ms`
-                        }}
-                      >
-                        {char === '　' ? '\u00A0' : char}
-                      </span>
-                    ))}
-                  </h2>
-                  
-                  {/* 2行目: 冒険に出かけよう！ */}
-                  <h2 
-                    className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
-                    style={{ 
-                      fontFamily: 'Zen Maru Gothic, sans-serif',
-                      color: '#3C6E47',
-                      textShadow: '0 0 8px rgba(255,255,255,0.8), 0 0 16px rgba(255,255,255,0.6), 0 0 24px rgba(255,255,255,0.4)'
-                    }}
-                  >
-                    {message2.split('').map((char, index) => (
-                      <span
-                        key={index + message1.length}
-                        className={`inline-block transition-all duration-700 ease-out ${
-                          textCharacters[index + message1.length] 
-                            ? 'opacity-100 translate-y-0 scale-100' 
-                            : 'opacity-0 translate-y-4 scale-95'
-                        }`}
-                        style={{
-                          transitionDelay: `${(index + message1.length) * 50}ms`
-                        }}
-                      >
-                        {char}
-                      </span>
-                    ))}
-                  </h2>
-                </div>
+                {/* 2行目: 冒険に出かけよう！ */}
+                <h2 
+                  className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
+                  style={{ 
+                    fontFamily: 'Zen Maru Gothic, sans-serif',
+                    color: '#3C6E47',
+                    textShadow: '0 0 10px rgba(255,255,255,1), 0 0 20px rgba(255,255,255,1), 0 0 30px rgba(255,255,255,0.8), 2px 2px 4px rgba(255,255,255,1), -2px -2px 4px rgba(255,255,255,1), 2px -2px 4px rgba(255,255,255,1), -2px 2px 4px rgba(255,255,255,1)'
+                  }}
+                >
+                  {message2.split('').map((char, index) => (
+                    <span
+                      key={index + message1.length}
+                      className={`inline-block transition-all duration-700 ease-out ${
+                        textCharacters[index + message1.length] 
+                          ? 'opacity-100 translate-y-0 scale-100' 
+                          : 'opacity-0 translate-y-4 scale-95'
+                      }`}
+                      style={{
+                        transitionDelay: `${(index + message1.length) * 50}ms`
+                      }}
+                    >
+                      {char}
+                    </span>
+                  ))}
+                </h2>
               </div>
             </div>
           </div>
@@ -333,7 +329,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   }`}
                 >
                   <Mail className="w-4 h-4 mr-2" />
-                  マジックリンク
+                  Magic Link
                 </button>
               </div>
 
@@ -423,7 +419,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                     disabled={isLoading || !email}
                     className="w-full py-2 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isLoading ? '送信中...' : 'マジックリンクを送信'}
+                    {isLoading ? '送信中...' : 'Send Magic Link'}
                   </button>
                   <p className="text-xs text-gray-500 text-center">
                     メールアドレスに送信されるリンクをクリックしてログインします
