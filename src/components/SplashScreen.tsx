@@ -159,72 +159,75 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         {`@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@300;400;500;700;900&display=swap');`}
       </style>
 
-      <div className="min-h-screen flex flex-col relative">
-        {/* メインコンテンツエリア */}
-        <div className="flex-1 flex flex-col items-center justify-start relative">
-          {/* ワンちゃん画像（画面いっぱい） */}
-          <div className="w-full h-screen flex justify-center items-center relative overflow-hidden">
-            {/* 左上にロゴ */}
-            <div className="absolute top-6 left-6 z-10 flex items-center">
-              <div className="flex items-center">
-                {/* 青いアイコン */}
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
-                  <img
-                    src="/icons/icon_android_48x48.png"
-                    alt="ドッグパーク"
-                    className="w-8 h-8 sm:w-10 sm:h-10"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                      const parent = (e.target as HTMLElement).parentElement;
-                      if (parent) {
-                        parent.innerHTML = '<span class="text-white text-xl sm:text-2xl">🐕</span>';
-                      }
-                    }}
-                  />
-                </div>
-                
-                {/* テキスト部分 */}
-                <div className="ml-3 text-white">
-                  <h1 className="text-lg sm:text-xl font-bold leading-tight">
-                    ドッグパークJP
-                  </h1>
-                  <p className="text-xs sm:text-sm opacity-90 leading-tight">
-                    愛犬との素敵な時間を
-                  </p>
-                </div>
-              </div>
+      <div className="min-h-screen flex flex-col">
+        {/* 上部：白い背景エリア（ロゴ） */}
+        <div className="bg-white px-6 py-4 shadow-sm">
+          <div className="flex items-center">
+            {/* ロゴアイコン */}
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+              <img
+                src="/icons/icon_android_48x48.png"
+                alt="ドッグパーク"
+                className="w-8 h-8 sm:w-10 sm:h-10"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  const parent = (e.target as HTMLElement).parentElement;
+                  if (parent) {
+                    parent.innerHTML = '<span class="text-white text-xl sm:text-2xl">🐕</span>';
+                  }
+                }}
+              />
             </div>
+            
+            {/* テキスト部分 */}
+            <div className="ml-4">
+              <h1 className="text-xl sm:text-2xl font-bold leading-tight">
+                <span className="text-black">ドッグパーク</span>
+                <span className="text-blue-500">JP</span>
+              </h1>
+              <p className="text-sm sm:text-base text-gray-600 leading-tight">
+                愛犬との素敵な時間を
+              </p>
+            </div>
+          </div>
+        </div>
 
-            {/* 画面いっぱいの画像 */}
-            <img
-              src="/images/splash-dog-running.jpg"
-              alt="走るワンちゃん"
-              className="w-full h-full object-cover transition-opacity duration-1000"
-              style={{ 
-                opacity: imageOpacity,
-                filter: 'drop-shadow(0 15px 35px rgba(0,0,0,0.2))'
-              }}
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-                const parent = (e.target as HTMLElement).parentElement;
-                if (parent) {
-                  parent.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center"><div class="text-8xl sm:text-9xl animate-bounce opacity-80">🐕</div></div>';
-                }
-              }}
-            />
+        {/* 下部：画像エリア */}
+        <div className="flex-1 relative">
+          {/* 画面いっぱいの画像 */}
+          <img
+            src="/images/splash-dog-running.jpg"
+            alt="走るワンちゃん"
+            className="w-full h-full object-cover transition-opacity duration-1000"
+            style={{ 
+              opacity: imageOpacity,
+              filter: 'drop-shadow(0 15px 35px rgba(0,0,0,0.2))'
+            }}
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+              const parent = (e.target as HTMLElement).parentElement;
+              if (parent) {
+                parent.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center"><div class="text-8xl sm:text-9xl animate-bounce opacity-80">🐕</div></div>';
+              }
+            }}
+          />
 
-            {/* 画像上のオーバーレイとメッセージ */}
-            <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
-              <div className="text-center px-6 relative">
-                {/* 背景ぼかし */}
-                <div className="absolute inset-0 bg-white/60 backdrop-blur-md rounded-3xl shadow-2xl" />
+          {/* 画像上のオーバーレイとメッセージ */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center px-4 w-full">
+              {/* 背景（透明度を上げて、角丸なし、端から端まで） */}
+              <div className="bg-white/20 backdrop-blur-sm py-8">
                 
                 {/* 2行のメッセージ */}
-                <div className="relative space-y-2 py-8 px-6">
+                <div className="space-y-2">
                   {/* 1行目: さぁ　ワンちゃんと */}
                   <h2 
-                    className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-800 leading-tight tracking-wide"
-                    style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}
+                    className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
+                    style={{ 
+                      fontFamily: 'Zen Maru Gothic, sans-serif',
+                      color: '#355E3B',
+                      textShadow: '0 0 8px rgba(255,255,255,0.8), 0 0 16px rgba(255,255,255,0.6), 0 0 24px rgba(255,255,255,0.4)'
+                    }}
                   >
                     {message1.split('').map((char, index) => (
                       <span
@@ -235,7 +238,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                             : 'opacity-0 translate-y-4 scale-95'
                         }`}
                         style={{
-                          textShadow: '0 4px 16px rgba(0,0,0,0.3)',
                           transitionDelay: `${index * 50}ms`
                         }}
                       >
@@ -246,8 +248,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   
                   {/* 2行目: 冒険に出かけよう！ */}
                   <h2 
-                    className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-800 leading-tight tracking-wide"
-                    style={{ fontFamily: 'Zen Maru Gothic, sans-serif' }}
+                    className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
+                    style={{ 
+                      fontFamily: 'Zen Maru Gothic, sans-serif',
+                      color: '#3C6E47',
+                      textShadow: '0 0 8px rgba(255,255,255,0.8), 0 0 16px rgba(255,255,255,0.6), 0 0 24px rgba(255,255,255,0.4)'
+                    }}
                   >
                     {message2.split('').map((char, index) => (
                       <span
@@ -258,7 +264,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                             : 'opacity-0 translate-y-4 scale-95'
                         }`}
                         style={{
-                          textShadow: '0 4px 16px rgba(0,0,0,0.3)',
                           transitionDelay: `${(index + message1.length) * 50}ms`
                         }}
                       >
@@ -271,10 +276,24 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             </div>
           </div>
 
-          {/* ログインフォーム（フェードイン） */}
-          <div className={`w-full max-w-md mx-auto p-4 transition-all duration-800 ${
-            showLoginForm ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          } ${showLoginForm ? '' : 'absolute top-full'}`}>
+          {/* ローディングインジケーター（ログインフォーム表示前のみ） */}
+          {!showLoginForm && (
+            <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex items-center space-x-3 text-white opacity-80">
+              <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
+              <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
+              <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.6s' }} />
+              <span className="ml-4 text-lg font-light">
+                準備中...
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* ログインフォーム（フェードイン） */}
+        <div className={`w-full transition-all duration-800 ${
+          showLoginForm ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+        } ${showLoginForm ? '' : 'absolute top-full'}`}>
+          <div className="max-w-md mx-auto p-4">
             {/* サブスクリプション誘導メッセージ */}
             {infoMessage && (
               <div className="mb-6 p-4 bg-blue-50/80 backdrop-blur-sm border border-blue-200/50 rounded-xl">
@@ -444,18 +463,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
               </div>
             )}
           </div>
-
-          {/* ローディングインジケーター（ログインフォーム表示前のみ） */}
-          {!showLoginForm && (
-            <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex items-center space-x-3 text-white opacity-80">
-              <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
-              <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
-              <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.6s' }} />
-              <span className="ml-4 text-lg font-light">
-                準備中...
-              </span>
-            </div>
-          )}
         </div>
 
         {/* バージョン情報 */}
