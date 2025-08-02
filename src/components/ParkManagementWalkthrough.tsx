@@ -149,7 +149,7 @@ export function ParkManagementWalkthrough({
     console.log('⌨️ タイピング開始:', message);
     
     // メッセージが無効な場合はスキップ
-    if (!message || typeof message !== 'string') {
+    if (!message || typeof message !== 'string' || message.trim() === '') {
       console.log('⚠️ 無効なメッセージのため、タイピングをスキップ');
       setIsTyping(false);
       setMessageText('');
@@ -168,14 +168,20 @@ export function ParkManagementWalkthrough({
     }
     
     setIsTyping(true);
-    setMessageText('');
+    setMessageText(''); // 明示的にクリア
     
+    const cleanMessage = String(message).trim(); // 文字列として確実に変換
     let charIndex = 0;
+    
     const typeChar = () => {
-      if (charIndex < message.length) {
-        const char = message[charIndex];
-        if (char !== undefined) {
-          setMessageText(prev => prev + char);
+      if (charIndex < cleanMessage.length) {
+        const char = cleanMessage[charIndex];
+        if (char && char !== 'undefined') { // undefinedが文字列として混入することを防ぐ
+          setMessageText(prev => {
+            const newText = (prev || '') + char;
+            console.log('📝 文字追加:', char, '現在のテキスト:', newText);
+            return newText;
+          });
         }
         charIndex++;
         typingTimeoutRef.current = setTimeout(typeChar, 50);
@@ -217,9 +223,19 @@ export function ParkManagementWalkthrough({
     
     console.log('🎯 ステップ変更:', currentStepData.id);
     
+    // messageTextを明示的にクリア
+    setMessageText('');
+    setIsTyping(false);
+    
     // 少し待ってからタイピングアニメーション開始（UIの安定化のため）
     setTimeout(() => {
-      typeMessage(currentStepData.message);
+      if (currentStepData.message && typeof currentStepData.message === 'string') {
+        typeMessage(currentStepData.message);
+      } else {
+        console.error('無効なメッセージ:', currentStepData.message);
+        setMessageText('メッセージを読み込めませんでした。');
+        setIsTyping(false);
+      }
     }, 100);
     
     // アクションがある場合は実行
