@@ -394,7 +394,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                       <button
                         type="submit"
                         disabled={isLoading || !email || !password}
-                        className="w-full py-2 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-2 px-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isLoading ? '処理中...' : 'ログイン'}
                       </button>
@@ -428,7 +428,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                       <button
                         type="submit"
                         disabled={isLoading || !email}
-                        className="w-full py-2 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-2 px-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isLoading ? '送信中...' : 'Send Magic Link'}
                       </button>
