@@ -69,18 +69,25 @@ export function ParkManagementWalkthrough({
       targetSelector: '[data-walkthrough="location-map"]',
       position: 'top',
       action: () => {
-        // マップが見えやすい位置にスクロール
+        // マップがポップオーバーの下に見えるよう調整
         setTimeout(() => {
           const mapElement = document.querySelector('[data-walkthrough="location-map"]');
           if (mapElement) {
             const rect = mapElement.getBoundingClientRect();
-            const scrollTop = window.pageYOffset + rect.top - 100; // マップの少し上にスクロール
+            // ポップオーバーが上部（120px + 高さ約250px = 370px）の下にマップが見えるようスクロール
+            const scrollTop = window.pageYOffset + rect.top - 400; 
             window.scrollTo({
               top: Math.max(0, scrollTop),
               behavior: 'smooth'
             });
+          } else {
+            // マップ要素が見つからない場合は、位置調整セクションにスクロール
+            window.scrollTo({
+              top: 600,
+              behavior: 'smooth'
+            });
           }
-        }, 200);
+        }, 300); // アニメーションの完了を待つ
       }
     },
     {
@@ -337,17 +344,27 @@ export function ParkManagementWalkthrough({
       {/* ツールチップ */}
       <div 
         ref={tooltipRef}
-        className="fixed z-50 w-80 max-w-sm"
+        className={`fixed z-50 transition-all duration-500 ease-out ${
+          currentStepData.id === 'map-explanation' 
+            ? 'w-96 max-w-lg animate-expand' 
+            : 'w-80 max-w-sm'
+        }`}
         style={{
-          top: targetElement && currentStepData.position === 'top' 
+          top: currentStepData.id === 'map-explanation'
+            ? '120px' // マップステップでは固定位置（上部）
+            : targetElement && currentStepData.position === 'top' 
             ? `${targetElement.getBoundingClientRect().top + window.pageYOffset - 200}px`
             : targetElement && currentStepData.position === 'bottom'
             ? `${targetElement.getBoundingClientRect().bottom + window.pageYOffset + 60}px`
             : '50%',
-          left: targetElement 
-            ? `${Math.max(16, Math.min(window.innerWidth - 336, targetElement.getBoundingClientRect().left + window.pageXOffset + (targetElement.getBoundingClientRect().width / 2) - 160))}px`
+          left: currentStepData.id === 'map-explanation'
+            ? '50%' // マップステップでは中央に配置
+            : targetElement 
+            ? `${Math.max(16, Math.min(window.innerWidth - (currentStepData.id === 'map-explanation' ? 400 : 336), targetElement.getBoundingClientRect().left + window.pageXOffset + (targetElement.getBoundingClientRect().width / 2) - (currentStepData.id === 'map-explanation' ? 200 : 160)))}px`
             : '50%',
-          transform: !targetElement ? 'translate(-50%, -50%)' : 'none'
+          transform: currentStepData.id === 'map-explanation'
+            ? 'translateX(-50%)' // マップステップでは中央揃え
+            : !targetElement ? 'translate(-50%, -50%)' : 'none'
         }}
       >
         <Card className="relative shadow-2xl border-blue-200">
@@ -399,4 +416,30 @@ export function ParkManagementWalkthrough({
   );
 }
 
-export default ParkManagementWalkthrough; 
+export default ParkManagementWalkthrough;
+
+// CSS-in-JSアニメーション用のスタイル
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes expand {
+    0% {
+      width: 320px;
+      height: 160px;
+      opacity: 0.8;
+    }
+    100% {
+      width: 384px;
+      height: auto;
+      opacity: 1;
+    }
+  }
+  
+  .animate-expand {
+    animation: expand 0.5s ease-out forwards;
+  }
+`;
+
+if (!document.head.querySelector('style[data-walkthrough]')) {
+  style.setAttribute('data-walkthrough', 'true');
+  document.head.appendChild(style);
+} 
