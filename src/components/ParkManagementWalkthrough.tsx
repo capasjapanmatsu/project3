@@ -212,7 +212,9 @@ export function ParkManagementWalkthrough({
     if (element) {
       console.log('🎯 ターゲット要素を発見:', currentStepData.targetSelector);
       setTargetElement(element);
-      scrollToTarget(element);
+      
+      // より明るいスポットライト効果を適用
+      highlightElement(element, currentStepData.targetSelector);
       
       if (currentStepData.showArrow) {
         setShowArrow(true);
@@ -222,7 +224,55 @@ export function ParkManagementWalkthrough({
       console.log('❌ ターゲット要素が見つかりません:', currentStepData.targetSelector);
       setTargetElement(null);
     }
-  }, [currentStepData, scrollToTarget]);
+  }, [currentStepData]);
+
+  // スポットライト効果を適用する関数
+  const highlightElement = useCallback((element: HTMLElement, selector: string) => {
+    console.log('💡 スポットライト効果を適用:', selector);
+    
+    // スムーズスクロール
+    element.scrollIntoView({ 
+      behavior: 'smooth', 
+      block: 'center',
+      inline: 'center'
+    });
+    
+    // 既存のスポットライト効果をクリア
+    document.querySelectorAll('[data-walkthrough-spotlight]').forEach(el => {
+      el.removeAttribute('data-walkthrough-spotlight');
+      (el as HTMLElement).style.cssText = (el as HTMLElement).style.cssText.replace(/z-index:\s*9999;?/g, '');
+    });
+    
+    // より明るいスポットライト効果を適用
+    element.setAttribute('data-walkthrough-spotlight', 'true');
+    const originalZIndex = element.style.zIndex;
+    const originalPosition = element.style.position;
+    const originalBoxShadow = element.style.boxShadow;
+    const originalTransform = element.style.transform;
+    
+    // 明るく目立たせるスタイルを適用
+    element.style.cssText += `
+      position: relative !important;
+      z-index: 9999 !important;
+      box-shadow: 0 0 0 4px #3B82F6, 0 0 0 8px rgba(59, 130, 246, 0.3), 0 0 30px rgba(59, 130, 246, 0.8), 0 0 60px rgba(59, 130, 246, 0.4) !important;
+      transform: scale(1.02) !important;
+      transition: all 0.3s ease-in-out !important;
+      background-color: rgba(255, 255, 255, 0.95) !important;
+      border-radius: 8px !important;
+    `;
+    
+    // クリーンアップ関数を保存
+    (element as HTMLElement & { __walkthroughCleanup?: () => void }).__walkthroughCleanup = () => {
+      element.removeAttribute('data-walkthrough-spotlight');
+      element.style.zIndex = originalZIndex;
+      element.style.position = originalPosition;
+      element.style.boxShadow = originalBoxShadow;
+      element.style.transform = originalTransform;
+      element.style.backgroundColor = '';
+      element.style.borderRadius = '';
+      element.style.transition = '';
+    };
+  }, []);
 
   // ステップ変更時の処理
   useEffect(() => {
@@ -263,6 +313,14 @@ export function ParkManagementWalkthrough({
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
+      
+      // スポットライト効果をクリーンアップ
+      document.querySelectorAll('[data-walkthrough-spotlight]').forEach(el => {
+        const element = el as HTMLElement & { __walkthroughCleanup?: () => void };
+        if (element.__walkthroughCleanup) {
+          element.__walkthroughCleanup();
+        }
+      });
     };
   }, []);
 
@@ -352,6 +410,8 @@ export function ParkManagementWalkthrough({
         style={{
           top: currentStepData.id === 'map-explanation'
             ? '120px' // マップステップでは固定位置（上部）
+            : currentStepData.id === 'save-location'
+            ? '200px' // 位置を保存ステップでは固定位置（中央上部）
             : targetElement && currentStepData.position === 'top' 
             ? `${targetElement.getBoundingClientRect().top + window.pageYOffset - 200}px`
             : targetElement && currentStepData.position === 'bottom'
@@ -359,11 +419,13 @@ export function ParkManagementWalkthrough({
             : '50%',
           left: currentStepData.id === 'map-explanation'
             ? '50%' // マップステップでは中央に配置
+            : currentStepData.id === 'save-location'
+            ? '50%' // 位置を保存ステップでは中央に配置
             : targetElement 
             ? `${Math.max(16, Math.min(window.innerWidth - (currentStepData.id === 'map-explanation' ? 400 : 336), targetElement.getBoundingClientRect().left + window.pageXOffset + (targetElement.getBoundingClientRect().width / 2) - (currentStepData.id === 'map-explanation' ? 200 : 160)))}px`
             : '50%',
-          transform: currentStepData.id === 'map-explanation'
-            ? 'translateX(-50%)' // マップステップでは中央揃え
+          transform: currentStepData.id === 'map-explanation' || currentStepData.id === 'save-location'
+            ? 'translateX(-50%)' // マップステップと位置保存ステップでは中央揃え
             : !targetElement ? 'translate(-50%, -50%)' : 'none'
         }}
       >
