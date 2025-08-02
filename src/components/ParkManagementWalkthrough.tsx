@@ -382,7 +382,9 @@ export function ParkManagementWalkthrough({
     <>
       {/* オーバーレイ - 他の要素を暗くする（少し明るく調整） */}
       <div className={`fixed inset-0 bg-black bg-opacity-50 ${
-        currentStepData.id === 'map-explanation' ? 'z-[10000]' : 'z-40'
+        currentStepData.id === 'map-explanation' || currentStepData.id === 'setup-smartlock' 
+          ? 'z-[10000]' 
+          : 'z-40'
       }`} />
       
       {/* ターゲット要素のハイライト - FAB風に目立たせる */}
@@ -426,6 +428,8 @@ export function ParkManagementWalkthrough({
         className={`fixed transition-all duration-500 ease-out ${
           currentStepData.id === 'map-explanation' 
             ? 'w-96 max-w-lg animate-expand z-[10001]' // マップステップでは最前面
+            : currentStepData.id === 'setup-smartlock'
+            ? 'w-80 max-w-sm z-[10001]' // スマートロック設定ステップも最前面
             : 'w-80 max-w-sm z-50'
         }`}
         style={{
@@ -433,6 +437,8 @@ export function ParkManagementWalkthrough({
             ? '80px' // マップステップでは上部固定（少し上に調整）
             : currentStepData.id === 'save-location'
             ? '200px' // 位置を保存ステップでは固定位置（中央上部）
+            : currentStepData.id === 'setup-smartlock'
+            ? '120px' // スマートロック設定ステップでは上部固定
             : targetElement && currentStepData.position === 'top' 
             ? `${targetElement.getBoundingClientRect().top + window.pageYOffset - 200}px`
             : targetElement && currentStepData.position === 'bottom'
@@ -442,11 +448,13 @@ export function ParkManagementWalkthrough({
             ? '50%' // マップステップでは中央に配置
             : currentStepData.id === 'save-location'
             ? '50%' // 位置を保存ステップでは中央に配置
+            : currentStepData.id === 'setup-smartlock'
+            ? '50%' // スマートロック設定ステップでは中央に配置
             : targetElement 
             ? `${Math.max(16, Math.min(window.innerWidth - (currentStepData.id === 'map-explanation' ? 400 : 336), targetElement.getBoundingClientRect().left + window.pageXOffset + (targetElement.getBoundingClientRect().width / 2) - (currentStepData.id === 'map-explanation' ? 200 : 160)))}px`
             : '50%',
-          transform: currentStepData.id === 'map-explanation' || currentStepData.id === 'save-location'
-            ? 'translateX(-50%)' // マップステップと位置保存ステップでは中央揃え
+          transform: currentStepData.id === 'map-explanation' || currentStepData.id === 'save-location' || currentStepData.id === 'setup-smartlock'
+            ? 'translateX(-50%)' // マップステップ、位置保存ステップ、スマートロック設定ステップでは中央揃え
             : !targetElement ? 'translate(-50%, -50%)' : 'none'
         }}
       >
