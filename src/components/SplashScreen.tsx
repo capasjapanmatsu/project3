@@ -166,22 +166,33 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           <div className="w-full h-screen flex justify-center items-center relative overflow-hidden">
             {/* 左上にロゴ */}
             <div className="absolute top-6 left-6 z-10 flex items-center">
-              <img
-                src="/icons/icon.svg"
-                alt="ドッグパークJP"
-                className="w-12 h-12 sm:w-16 sm:h-16"
-                onError={(e) => {
-                  // アイコンが見つからない場合は絵文字を表示
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  const parent = (e.target as HTMLElement).parentElement;
-                  if (parent) {
-                    parent.innerHTML = '<div class="w-12 h-12 sm:w-16 sm:h-16 bg-blue-400 rounded-full flex items-center justify-center text-white text-2xl sm:text-3xl">🐕</div><h1 class="ml-3 text-lg sm:text-xl font-medium text-blue-400 opacity-90">ドッグパークJP</h1>';
-                  }
-                }}
-              />
-              <h1 className="ml-3 text-lg sm:text-xl font-medium text-blue-400 opacity-90">
-                ドッグパークJP
-              </h1>
+              <div className="flex items-center">
+                {/* 青いアイコン */}
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                  <img
+                    src="/icons/icon.svg"
+                    alt="ドッグパーク"
+                    className="w-8 h-8 sm:w-10 sm:h-10"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      const parent = (e.target as HTMLElement).parentElement;
+                      if (parent) {
+                        parent.innerHTML = '<span class="text-white text-xl sm:text-2xl">🐕</span>';
+                      }
+                    }}
+                  />
+                </div>
+                
+                {/* テキスト部分 */}
+                <div className="ml-3 text-white">
+                  <h1 className="text-lg sm:text-xl font-bold leading-tight">
+                    ドッグパークJP
+                  </h1>
+                  <p className="text-xs sm:text-sm opacity-90 leading-tight">
+                    愛犬との素敵な時間を
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* 画面いっぱいの画像 */}
