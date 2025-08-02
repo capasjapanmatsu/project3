@@ -1039,7 +1039,7 @@ export function ParkManagement() {
               <div className="text-center py-8">
                 <Key className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600 mb-4">スマートロックが設定されていません</p>
-                <Button onClick={() => setActiveTab('settings')}>
+                <Button onClick={() => setActiveTab('settings')} data-walkthrough="setup-smartlock-button">
                   スマートロックを設定する
                 </Button>
               </div>
@@ -1309,18 +1309,20 @@ export function ParkManagement() {
                 </div>
 
                 {park && (
-                  <LocationEditMap
-                    initialAddress={editForm.address}
-                    initialLatitude={editForm.latitude || undefined}
-                    initialLongitude={editForm.longitude || undefined}
-                    onLocationChange={(lat, lng, address) => {
-                      setEditForm(prev => ({
-                        ...prev,
-                        latitude: lat,
-                        longitude: lng
-                      }));
-                    }}
-                  />
+                  <div data-walkthrough="location-map">
+                    <LocationEditMap
+                      initialAddress={editForm.address}
+                      initialLatitude={editForm.latitude || undefined}
+                      initialLongitude={editForm.longitude || undefined}
+                      onLocationChange={(lat, lng, address) => {
+                        setEditForm(prev => ({
+                          ...prev,
+                          latitude: lat,
+                          longitude: lng
+                        }));
+                      }}
+                    />
+                  </div>
                 )}
                 
                 <div className="flex justify-end">

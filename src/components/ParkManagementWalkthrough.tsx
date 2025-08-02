@@ -67,7 +67,21 @@ export function ParkManagementWalkthrough({
       title: '🗺️ マップで位置を確認',
       message: 'マップ上の赤いマーカーをドラッグして、実際のドッグランの位置に調整してください。正確な位置は利用者が見つけやすくするために重要です！',
       targetSelector: '[data-walkthrough="location-map"]',
-      position: 'top'
+      position: 'top',
+      action: () => {
+        // マップが見えやすい位置にスクロール
+        setTimeout(() => {
+          const mapElement = document.querySelector('[data-walkthrough="location-map"]');
+          if (mapElement) {
+            const rect = mapElement.getBoundingClientRect();
+            const scrollTop = window.pageYOffset + rect.top - 100; // マップの少し上にスクロール
+            window.scrollTo({
+              top: Math.max(0, scrollTop),
+              behavior: 'smooth'
+            });
+          }
+        }, 200);
+      }
     },
     {
       id: 'save-location',
@@ -134,6 +148,20 @@ export function ParkManagementWalkthrough({
   const typeMessage = useCallback((message: string) => {
     console.log('⌨️ タイピング開始:', message);
     
+    // メッセージが無効な場合はスキップ
+    if (!message || typeof message !== 'string') {
+      console.log('⚠️ 無効なメッセージのため、タイピングをスキップ');
+      setIsTyping(false);
+      setMessageText('');
+      return;
+    }
+    
+    // 既にタイピング中の場合は実行しない
+    if (isTyping) {
+      console.log('⚠️ 既にタイピング中のため、新しいタイピングをスキップ');
+      return;
+    }
+    
     // 前のタイピングをクリア
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -145,7 +173,10 @@ export function ParkManagementWalkthrough({
     let charIndex = 0;
     const typeChar = () => {
       if (charIndex < message.length) {
-        setMessageText(prev => prev + message[charIndex]);
+        const char = message[charIndex];
+        if (char !== undefined) {
+          setMessageText(prev => prev + char);
+        }
         charIndex++;
         typingTimeoutRef.current = setTimeout(typeChar, 50);
       } else {
@@ -155,7 +186,7 @@ export function ParkManagementWalkthrough({
     };
     
     typeChar();
-  }, []); // 依存関係配列を空に戻す
+  }, [isTyping]);
 
   // ターゲット要素の検索と設定
   const findAndSetTarget = useCallback(() => {
@@ -201,7 +232,7 @@ export function ParkManagementWalkthrough({
       findAndSetTarget();
     }, currentStepData.action ? 600 : 200);
     
-  }, [currentStep, typeMessage, findAndSetTarget]); // 依存関係配列をcurrentStepのみに変更
+  }, [currentStep]); // 依存関係配列をcurrentStepのみに変更
 
   // クリーンアップ
   useEffect(() => {
@@ -249,20 +280,21 @@ export function ParkManagementWalkthrough({
 
   return (
     <>
-      {/* オーバーレイ - 他の要素を暗くする */}
-      <div className="fixed inset-0 bg-black bg-opacity-60 z-40" />
+      {/* オーバーレイ - 他の要素を暗くする（少し明るく調整） */}
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-40" />
       
-      {/* ターゲット要素のハイライト */}
+      {/* ターゲット要素のハイライト - FAB風に目立たせる */}
       {targetElement && (
         <div
-          className="fixed pointer-events-none z-50 ring-4 ring-blue-500 ring-opacity-75 rounded-lg"
+          className="fixed pointer-events-none z-50 rounded-lg shadow-2xl animate-pulse"
           style={{
-            top: `${targetElement.getBoundingClientRect().top + window.pageYOffset - 4}px`,
-            left: `${targetElement.getBoundingClientRect().left + window.pageXOffset - 4}px`,
-            width: `${targetElement.getBoundingClientRect().width + 8}px`,
-            height: `${targetElement.getBoundingClientRect().height + 8}px`,
-            background: 'rgba(59, 130, 246, 0.1)',
-            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+            top: `${targetElement.getBoundingClientRect().top + window.pageYOffset - 8}px`,
+            left: `${targetElement.getBoundingClientRect().left + window.pageXOffset - 8}px`,
+            width: `${targetElement.getBoundingClientRect().width + 16}px`,
+            height: `${targetElement.getBoundingClientRect().height + 16}px`,
+            background: 'rgba(59, 130, 246, 0.2)',
+            border: '4px solid #3B82F6',
+            boxShadow: '0 0 0 4px rgba(59, 130, 246, 0.3), 0 0 30px rgba(59, 130, 246, 0.6), 0 0 0 9999px rgba(0, 0, 0, 0.4)',
           }}
         />
       )}
@@ -313,7 +345,7 @@ export function ParkManagementWalkthrough({
           <div className="p-6">
             <h3 className="text-lg font-semibold mb-4 pr-8">{currentStepData.title}</h3>
             <div className="text-gray-600 mb-6 min-h-[3em] whitespace-pre-line">
-              {messageText}
+              {messageText || ''}
               {isTyping && <span className="animate-pulse">|</span>}
             </div>
             
