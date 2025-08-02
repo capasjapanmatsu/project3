@@ -211,13 +211,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           />
 
           {/* 画像上のオーバーレイとメッセージ */}
-          <div className="absolute inset-0 flex items-end justify-center pb-32">
-            <div className="text-center px-4 w-full">
+          <div className="absolute bottom-0 left-0 right-0 pb-8">
+            <div className="text-center w-full">
               {/* 背景（透明度を上げて、角丸なし、端から端まで） */}
               <div className="bg-white/20 backdrop-blur-sm py-8">
                 
                 {/* 2行のメッセージ */}
-                <div className="space-y-2">
+                <div className="space-y-2 px-4">
                   {/* 1行目: さぁ　ワンちゃんと */}
                   <h2 
                     className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
