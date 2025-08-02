@@ -220,20 +220,20 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
                   style={{ 
                     fontFamily: 'Zen Maru Gothic, sans-serif',
-                    color: '#355E3B',
                     textShadow: '0 0 10px rgba(255,255,255,1), 0 0 20px rgba(255,255,255,1), 0 0 30px rgba(255,255,255,0.8), 2px 2px 4px rgba(255,255,255,1), -2px -2px 4px rgba(255,255,255,1), 2px -2px 4px rgba(255,255,255,1), -2px 2px 4px rgba(255,255,255,1)'
                   }}
                 >
                   {message1.split('').map((char, index) => (
                     <span
                       key={index}
-                      className={`inline-block transition-all duration-700 ease-out ${
+                      className={`inline-block transition-all duration-1000 ease-out ${
                         textCharacters[index] 
                           ? 'opacity-100 translate-y-0 scale-100' 
                           : 'opacity-0 translate-y-4 scale-95'
                       }`}
                       style={{
-                        transitionDelay: `${index * 50}ms`
+                        transitionDelay: `${index * 100}ms`,
+                        color: textCharacters[index] ? '#355E3B' : 'rgba(53, 94, 59, 0.3)'
                       }}
                     >
                       {char === '　' ? '\u00A0' : char}
@@ -246,20 +246,20 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
                   style={{ 
                     fontFamily: 'Zen Maru Gothic, sans-serif',
-                    color: '#3C6E47',
                     textShadow: '0 0 10px rgba(255,255,255,1), 0 0 20px rgba(255,255,255,1), 0 0 30px rgba(255,255,255,0.8), 2px 2px 4px rgba(255,255,255,1), -2px -2px 4px rgba(255,255,255,1), 2px -2px 4px rgba(255,255,255,1), -2px 2px 4px rgba(255,255,255,1)'
                   }}
                 >
                   {message2.split('').map((char, index) => (
                     <span
                       key={index + message1.length}
-                      className={`inline-block transition-all duration-700 ease-out ${
+                      className={`inline-block transition-all duration-1000 ease-out ${
                         textCharacters[index + message1.length] 
                           ? 'opacity-100 translate-y-0 scale-100' 
                           : 'opacity-0 translate-y-4 scale-95'
                       }`}
                       style={{
-                        transitionDelay: `${(index + message1.length) * 50}ms`
+                        transitionDelay: `${(index + message1.length) * 100}ms`,
+                        color: textCharacters[index + message1.length] ? '#3C6E47' : 'rgba(60, 110, 71, 0.3)'
                       }}
                     >
                       {char}
