@@ -170,7 +170,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                 {/* 青いアイコン */}
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
                   <img
-                    src="/icons/icon.svg"
+                    src="/icons/icon_android_48x48.png"
                     alt="ドッグパーク"
                     className="w-8 h-8 sm:w-10 sm:h-10"
                     onError={(e) => {
