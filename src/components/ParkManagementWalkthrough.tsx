@@ -239,8 +239,9 @@ export function ParkManagementWalkthrough({
     
     // 既存のスポットライト効果をクリア
     document.querySelectorAll('[data-walkthrough-spotlight]').forEach(el => {
-      el.removeAttribute('data-walkthrough-spotlight');
-      (el as HTMLElement).style.cssText = (el as HTMLElement).style.cssText.replace(/z-index:\s*9999;?/g, '');
+      if ((el as any).__walkthroughCleanup) {
+        (el as any).__walkthroughCleanup();
+      }
     });
     
     // より明るいスポットライト効果を適用
@@ -249,17 +250,34 @@ export function ParkManagementWalkthrough({
     const originalPosition = element.style.position;
     const originalBoxShadow = element.style.boxShadow;
     const originalTransform = element.style.transform;
+    const originalBackgroundColor = element.style.backgroundColor;
     
-    // 明るく目立たせるスタイルを適用
-    element.style.cssText += `
-      position: relative !important;
-      z-index: 9999 !important;
-      box-shadow: 0 0 0 4px #3B82F6, 0 0 0 8px rgba(59, 130, 246, 0.3), 0 0 30px rgba(59, 130, 246, 0.8), 0 0 60px rgba(59, 130, 246, 0.4) !important;
-      transform: scale(1.02) !important;
-      transition: all 0.3s ease-in-out !important;
-      background-color: rgba(255, 255, 255, 0.95) !important;
-      border-radius: 8px !important;
-    `;
+    // ボタンかどうかを判定
+    const isButton = selector.includes('button') || element.tagName.toLowerCase() === 'button' || element.getAttribute('role') === 'button';
+    
+    if (isButton) {
+      // ボタンの場合：背景色は変更せず、強いグロー効果とスケールアップで目立たせる
+      element.style.cssText += `
+        position: relative !important;
+        z-index: 9999 !important;
+        box-shadow: 0 0 0 4px #3B82F6, 0 0 0 8px rgba(59, 130, 246, 0.5), 0 0 40px rgba(59, 130, 246, 1.0), 0 0 80px rgba(59, 130, 246, 0.6) !important;
+        transform: scale(1.05) !important;
+        transition: all 0.3s ease-in-out !important;
+        border-radius: 8px !important;
+        filter: brightness(1.1) contrast(1.1) !important;
+      `;
+    } else {
+      // その他の要素：従来通りの背景色変更も含める
+      element.style.cssText += `
+        position: relative !important;
+        z-index: 9999 !important;
+        box-shadow: 0 0 0 4px #3B82F6, 0 0 0 8px rgba(59, 130, 246, 0.3), 0 0 30px rgba(59, 130, 246, 0.8), 0 0 60px rgba(59, 130, 246, 0.4) !important;
+        transform: scale(1.02) !important;
+        transition: all 0.3s ease-in-out !important;
+        background-color: rgba(255, 255, 255, 0.95) !important;
+        border-radius: 8px !important;
+      `;
+    }
     
     // クリーンアップ関数を保存
     (element as HTMLElement & { __walkthroughCleanup?: () => void }).__walkthroughCleanup = () => {
@@ -268,9 +286,10 @@ export function ParkManagementWalkthrough({
       element.style.position = originalPosition;
       element.style.boxShadow = originalBoxShadow;
       element.style.transform = originalTransform;
-      element.style.backgroundColor = '';
+      element.style.backgroundColor = originalBackgroundColor;
       element.style.borderRadius = '';
       element.style.transition = '';
+      element.style.filter = '';
     };
   }, []);
 
