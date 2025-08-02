@@ -623,6 +623,7 @@ export function ParkManagement() {
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
           onClick={() => setActiveTab('pins')}
+          data-walkthrough="pins-tab"
         >
           <Key className="w-4 h-4 inline mr-2" />
           PINコード管理
@@ -645,6 +646,7 @@ export function ParkManagement() {
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                     onClick={() => setActiveTab('location')}
+                    data-walkthrough="location-tab"
                   >
                     <MapPin className="w-4 h-4 inline mr-2" />
                     位置調整
@@ -1324,6 +1326,7 @@ export function ParkManagement() {
                 <div className="flex justify-end">
                     <Button
                       type="button"
+                      data-walkthrough="save-location-button"
                     onClick={async () => {
                       if (!park || !editForm.latitude || !editForm.longitude) {
                         console.log('Missing required data:', { park: !!park, latitude: editForm.latitude, longitude: editForm.longitude });
