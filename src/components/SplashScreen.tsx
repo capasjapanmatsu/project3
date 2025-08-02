@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 import { logger } from '../utils/logger';
-import { notify } from '../utils/notification';
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -86,10 +85,10 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         { name: '認証システム', loader: () => import('../context/AuthContext') },
         { name: 'ナビゲーション', loader: () => import('../components/Navbar') },
         { name: 'フッター', loader: () => import('../components/Footer') },
-        { name: 'ダッシュボード', loader: () => import('../pages/Dashboard') },
+        { name: 'ユーザーダッシュボード', loader: () => import('../pages/UserDashboard') },
         { name: 'ドッグラン検索', loader: () => import('../pages/DogParkList') },
-        { name: 'ユーザー設定', loader: () => import('../pages/Settings') },
-        { name: 'プロフィール', loader: () => import('../pages/Profile') },
+        { name: 'プロフィール設定', loader: () => import('../pages/ProfileSettings') },
+        { name: 'ドッグラン登録', loader: () => import('../pages/DogRegistration') },
       ];
 
       setLoadingTasks(tasks.map(task => task.name));
@@ -145,7 +144,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       const result = await signInWithMagicLink(email);
       if (result.success) {
         localStorage.setItem('lastUsedEmail', email);
-        notify.success('ログインリンクを送信しました。メールをご確認ください。');
+        // Magic Linkの場合は送信完了メッセージを表示
+        setError('');
+        console.log('✅ Magic Link送信完了');
       } else {
         setError(result.error || 'Magic Linkの送信に失敗しました。もう一度お試しください。');
       }
@@ -166,7 +167,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     try {
       const result = await signInWithPassword(email, password);
       if (result.success) {
-        notify.success('ログインしました。');
+        console.log('✅ ログイン成功');
         localStorage.setItem('hasSeenSplash', 'true');
         onComplete();
         navigate(redirectTo);
