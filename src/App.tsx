@@ -179,6 +179,24 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App: React.FC = () => {
+  // スプラッシュ画面の制御
+  const [showSplash, setShowSplash] = useState(() => {
+    // 初回起動時のみスプラッシュ画面を表示
+    const hasSeenSplash = localStorage.getItem('hasSeenSplash');
+    return !hasSeenSplash;
+  });
+
+  const handleSplashComplete = () => {
+    // スプラッシュ画面完了時の処理
+    localStorage.setItem('hasSeenSplash', 'true');
+    setShowSplash(false);
+  };
+
+  // スプラッシュ画面表示中は他のコンテンツを隠す
+  if (showSplash) {
+    return <SplashScreen onComplete={handleSplashComplete} />;
+  }
+
   const [showCampaignModal, setShowCampaignModal] = useState(false);
 
   // 初回訪問時のキャンペーンモーダル表示制御
