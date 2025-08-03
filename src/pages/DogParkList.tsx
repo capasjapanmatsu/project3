@@ -110,7 +110,7 @@ export function DogParkList() {
     void loadInitialData();
   }, [activeView, fetchParkData, fetchFacilities]);
 
-  // ドッグパークを距離順でソート
+  // ドッグランを距離順でソート
   const sortedParks = useMemo(() => {
     if (!userLocation || parks.length === 0) {
       return parks;
@@ -383,7 +383,7 @@ export function DogParkList() {
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900">ドッグパーク一覧</h1>
+            <h1 className="text-3xl font-bold text-gray-900">ドッグラン一覧</h1>
             <p className="mt-2 text-gray-600">お近くのドッグランを見つけましょう</p>
           </div>
         </div>
