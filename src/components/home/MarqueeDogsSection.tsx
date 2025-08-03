@@ -21,14 +21,14 @@ export const MarqueeDogsSection: React.FC<MarqueeDogsSectionProps> = React.memo(
 
   return (
     <section className="bg-gray-50 p-6 rounded-lg">
-      <div className="flex justify-between items-center mb-6">
-        <div className="relative">
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+      <div className="flex justify-center items-center mb-6 relative">
+        <div className="text-center relative">
+          <h2 className="text-2xl font-bold text-gray-900 flex items-center justify-center">
             <PawPrint className="w-6 h-6 text-blue-600 mr-2" />
             最近仲間入りしました！
           </h2>
-          <div className="absolute -top-10 -left-16">
-            <div className="bg-yellow-100 rounded-full px-4 py-2 text-yellow-800 font-bold transform -rotate-12">
+          <div className="absolute -top-8 -right-4">
+            <div className="bg-yellow-100 rounded-full px-4 py-2 text-yellow-800 font-bold transform -rotate-12 text-sm">
               New
             </div>
           </div>
