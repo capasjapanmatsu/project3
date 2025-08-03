@@ -79,12 +79,24 @@ export const FooterBanner: React.FC<FooterBannerProps> = ({ banners: propBanners
 
   // デバッグ用：バナー数をコンソールに出力
   console.log('FooterBanner - banners.length:', banners.length);
+  console.log('FooterBanner - Component is rendering!');
 
-  if (banners.length === 0) {
-    return null;
-  }
+  // デバッグ用：強制表示（一時的）
+  // if (banners.length === 0) {
+  //   return null;
+  // }
 
-  const currentBanner = banners[currentIndex];
+  const currentBanner = banners[currentIndex] || {
+    id: 'debug-footer-banner',
+    title: 'デバッグ用フッターバナー',
+    description: 'この表示が見えている場合、フッターバナーは正常に動作しています。',
+    image_url: '',
+    website_url: '/sponsor-application',
+    banner_type: 'footer' as const,
+    is_active: true,
+    display_order: 1,
+    created_at: new Date().toISOString()
+  };
 
   return (
     <section 
@@ -92,6 +104,7 @@ export const FooterBanner: React.FC<FooterBannerProps> = ({ banners: propBanners
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       aria-label="フッターバナー広告"
+      style={{ border: '3px solid blue' }} // デバッグ用：見やすくするため
     >
       {/* フッターバナーコンテナ */}
       <div className="max-w-6xl mx-auto">

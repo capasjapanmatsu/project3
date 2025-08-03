@@ -78,12 +78,24 @@ export const SidebarBanner: React.FC<SidebarBannerProps> = ({ banners: propBanne
 
   // デバッグ用：バナー数をコンソールに出力
   console.log('SidebarBanner - banners.length:', banners.length);
+  console.log('SidebarBanner - Component is rendering!');
 
-  if (banners.length === 0) {
-    return null;
-  }
+  // デバッグ用：強制表示（一時的）
+  // if (banners.length === 0) {
+  //   return null;
+  // }
 
-  const currentBanner = banners[currentIndex];
+  const currentBanner = banners[currentIndex] || {
+    id: 'debug-banner',
+    title: 'デバッグ用サイドバナー',
+    description: 'この表示が見えている場合、サイドバナーは正常に動作しています',
+    image_url: '',
+    website_url: '/sponsor-application',
+    banner_type: 'sidebar' as const,
+    is_active: true,
+    display_order: 1,
+    created_at: new Date().toISOString()
+  };
 
   // currentBannerが存在しない場合の安全チェック
   if (!currentBanner) {
@@ -92,8 +104,9 @@ export const SidebarBanner: React.FC<SidebarBannerProps> = ({ banners: propBanne
 
   return (
     <aside 
-      className="fixed right-4 top-1/2 transform -translate-y-1/2 z-30 hidden md:block"
+      className="fixed right-4 top-1/2 transform -translate-y-1/2 z-50 block"
       aria-label="サイドバナー広告"
+      style={{ border: '3px solid red' }} // デバッグ用：見やすくするため
     >
       <div className="w-48 space-y-4">
         {/* メインサイドバナー */}
