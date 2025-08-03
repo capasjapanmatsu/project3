@@ -1,10 +1,10 @@
 import {
     Gift,
-    Shield,
     X
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { FacilityCoupon, UserCoupon } from '../../types/coupons';
+import { supabase } from '../../utils/supabase';
 
 interface CouponDisplayProps {
   userCoupon: UserCoupon & { coupon: FacilityCoupon & { facility?: { name: string; address: string } } };
@@ -15,11 +15,29 @@ interface CouponDisplayProps {
 export function CouponDisplay({ userCoupon, onClose, onUse }: CouponDisplayProps) {
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [isScreenshotBlocked, setIsScreenshotBlocked] = useState(false);
+  const [openedAt, setOpenedAt] = useState<string>('');
+  const [isProcessingUse, setIsProcessingUse] = useState(false);
   const displayRef = useRef<HTMLDivElement>(null);
 
   const { coupon } = userCoupon;
 
   useEffect(() => {
+    // クーポンを開いた時刻を記録
+    const now = new Date();
+    setOpenedAt(now.toLocaleString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }));
+
+    // 1回限りクーポンの場合、表示時点で使用済みにする
+    if (coupon.usage_limit_type === 'once' && !userCoupon.is_used && !isProcessingUse) {
+      handleAutoUse();
+    }
+
     // スクリーンショット防止の設定
     setIsScreenshotBlocked(true);
     
@@ -104,6 +122,47 @@ export function CouponDisplay({ userCoupon, onClose, onUse }: CouponDisplayProps
     return () => clearInterval(interval);
   }, [coupon.end_date]);
 
+  // 1回限りクーポンの自動使用処理
+  const handleAutoUse = async () => {
+    if (isProcessingUse) return;
+    
+    setIsProcessingUse(true);
+    
+    try {
+      console.log('🎫 Auto-using once-only coupon:', userCoupon.qr_code_token);
+      
+      const { error } = await supabase
+        .from('user_coupons')
+        .update({
+          is_used: true,
+          used_at: new Date().toISOString()
+        })
+        .eq('qr_code_token', userCoupon.qr_code_token);
+
+      if (error) {
+        console.error('❌ Error auto-using coupon:', error);
+        return;
+      }
+
+      console.log('✅ Coupon auto-used successfully');
+      
+      // onUse コールバックがあれば呼び出し
+      if (onUse) {
+        onUse(userCoupon.qr_code_token);
+      }
+      
+      // 3秒後にモーダルを自動で閉じる（使用済みクーポンの確認時間を提供）
+      setTimeout(() => {
+        onClose();
+      }, 3000);
+      
+    } catch (error) {
+      console.error('❌ Error in handleAutoUse:', error);
+    } finally {
+      setIsProcessingUse(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div 
@@ -116,7 +175,7 @@ export function CouponDisplay({ userCoupon, onClose, onUse }: CouponDisplayProps
         }}
       >
         {/* ヘッダー */}
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 relative">
+        <div className="bg-gradient-to-r from-red-500 to-red-600 text-white p-6 relative">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 text-white hover:text-gray-200 pointer-events-auto"
@@ -129,10 +188,9 @@ export function CouponDisplay({ userCoupon, onClose, onUse }: CouponDisplayProps
             <h2 className="text-xl font-medium">クーポン</h2>
           </div>
           
-          {/* セキュリティ警告 */}
+          {/* クーポン表示時刻 */}
           <div className="flex items-center justify-center mt-4 bg-black bg-opacity-20 rounded-lg p-2">
-            <Shield className="w-4 h-4 mr-2" />
-            <span className="text-sm">スクリーンショット禁止</span>
+            <span className="text-sm">表示: {openedAt}</span>
           </div>
         </div>
 
@@ -150,10 +208,10 @@ export function CouponDisplay({ userCoupon, onClose, onUse }: CouponDisplayProps
                 />
               </div>
             ) : (
-              // 文字クーポンの表示（CouponManagerと同じデザイン、青色グラデーション）
+              // 文字クーポンの表示（CouponManagerと同じデザイン、赤色グラデーション）
               <div className="aspect-square w-full border-2 border-gray-300 rounded-lg relative overflow-hidden">
-                {/* チケット風の背景（青色グラデーション） */}
-                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600 relative">
+                {/* チケット風の背景（赤色グラデーション） */}
+                <div className="w-full h-full bg-gradient-to-br from-red-500 to-red-600 relative">
                   {/* チケットの切り込み装飾 */}
                   <div className="absolute top-1/2 -left-3 w-6 h-6 bg-white rounded-full transform -translate-y-1/2"></div>
                   <div className="absolute top-1/2 -right-3 w-6 h-6 bg-white rounded-full transform -translate-y-1/2"></div>
@@ -169,7 +227,7 @@ export function CouponDisplay({ userCoupon, onClose, onUse }: CouponDisplayProps
                   <div className="relative z-10 flex flex-col items-center justify-center h-full p-4 text-center space-y-3">
                     {/* ドッグパークJPクーポン（一番上） */}
                     <div className="bg-white/95 px-3 py-1 rounded-full shadow-sm">
-                      <span className="text-xs font-medium text-blue-600">
+                      <span className="text-xs font-medium text-red-600">
                         ドッグパークJPクーポン
                       </span>
                     </div>
@@ -197,7 +255,7 @@ export function CouponDisplay({ userCoupon, onClose, onUse }: CouponDisplayProps
                     
                     {/* 割引表示 */}
                     {(coupon.discount_value && coupon.discount_type) && (
-                      <div className="bg-white text-blue-600 px-6 py-3 rounded-lg shadow-md">
+                      <div className="bg-white text-red-600 px-6 py-3 rounded-lg shadow-md">
                         <span className="text-4xl font-bold">
                           {coupon.discount_value}{coupon.discount_type === 'amount' ? '円' : '%'}
                         </span>

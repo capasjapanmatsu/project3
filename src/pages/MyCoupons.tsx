@@ -77,6 +77,31 @@ export function MyCoupons() {
     setShowCouponDisplay(true);
   };
 
+  // クーポン使用処理
+  const handleUseCoupon = async (qrToken: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_coupons')
+        .update({
+          is_used: true,
+          used_at: new Date().toISOString()
+        })
+        .eq('qr_code_token', qrToken);
+
+      if (error) {
+        console.error('❌ [MyCoupons] Error using coupon:', error);
+        return;
+      }
+
+      console.log('✅ [MyCoupons] Coupon used successfully');
+      
+      // クーポン一覧を再取得して状態を更新
+      await fetchMyCoupons();
+    } catch (error) {
+      console.error('❌ [MyCoupons] Error in handleUseCoupon:', error);
+    }
+  };
+
   const filterCoupons = () => {
     const now = new Date();
     
@@ -364,6 +389,7 @@ export function MyCoupons() {
               setDisplayingCoupon(null);
               fetchMyCoupons(); // 使用状態が変わった可能性があるため再取得
             }}
+            onUse={handleUseCoupon}
           />
         )}
       </div>
