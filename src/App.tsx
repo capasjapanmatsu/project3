@@ -1,6 +1,6 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import useAuth from './context/AuthContext';
 import { MaintenanceProvider } from './context/MaintenanceContext';
 
@@ -180,6 +180,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated, user } = useAuth();
+  
   // スプラッシュ画面の制御（Hooksはコンポーネントの最上部で宣言）
   const [showSplash, setShowSplash] = useState(() => {
     // 初回起動時のみスプラッシュ画面を表示
@@ -193,6 +197,13 @@ const App: React.FC = () => {
     // スプラッシュ画面完了時の処理
     localStorage.setItem('hasSeenSplash', 'true');
     setShowSplash(false);
+    
+    // ログイン済みユーザーの場合は適切なページにリダイレクト
+    if (isAuthenticated && user) {
+      const searchParams = new URLSearchParams(location.search);
+      const redirectTo = searchParams.get('redirect') || '/dashboard';
+      navigate(redirectTo, { replace: true });
+    }
   };
 
   // 初回訪問時のキャンペーンモーダル表示制御

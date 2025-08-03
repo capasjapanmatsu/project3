@@ -263,9 +263,11 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     try {
       const result = await signInWithPassword(email, password);
       if (result.success) {
-        localStorage.setItem('hasSeenSplash', 'true');
-        onComplete();
-        navigate(redirectTo);
+        localStorage.setItem('lastUsedEmail', email);
+        // ログイン成功時は少し遅延させてからスプラッシュ画面を終了
+        setTimeout(() => {
+          onComplete();
+        }, 100);
       } else {
         setError(result.error || 'ログインに失敗しました。もう一度お試しください。');
       }
