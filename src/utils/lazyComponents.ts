@@ -9,7 +9,7 @@ export const Login = lazy(() => import('../pages/Login').then(module => ({ defau
 export const Register = lazy(() => import('../pages/Register').then(module => ({ default: module.Register })));
 
 // User pages - all wrapped in lazy loading with preload triggers
-export const UserDashboard = lazy(() => import('../pages/UserDashboard').then(module => ({ default: module.UserDashboard })));
+export const UserDashboard = lazy(() => import('../pages/UserDashboard'));
 export const DogRegistration = lazy(() => import('../pages/DogRegistration'));
 export const DogManagement = lazy(() => import('../pages/DogManagement').then(module => ({ default: module.DogManagement })));
 export const DogProfile = lazy(() => import('../pages/DogProfile').then(module => ({ default: module.DogProfile })));
