@@ -46,7 +46,7 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
   const [imagePreview, setImagePreview] = useState<string>('');
 
   useEffect(() => {
-    fetchCoupons();
+    void fetchCoupons();
   }, [facilityId]);
 
   const fetchCoupons = async () => {
@@ -66,18 +66,18 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
       console.log('✅ [Coupon] Coupons fetched:', data?.length || 0);
       setCoupons(data || []);
 
-      // 統計情報を取得
-      for (const coupon of (data || [])) {
-        const { data: statsData } = await supabase
-          .rpc('get_coupon_stats', { coupon_id: coupon.id });
-        
-        if (statsData) {
-          setCouponStats(prev => ({
-            ...prev,
-            [coupon.id]: statsData
-          }));
-        }
-      }
+      // 統計情報を取得（一時的に無効化）
+      // for (const coupon of (data || [])) {
+      //   const { data: statsData } = await supabase
+      //     .rpc('get_coupon_stats', { coupon_id: coupon.id });
+      //   
+      //   if (statsData) {
+      //     setCouponStats(prev => ({
+      //       ...prev,
+      //       [coupon.id]: statsData
+      //     }));
+      //   }
+      // }
     } catch (error) {
       console.error('❌ [Coupon] Error fetching coupons:', error);
       setError('クーポンの取得に失敗しました。');
@@ -182,7 +182,7 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
       }
 
       resetForm();
-      fetchCoupons();
+      void fetchCoupons();
     } catch (error) {
       setError(error instanceof Error ? error.message : 'クーポンの保存に失敗しました。');
     } finally {
