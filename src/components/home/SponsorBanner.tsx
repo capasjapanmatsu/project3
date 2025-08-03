@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface SponsorBanner {
   id: string;
@@ -11,88 +12,84 @@ interface SponsorBanner {
   created_at: string;
 }
 
+// スポンサー募集中のダミーデータ
+const recruitmentBanners: SponsorBanner[] = [
+  {
+    id: 'recruit-1',
+    title: 'スポンサー募集中',
+    description: 'あなたの広告をここに掲載しませんか？多くのドッグオーナーにリーチできます！',
+    image_url: '',
+    website_url: '/sponsor-application',
+    is_active: true,
+    display_order: 1,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'recruit-2',
+    title: 'スポンサー募集中',
+    description: 'ペット関連サービスの宣伝に最適！効果的な広告枠をご提供します。',
+    image_url: '',
+    website_url: '/sponsor-application',
+    is_active: true,
+    display_order: 2,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'recruit-3',
+    title: 'スポンサー募集中',
+    description: '愛犬家コミュニティに向けて、あなたのサービスを紹介してください！',
+    image_url: '',
+    website_url: '/sponsor-application',
+    is_active: true,
+    display_order: 3,
+    created_at: new Date().toISOString()
+  }
+];
+
 interface SponsorBannerProps {
   banners?: SponsorBanner[];
 }
 
-// テスト用のサンプルデータ
-const sampleBanners: SponsorBanner[] = [
-  {
-    id: '1',
-    title: 'ドッグフード専門店 ワンコマート',
-    description: 'プレミアムドッグフードが最大30%OFF！愛犬の健康を考えた厳選商品をお届け',
-    image_url: 'https://via.placeholder.com/800x200/4F46E5/ffffff?text=ワンコマート',
-    website_url: 'https://example.com/wanko-mart',
-    is_active: true,
-    display_order: 1,
-    created_at: '2025-01-31'
-  },
-  {
-    id: '2',
-    title: 'ペットホテル わんわんリゾート',
-    description: '愛犬も飼い主も安心！24時間スタッフ常駐のペットホテル。初回利用20%OFF',
-    image_url: 'https://via.placeholder.com/800x200/059669/ffffff?text=わんわんリゾート',
-    website_url: 'https://example.com/wanwan-resort',
-    is_active: true,
-    display_order: 2,
-    created_at: '2025-01-31'
-  },
-  {
-    id: '3',
-    title: 'ドッグトレーニング教室 パピーアカデミー',
-    description: 'プロトレーナーによる個別指導！しつけの悩みを解決します。無料体験実施中',
-    image_url: 'https://via.placeholder.com/800x200/DC2626/ffffff?text=パピーアカデミー',
-    website_url: 'https://example.com/puppy-academy',
-    is_active: true,
-    display_order: 3,
-    created_at: '2025-01-31'
-  },
-  {
-    id: '4',
-    title: 'ペット用品専門店 ドギーライフ',
-    description: 'おしゃれなペット用品からケア用品まで！新商品続々入荷中',
-    image_url: 'https://via.placeholder.com/800x200/7C3AED/ffffff?text=ドギーライフ',
-    website_url: 'https://example.com/doggy-life',
-    is_active: true,
-    display_order: 4,
-    created_at: '2025-01-31'
-  },
-  {
-    id: '5',
-    title: '動物病院 ハッピーアニマルクリニック',
-    description: '愛犬の健康を守る信頼のクリニック。予防接種から緊急診療まで対応',
-    image_url: 'https://via.placeholder.com/800x200/EA580C/ffffff?text=ハッピーアニマルクリニック',
-    website_url: 'https://example.com/happy-animal',
-    is_active: true,
-    display_order: 5,
-    created_at: '2025-01-31'
-  }
-];
-
-export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners = sampleBanners }) => {
+export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanners }) => {
+  const navigate = useNavigate();
+  const [banners] = useState<SponsorBanner[]>(recruitmentBanners);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [nextIndex, setNextIndex] = useState(1);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isHovering, setIsHovering] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [showNext, setShowNext] = useState(false);
 
-  // アクティブなバナーのみをフィルタリング
-  const activeBanners = banners.filter(banner => banner.is_active);
-
-  // 自動スライド機能
+  // アニメーション付きスライド機能
   useEffect(() => {
-    if (!isPlaying || isHovering || activeBanners.length <= 1) return;
+    if (!isPlaying || isHovering || banners.length <= 1) return;
 
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % activeBanners.length);
-    }, 4000); // 4秒間隔
+    const slideInterval = setInterval(() => {
+      // アニメーション開始
+      setIsAnimating(true);
+      setShowNext(true);
+      
+      // 次のバナーインデックスを計算
+      const next = (currentIndex + 1) % banners.length;
+      setNextIndex(next);
+      
+      // アニメーション完了後に状態更新
+      setTimeout(() => {
+        setCurrentIndex(next);
+        setNextIndex((next + 1) % banners.length);
+        setIsAnimating(false);
+        setShowNext(false);
+      }, 800); // アニメーション時間
+      
+    }, 5000); // 5秒間隔（3秒停止 + 2秒アニメーション準備）
 
-    return () => clearInterval(interval);
-  }, [isPlaying, isHovering, activeBanners.length]);
+    return () => clearInterval(slideInterval);
+  }, [isPlaying, isHovering, banners.length, currentIndex]);
 
-  // バナークリックハンドラー
-  const handleBannerClick = useCallback((url: string) => {
-    // 新しいタブでWebサイトを開く
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }, []);
+  // バナークリックハンドラー（スポンサー募集画面へ遷移）
+  const handleBannerClick = useCallback(() => {
+    navigate('/sponsor-application');
+  }, [navigate]);
 
   // 再生/一時停止の切り替え
   const togglePlayPause = useCallback(() => {
@@ -102,77 +99,195 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners = sampleBa
   // 手動でスライド変更
   const goToSlide = useCallback((index: number) => {
     setCurrentIndex(index);
-  }, []);
+    setNextIndex((index + 1) % banners.length);
+    setIsAnimating(false);
+    setShowNext(false);
+  }, [banners.length]);
 
-  if (activeBanners.length === 0) {
+  if (banners.length === 0) {
     return null;
   }
 
-  const currentBanner = activeBanners[currentIndex];
+  const currentBanner = banners[currentIndex];
+  const nextBanner = banners[nextIndex];
+
+  // currentBannerが存在しない場合のフォールバック
+  if (!currentBanner) {
+    return null;
+  }
 
   return (
     <section 
-      className="w-full bg-white rounded-lg shadow-lg overflow-hidden mb-8"
+      className="w-full mb-8 px-4 relative"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
-      aria-label="スポンサーバナー"
+      aria-label="スポンサー募集バナー"
     >
-      {/* メインバナー */}
-      <div 
-        className="relative h-48 cursor-pointer transform transition-transform duration-300 hover:scale-[1.02]"
-        onClick={() => handleBannerClick(currentBanner.website_url)}
-        role="button"
-        tabIndex={0}
-        aria-label={`${currentBanner.title} - 新しいタブで開く`}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleBannerClick(currentBanner.website_url);
-          }
-        }}
-      >
-        {/* バナー画像 */}
-        <div 
-          className="w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold"
-          style={{
-            backgroundImage: `url(${currentBanner.image_url})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat'
-          }}
-        >
-          {/* オーバーレイ */}
-          <div className="absolute inset-0 bg-black bg-opacity-20"></div>
-          
-          {/* コンテンツ */}
-          <div className="relative z-10 text-center px-6">
-            <h3 className="text-2xl font-bold mb-2 drop-shadow-lg">
-              {currentBanner.title}
-            </h3>
-            <p className="text-sm opacity-90 drop-shadow-md">
-              {currentBanner.description}
-            </p>
+      {/* バナーコンテナ - 中央のバナーと左右のチラ見せ */}
+      <div className="flex items-center justify-center space-x-4 overflow-hidden">
+        {/* 左のチラ見せバナー */}
+        <div className="hidden md:block w-20 h-32 opacity-30 bg-gradient-to-r from-gray-400 to-gray-500 rounded-lg flex-shrink-0">
+          <div className="h-full flex items-center justify-center">
+            <div className="text-white text-xs text-center">
+              <div className="font-bold">スポンサー</div>
+              <div>募集中</div>
+            </div>
+          </div>
+        </div>
+
+        {/* メインバナーコンテナ */}
+        <div className="flex-1 max-w-2xl h-40 relative overflow-hidden rounded-lg">
+          {/* 現在のバナー */}
+          <div 
+            className="absolute inset-0 cursor-pointer transform transition-all duration-300 hover:scale-[1.02] bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg relative overflow-hidden"
+            onClick={handleBannerClick}
+            role="button"
+            tabIndex={0}
+            aria-label={`${currentBanner.title} - スポンサー申し込みページへ`}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleBannerClick();
+              }
+            }}
+            style={{
+              transform: isAnimating ? 'translateX(-100%)' : 'translateX(0)',
+              transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+          >
+            {/* グラデーション背景 */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+            
+            {/* ドット模様のオーバーレイ */}
+            <div className="absolute inset-0 opacity-20" style={{
+              backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
+              backgroundSize: '20px 20px'
+            }}></div>
+            
+            {/* コンテンツ */}
+            <div className="relative z-10 h-full flex items-center justify-center text-center px-6">
+              <div>
+                <h3 className="text-2xl font-bold mb-2 text-white drop-shadow-lg">
+                  {currentBanner.title}
+                </h3>
+                <p className="text-sm text-white opacity-90 drop-shadow-md max-w-md">
+                  {currentBanner.description}
+                </p>
+                <div className="mt-4">
+                  <span className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm">
+                    詳細を見る →
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* スポンサー募集ラベル */}
+            <div className="absolute top-3 left-3 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold">
+              募集中
+            </div>
+
+            {/* 右下のアイコン */}
+            <div className="absolute bottom-3 right-3">
+              <svg 
+                className="w-6 h-6 text-white opacity-70" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </div>
           </div>
 
-          {/* 外部リンクアイコン */}
-          <div className="absolute top-4 right-4 z-10">
-            <svg 
-              className="w-5 h-5 text-white opacity-70" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
+          {/* 次のバナー（アニメーション中のみ表示） */}
+          {showNext && nextBanner && (
+            <div 
+              className="absolute inset-0 cursor-pointer transform bg-gradient-to-r from-green-500 to-blue-600 rounded-lg relative overflow-hidden"
+              onClick={handleBannerClick}
+              style={{
+                transform: isAnimating ? 'translateX(0)' : 'translateX(100%)',
+                transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
+              {/* グラデーション背景（次のバナー用） */}
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500 via-blue-500 to-purple-500"></div>
+              
+              {/* ドット模様のオーバーレイ */}
+              <div className="absolute inset-0 opacity-20" style={{
+                backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
+                backgroundSize: '20px 20px'
+              }}></div>
+              
+              {/* コンテンツ */}
+              <div className="relative z-10 h-full flex items-center justify-center text-center px-6">
+                <div>
+                  <h3 className="text-2xl font-bold mb-2 text-white drop-shadow-lg">
+                    {nextBanner.title}
+                  </h3>
+                  <p className="text-sm text-white opacity-90 drop-shadow-md max-w-md">
+                    {nextBanner.description}
+                  </p>
+                  <div className="mt-4">
+                    <span className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm">
+                      詳細を見る →
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* スポンサー募集ラベル */}
+              <div className="absolute top-3 left-3 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold">
+                募集中
+              </div>
+
+              {/* 右下のアイコン */}
+              <div className="absolute bottom-3 right-3">
+                <svg 
+                  className="w-6 h-6 text-white opacity-70" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </div>
+            </div>
+          )}
+
+          {/* スライド方向インジケーター（アニメーション中のみ） */}
+          {isAnimating && (
+            <div className="absolute top-1/2 right-4 transform -translate-y-1/2 z-20">
+              <div className="flex items-center space-x-1 text-white">
+                <svg className="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                <svg className="w-4 h-4 animate-bounce" style={{ animationDelay: '0.1s' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                <svg className="w-4 h-4 animate-bounce" style={{ animationDelay: '0.2s' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 右のチラ見せバナー */}
+        <div className="hidden md:block w-20 h-32 opacity-30 bg-gradient-to-r from-gray-500 to-gray-400 rounded-lg flex-shrink-0">
+          <div className="h-full flex items-center justify-center">
+            <div className="text-white text-xs text-center">
+              <div className="font-bold">スポンサー</div>
+              <div>募集中</div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* コントロールバー */}
-      <div className="bg-gray-50 px-4 py-3 flex items-center justify-between">
+      <div className="mt-4 flex items-center justify-center space-x-4">
         {/* インジケーター */}
         <div className="flex space-x-2">
-          {activeBanners.map((_, index) => (
+          {banners.map((_, index) => (
             <button
               key={index}
               onClick={() => goToSlide(index)}
@@ -187,7 +302,7 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners = sampleBa
         {/* 再生/一時停止ボタン */}
         <div className="flex items-center space-x-3">
           <span className="text-xs text-gray-500">
-            {currentIndex + 1} / {activeBanners.length}
+            {currentIndex + 1} / {banners.length}
           </span>
           <button
             onClick={togglePlayPause}
@@ -207,10 +322,20 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners = sampleBa
         </div>
       </div>
 
-      {/* スポンサー表示ラベル */}
-      <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
-        スポンサー
-      </div>
+      {/* プログレスバー（アニメーション進行表示） */}
+      {!isHovering && isPlaying && (
+        <div className="mt-2 w-full max-w-2xl mx-auto">
+          <div className="w-full bg-gray-200 rounded-full h-1">
+            <div 
+              className="bg-blue-600 h-1 rounded-full transition-all duration-100"
+              style={{
+                width: isAnimating ? '100%' : '0%',
+                animation: isAnimating ? 'none' : 'progress-bar 5s linear infinite'
+              }}
+            ></div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };

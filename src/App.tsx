@@ -101,6 +101,7 @@ const SubscriptionIntro = React.lazy(() => import('./pages/SubscriptionIntro').t
 // その他のページ
 const TermsOfService = React.lazy(() => import('./pages/TermsOfService').then(module => ({ default: module.TermsOfService })));
 const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy').then(module => ({ default: module.PrivacyPolicy })));
+const SponsorApplication = React.lazy(() => import('./pages/SponsorApplication').then(module => ({ default: module.SponsorApplication })));
 const NotFound = React.lazy(() => import('./pages/NotFound').then(module => ({ default: module.NotFound })));
 
 // デバッグページ
@@ -379,6 +380,11 @@ const App: React.FC = () => {
               <Route path="/privacy" element={
                 <Suspense fallback={<PageSkeleton />}>
                   <PrivacyPolicy />
+                </Suspense>
+              } />
+              <Route path="/sponsor-application" element={
+                <Suspense fallback={<PageSkeleton />}>
+                  <SponsorApplication />
                 </Suspense>
               } />
               
