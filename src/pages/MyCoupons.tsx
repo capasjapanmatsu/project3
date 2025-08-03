@@ -307,7 +307,7 @@ export function MyCoupons() {
 
                     {/* 施設情報 */}
                     <div className="bg-gray-50 p-3 rounded-lg mb-3">
-                      <div className="flex items-center">
+                      <div className="flex items-center mb-2">
                         <MapPin className="w-4 h-4 mr-2 text-blue-500" />
                         <Link 
                           to={`/facilities/${coupon.coupon.facility_id}`}
@@ -316,6 +316,11 @@ export function MyCoupons() {
                           {coupon.coupon.facility?.name}
                         </Link>
                       </div>
+                      {coupon.coupon.facility?.address && (
+                        <div className="ml-6 text-xs text-gray-600">
+                          {coupon.coupon.facility.address}
+                        </div>
+                      )}
                     </div>
 
                     {/* 詳細説明 */}
