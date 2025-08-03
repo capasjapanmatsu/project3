@@ -74,182 +74,195 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
   const navigate = useNavigate();
   const [banners] = useState<SponsorBanner[]>(recruitmentBanners);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [nextIndex, setNextIndex] = useState(1);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isHovering, setIsHovering] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [showNext, setShowNext] = useState(false);
 
-  // アニメーション付きスライド機能（右から左へ）
+  // 自動スライド機能（右から左へループ）
   useEffect(() => {
     if (!isPlaying || isHovering || banners.length <= 1) return;
 
     const slideInterval = setInterval(() => {
-      // アニメーション開始
-      setIsAnimating(true);
-      setShowNext(true);
-      
-      // 次のバナーインデックスを計算
-      const next = (currentIndex + 1) % banners.length;
-      setNextIndex(next);
-      
-      // アニメーション完了後に状態更新
-      setTimeout(() => {
-        setCurrentIndex(next);
-        setNextIndex((next + 1) % banners.length);
-        setIsAnimating(false);
-        setShowNext(false);
-      }, 800); // アニメーション時間
-      
-    }, 5000); // 5秒間隔
+      setCurrentIndex((prev) => (prev + 1) % banners.length);
+    }, 3000); // 3秒間隔
 
     return () => clearInterval(slideInterval);
-  }, [isPlaying, isHovering, banners.length, currentIndex]);
+  }, [isPlaying, isHovering, banners.length]);
 
   // バナークリックハンドラー（スポンサー募集画面へ遷移）
   const handleBannerClick = useCallback(() => {
     navigate('/sponsor-application');
   }, [navigate]);
 
+  // インデックス計算ヘルパー（循環）
+  const getCircularIndex = useCallback((index: number) => {
+    return ((index % banners.length) + banners.length) % banners.length;
+  }, [banners.length]);
+
+  // 表示するバナーを計算（中央±2の5つ）
+  const getVisibleBanners = useCallback(() => {
+    const visible = [];
+    for (let i = -2; i <= 2; i++) {
+      const index = getCircularIndex(currentIndex + i);
+      visible.push({
+        banner: banners[index],
+        position: i,
+        index: index
+      });
+    }
+    return visible;
+  }, [currentIndex, banners, getCircularIndex]);
+
   if (banners.length === 0) {
     return null;
   }
 
-  const currentBanner = banners[currentIndex];
-  const nextBanner = banners[nextIndex];
-
-  // currentBannerが存在しない場合のフォールバック
-  if (!currentBanner) {
-    return null;
-  }
+  const visibleBanners = getVisibleBanners();
 
   return (
     <section 
       className="w-full mb-8 px-4 relative"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
-      aria-label="スポンサー募集バナー"
+      aria-label="スポンサー募集カルーセル"
     >
-      {/* バナーコンテナ - 中央のメインバナーのみ */}
-      <div className="flex items-center justify-center">
-        {/* メインバナーコンテナ */}
-        <div className="w-full max-w-4xl h-40 relative overflow-hidden rounded-lg">
-          {/* 現在のバナー */}
-          <div 
-            className="absolute inset-0 cursor-pointer transform transition-all duration-300 hover:scale-[1.02] bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg relative overflow-hidden"
-            onClick={handleBannerClick}
-            role="button"
-            tabIndex={0}
-            aria-label={`${currentBanner.title} - スポンサー申し込みページへ`}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleBannerClick();
-              }
-            }}
-            style={{
-              transform: isAnimating ? 'translateX(-100%)' : 'translateX(0)',
-              transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
-            }}
-          >
-            {/* グラデーション背景 */}
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+      {/* カルーセルコンテナ */}
+      <div className="relative w-full h-48 overflow-hidden">
+        {/* バナー表示エリア */}
+        <div className="flex items-center justify-center h-full">
+          {visibleBanners.map(({ banner, position, index }) => {
+            // バナーが存在しない場合はスキップ
+            if (!banner) return null;
             
-            {/* ドット模様のオーバーレイ */}
-            <div className="absolute inset-0 opacity-20" style={{
-              backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
-              backgroundSize: '20px 20px'
-            }}></div>
-            
-            {/* コンテンツ */}
-            <div className="relative z-10 h-full flex items-center justify-center text-center px-6">
-              <div>
-                <h3 className="text-3xl font-bold mb-3 text-white drop-shadow-lg">
-                  {currentBanner.title}
-                </h3>
-                <p className="text-lg text-white opacity-90 drop-shadow-md max-w-2xl">
-                  {currentBanner.description}
-                </p>
-                <div className="mt-6">
-                  <span className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-full text-base font-medium backdrop-blur-sm hover:bg-opacity-30 transition-all">
-                    詳細を見る →
-                  </span>
-                </div>
-              </div>
-            </div>
+            const isCenter = position === 0;
+            const isAdjacent = Math.abs(position) === 1;
+            const isEdge = Math.abs(position) === 2;
 
-            {/* スポンサー募集ラベル */}
-            <div className="absolute top-4 left-4 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-full text-sm font-bold">
-              募集中
-            </div>
+            // 位置とサイズの計算
+            let transform = '';
+            let opacity = 1;
+            let scale = 1;
+            let zIndex = 10;
 
-            {/* 右下のアイコン */}
-            <div className="absolute bottom-4 right-4">
-              <svg 
-                className="w-8 h-8 text-white opacity-70" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
+            if (isCenter) {
+              // 中央バナー
+              transform = 'translateX(0)';
+              opacity = 1;
+              scale = 1;
+              zIndex = 20;
+            } else if (isAdjacent) {
+              // 隣接バナー（チラ見せ）
+              transform = `translateX(${position * 280}px)`;
+              opacity = 0.7;
+              scale = 0.8;
+              zIndex = 15;
+            } else if (isEdge) {
+              // 端バナー（ほぼ見えない）
+              transform = `translateX(${position * 320}px)`;
+              opacity = 0.3;
+              scale = 0.6;
+              zIndex = 10;
+            }
+
+            return (
+              <div
+                key={`${banner.id}-${index}`}
+                className={`absolute transition-all duration-700 ease-in-out cursor-pointer ${
+                  isCenter ? 'w-96 h-40' : 'w-80 h-32'
+                }`}
+                style={{
+                  transform: `${transform} scale(${scale})`,
+                  opacity,
+                  zIndex
+                }}
+                onClick={handleBannerClick}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </div>
-          </div>
-
-          {/* 次のバナー（アニメーション中のみ表示）- 右から左へスライドイン */}
-          {showNext && nextBanner && (
-            <div 
-              className="absolute inset-0 cursor-pointer transform bg-gradient-to-r from-green-500 to-blue-600 rounded-lg relative overflow-hidden"
-              onClick={handleBannerClick}
-              style={{
-                transform: isAnimating ? 'translateX(0)' : 'translateX(100%)',
-                transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
-              }}
-            >
-              {/* グラデーション背景（次のバナー用） */}
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500 via-blue-500 to-purple-500"></div>
-              
-              {/* ドット模様のオーバーレイ */}
-              <div className="absolute inset-0 opacity-20" style={{
-                backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
-                backgroundSize: '20px 20px'
-              }}></div>
-              
-              {/* コンテンツ */}
-              <div className="relative z-10 h-full flex items-center justify-center text-center px-6">
-                <div>
-                  <h3 className="text-3xl font-bold mb-3 text-white drop-shadow-lg">
-                    {nextBanner.title}
-                  </h3>
-                  <p className="text-lg text-white opacity-90 drop-shadow-md max-w-2xl">
-                    {nextBanner.description}
-                  </p>
-                  <div className="mt-6">
-                    <span className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-full text-base font-medium backdrop-blur-sm hover:bg-opacity-30 transition-all">
-                      詳細を見る →
-                    </span>
+                <div className="w-full h-full rounded-lg relative overflow-hidden shadow-lg">
+                  {/* グラデーション背景 */}
+                  <div className={`absolute inset-0 ${
+                    position === 0 ? 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500' :
+                    position === -1 || position === 1 ? 'bg-gradient-to-r from-green-500 via-blue-500 to-purple-500' :
+                    'bg-gradient-to-r from-gray-400 to-gray-600'
+                  }`}></div>
+                  
+                  {/* ドット模様のオーバーレイ */}
+                  <div className="absolute inset-0 opacity-20" style={{
+                    backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
+                    backgroundSize: '20px 20px'
+                  }}></div>
+                  
+                  {/* コンテンツ */}
+                  <div className="relative z-10 h-full flex items-center justify-center text-center px-4">
+                    <div>
+                      <h3 className={`font-bold text-white drop-shadow-lg mb-2 ${
+                        isCenter ? 'text-2xl' : 'text-lg'
+                      }`}>
+                        {banner.title}
+                      </h3>
+                      {isCenter && (
+                        <>
+                          <p className="text-sm text-white opacity-90 drop-shadow-md max-w-sm mb-4">
+                            {banner.description}
+                          </p>
+                          <div>
+                            <span className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm hover:bg-opacity-30 transition-all">
+                              詳細を見る →
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
+
+                  {/* スポンサー募集ラベル（中央のみ） */}
+                  {isCenter && (
+                    <div className="absolute top-3 left-3 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold">
+                      募集中
+                    </div>
+                  )}
+
+                  {/* 右下のアイコン（中央のみ） */}
+                  {isCenter && (
+                    <div className="absolute bottom-3 right-3">
+                      <svg 
+                        className="w-6 h-6 text-white opacity-70" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
               </div>
+            );
+          })}
+        </div>
 
-              {/* スポンサー募集ラベル */}
-              <div className="absolute top-4 left-4 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-full text-sm font-bold">
-                募集中
-              </div>
+        {/* スライド方向インジケーター */}
+        <div className="absolute top-1/2 right-4 transform -translate-y-1/2 pointer-events-none">
+          <div className="flex items-center space-x-1 text-white opacity-50">
+            <svg className="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <svg className="w-4 h-4 animate-pulse" style={{ animationDelay: '0.2s' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
+      </div>
 
-              {/* 右下のアイコン */}
-              <div className="absolute bottom-4 right-4">
-                <svg 
-                  className="w-8 h-8 text-white opacity-70" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </div>
-            </div>
-          )}
+      {/* 現在位置表示（小さく） */}
+      <div className="flex justify-center mt-3">
+        <div className="flex space-x-1">
+          {banners.map((_, index) => (
+            <div
+              key={index}
+              className={`w-1.5 h-1.5 rounded-full transition-colors duration-200 ${
+                index === currentIndex ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
+            />
+          ))}
         </div>
       </div>
     </section>
