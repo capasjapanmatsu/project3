@@ -150,14 +150,14 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
               scale = 1;
               zIndex = 20;
             } else if (isAdjacent) {
-              // 隣接バナー（チラ見せ）- 間隔を狭める
-              transform = `translateX(${position * 250}px)`;
+              // 隣接バナー（チラ見せ）- 間隔をさらに狭める
+              transform = `translateX(${position * 220}px)`;
               opacity = 0.7;
               scale = 0.85;
               zIndex = 15;
             } else if (isEdge) {
-              // 端バナー（実際サイズで少し見える）- 縮小せず位置のみ調整
-              transform = `translateX(${position * 280}px)`;
+              // 端バナー（実際サイズで少し見える）- 間隔をさらに狭める
+              transform = `translateX(${position * 240}px)`;
               opacity = 0.4;
               scale = 1.0;
               zIndex = 10;
@@ -167,7 +167,7 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
               <div
                 key={`${banner.id}-${index}`}
                 className={`absolute transition-all duration-700 ease-in-out cursor-pointer ${
-                  isCenter ? 'w-96 h-28' : isAdjacent ? 'w-80 h-24' : 'w-96 h-28'
+                  isCenter ? 'w-[28rem] h-28' : isAdjacent ? 'w-96 h-24' : 'w-[28rem] h-28'
                 }`}
                 style={{
                   transform: `${transform} scale(${scale})`,
