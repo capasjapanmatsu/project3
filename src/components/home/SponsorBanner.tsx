@@ -150,14 +150,14 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
               scale = 1;
               zIndex = 20;
             } else if (isAdjacent) {
-              // 隣接バナー（チラ見せ）- 間隔をさらに狭める
-              transform = `translateX(${position * 220}px)`;
+              // 隣接バナー（チラ見せ）- 適切な隙間を確保
+              transform = `translateX(${position * 260}px)`;
               opacity = 0.7;
               scale = 0.85;
               zIndex = 15;
             } else if (isEdge) {
-              // 端バナー（実際サイズで少し見える）- 間隔をさらに狭める
-              transform = `translateX(${position * 240}px)`;
+              // 端バナー（実際サイズで少し見える）- 適切な隙間を確保
+              transform = `translateX(${position * 300}px)`;
               opacity = 0.4;
               scale = 1.0;
               zIndex = 10;
