@@ -1,16 +1,13 @@
 import {
-    Clock,
     Gift,
-    MapPin,
     Shield,
-    Star,
     X
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { FacilityCoupon, UserCoupon } from '../../types/coupons';
 
 interface CouponDisplayProps {
-  userCoupon: UserCoupon & { coupon: FacilityCoupon };
+  userCoupon: UserCoupon & { coupon: FacilityCoupon & { facility?: { name: string; address: string } } };
   onClose: () => void;
   onUse?: (qrToken: string) => void;
 }
@@ -107,22 +104,6 @@ export function CouponDisplay({ userCoupon, onClose, onUse }: CouponDisplayProps
     return () => clearInterval(interval);
   }, [coupon.end_date]);
 
-  const formatDiscount = () => {
-    if (!coupon.discount_value) return '';
-    
-    if (coupon.discount_type === 'percentage') {
-      return `${coupon.discount_value}% OFF`;
-    } else {
-      return `${coupon.discount_value.toLocaleString()}円 OFF`;
-    }
-  };
-
-  const handleUseCoupon = () => {
-    if (onUse && !userCoupon.is_used) {
-      onUse(userCoupon.qr_code_token);
-    }
-  };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div 
@@ -135,7 +116,7 @@ export function CouponDisplay({ userCoupon, onClose, onUse }: CouponDisplayProps
         }}
       >
         {/* ヘッダー */}
-        <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white p-6 relative">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 relative">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 text-white hover:text-gray-200 pointer-events-auto"
@@ -155,89 +136,121 @@ export function CouponDisplay({ userCoupon, onClose, onUse }: CouponDisplayProps
           </div>
         </div>
 
-        {/* クーポン画像 */}
-        {coupon.coupon_image_url && (
-          <div className="aspect-[16/9] bg-gray-100">
-            <img
-              src={coupon.coupon_image_url}
-              alt="クーポン画像"
-              className="w-full h-full object-cover"
-              style={{ userSelect: 'none', pointerEvents: 'none' }}
-            />
-          </div>
-        )}
-
-        {/* クーポン内容 */}
-        <div className="p-6 space-y-4">
-          {/* タイトルと割引 */}
-          <div className="text-center">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">{coupon.title}</h3>
-            {formatDiscount() && (
-              <div className="text-3xl font-extrabold text-red-600 mb-2">
-                {formatDiscount()}
+        {/* メインクーポン表示エリア */}
+        <div className="p-6">
+          <div className="w-full max-w-sm mx-auto">
+            {coupon.coupon_image_url ? (
+              // 画像クーポンの表示
+              <div className="aspect-square w-full border-2 border-gray-300 rounded-lg overflow-hidden">
+                <img
+                  src={coupon.coupon_image_url}
+                  alt="クーポン画像"
+                  className="w-full h-full object-cover"
+                  style={{ userSelect: 'none', pointerEvents: 'none' }}
+                />
+              </div>
+            ) : (
+              // 文字クーポンの表示（CouponManagerと同じデザイン、青色グラデーション）
+              <div className="aspect-square w-full border-2 border-gray-300 rounded-lg relative overflow-hidden">
+                {/* チケット風の背景（青色グラデーション） */}
+                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600 relative">
+                  {/* チケットの切り込み装飾 */}
+                  <div className="absolute top-1/2 -left-3 w-6 h-6 bg-white rounded-full transform -translate-y-1/2"></div>
+                  <div className="absolute top-1/2 -right-3 w-6 h-6 bg-white rounded-full transform -translate-y-1/2"></div>
+                  
+                  {/* 背景の薄い「COUPON」テキスト */}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-10">
+                    <span className="text-6xl font-bold text-white transform rotate-12">
+                      COUPON
+                    </span>
+                  </div>
+                  
+                  {/* メインコンテンツ */}
+                  <div className="relative z-10 flex flex-col items-center justify-center h-full p-4 text-center space-y-3">
+                    {/* ドッグパークJPクーポン（一番上） */}
+                    <div className="bg-white/95 px-3 py-1 rounded-full shadow-sm">
+                      <span className="text-xs font-medium text-blue-600">
+                        ドッグパークJPクーポン
+                      </span>
+                    </div>
+                    
+                    {/* 店舗名（2番目） */}
+                    <div className="text-white">
+                      <h2 className="text-lg font-bold leading-tight">
+                        {coupon.facility?.name || '店舗名'}
+                      </h2>
+                    </div>
+                    
+                    {/* クーポンタイトル */}
+                    <div className="text-white">
+                      <h3 className="text-xl font-bold leading-tight">
+                        {coupon.title}
+                      </h3>
+                    </div>
+                    
+                    {/* サービス内容 */}
+                    <div className="text-white/90">
+                      <p className="text-base leading-tight">
+                        {coupon.service_content}
+                      </p>
+                    </div>
+                    
+                    {/* 割引表示 */}
+                    {(coupon.discount_value && coupon.discount_type) && (
+                      <div className="bg-white text-blue-600 px-6 py-3 rounded-lg shadow-md">
+                        <span className="text-4xl font-bold">
+                          {coupon.discount_value}{coupon.discount_type === 'amount' ? '円' : '%'}
+                        </span>
+                        <span className="text-lg ml-2 font-medium">
+                          OFF
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* 詳細説明 */}
+                    {coupon.description && (
+                      <div className="border-t border-white/30 pt-2">
+                        <p className="text-sm text-white/80">
+                          {coupon.description}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* 有効期限 */}
+                    {(coupon.start_date && coupon.end_date) && (
+                      <div className="border-t border-white/30 pt-2 mt-2">
+                        <p className="text-xs text-white/90 font-medium">
+                          有効期限: {new Date(coupon.start_date).toLocaleDateString()} 〜 {new Date(coupon.end_date).toLocaleDateString()}
+                        </p>
+                        {timeLeft && (
+                          <p className="text-xs text-white/70 mt-1">
+                            (残り{timeLeft})
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
+            
+            <div className="mt-2 text-xs text-gray-500 text-center">
+              {coupon.coupon_image_url ? '画像クーポン' : 'テキストクーポン'}
+            </div>
           </div>
 
-          {/* サービス内容 */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex items-start">
-              <Star className="w-5 h-5 text-yellow-500 mr-2 mt-0.5 flex-shrink-0" />
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-1">サービス内容</h4>
-                <p className="text-gray-700 text-sm">{coupon.service_content}</p>
+          {/* 使用制限情報 */}
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-center space-x-4 text-sm text-gray-600">
+              <div className="flex items-center">
+                <Gift className="w-4 h-4 mr-1" />
+                <span>使用制限: {coupon.usage_limit_type === 'once' ? '1回限り' : '何回でも'}</span>
               </div>
             </div>
           </div>
 
-          {/* 利用可能店舗 */}
-          <div className="flex items-start space-x-2">
-            <MapPin className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" />
-            <div>
-              <h4 className="font-semibold text-gray-900">利用可能店舗</h4>
-              <p className="text-gray-600 text-sm">
-                {/* ここに施設名を表示 - facilityNameは別途取得が必要 */}
-                対象施設
-              </p>
-            </div>
-          </div>
-
-          {/* 有効期限 */}
-          <div className="flex items-center space-x-2">
-            <Clock className="w-5 h-5 text-gray-500" />
-            <div>
-              <span className="font-semibold text-gray-900">有効期限：</span>
-              <span className="text-gray-600 ml-1">
-                {new Date(coupon.end_date).toLocaleDateString('ja-JP')}
-              </span>
-              {timeLeft && (
-                <span className="text-sm text-red-600 ml-2">
-                  (残り{timeLeft})
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* 使用制限 */}
-          <div className="flex items-center space-x-2">
-            <Gift className="w-5 h-5 text-gray-500" />
-            <div>
-              <span className="font-semibold text-gray-900">使用制限：</span>
-              <span className="text-gray-600 ml-1">
-                {coupon.usage_limit_type === 'once' ? '1回限り' : '何回でも'}
-              </span>
-            </div>
-          </div>
-
-          {/* 詳細説明 */}
-          {coupon.description && (
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-sm text-gray-600">{coupon.description}</p>
-            </div>
-          )}
-
           {/* 使用状態 */}
-          <div className="text-center">
+          <div className="mt-6 text-center">
             {userCoupon.is_used ? (
               <div className="bg-gray-100 text-gray-600 py-3 px-4 rounded-lg">
                 <p className="font-semibold">使用済み</p>
