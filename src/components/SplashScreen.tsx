@@ -23,6 +23,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const [isPasswordLogin, setIsPasswordLogin] = useState(true); // デフォルトでパスワードログイン
   const [textOpacity, setTextOpacity] = useState(0.1); // 文字の濃さを制御
   const [imageOpacityFilter, setImageOpacityFilter] = useState(0.3); // 画像の濃さを制御
+  const [whiteFlashOpacity, setWhiteFlashOpacity] = useState(0); // ホワイトフラッシュの透明度
 
   // プリロード関連の状態
   const [preloadProgress, setPreloadProgress] = useState(0);
@@ -50,16 +51,23 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     
     const showNextCharacter = () => {
       if (currentIndex < totalLength) {
+        const currentChar = currentIndex < message1.length 
+          ? message1[currentIndex] 
+          : message2[currentIndex - message1.length];
+        
         setTextCharacters(prev => {
           const newArray = [...prev];
           newArray[currentIndex] = true;
           return newArray;
         });
+        
         currentIndex++;
-        setTimeout(showNextCharacter, 100);
+        setTimeout(showNextCharacter, 70); // より滑らかに（100ms → 70ms）
       } else {
-        // 文字表示完了後、3秒かけて色を濃くする
-        startTextColorAnimation();
+        // 文字表示完了後、充分な時間を置いてから色を濃くする
+        setTimeout(() => {
+          startTextColorAnimation();
+        }, 3000); // 3秒の確実な遅延
       }
     };
     
@@ -94,10 +102,46 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       
       if (progress < 1) {
         requestAnimationFrame(animateOpacity);
+      } else {
+        // アニメーション完了を確実にするため、長い遅延を追加
+        setTimeout(() => {
+          startWhiteFlash();
+        }, 2000); // 2秒の確実な遅延
       }
     };
     
     requestAnimationFrame(animateOpacity);
+  }, []);
+
+  // ホワイトフラッシュアニメーション
+  const startWhiteFlash = useCallback(() => {
+    const flashDuration = 400; // 0.4秒
+    const startTime = Date.now();
+    
+    const animateFlash = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / flashDuration, 1);
+      
+      let opacity;
+      if (progress < 0.1) {
+        // 最初の0.04秒で急激に明るくなる
+        opacity = progress * 10; // 0 → 1
+      } else {
+        // 残りの0.36秒でゆっくりフェードアウト
+        const fadeProgress = (progress - 0.1) / 0.9;
+        opacity = 1 - Math.pow(fadeProgress, 2); // 1 → 0 (ease-out)
+      }
+      
+      setWhiteFlashOpacity(opacity);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animateFlash);
+      } else {
+        setWhiteFlashOpacity(0);
+      }
+    };
+    
+    requestAnimationFrame(animateFlash);
   }, []);
 
   // 画像とテキストのアニメーション
@@ -142,7 +186,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         if (!isMounted) break;
         
         try {
-          console.log(`🐕 ${task.name}を読み込み中...`);
           await task.loader();
           completedTasks++;
           
@@ -151,8 +194,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           const progress = (completedTasks / tasks.length) * 100;
           setPreloadProgress(progress);
           setDogPosition(progress);
-          
-          console.log(`✅ ${task.name}完了 (${Math.round(progress)}%)`);
           
           // 各タスク間に少し間隔を開ける
           await new Promise(resolve => setTimeout(resolve, 300));
@@ -169,7 +210,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       }
 
       if (isMounted) {
-        console.log('🎉 全てのプリロード完了！');
         setIsPreloading(false);
       }
     };
@@ -203,7 +243,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         localStorage.setItem('lastUsedEmail', email);
         // Magic Linkの場合は送信完了メッセージを表示
         setError('');
-        console.log('✅ Magic Link送信完了');
       } else {
         setError(result.error || 'Magic Linkの送信に失敗しました。もう一度お試しください。');
       }
@@ -224,7 +263,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     try {
       const result = await signInWithPassword(email, password);
       if (result.success) {
-        console.log('✅ ログイン成功');
         localStorage.setItem('hasSeenSplash', 'true');
         onComplete();
         navigate(redirectTo);
@@ -246,6 +284,15 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         background: 'linear-gradient(135deg, #E8F4FD 0%, #F0F8FF 25%, #FFF8E1 50%, #F3E5F5 75%, #E1F5FE 100%)'
       }}
     >
+      {/* ホワイトフラッシュエフェクト */}
+      <div
+        className="fixed inset-0 z-[10000] bg-white pointer-events-none transition-opacity duration-100"
+        style={{
+          opacity: whiteFlashOpacity,
+          mixBlendMode: 'screen'
+        }}
+      />
+      
       <style>
         {`@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@300;400;500;700;900&display=swap');`}
       </style>
@@ -317,14 +364,15 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   {message1.split('').map((char, index) => (
                     <span
                       key={index}
-                      className={`inline-block transition-all duration-1000 ease-out ${
+                      className={`inline-block transition-all duration-700 ease-in-out ${
                         textCharacters[index] 
                           ? 'opacity-100 translate-y-0 scale-100' 
-                          : 'opacity-0 translate-y-4 scale-95'
+                          : 'opacity-0 translate-y-3 scale-98'
                       }`}
                       style={{
-                        transitionDelay: `${index * 100}ms`,
-                        color: textCharacters[index] ? `rgba(53, 94, 59, ${textOpacity})` : 'rgba(53, 94, 59, 0.1)'
+                        transitionDelay: `${index * 70}ms`,
+                        color: textCharacters[index] ? `rgba(53, 94, 59, ${textOpacity})` : 'rgba(53, 94, 59, 0.1)',
+                        transformOrigin: 'center bottom'
                       }}
                     >
                       {char === '　' ? '\u00A0' : char}
@@ -343,14 +391,15 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   {message2.split('').map((char, index) => (
                     <span
                       key={index + message1.length}
-                      className={`inline-block transition-all duration-1000 ease-out ${
+                      className={`inline-block transition-all duration-700 ease-in-out ${
                         textCharacters[index + message1.length] 
                           ? 'opacity-100 translate-y-0 scale-100' 
-                          : 'opacity-0 translate-y-4 scale-95'
+                          : 'opacity-0 translate-y-3 scale-98'
                       }`}
                       style={{
-                        transitionDelay: `${(index + message1.length) * 100}ms`,
-                        color: textCharacters[index + message1.length] ? `rgba(60, 110, 71, ${textOpacity})` : 'rgba(60, 110, 71, 0.1)'
+                        transitionDelay: `${(index + message1.length) * 70}ms`,
+                        color: textCharacters[index + message1.length] ? `rgba(60, 110, 71, ${textOpacity})` : 'rgba(60, 110, 71, 0.1)',
+                        transformOrigin: 'center bottom'
                       }}
                     >
                       {char}
@@ -585,7 +634,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
               </div>
             </div>
 
-            {/* スキップボタン（開発用） */}
+            {/* スキップボタン */}
             {import.meta.env.DEV && (
               <div className="text-center mt-4">
                 <button
@@ -595,7 +644,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   }}
                   className="text-sm text-blue-400 hover:text-blue-600 underline"
                 >
-                  スキップ（開発用）
+                  スキップ
                 </button>
               </div>
             )}
