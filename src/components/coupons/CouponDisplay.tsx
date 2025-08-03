@@ -35,7 +35,7 @@ export function CouponDisplay({ userCoupon, onClose, onUse }: CouponDisplayProps
 
     // 1回限りクーポンの場合、表示時点で使用済みにする
     if (coupon.usage_limit_type === 'once' && !userCoupon.is_used && !isProcessingUse) {
-      handleAutoUse();
+      void handleAutoUse();
     }
 
     // スクリーンショット防止の設定
@@ -150,11 +150,6 @@ export function CouponDisplay({ userCoupon, onClose, onUse }: CouponDisplayProps
       if (onUse) {
         onUse(userCoupon.qr_code_token);
       }
-      
-      // 3秒後にモーダルを自動で閉じる（使用済みクーポンの確認時間を提供）
-      setTimeout(() => {
-        onClose();
-      }, 3000);
       
     } catch (error) {
       console.error('❌ Error in handleAutoUse:', error);
