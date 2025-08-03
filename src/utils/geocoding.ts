@@ -42,16 +42,19 @@ export interface GeocodeResult {
  */
 export async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
   try {
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    // ジオコーディング専用APIキーを使用
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_GEOCODING_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
     
     if (!apiKey) {
       console.error('Google Maps APIキーが設定されていません');
+      console.error('必要な環境変数: VITE_GOOGLE_MAPS_GEOCODING_API_KEY または VITE_GOOGLE_MAPS_API_KEY');
       return null;
     }
 
     // 住所の前処理：全角数字を半角に変換、不要な空白を削除
     const normalizedAddress = normalizeAddress(address);
     console.log(`🔍 住所検索開始: 元の住所="${address}", 正規化後="${normalizedAddress}"`);
+    console.log(`🔑 使用APIキー: ${apiKey.substring(0, 10)}...`);
 
     const encodedAddress = encodeURIComponent(normalizedAddress);
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${apiKey}&region=jp&language=ja&components=country:JP`;
