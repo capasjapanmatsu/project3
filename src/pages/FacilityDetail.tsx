@@ -152,10 +152,64 @@ export function FacilityDetail() {
 
       setFacility(facilityData);
       
-      // レビュー機能は一時的に無効化
-      setReviews([]);
-      setReviewSummary(null);
-      setUserDogs([]);
+      // レビューデータの取得
+      const [reviewsResult, reviewSummaryResult, userDogsResult] = await Promise.all([
+        // レビュー一覧を取得
+        supabase
+          .from('facility_reviews')
+          .select(`
+            id,
+            facility_id,
+            user_id,
+            dog_name,
+            rating,
+            comment,
+            visit_date,
+            created_at,
+            profiles(name)
+          `)
+          .eq('facility_id', facilityId)
+          .order('created_at', { ascending: false }),
+        
+        // レビューサマリーを取得
+        supabase
+          .from('facility_reviews')
+          .select('rating')
+          .eq('facility_id', facilityId),
+        
+        // ログインユーザーの犬一覧を取得
+        user ? supabase
+          .from('dogs')
+          .select('id, name')
+          .eq('owner_id', user.id)
+          .eq('is_active', true) : Promise.resolve({ data: [] })
+      ]);
+
+      if (reviewsResult.data) {
+        setReviews(reviewsResult.data);
+      }
+
+      // レビューサマリーを計算
+      if (reviewSummaryResult.data && reviewSummaryResult.data.length > 0) {
+        const ratings = reviewSummaryResult.data.map(r => r.rating);
+        const avgRating = ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
+        setReviewSummary({
+          facility_id: facilityId,
+          average_rating: avgRating,
+          review_count: ratings.length,
+          rating_distribution: {
+            5: ratings.filter(r => r === 5).length,
+            4: ratings.filter(r => r === 4).length,
+            3: ratings.filter(r => r === 3).length,
+            2: ratings.filter(r => r === 2).length,
+            1: ratings.filter(r => r === 1).length,
+          }
+        });
+      }
+
+      if (userDogsResult.data) {
+        setUserDogs(userDogsResult.data);
+      }
 
       // ユーザーが既に取得したクーポンをチェック
       if (user && couponsResult.data && couponsResult.data.length > 0) {
@@ -778,8 +832,8 @@ export function FacilityDetail() {
             </div>
           )}
 
-          {/* レビューセクション - 一時的に無効化 */}
-          {false && (
+          {/* レビューセクション */}
+          {true && (
           <div className="mb-12">
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">
