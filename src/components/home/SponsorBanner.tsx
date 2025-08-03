@@ -126,7 +126,7 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
       aria-label="スポンサー募集カルーセル"
     >
       {/* カルーセルコンテナ */}
-      <div className="relative w-full h-48 overflow-hidden">
+      <div className="relative w-full h-32 overflow-hidden">
         {/* バナー表示エリア */}
         <div className="flex items-center justify-center h-full">
           {visibleBanners.map(({ banner, position, index }) => {
@@ -150,14 +150,14 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
               scale = 1;
               zIndex = 20;
             } else if (isAdjacent) {
-              // 隣接バナー（チラ見せ）
-              transform = `translateX(${position * 280}px)`;
+              // 隣接バナー（チラ見せ）- 間隔を広げる
+              transform = `translateX(${position * 350}px)`;
               opacity = 0.7;
               scale = 0.8;
               zIndex = 15;
             } else if (isEdge) {
-              // 端バナー（ほぼ見えない）
-              transform = `translateX(${position * 320}px)`;
+              // 端バナー（ほぼ見えない）- 間隔を広げる
+              transform = `translateX(${position * 420}px)`;
               opacity = 0.3;
               scale = 0.6;
               zIndex = 10;
@@ -167,7 +167,7 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
               <div
                 key={`${banner.id}-${index}`}
                 className={`absolute transition-all duration-700 ease-in-out cursor-pointer ${
-                  isCenter ? 'w-96 h-40' : 'w-80 h-32'
+                  isCenter ? 'w-80 h-24' : 'w-64 h-20'
                 }`}
                 style={{
                   transform: `${transform} scale(${scale})`,
@@ -191,20 +191,20 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
                   }}></div>
                   
                   {/* コンテンツ */}
-                  <div className="relative z-10 h-full flex items-center justify-center text-center px-4">
+                  <div className="relative z-10 h-full flex items-center justify-center text-center px-3">
                     <div>
-                      <h3 className={`font-bold text-white drop-shadow-lg mb-2 ${
-                        isCenter ? 'text-2xl' : 'text-lg'
+                      <h3 className={`font-bold text-white drop-shadow-lg mb-1 ${
+                        isCenter ? 'text-lg' : 'text-sm'
                       }`}>
                         {banner.title}
                       </h3>
                       {isCenter && (
                         <>
-                          <p className="text-sm text-white opacity-90 drop-shadow-md max-w-sm mb-4">
+                          <p className="text-xs text-white opacity-90 drop-shadow-md max-w-sm mb-2">
                             {banner.description}
                           </p>
                           <div>
-                            <span className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm hover:bg-opacity-30 transition-all">
+                            <span className="bg-white bg-opacity-20 text-white px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm hover:bg-opacity-30 transition-all">
                               詳細を見る →
                             </span>
                           </div>
@@ -215,16 +215,16 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
 
                   {/* スポンサー募集ラベル（中央のみ） */}
                   {isCenter && (
-                    <div className="absolute top-3 left-3 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold">
+                    <div className="absolute top-2 left-2 bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-bold">
                       募集中
                     </div>
                   )}
 
                   {/* 右下のアイコン（中央のみ） */}
                   {isCenter && (
-                    <div className="absolute bottom-3 right-3">
+                    <div className="absolute bottom-2 right-2">
                       <svg 
-                        className="w-6 h-6 text-white opacity-70" 
+                        className="w-4 h-4 text-white opacity-70" 
                         fill="none" 
                         stroke="currentColor" 
                         viewBox="0 0 24 24"
