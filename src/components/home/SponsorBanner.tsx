@@ -157,20 +157,10 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
       onMouseLeave={() => setIsHovering(false)}
       aria-label="スポンサー募集バナー"
     >
-      {/* バナーコンテナ - 中央のバナーと左右のチラ見せ */}
-      <div className="flex items-center justify-center space-x-4 overflow-hidden">
-        {/* 左のチラ見せバナー */}
-        <div className="hidden md:block w-20 h-32 opacity-30 bg-gradient-to-r from-gray-400 to-gray-500 rounded-lg flex-shrink-0">
-          <div className="h-full flex items-center justify-center">
-            <div className="text-white text-xs text-center">
-              <div className="font-bold">スポンサー</div>
-              <div>募集中</div>
-            </div>
-          </div>
-        </div>
-
+      {/* バナーコンテナ - 中央のメインバナーのみ */}
+      <div className="flex items-center justify-center">
         {/* メインバナーコンテナ */}
-        <div className="flex-1 max-w-2xl h-40 relative overflow-hidden rounded-lg">
+        <div className="w-full max-w-4xl h-40 relative overflow-hidden rounded-lg">
           {/* 現在のバナー */}
           <div 
             className="absolute inset-0 cursor-pointer transform transition-all duration-300 hover:scale-[1.02] bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg relative overflow-hidden"
@@ -201,14 +191,14 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
             {/* コンテンツ */}
             <div className="relative z-10 h-full flex items-center justify-center text-center px-6">
               <div>
-                <h3 className="text-2xl font-bold mb-2 text-white drop-shadow-lg">
+                <h3 className="text-3xl font-bold mb-3 text-white drop-shadow-lg">
                   {currentBanner.title}
                 </h3>
-                <p className="text-sm text-white opacity-90 drop-shadow-md max-w-md">
+                <p className="text-lg text-white opacity-90 drop-shadow-md max-w-2xl">
                   {currentBanner.description}
                 </p>
-                <div className="mt-4">
-                  <span className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm">
+                <div className="mt-6">
+                  <span className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-full text-base font-medium backdrop-blur-sm hover:bg-opacity-30 transition-all">
                     詳細を見る →
                   </span>
                 </div>
@@ -216,14 +206,14 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
             </div>
 
             {/* スポンサー募集ラベル */}
-            <div className="absolute top-3 left-3 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold">
+            <div className="absolute top-4 left-4 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-full text-sm font-bold">
               募集中
             </div>
 
             {/* 右下のアイコン */}
-            <div className="absolute bottom-3 right-3">
+            <div className="absolute bottom-4 right-4">
               <svg 
-                className="w-6 h-6 text-white opacity-70" 
+                className="w-8 h-8 text-white opacity-70" 
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
@@ -255,14 +245,14 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
               {/* コンテンツ */}
               <div className="relative z-10 h-full flex items-center justify-center text-center px-6">
                 <div>
-                  <h3 className="text-2xl font-bold mb-2 text-white drop-shadow-lg">
+                  <h3 className="text-3xl font-bold mb-3 text-white drop-shadow-lg">
                     {nextBanner.title}
                   </h3>
-                  <p className="text-sm text-white opacity-90 drop-shadow-md max-w-md">
+                  <p className="text-lg text-white opacity-90 drop-shadow-md max-w-2xl">
                     {nextBanner.description}
                   </p>
-                  <div className="mt-4">
-                    <span className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm">
+                  <div className="mt-6">
+                    <span className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-full text-base font-medium backdrop-blur-sm hover:bg-opacity-30 transition-all">
                       詳細を見る →
                     </span>
                   </div>
@@ -270,14 +260,14 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
               </div>
 
               {/* スポンサー募集ラベル */}
-              <div className="absolute top-3 left-3 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold">
+              <div className="absolute top-4 left-4 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-full text-sm font-bold">
                 募集中
               </div>
 
               {/* 右下のアイコン */}
-              <div className="absolute bottom-3 right-3">
+              <div className="absolute bottom-4 right-4">
                 <svg 
-                  className="w-6 h-6 text-white opacity-70" 
+                  className="w-8 h-8 text-white opacity-70" 
                   fill="none" 
                   stroke="currentColor" 
                   viewBox="0 0 24 24"
@@ -290,30 +280,20 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
 
           {/* スライド方向インジケーター（アニメーション中のみ） */}
           {isAnimating && (
-            <div className="absolute top-1/2 right-4 transform -translate-y-1/2 z-20">
+            <div className="absolute top-1/2 right-6 transform -translate-y-1/2 z-20">
               <div className="flex items-center space-x-1 text-white">
-                <svg className="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-                <svg className="w-4 h-4 animate-bounce" style={{ animationDelay: '0.1s' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 animate-bounce" style={{ animationDelay: '0.1s' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-                <svg className="w-4 h-4 animate-bounce" style={{ animationDelay: '0.2s' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 animate-bounce" style={{ animationDelay: '0.2s' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </div>
             </div>
           )}
-        </div>
-
-        {/* 右のチラ見せバナー */}
-        <div className="hidden md:block w-20 h-32 opacity-30 bg-gradient-to-r from-gray-500 to-gray-400 rounded-lg flex-shrink-0">
-          <div className="h-full flex items-center justify-center">
-            <div className="text-white text-xs text-center">
-              <div className="font-bold">スポンサー</div>
-              <div>募集中</div>
-            </div>
-          </div>
         </div>
       </div>
 
