@@ -401,6 +401,22 @@ export default function ParkRegistration() {
           throw new Error('ユーザー認証に失敗しました。再度ログインしてください。');
         }
 
+        // 住所から緯度・経度を取得
+        console.log(`📍 住所をジオコーディング中: ${formData.address}`);
+        const formattedAddress = formatAddressForGeocoding(formData.address);
+        const geocodeResult = await geocodeAddress(formattedAddress);
+        
+        let latitude = null;
+        let longitude = null;
+        
+        if (geocodeResult) {
+          latitude = geocodeResult.latitude;
+          longitude = geocodeResult.longitude;
+          console.log(`✅ ジオコーディング成功: ${latitude}, ${longitude}`);
+        } else {
+          console.warn('⚠️ ジオコーディングに失敗しました。住所のみで登録を続行します。');
+          // ジオコーディング失敗でも登録は続行（住所のみ保存）
+        }
 
         // プロフィールのuser_typeを'owner'に更新
         const { error: profileError } = await supabase
@@ -412,12 +428,13 @@ export default function ParkRegistration() {
           throw new Error('プロフィールの更新に失敗しました。');
         }
 
-
         const parkData = {
           owner_id: user.id,
           name: formData.name,
           description: formData.description,
           address: formData.address,
+          latitude: latitude,
+          longitude: longitude,
           price: 800,
           max_capacity: parseInt(formData.maxCapacity, 10),
           large_dog_area: formData.largeDogArea,

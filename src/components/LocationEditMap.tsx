@@ -97,10 +97,6 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
 
   // 住所検索とジオコーディング
   const handleAddressSearch = useCallback(async () => {
-    // 🚫 一時的に住所検索を無効化
-    alert('住所検索機能は一時的に無効化されています。赤いマーカーを直接ドラッグして位置を調整してください。');
-    return;
-    
     if (!address.trim() || !googleMapRef.current || !markerRef.current) return;
 
     setIsGeocoding(true);
@@ -139,22 +135,18 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
 
   // 初期住所が設定されているが座標が未設定の場合、自動ジオコーディング
   useEffect(() => {
-    // 🚫 一時的に自動ジオコーディングを無効化
-    console.log('⚠️ 自動ジオコーディングは一時的に無効化されています');
-    return;
-    
     const performInitialGeocoding = async () => {
       console.log('🏁 自動ジオコーディング条件チェック:', {
         initialAddress,
-        initialLatitude,
-        initialLongitude,
-        hasGoogleMap: !!googleMapRef.current,
-        hasMarker: !!markerRef.current,
-        isGeocoding
+        hasInitialCoords: !!(initialLatitude && initialLongitude),
+        isGeocoding,
+        hasMapAndMarker: !!(googleMapRef.current && markerRef.current)
       });
       
+      // 初期住所があり、座標が未設定で、マップが初期化済みの場合
       if (initialAddress && 
-          (!initialLatitude || !initialLongitude) && 
+          !initialLatitude && 
+          !initialLongitude && 
           !isGeocoding && 
           googleMapRef.current && 
           markerRef.current) {

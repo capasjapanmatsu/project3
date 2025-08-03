@@ -1,28 +1,28 @@
 import {
-  AlertTriangle,
-  ArrowLeft,
-  Building,
-  Calendar,
-  Camera,
-  CheckCircle,
-  DollarSign,
-  Edit,
-  Eye,
-  FileText,
-  Image as ImageIcon,
-  Key,
-  MapPin,
-  ParkingCircle,
-  Plus,
-  Settings,
-  Shield,
-  ShowerHead,
-  Star,
-  Trash2,
-  Upload,
-  Users,
-  Wrench,
-  X
+    AlertTriangle,
+    ArrowLeft,
+    Building,
+    Calendar,
+    Camera,
+    CheckCircle,
+    DollarSign,
+    Edit,
+    Eye,
+    FileText,
+    Image as ImageIcon,
+    Key,
+    MapPin,
+    ParkingCircle,
+    Plus,
+    Settings,
+    Shield,
+    ShowerHead,
+    Star,
+    Trash2,
+    Upload,
+    Users,
+    Wrench,
+    X
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -1302,9 +1302,9 @@ export function ParkManagement() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-blue-800 text-sm">
                     <strong>位置調整について:</strong><br />
-                    ⚠️ 現在、住所検索機能は一時的に無効化されています。<br />
-                    <strong>赤いマーカーを直接ドラッグ</strong>して、実際のドッグランの位置に調整してください。<br />
-                    マーカーをドラッグした後、「位置を保存」ボタンで座標を保存できます。
+                    📍 <strong>住所で検索</strong>: 住所を入力して検索ボタンを押すと、自動的にマップ上の位置が調整されます。<br />
+                    🔴 <strong>手動調整</strong>: 赤いマーカーを直接ドラッグして、より正確な位置に調整することも可能です。<br />
+                    💾 マーカーを調整した後、「位置を保存」ボタンで座標を保存してください。
                   </p>
                 </div>
 
