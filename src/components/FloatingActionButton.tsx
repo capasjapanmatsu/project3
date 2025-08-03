@@ -149,7 +149,7 @@ export const FloatingActionButton = () => {
           className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transform transition-all duration-300 border-4 border-white/30 backdrop-blur-sm ${
             isOpen
               ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rotate-45 scale-95'
-              : 'bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-700 hover:via-blue-600 hover:to-indigo-700 hover:scale-110 hover:shadow-blue-500/25'
+              : 'bg-blue-600 hover:bg-blue-700 hover:scale-110 hover:shadow-blue-500/25'
           }`}
           style={{
             boxShadow: isOpen 
