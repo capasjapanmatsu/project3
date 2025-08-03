@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../utils/supabase';
-import { Button } from '../Button';
-import { Card } from '../Card';
-import { Input } from '../Input';
+import Button from '../Button';
+import Card from '../Card';
+import Input from '../Input';
 
 interface SponsorBanner {
   id: string;
