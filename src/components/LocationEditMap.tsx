@@ -102,7 +102,33 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
     setIsGeocoding(true);
 
     try {
-      const result = await geocodeAddress(address);
+      console.log(`🔍 住所検索開始: "${address}"`);
+      
+      // 複数の住所形式で試行
+      const addressVariations = [
+        address.trim(),
+        `〒861-8006 ${address.trim()}`,
+        address.trim().replace(/[－]/g, '-'),
+        address.trim().replace(/(\d+)丁目(\d+)-(\d+)/g, '$1-$2-$3'),
+        address.trim().replace(/(\d+)丁目(\d+)－(\d+)/g, '$1-$2-$3')
+      ];
+
+      let result = null;
+      let lastError = null;
+
+      for (const addressVariation of addressVariations) {
+        console.log(`🔍 試行中の住所: "${addressVariation}"`);
+        try {
+          result = await geocodeAddress(addressVariation);
+          if (result) {
+            console.log(`✅ 成功した住所形式: "${addressVariation}"`);
+            break;
+          }
+        } catch (error) {
+          console.warn(`⚠️ 住所形式 "${addressVariation}" で失敗:`, error);
+          lastError = error;
+        }
+      }
       
       if (result) {
         const newLat = result.latitude;
@@ -117,12 +143,15 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
         setLatitude(newLat);
         setLongitude(newLng);
         onLocationChange(newLat, newLng, result.formatted_address);
+        
+        console.log(`✅ マーカー位置更新完了: ${newLat}, ${newLng}`);
       } else {
-        alert('住所が見つかりませんでした。別の住所を試してください。');
+        console.error('❌ 全ての住所形式で失敗');
+        alert(`住所が見つかりませんでした。\n\n入力された住所: ${address}\n\n以下をご確認ください：\n・住所が正確に入力されているか\n・郵便番号が含まれているか\n・全角文字が使用されていないか\n\nもしくは、マーカーを直接ドラッグして位置を調整してください。`);
       }
     } catch (error) {
-      console.error('ジオコーディングエラー:', error);
-      alert('住所の検索中にエラーが発生しました。');
+      console.error('住所検索エラー:', error);
+      alert(`住所の検索中にエラーが発生しました。\n\nエラー詳細: ${error}\n\nマーカーを直接ドラッグして位置を調整してください。`);
     } finally {
       setIsGeocoding(false);
     }

@@ -1,4 +1,31 @@
 /**
+ * 住所の正規化関数
+ * @param address - 元の住所
+ * @returns 正規化された住所
+ */
+function normalizeAddress(address: string): string {
+  let normalized = address.trim();
+  
+  // 全角数字を半角数字に変換
+  normalized = normalized.replace(/[０-９]/g, (match) =>
+    String.fromCharCode(match.charCodeAt(0) - 0xFEE0)
+  );
+  
+  // 全角ハイフンを半角ハイフンに変換（ただし住所では元のまま保持）
+  normalized = normalized.replace(/[－]/g, '-');
+  
+  // 全角空白を半角空白に変換
+  normalized = normalized.replace(/　/g, ' ');
+  
+  // 連続する空白を一つに統一
+  normalized = normalized.replace(/\s+/g, ' ');
+  
+  // 住所形式を日本語のまま保持（丁目は変換しない）
+  
+  return normalized;
+}
+
+/**
  * 住所から緯度・経度を取得するジオコーディングユーティリティ
  */
 
@@ -22,22 +49,31 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult | n
       return null;
     }
 
-    const encodedAddress = encodeURIComponent(address);
-    const response = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${apiKey}&region=jp&language=ja&components=country:JP`
-    );
+    // 住所の前処理：全角数字を半角に変換、不要な空白を削除
+    const normalizedAddress = normalizeAddress(address);
+    console.log(`🔍 住所検索開始: 元の住所="${address}", 正規化後="${normalizedAddress}"`);
+
+    const encodedAddress = encodeURIComponent(normalizedAddress);
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${apiKey}&region=jp&language=ja&components=country:JP`;
+    
+    console.log(`📡 API URL: ${url.replace(apiKey, 'MASKED_API_KEY')}`);
+    
+    const response = await fetch(url);
     
     if (!response.ok) {
+      console.error(`HTTP Error: ${response.status} ${response.statusText}`);
       throw new Error(`HTTP Error: ${response.status}`);
     }
     
     const data = await response.json() as any;
+    console.log(`📋 API レスポンス:`, data);
     
     if (data.status === 'OK' && data.results && data.results.length > 0) {
       const result = data.results[0];
       const location = result.geometry?.location;
       
       if (location && typeof location.lat === 'number' && typeof location.lng === 'number') {
+        console.log(`✅ ジオコーディング成功: ${location.lat}, ${location.lng}`);
         return {
           latitude: location.lat,
           longitude: location.lng,
@@ -46,7 +82,10 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult | n
       }
     }
     
-    console.error(`ジオコーディング失敗: ${address} - Status: ${data.status || 'UNKNOWN'}`);
+    console.error(`❌ ジオコーディング失敗:`);
+    console.error(`   住所: ${address}`);
+    console.error(`   ステータス: ${data.status || 'UNKNOWN'}`);
+    console.error(`   詳細:`, data);
     
     // エラーメッセージを詳細化
     if (data.status === 'ZERO_RESULTS') {
@@ -61,7 +100,7 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult | n
     
     return null;
   } catch (error) {
-    console.error(`ジオコーディングエラー: ${address}`, error);
+    console.error(`💥 ジオコーディングエラー: ${address}`, error);
     return null;
   }
 }
