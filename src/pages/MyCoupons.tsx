@@ -309,9 +309,24 @@ export function MyCoupons() {
                     <div className="bg-gray-50 p-3 rounded-lg mb-3">
                       <div className="flex items-center">
                         <MapPin className="w-4 h-4 mr-2 text-blue-500" />
-                        <span className="font-medium text-gray-900 text-sm">{coupon.coupon.facility?.name}</span>
+                        <Link 
+                          to={`/facilities/${coupon.coupon.facility_id}`}
+                          className="font-medium text-blue-600 hover:text-blue-800 underline text-sm"
+                        >
+                          {coupon.coupon.facility?.name}
+                        </Link>
                       </div>
                     </div>
+
+                    {/* 詳細説明 */}
+                    {coupon.coupon.description && (
+                      <div className="bg-blue-50 p-3 rounded-lg mb-3">
+                        <div className="text-sm text-gray-700">
+                          <span className="font-medium text-blue-800">詳細説明：</span>
+                          {coupon.coupon.description}
+                        </div>
+                      </div>
+                    )}
 
                     {/* クーポン詳細情報 */}
                     <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
@@ -333,17 +348,6 @@ export function MyCoupons() {
                         </span>
                       </div>
                     </div>
-
-                    {/* クーポン画像 */}
-                    {coupon.coupon.coupon_image_url && (
-                      <div className="mb-3">
-                        <img
-                          src={coupon.coupon.coupon_image_url}
-                          alt="クーポン画像"
-                          className="w-full max-w-sm h-auto border rounded-lg shadow-sm mx-auto"
-                        />
-                      </div>  
-                    )}
 
                     {/* 1回限定クーポンの警告 */}
                     {activeTab === 'available' && coupon.coupon.usage_limit_type === 'once' && (
