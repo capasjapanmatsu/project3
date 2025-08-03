@@ -111,33 +111,6 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
     navigate('/sponsor-application');
   }, [navigate]);
 
-  // 再生/一時停止の切り替え
-  const togglePlayPause = useCallback(() => {
-    setIsPlaying(prev => !prev);
-  }, []);
-
-  // 手動でスライド変更
-  const goToSlide = useCallback((index: number) => {
-    setCurrentIndex(index);
-    setNextIndex((index + 1) % banners.length);
-    setIsAnimating(false);
-    setShowNext(false);
-  }, [banners.length]);
-
-  // 前のスライドに移動
-  const goToPrevious = useCallback(() => {
-    const prevIndex = (currentIndex - 1 + banners.length) % banners.length;
-    setCurrentIndex(prevIndex);
-    setNextIndex((prevIndex + 1) % banners.length);
-  }, [currentIndex, banners.length]);
-
-  // 次のスライドに移動
-  const goToNext = useCallback(() => {
-    const nextIdx = (currentIndex + 1) % banners.length;
-    setCurrentIndex(nextIdx);
-    setNextIndex((nextIdx + 1) % banners.length);
-  }, [currentIndex, banners.length]);
-
   if (banners.length === 0) {
     return null;
   }
@@ -277,62 +250,6 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
               </div>
             </div>
           )}
-
-          {/* スライド方向インジケーター（アニメーション中のみ） */}
-          {isAnimating && (
-            <div className="absolute top-1/2 right-6 transform -translate-y-1/2 z-20">
-              <div className="flex items-center space-x-1 text-white">
-                <svg className="w-5 h-5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-                <svg className="w-5 h-5 animate-bounce" style={{ animationDelay: '0.1s' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-                <svg className="w-5 h-5 animate-bounce" style={{ animationDelay: '0.2s' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* コントロールバー */}
-      <div className="mt-4 flex items-center justify-center space-x-4">
-        {/* インジケーター */}
-        <div className="flex space-x-2">
-          {banners.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => goToSlide(index)}
-              className={`w-2 h-2 rounded-full transition-colors duration-200 ${
-                index === currentIndex ? 'bg-blue-600' : 'bg-gray-300 hover:bg-gray-400'
-              }`}
-              aria-label={`バナー ${index + 1} に移動`}
-            />
-          ))}
-        </div>
-
-        {/* 再生/一時停止ボタン */}
-        <div className="flex items-center space-x-3">
-          <span className="text-xs text-gray-500">
-            {currentIndex + 1} / {banners.length}
-          </span>
-          <button
-            onClick={togglePlayPause}
-            className="p-1 text-gray-600 hover:text-blue-600 transition-colors"
-            aria-label={isPlaying ? 'スライドを一時停止' : 'スライドを再生'}
-          >
-            {isPlaying ? (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H15" />
-              </svg>
-            )}
-          </button>
         </div>
       </div>
     </section>
