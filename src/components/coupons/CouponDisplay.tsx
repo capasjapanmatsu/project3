@@ -129,8 +129,6 @@ export function CouponDisplay({ userCoupon, onClose, onUse }: CouponDisplayProps
     setIsProcessingUse(true);
     
     try {
-      console.log('🎫 Auto-using once-only coupon:', userCoupon.qr_code_token);
-      
       const { error } = await supabase
         .from('user_coupons')
         .update({
@@ -144,8 +142,6 @@ export function CouponDisplay({ userCoupon, onClose, onUse }: CouponDisplayProps
         return;
       }
 
-      console.log('✅ Coupon auto-used successfully');
-      
       // onUse コールバックがあれば呼び出し
       if (onUse) {
         onUse(userCoupon.qr_code_token);

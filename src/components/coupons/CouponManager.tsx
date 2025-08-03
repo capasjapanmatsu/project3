@@ -52,7 +52,6 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
   const fetchCoupons = async () => {
     try {
       setIsLoading(true);
-      console.log('🔍 [Coupon] Fetching coupons for facility:', facilityId);
 
       const { data, error } = await supabase
         .from('facility_coupons')
@@ -63,7 +62,6 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
 
       if (error) throw error;
 
-      console.log('✅ [Coupon] Coupons fetched:', data?.length || 0);
       setCoupons(data || []);
 
       // 統計情報を取得（一時的に無効化）
@@ -752,15 +750,7 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
                       {coupon.is_active ? '有効' : '無効'}
                     </span>
                     <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
-                      {(() => {
-                        console.log('Coupon usage_limit_type debug:', {
-                          id: coupon.id,
-                          usage_limit_type: coupon.usage_limit_type,
-                          typeof: typeof coupon.usage_limit_type,
-                          comparison: coupon.usage_limit_type === 'once'
-                        });
-                        return coupon.usage_limit_type === 'once' ? '1回限り' : '何回でも';
-                      })()}
+                      {coupon.usage_limit_type === 'once' ? '1回限り' : '何回でも'}
                     </span>
                   </div>
 

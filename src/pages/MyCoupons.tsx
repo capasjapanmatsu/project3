@@ -62,7 +62,6 @@ export function MyCoupons() {
 
       if (error) throw error;
 
-      console.log('✅ [MyCoupons] Fetched coupons:', data);
       setCoupons(data || []);
     } catch (error) {
       console.error('❌ [MyCoupons] Error fetching coupons:', error);
@@ -93,8 +92,6 @@ export function MyCoupons() {
         return;
       }
 
-      console.log('✅ [MyCoupons] Coupon used successfully');
-      
       // クーポン一覧を再取得して状態を更新
       await fetchMyCoupons();
     } catch (error) {
