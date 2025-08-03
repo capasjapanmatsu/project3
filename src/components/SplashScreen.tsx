@@ -14,14 +14,15 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const { signInWithMagicLink, signInWithPassword } = useAuth();
 
   const [imageOpacity, setImageOpacity] = useState(0);
-  const [textCharacters, setTextCharacters] = useState<boolean[]>([]);
   const [showLoginForm] = useState(true); // 常にログインフォームを表示
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isPasswordLogin, setIsPasswordLogin] = useState(false);
+  const [isPasswordLogin, setIsPasswordLogin] = useState(true); // デフォルトでパスワードログイン
+  const [textOpacity, setTextOpacity] = useState(0.1); // 文字の濃さを制御
+  const [imageOpacityFilter, setImageOpacityFilter] = useState(0.3); // 画像の濃さを制御
 
   // プリロード関連の状態
   const [preloadProgress, setPreloadProgress] = useState(0);
@@ -29,8 +30,13 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const [loadingTasks, setLoadingTasks] = useState<string[]>([]);
   const [isPreloading, setIsPreloading] = useState(true);
 
-  const message1 = 'さぁ　ワンちゃんと';
+  const message1 = ' さぁ　ワンちゃんと';
   const message2 = '冒険に出かけよう！';
+  
+  // textCharactersを正しい長さで初期化
+  const [textCharacters, setTextCharacters] = useState<boolean[]>(() => 
+    new Array(message1.length + message2.length).fill(false) as boolean[]
+  );
 
   // URLクエリパラメータ処理
   const searchParams = new URLSearchParams(location.search);
@@ -51,11 +57,48 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         });
         currentIndex++;
         setTimeout(showNextCharacter, 100);
+      } else {
+        // 文字表示完了後、3秒かけて色を濃くする
+        startTextColorAnimation();
       }
     };
     
     showNextCharacter();
   }, [message1, message2]);
+
+  // 文字と画像の色を濃くするアニメーション
+  const startTextColorAnimation = useCallback(() => {
+    const duration = 3000; // 3秒
+    const startTime = Date.now();
+    const textStartOpacity = 0.1;
+    const textEndOpacity = 1.0;
+    const imageStartOpacity = 0.3;
+    const imageEndOpacity = 1.0;
+    
+    const animateOpacity = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // より優しいイージング関数（ease-in-out）
+      const easeProgress = progress < 0.5
+        ? 2 * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+      
+      // 文字のopacity
+      const currentTextOpacity = textStartOpacity + (textEndOpacity - textStartOpacity) * easeProgress;
+      setTextOpacity(currentTextOpacity);
+      
+      // 画像のopacity
+      const currentImageOpacity = imageStartOpacity + (imageEndOpacity - imageStartOpacity) * easeProgress;
+      setImageOpacityFilter(currentImageOpacity);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animateOpacity);
+      }
+    };
+    
+    requestAnimationFrame(animateOpacity);
+  }, []);
 
   // 画像とテキストのアニメーション
   useEffect(() => {
@@ -79,26 +122,31 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
   // 拡張プリロード処理（進歩追跡付き）
   useEffect(() => {
+    let isMounted = true;
+    
     const preloadResources = async () => {
+      if (!isMounted) return;
+      
       const tasks = [
         { name: 'ホーム画面', loader: () => import('../pages/Home') },
         { name: '認証システム', loader: () => import('../context/AuthContext') },
         { name: 'ナビゲーション', loader: () => import('../components/Navbar') },
         { name: 'フッター', loader: () => import('../components/Footer') },
-        { name: 'ユーザーダッシュボード', loader: () => import('../pages/UserDashboard') },
-        { name: 'ドッグラン検索', loader: () => import('../pages/DogParkList') },
-        { name: 'プロフィール設定', loader: () => import('../pages/ProfileSettings') },
-        { name: 'ドッグラン登録', loader: () => import('../pages/DogRegistration') },
       ];
 
+      if (!isMounted) return;
       setLoadingTasks(tasks.map(task => task.name));
       let completedTasks = 0;
 
       for (const task of tasks) {
+        if (!isMounted) break;
+        
         try {
           console.log(`🐕 ${task.name}を読み込み中...`);
           await task.loader();
           completedTasks++;
+          
+          if (!isMounted) break;
           
           const progress = (completedTasks / tasks.length) * 100;
           setPreloadProgress(progress);
@@ -107,22 +155,31 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           console.log(`✅ ${task.name}完了 (${Math.round(progress)}%)`);
           
           // 各タスク間に少し間隔を開ける
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise(resolve => setTimeout(resolve, 300));
         } catch (error) {
           console.warn(`⚠️ ${task.name}の読み込みエラー:`, error);
           completedTasks++;
+          
+          if (!isMounted) break;
+          
           const progress = (completedTasks / tasks.length) * 100;
           setPreloadProgress(progress);
           setDogPosition(progress);
         }
       }
 
-      console.log('🎉 全てのプリロード完了！');
-      setIsPreloading(false);
+      if (isMounted) {
+        console.log('🎉 全てのプリロード完了！');
+        setIsPreloading(false);
+      }
     };
 
     void preloadResources();
-  }, []);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []); // 空の依存配列で一度だけ実行
 
   // 開発環境でのメールアドレス自動入力
   useEffect(() => {
@@ -132,7 +189,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         setEmail(savedEmail);
       }
     }
-  }, []);
+  }, []); // 空の依存配列で一度だけ実行
 
   // Magic Link ログイン
   const handleMagicLinkLogin = async (e: React.FormEvent) => {
@@ -233,6 +290,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             className="w-full h-full object-cover transition-opacity duration-1000"
             style={{ 
               opacity: imageOpacity,
+              filter: `opacity(${imageOpacityFilter})`
             }}
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
@@ -248,12 +306,12 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             <div className="text-center w-full">
               {/* 2行のメッセージ（背景なし、強い白縁） */}
               <div className="space-y-2 px-4">
-                {/* 1行目: さぁ　ワンちゃんと */}
+                {/* 1行目: さぁ ワンちゃんと */}
                 <h2 
                   className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
                   style={{ 
                     fontFamily: 'Zen Maru Gothic, sans-serif',
-                    textShadow: '0 0 10px rgba(255,255,255,1), 0 0 20px rgba(255,255,255,1), 0 0 30px rgba(255,255,255,0.8), 2px 2px 4px rgba(255,255,255,1), -2px -2px 4px rgba(255,255,255,1), 2px -2px 4px rgba(255,255,255,1), -2px 2px 4px rgba(255,255,255,1)'
+                    textShadow: `0 0 10px rgba(255,255,255,${textOpacity}), 0 0 20px rgba(255,255,255,${textOpacity}), 0 0 30px rgba(255,255,255,${textOpacity * 0.8}), 2px 2px 4px rgba(255,255,255,${textOpacity}), -2px -2px 4px rgba(255,255,255,${textOpacity}), 2px -2px 4px rgba(255,255,255,${textOpacity}), -2px 2px 4px rgba(255,255,255,${textOpacity})`
                   }}
                 >
                   {message1.split('').map((char, index) => (
@@ -266,7 +324,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                       }`}
                       style={{
                         transitionDelay: `${index * 100}ms`,
-                        color: textCharacters[index] ? '#355E3B' : 'rgba(53, 94, 59, 0.3)'
+                        color: textCharacters[index] ? `rgba(53, 94, 59, ${textOpacity})` : 'rgba(53, 94, 59, 0.1)'
                       }}
                     >
                       {char === '　' ? '\u00A0' : char}
@@ -279,7 +337,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
                   style={{ 
                     fontFamily: 'Zen Maru Gothic, sans-serif',
-                    textShadow: '0 0 10px rgba(255,255,255,1), 0 0 20px rgba(255,255,255,1), 0 0 30px rgba(255,255,255,0.8), 2px 2px 4px rgba(255,255,255,1), -2px -2px 4px rgba(255,255,255,1), 2px -2px 4px rgba(255,255,255,1), -2px 2px 4px rgba(255,255,255,1)'
+                    textShadow: `0 0 10px rgba(255,255,255,${textOpacity}), 0 0 20px rgba(255,255,255,${textOpacity}), 0 0 30px rgba(255,255,255,${textOpacity * 0.8}), 2px 2px 4px rgba(255,255,255,${textOpacity}), -2px -2px 4px rgba(255,255,255,${textOpacity}), 2px -2px 4px rgba(255,255,255,${textOpacity}), -2px 2px 4px rgba(255,255,255,${textOpacity})`
                   }}
                 >
                   {message2.split('').map((char, index) => (
@@ -292,7 +350,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                       }`}
                       style={{
                         transitionDelay: `${(index + message1.length) * 100}ms`,
-                        color: textCharacters[index + message1.length] ? '#3C6E47' : 'rgba(60, 110, 71, 0.3)'
+                        color: textCharacters[index + message1.length] ? `rgba(60, 110, 71, ${textOpacity})` : 'rgba(60, 110, 71, 0.1)'
                       }}
                     >
                       {char}
@@ -505,7 +563,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                         disabled={isLoading || !email}
                         className="w-full py-2 px-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isLoading ? '送信中...' : 'Send Magic Link'}
+                        {isLoading ? '送信中...' : 'メールを送信'}
                       </button>
                     </div>
                   </form>

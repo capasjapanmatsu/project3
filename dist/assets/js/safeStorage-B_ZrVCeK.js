@@ -1,1 +1,0 @@
-function t(t){try{const e=window[t],r="__storage_test__";return e.setItem(r,r),e.removeItem(r),!0}catch{return!1}}const e={};function r(r,n="localStorage"){try{return t(n)?window[n].getItem(r):e[r]||null}catch(o){return e[r]||null}}function n(r,n,o="localStorage"){try{return t(o)?(window[o].setItem(r,n),!0):(e[r]=n,!0)}catch(c){return e[r]=n,!1}}export{r as a,n as s};
