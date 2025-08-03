@@ -7,7 +7,7 @@ interface SponsorBanner {
   description: string;
   image_url: string;
   website_url: string;
-  banner_type: 'top' | 'sidebar' | 'footer';
+  banner_type: 'top' | 'footer';
   is_active: boolean;
   display_order: number;
   created_at: string;

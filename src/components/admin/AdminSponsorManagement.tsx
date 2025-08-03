@@ -11,7 +11,7 @@ interface SponsorBanner {
   description: string;
   image_url: string;
   website_url: string;
-  banner_type: 'top' | 'sidebar' | 'footer';
+  banner_type: 'top' | 'footer';
   is_active: boolean;
   display_order: number;
   start_date: string | null;
@@ -27,7 +27,7 @@ interface SponsorFormData {
   description: string;
   image_url: string;
   website_url: string;
-  banner_type: 'top' | 'sidebar' | 'footer';
+  banner_type: 'top' | 'footer';
   is_active: boolean;
   display_order: number;
   start_date: string;
@@ -245,10 +245,9 @@ export const AdminSponsorManagement: React.FC = () => {
             <Select
               label="バナータイプ"
               value={formData.banner_type}
-              onChange={(e) => handleInputChange('banner_type', e.target.value as 'top' | 'sidebar' | 'footer')}
+              onChange={(e) => handleInputChange('banner_type', e.target.value as 'top' | 'footer')}
               options={[
                 { value: 'top', label: 'トップ' },
-                { value: 'sidebar', label: 'サイドバー' },
                 { value: 'footer', label: 'フッター' },
               ]}
             />
@@ -333,11 +332,11 @@ export const AdminSponsorManagement: React.FC = () => {
                     <h3 className="text-lg font-semibold">{banner.title}</h3>
                     <span className={`px-2 py-1 rounded-full text-xs ${
                       banner.banner_type === 'top' ? 'bg-blue-100 text-blue-800' :
-                      banner.banner_type === 'sidebar' ? 'bg-purple-100 text-purple-800' :
-                      'bg-teal-100 text-teal-800'
+                      banner.banner_type === 'footer' ? 'bg-teal-100 text-teal-800' :
+                      ''
                     }`}>
                       {banner.banner_type === 'top' ? 'トップ' :
-                       banner.banner_type === 'sidebar' ? 'サイド' : 'フッター'}
+                       banner.banner_type === 'footer' ? 'フッター' : ''}
                     </span>
                     <span className={`px-2 py-1 rounded-full text-xs ${
                       banner.is_active 

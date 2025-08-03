@@ -10,7 +10,6 @@ import MaintenanceScreen from './MaintenanceScreen';
 import { Navbar } from './Navbar';
 import { SEO } from './SEO';
 import FooterBanner from './home/FooterBanner';
-import SidebarBanner from './home/SidebarBanner';
 
 interface LayoutProps {
   children: ReactNode;
@@ -84,7 +83,7 @@ const Layout = ({ children }: LayoutProps) => {
         <FloatingActionButton />
         
         {/* サイドバナー（固定配置） */}
-        <SidebarBanner />
+        
       </div>
     </HelmetProvider>
   );

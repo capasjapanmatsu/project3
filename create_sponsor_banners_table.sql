@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS sponsor_banners (
   description TEXT,
   image_url TEXT,
   website_url TEXT NOT NULL,
-  banner_type VARCHAR(20) NOT NULL DEFAULT 'top' CHECK (banner_type IN ('top', 'sidebar', 'footer')),
+  banner_type VARCHAR(20) NOT NULL DEFAULT 'top' CHECK (banner_type IN ('top', 'footer')),
   is_active BOOLEAN DEFAULT true,
   display_order INTEGER DEFAULT 0,
   start_date TIMESTAMPTZ,
