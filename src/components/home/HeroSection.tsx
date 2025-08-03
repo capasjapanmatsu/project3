@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { SponsorBanner } from './SponsorBanner';
 
 interface HeroSectionProps {
   isLoggedIn: boolean;
@@ -8,14 +9,12 @@ interface HeroSectionProps {
 export const HeroSection: React.FC<HeroSectionProps> = ({ isLoggedIn }) => {
   if (isLoggedIn) {
     return (
-      <section className="text-center py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">
-          おかえりなさい！
-        </h1>
-        <p className="text-xl text-gray-600 mb-8">
-          今日も愛犬と素敵な時間をお過ごしください
-        </p>
-        <div className="flex justify-center space-x-4">
+      <section className="py-4">
+        {/* スポンサーバナー */}
+        <SponsorBanner />
+        
+        {/* アクションボタン */}
+        <div className="flex justify-center space-x-4 mt-6">
           <Link
             to="/parks"
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"

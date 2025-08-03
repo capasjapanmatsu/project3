@@ -6,6 +6,7 @@ import {
     CheckCircle,
     DollarSign,
     Eye,
+    Monitor,
     Settings,
     Shield,
     ShieldAlert,
@@ -17,6 +18,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import AdminMaintenanceManagement from '../components/admin/AdminMaintenanceManagement';
+import AdminSponsorManagement from '../components/admin/AdminSponsorManagement';
 import useAuth from '../context/AuthContext';
 import { FraudDetectionResult, getFraudDetectionStats, getHighRiskUsers } from '../utils/adminFraudDetection';
 import { supabase } from '../utils/supabase';
@@ -64,7 +66,7 @@ interface FraudStats {
 export function AdminDashboard() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'parks' | 'facilities' | 'users' | 'maintenance' | 'fraud'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'parks' | 'facilities' | 'users' | 'maintenance' | 'fraud' | 'sponsors'>('overview');
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalParks: 0,
@@ -390,14 +392,15 @@ export function AdminDashboard() {
             { id: 'facilities', label: 'その他施設', icon: Building, badge: stats.pendingFacilities },
             { id: 'users', label: 'ユーザー', icon: Users },
             { id: 'fraud', label: '不正検知', icon: ShieldAlert },
-            { id: 'maintenance', label: 'メンテナンス', icon: Settings }
+            { id: 'maintenance', label: 'メンテナンス', icon: Settings },
+            { id: 'sponsors', label: 'スポンサー', icon: Monitor }
           ].map((tab) => {
             const Icon = tab.icon;
             const hasBadge = tab.badge && tab.badge > 0;
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={`relative flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                   activeTab === tab.id
                     ? 'bg-blue-100 text-blue-700'
@@ -619,6 +622,11 @@ export function AdminDashboard() {
               </div>
             </Card>
           </div>
+        )}
+
+        {/* スポンサー管理タブ */}
+        {activeTab === 'sponsors' && (
+          <AdminSponsorManagement />
         )}
 
         {/* 施設承認管理タブ */}
