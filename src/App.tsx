@@ -107,7 +107,7 @@ const NotFound = React.lazy(() => import('./pages/NotFound').then(module => ({ d
 // const MapDebug = React.lazy(() => import('./pages/MapDebug').then(module => ({ default: module.MapDebug })));
 
 // 保護されたページ
-const UserDashboard = React.lazy(() => import('./pages/UserDashboard').then(module => ({ default: module.UserDashboard })));
+const UserDashboard = React.lazy(() => import('./pages/UserDashboard'));
 const DogRegistration = React.lazy(() => import('./pages/DogRegistration').then(module => ({ default: module.DogRegistration })));
 const DogManagement = React.lazy(() => import('./pages/DogManagement').then(module => ({ default: module.DogManagement })));
 const DogProfile = React.lazy(() => import('./pages/DogProfile').then(module => ({ default: module.DogProfile })));

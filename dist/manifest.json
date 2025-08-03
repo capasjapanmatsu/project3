@@ -1,0 +1,66 @@
+{
+  "name": "ドッグパークJP - 愛犬とお散歩",
+  "short_name": "ドッグパークJP",
+  "description": "愛犬とのお散歩をもっと楽しく。全国のドッグランを簡単に検索・予約できるサービスです。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#3B82F6",
+  "categories": ["lifestyle", "travel", "social"],
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "form_factor": "wide",
+      "label": "ドッグパークJP デスクトップ画面"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "ドッグラン検索",
+      "short_name": "検索",
+      "description": "近くのドッグランを検索",
+      "url": "/parks",
+      "icons": [
+        {
+          "src": "/icons/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "予約管理",
+      "short_name": "予約",
+      "description": "予約の確認・管理",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/icons/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

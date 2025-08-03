@@ -983,3 +983,5 @@ export function UserDashboard() {
     </div>
   );
 }
+
+export default UserDashboard;
