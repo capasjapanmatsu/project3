@@ -1,11 +1,11 @@
+import { ArrowLeft, Calendar, CheckCircle, Heart, MapPin, PawPrint, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Heart, UserPlus, Calendar, AlertCircle, CheckCircle, MapPin, PawPrint } from 'lucide-react';
-import Card from '../components/Card';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
-import { supabase } from '../utils/supabase';
+import Card from '../components/Card';
 import useAuth from '../context/AuthContext';
-import type { Dog, DogPark, Reservation } from '../types';
+import type { DogPark } from '../types';
+import { supabase } from '../utils/supabase';
 
 interface DogProfile {
   id: string;
@@ -454,3 +454,5 @@ export function DogProfile() {
     </div>
   );
 } 
+
+export default DogProfile; 

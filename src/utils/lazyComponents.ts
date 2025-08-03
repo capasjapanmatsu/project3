@@ -11,8 +11,8 @@ export const Register = lazy(() => import('../pages/Register').then(module => ({
 // User pages - all wrapped in lazy loading with preload triggers
 export const UserDashboard = lazy(() => import('../pages/UserDashboard'));
 export const DogRegistration = lazy(() => import('../pages/DogRegistration'));
-export const DogManagement = lazy(() => import('../pages/DogManagement').then(module => ({ default: module.DogManagement })));
-export const DogProfile = lazy(() => import('../pages/DogProfile').then(module => ({ default: module.DogProfile })));
+export const DogManagement = lazy(() => import('../pages/DogManagement'));
+export const DogProfile = lazy(() => import('../pages/DogProfile'));
 export const ProfileSettings = lazy(() => import('../pages/ProfileSettings').then(module => ({ default: module.ProfileSettings })));
 export const PaymentMethodSettings = lazy(() => import('../pages/PaymentMethodSettings').then(module => ({ default: module.PaymentMethodSettings })));
 export const DogParkHistory = lazy(() => import('../pages/DogParkHistory').then(module => ({ default: module.DogParkHistory })));

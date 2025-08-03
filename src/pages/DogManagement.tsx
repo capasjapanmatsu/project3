@@ -684,3 +684,5 @@ export function DogManagement() {
     </div>
   );
 } 
+
+export default DogManagement; 
