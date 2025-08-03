@@ -3,6 +3,7 @@ import { supabase } from '../../utils/supabase';
 import Button from '../Button';
 import Card from '../Card';
 import Input from '../Input';
+import Select from '../Select';
 
 interface SponsorBanner {
   id: string;
@@ -10,6 +11,7 @@ interface SponsorBanner {
   description: string;
   image_url: string;
   website_url: string;
+  banner_type: 'top' | 'sidebar' | 'footer';
   is_active: boolean;
   display_order: number;
   start_date: string | null;
@@ -25,6 +27,7 @@ interface SponsorFormData {
   description: string;
   image_url: string;
   website_url: string;
+  banner_type: 'top' | 'sidebar' | 'footer';
   is_active: boolean;
   display_order: number;
   start_date: string;
@@ -36,6 +39,7 @@ const initialFormData: SponsorFormData = {
   description: '',
   image_url: '',
   website_url: '',
+  banner_type: 'top',
   is_active: true,
   display_order: 0,
   start_date: '',
@@ -150,6 +154,7 @@ export const AdminSponsorManagement: React.FC = () => {
       description: banner.description,
       image_url: banner.image_url,
       website_url: banner.website_url,
+      banner_type: banner.banner_type,
       is_active: banner.is_active,
       display_order: banner.display_order,
       start_date: banner.start_date ? banner.start_date.split('T')[0] : '',
@@ -237,6 +242,16 @@ export const AdminSponsorManagement: React.FC = () => {
                 required
               />
             </div>
+            <Select
+              label="バナータイプ"
+              value={formData.banner_type}
+              onChange={(e) => handleInputChange('banner_type', e.target.value as 'top' | 'sidebar' | 'footer')}
+              options={[
+                { value: 'top', label: 'トップ' },
+                { value: 'sidebar', label: 'サイドバー' },
+                { value: 'footer', label: 'フッター' },
+              ]}
+            />
             <Input
               label="説明"
               value={formData.description}
@@ -316,6 +331,14 @@ export const AdminSponsorManagement: React.FC = () => {
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-2">
                     <h3 className="text-lg font-semibold">{banner.title}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      banner.banner_type === 'top' ? 'bg-blue-100 text-blue-800' :
+                      banner.banner_type === 'sidebar' ? 'bg-purple-100 text-purple-800' :
+                      'bg-teal-100 text-teal-800'
+                    }`}>
+                      {banner.banner_type === 'top' ? 'トップ' :
+                       banner.banner_type === 'sidebar' ? 'サイド' : 'フッター'}
+                    </span>
                     <span className={`px-2 py-1 rounded-full text-xs ${
                       banner.is_active 
                         ? 'bg-green-100 text-green-800' 

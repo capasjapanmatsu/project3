@@ -9,6 +9,8 @@ import { Footer } from './Footer';
 import MaintenanceScreen from './MaintenanceScreen';
 import { Navbar } from './Navbar';
 import { SEO } from './SEO';
+import FooterBanner from './home/FooterBanner';
+import SidebarBanner from './home/SidebarBanner';
 
 interface LayoutProps {
   children: ReactNode;
@@ -65,17 +67,24 @@ const Layout = ({ children }: LayoutProps) => {
   
   return (
     <HelmetProvider>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-gray-50 flex flex-col relative">
         <SEO />
         <Navbar />
         <main className="flex-1 container mx-auto px-4 py-8">
           {children}
         </main>
+        
+        {/* フッターバナー */}
+        <FooterBanner />
+        
         <Footer />
         <BottomNavigation />
         
         {/* フローティングアクションボタン */}
         <FloatingActionButton />
+        
+        {/* サイドバナー（固定配置） */}
+        <SidebarBanner />
       </div>
     </HelmetProvider>
   );
