@@ -77,6 +77,9 @@ export const FooterBanner: React.FC<FooterBannerProps> = ({ banners: propBanners
     navigate('/sponsor-application');
   }, [navigate]);
 
+  // デバッグ用：バナー数をコンソールに出力
+  console.log('FooterBanner - banners.length:', banners.length);
+
   if (banners.length === 0) {
     return null;
   }

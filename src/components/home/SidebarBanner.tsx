@@ -76,15 +76,23 @@ export const SidebarBanner: React.FC<SidebarBannerProps> = ({ banners: propBanne
     navigate('/sponsor-application');
   }, [navigate]);
 
+  // デバッグ用：バナー数をコンソールに出力
+  console.log('SidebarBanner - banners.length:', banners.length);
+
   if (banners.length === 0) {
     return null;
   }
 
   const currentBanner = banners[currentIndex];
 
+  // currentBannerが存在しない場合の安全チェック
+  if (!currentBanner) {
+    return null;
+  }
+
   return (
     <aside 
-      className="fixed right-4 top-1/2 transform -translate-y-1/2 z-30 hidden lg:block"
+      className="fixed right-4 top-1/2 transform -translate-y-1/2 z-30 hidden md:block"
       aria-label="サイドバナー広告"
     >
       <div className="w-48 space-y-4">
