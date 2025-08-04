@@ -1,25 +1,25 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { 
-  ShoppingBag, 
-  CreditCard, 
-  Truck, 
-  User, 
-  MapPin, 
-  Phone, 
-  ArrowLeft, 
-  CheckCircle, 
-  AlertTriangle,
-  Shield,
-  Info
+import {
+    AlertTriangle,
+    ArrowLeft,
+    CheckCircle,
+    CreditCard,
+    Info,
+    MapPin,
+    Phone,
+    Shield,
+    ShoppingBag,
+    Truck,
+    User
 } from 'lucide-react';
-import Card from '../components/Card';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import Card from '../components/Card';
 import Input from '../components/Input';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
 import { useStripe } from '../hooks/useStripe';
 import type { CartItem } from '../types';
+import { supabase } from '../utils/supabase';
 
 interface CheckoutLocationState {
   totals?: {
@@ -265,7 +265,7 @@ export function Checkout() {
               </Button>
             </Link>
             
-            <Link to="/shop">
+            <Link to="/petshop">
               <Button variant="secondary">
                 ショッピングを続ける
               </Button>

@@ -442,7 +442,7 @@ export function DogEditModal({
               <div className="flex justify-end space-x-3 pt-4 border-t">
                 <Button
                   type="button"
-                  className="bg-white hover:bg-gray-50 border border-gray-300 text-gray-700"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                   onClick={onClose}
                 >
                   キャンセル

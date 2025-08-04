@@ -276,34 +276,86 @@ export function ParkRegistrationSecondStage() {
 
   // Image Cropper完了時の処理
   const handleCropComplete = async (croppedFile: File) => {
-    // Update the images array with the cropped file
-    setImages(prev => prev.map(img =>
-      img.image_type === currentImageType
-        ? { ...img, file: croppedFile, error: undefined }
-        : img
-    ));
+    // 元のファイル名を保持してcroppedFileに設定
+    const originalFileName = selectedImageFile?.name || 'image.jpg';
+    const fileWithName = new File([croppedFile], originalFileName, { type: croppedFile.type });
+    
+    // 現在の画像タイプを保存（状態をクリアする前に）
+    const imageTypeToUpload = currentImageType;
     
     // Image Cropperを閉じる
     setShowImageCropper(false);
-    
-    // 現在の画像タイプを保存
-    const imageTypeToUpload = currentImageType;
-    
     setCurrentImageType('');
     setSelectedImageFile(null);
     
-    // トリミング完了後、自動的にアップロードを実行
+    // 即座にアップロード処理を開始
     if (imageTypeToUpload) {
       try {
-        // 少し待ってから（状態更新の完了を待つため）
-        await new Promise(resolve => setTimeout(resolve, 100));
-        await handleImageUpload(imageTypeToUpload);
-      } catch (error) {
-        console.error('自動アップロードエラー:', error);
-        // エラーが発生した場合は手動アップロードが必要であることを表示
+        // アップロード中状態に設定
         setImages(prev => prev.map(img =>
           img.image_type === imageTypeToUpload
-            ? { ...img, error: '自動アップロードに失敗しました。アップロードボタンを押してください。' }
+            ? { ...img, file: fileWithName, uploading: true, error: undefined }
+            : img
+        ));
+
+        // ファイルを直接アップロード
+        const fileName = fileWithName.name || 'image.jpg';
+        const fileExt = fileName.includes('.') ? fileName.split('.').pop() : 'jpg';
+        const uploadFileName = `${parkId}/${imageTypeToUpload}_${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('dog-park-images')
+          .upload(uploadFileName, fileWithName);
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('dog-park-images')
+          .getPublicUrl(uploadFileName);
+
+        // データベースに保存
+        const imageToUpdate = images.find(img => img.image_type === imageTypeToUpload);
+        if (imageToUpdate?.id) {
+          // Update existing image
+          const { error: updateError } = await supabase
+            .from('dog_park_facility_images')
+            .update({
+              image_url: publicUrl,
+              is_approved: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', imageToUpdate.id);
+
+          if (updateError) throw updateError;
+        } else {
+          // Insert new image
+          const { error: insertError } = await supabase
+            .from('dog_park_facility_images')
+            .insert({
+              park_id: parkId,
+              image_type: imageTypeToUpload,
+              image_url: publicUrl
+            });
+
+          if (insertError) throw insertError;
+        }
+
+        // データを再取得
+        await fetchParkData();
+
+        // 成功メッセージ
+        const typeConfig = IMAGE_TYPES[imageTypeToUpload as keyof typeof IMAGE_TYPES];
+        const label = typeConfig?.label || imageTypeToUpload;
+        setSuccess(`${label}の画像をアップロードしました`);
+        setTimeout(() => setSuccess(''), 3000);
+
+      } catch (error) {
+        console.error('自動アップロードエラー:', error);
+        // エラー状態に設定
+        setImages(prev => prev.map(img =>
+          img.image_type === imageTypeToUpload
+            ? { ...img, file: fileWithName, uploading: false, error: 'アップロードに失敗しました。再度お試しください。' }
             : img
         ));
       }
@@ -319,7 +371,10 @@ export function ParkRegistrationSecondStage() {
 
   const handleImageUpload = async (imageType: string) => {
     const imageToUpload = images.find(img => img.image_type === imageType);
-    if (!imageToUpload || !imageToUpload.file) return;
+    if (!imageToUpload || !imageToUpload.file) {
+      console.error('Image to upload not found or file is missing');
+      return;
+    }
 
     try {
       // Mark as uploading
@@ -329,20 +384,21 @@ export function ParkRegistrationSecondStage() {
           : img
       ));
 
-      // Upload to storage
-      const fileExt = imageToUpload.file.name.split('.').pop();
-      const fileName = `${parkId}/${imageType}_${Date.now()}.${fileExt}`;
+      // Upload to storage - safe file extension handling
+      const fileName = imageToUpload.file.name || 'image.jpg';
+      const fileExt = fileName.includes('.') ? fileName.split('.').pop() : 'jpg';
+      const uploadFileName = `${parkId}/${imageType}_${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('dog-park-images')
-        .upload(fileName, imageToUpload.file);
+        .upload(uploadFileName, imageToUpload.file);
 
       if (uploadError) throw uploadError;
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('dog-park-images')
-        .getPublicUrl(fileName);
+        .getPublicUrl(uploadFileName);
 
       // Save to database
       if (imageToUpload.id) {
@@ -878,7 +934,7 @@ export function ParkRegistrationSecondStage() {
 
                 <div className="text-xs text-orange-700 space-y-1 bg-orange-100 p-3 rounded">
                   <p><strong>スマートロック購入・設置について:</strong></p>
-                  <p>• スマートロックはペットショップで購入できます</p>
+                  <p>• スマートロックは<Link to="/petshop" className="text-blue-600 hover:text-blue-800 underline font-medium">ペットショップ</Link>で購入できます</p>
                   <p>• 設置完了後、動作確認を行ってください</p>
                   <p>• 第二審査では実際の設置状況を確認します</p>
                   <p>• 設置に関するサポートが必要な場合はお問い合わせください</p>
@@ -1034,21 +1090,27 @@ export function ParkRegistrationSecondStage() {
                           >
                             <Upload className="w-8 h-8 text-gray-400 mb-2" />
                             <span className="text-sm text-gray-600">
-                              クリックして画像を選択
+                              クリックして画像を選択・自動アップロード
                             </span>
                           </label>
                         </div>
 
                         {image.file && (
-                          <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                            <span className="text-sm truncate">{image.file.name}</span>
-                            <Button
-                              size="sm"
-                              onClick={() => handleImageUpload(image.image_type)}
-                              isLoading={!!image.uploading}
-                            >
-                              アップロード
-                            </Button>
+                          <div className="bg-gray-50 p-2 rounded">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm truncate">{image.file.name}</span>
+                              {image.uploading && (
+                                <div className="flex items-center text-blue-600">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                                  <span className="text-sm">アップロード中...</span>
+                                </div>
+                              )}
+                            </div>
+                            {!image.uploading && !image.error && image.file && (
+                              <div className="text-sm text-green-600 mt-1">
+                                ✓ 選択完了（自動アップロード中）
+                              </div>
+                            )}
                           </div>
                         )}
 

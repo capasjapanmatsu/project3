@@ -323,7 +323,7 @@ export function SubscriptionIntro() {
                 </h3>
                 <p className="text-gray-600">
                   詳細は
-                  <Link to="/shop" className="text-blue-600 hover:text-blue-700 underline ml-1">
+                  <Link to="/petshop" className="text-blue-600 hover:text-blue-700 underline ml-1">
                     ペットショップページ
                   </Link>
                   をご確認ください。対象店舗や商品の最新情報を掲載しています。

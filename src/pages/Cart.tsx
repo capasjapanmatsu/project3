@@ -207,7 +207,7 @@ export function Cart() {
           <ShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-700 mb-2">カートは空です</h2>
           <p className="text-gray-500 mb-6">お気に入りの商品をカートに追加してください</p>
-          <Link to="/shop">
+          <Link to="/petshop">
             <Button className="bg-green-600 hover:bg-green-700">
               ショッピングを続ける
             </Button>
@@ -422,7 +422,7 @@ export function Cart() {
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
               
-              <Link to="/shop">
+              <Link to="/petshop">
                 <Button variant="secondary" className="w-full">
                   ショッピングを続ける
                 </Button>

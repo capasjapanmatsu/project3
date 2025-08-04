@@ -912,11 +912,11 @@ export const AdminParkApproval: React.FC<AdminParkApprovalProps> = ({
                       <img
                         src={image.image_url}
                         alt={getImageTypeLabel(image.image_type)}
-                        className="w-full h-48 object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
+                        className="w-full aspect-square object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
                         onClick={() => handleImageSelect(image)}
                         onError={(e) => {
                           console.error(`❌ Image ${index + 1} failed to load:`, image.image_url);
-                          e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
+                          e.currentTarget.src = 'https://via.placeholder.com/400x400?text=Image+Not+Available';
                         }}
                       />
 

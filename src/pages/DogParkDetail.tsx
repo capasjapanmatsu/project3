@@ -171,9 +171,9 @@ export function DogParkDetail() {
           .eq('is_active', true),
         // メンテナンス情報
         supabase
-          .from('park_maintenance')
+          .from('maintenance_schedules')
           .select('*')
-          .eq('park_id', parkId)
+          .eq('dog_park_id', parkId)
           .in('status', ['scheduled', 'active'])
           .gte('end_date', new Date().toISOString())
           .order('start_date', { ascending: true })
@@ -597,6 +597,42 @@ export function DogParkDetail() {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">{park.name}</h1>
+                    
+                    {/* 営業状況とメンテナンス情報 */}
+                    <div className="mb-3">
+                      {currentMaintenance ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                            <span className="text-red-600 font-medium">メンテナンス中</span>
+                          </div>
+                          <p className="text-red-600 text-sm font-medium ml-5">
+                            {currentMaintenance.title}
+                            {currentMaintenance.is_emergency && ' (緊急)'}
+                          </p>
+                          <p className="text-red-500 text-xs ml-5">
+                            {new Date(currentMaintenance.start_date).toLocaleDateString('ja-JP')} 
+                            {' '}
+                            {new Date(currentMaintenance.start_date).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+                            {' 〜 '}
+                            {new Date(currentMaintenance.end_date).toLocaleDateString('ja-JP')} 
+                            {' '}
+                            {new Date(currentMaintenance.end_date).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          {currentMaintenance.description && (
+                            <p className="text-red-500 text-xs ml-5">
+                              {currentMaintenance.description}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                          <span className="text-green-600 font-medium">営業中</span>
+                        </div>
+                      )}
+                    </div>
+                    
                     <div className="flex items-center space-x-4 mb-4">
                       {/* 評価表示 */}
                       <div className="flex items-center space-x-2">
@@ -623,7 +659,7 @@ export function DogParkDetail() {
                   </div>
                   {currentMaintenance ? (
                     <Button 
-                      className="bg-gray-400 cursor-not-allowed" 
+                      className="opacity-50 cursor-not-allowed" 
                       disabled
                       title="メンテナンス中のため予約できません"
                     >
@@ -907,11 +943,21 @@ export function DogParkDetail() {
             <div className="space-y-6">
               {/* 予約ボタン */}
               <Card className="p-4">
-                <Link to={`/reservation/${park.id}`}>
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-3">
-                    予約する
+                {currentMaintenance ? (
+                  <Button 
+                    className="w-full text-lg py-3 opacity-50 cursor-not-allowed" 
+                    disabled
+                    title="メンテナンス中のため予約できません"
+                  >
+                    予約不可
                   </Button>
-                </Link>
+                ) : (
+                  <Link to={`/reservation/${park.id}`}>
+                    <Button className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-3">
+                      予約する
+                    </Button>
+                  </Link>
+                )}
               </Card>
 
               {/* スマートロック操作 */}

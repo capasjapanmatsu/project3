@@ -213,7 +213,7 @@ export const Navbar = memo(function Navbar() {
                     ドッグラン一覧
                   </Link>
                   <Link 
-                    to="/shop" 
+                    to="/petshop" 
                     className="text-gray-600 hover:text-green-600 transition-colors hidden md:inline-block"
                   >
                     ペットショップ

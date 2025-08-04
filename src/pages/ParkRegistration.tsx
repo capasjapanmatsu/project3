@@ -8,6 +8,7 @@ import useAuth from '../context/AuthContext';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import { retryConfigs, useRetryWithRecovery } from '../hooks/useRetryWithRecovery';
 import type { DogPark } from '../types';
+import { formatAddressForGeocoding, geocodeAddress } from '../utils/geocoding';
 import { supabase } from '../utils/supabase';
 
 export default function ParkRegistration() {
@@ -384,7 +385,7 @@ export default function ParkRegistration() {
       } finally {
         setIsLoading(false);
       }
-    }, { operation: 'first_stage_submission' });
+    });
   };
 
   const handleBasicInfoSubmit = async (e: React.FormEvent) => {
@@ -476,7 +477,7 @@ export default function ParkRegistration() {
   };
 
   const handleIdentityError = (error: string) => {
-    handleError(new Error(error), { operation: 'identity_verification' });
+    handleError(new Error(error));
   };
 
   // 第一審査・本人確認フォーム

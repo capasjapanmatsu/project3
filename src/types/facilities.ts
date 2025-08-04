@@ -94,9 +94,13 @@ export interface FacilityReview {
   id: string;
   facility_id: string;
   user_id: string;
+  dog_name: string;
   rating: number;
   comment?: string;
+  visit_date: string;
+  image_url?: string;
   created_at: string;
+  updated_at: string;
 }
 
 // 施設フィルター設定

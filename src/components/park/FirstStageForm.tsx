@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../Button';
 import Card from '../Card';
+import ImageCropper from '../ImageCropper'; // Added import for ImageCropper
 import Input from '../Input';
 
 interface FirstStageFormData {
@@ -58,7 +59,27 @@ export default function FirstStageForm({
 }: FirstStageFormProps) {
   const [showProfileEditModal, setShowProfileEditModal] = useState(false);
   const [editingProfile, setEditingProfile] = useState<ProfileData>(profileData);
-  const [isUploading, setIsUploading] = useState(false);
+  
+  // Image cropping states
+  const [showImageCropper, setShowImageCropper] = useState(false);
+  const [croppingFile, setCroppingFile] = useState<File | null>(null);
+  const [croppingType, setCroppingType] = useState<'front' | 'back'>('front');
+
+  // Image cropper handlers
+  const handleImageCropComplete = (croppedFile: File) => {
+    if (croppingType === 'front') {
+      onFormDataChange({ identityDocumentFront: croppedFile });
+    } else {
+      onFormDataChange({ identityDocumentBack: croppedFile });
+    }
+    setShowImageCropper(false);
+    setCroppingFile(null);
+  };
+
+  const handleImageCropCancel = () => {
+    setShowImageCropper(false);
+    setCroppingFile(null);
+  };
 
   const updateFormData = (updates: Partial<FirstStageFormData>) => {
     onFormDataChange(updates);
@@ -66,11 +87,18 @@ export default function FirstStageForm({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'front' | 'back') => {
     if (e.target.files && e.target.files[0]) {
-      if (fileType === 'front') {
-        updateFormData({ identityDocumentFront: e.target.files[0] });
-      } else {
-        updateFormData({ identityDocumentBack: e.target.files[0] });
+      const file = e.target.files[0];
+      
+      // ファイルサイズチェック（10MB以下）
+      if (file.size > 10 * 1024 * 1024) {
+        alert('ファイルサイズは10MB以下にしてください');
+        return;
       }
+      
+      // ImageCropperを表示
+      setCroppingFile(file);
+      setCroppingType(fileType);
+      setShowImageCropper(true);
     }
   };
 
@@ -796,8 +824,7 @@ export default function FirstStageForm({
             <Button
               type="submit"
               className="w-1/2 bg-blue-600 hover:bg-blue-700"
-              disabled={!isDocumentUploadComplete() || isUploading}
-              isLoading={isUploading}
+              disabled={!isDocumentUploadComplete() || profileLoading} // Changed isUploading to profileLoading
             >
               <Shield className="w-4 h-4 mr-2" />
               第一審査・本人確認を申し込む
@@ -805,6 +832,18 @@ export default function FirstStageForm({
           </div>
         </form>
       </Card>
+
+      {/* Image Cropper Modal */}
+      {showImageCropper && croppingFile && (
+        <ImageCropper
+          imageFile={croppingFile}
+          onCropComplete={handleImageCropComplete}
+          onCancel={handleImageCropCancel}
+          aspectRatio={85.6 / 54.0} // 免許証の比率
+          maxWidth={600}
+          maxHeight={400}
+        />
+      )}
     </div>
   );
 } 

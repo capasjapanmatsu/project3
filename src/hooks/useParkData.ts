@@ -62,6 +62,21 @@ export function useParkData() {
             phone_number,
             email,
             postal_code
+          ),
+          dog_park_facility_images (
+            id,
+            image_type,
+            image_url,
+            is_approved
+          ),
+          maintenance_schedules (
+            id,
+            title,
+            description,
+            start_date,
+            end_date,
+            is_emergency,
+            status
           )
         `)
         .eq('status', 'approved')
@@ -75,6 +90,38 @@ export function useParkData() {
       // データの型安全性を確保
       const parksData: DogPark[] = (data || []).map((park: any) => {
         const profile = Array.isArray(park.profiles) ? park.profiles[0] : park.profiles;
+        
+        // 施設画像から表示用画像を選択（承認済みまたは審査中の画像を優先）
+        let displayImageUrl = park.image_url || park.cover_image_url;
+        
+        if (park.dog_park_facility_images && park.dog_park_facility_images.length > 0) {
+          // 承認済み画像を優先
+          const approvedImage = park.dog_park_facility_images.find((img: any) => img.is_approved === true);
+          if (approvedImage) {
+            displayImageUrl = approvedImage.image_url;
+          } else {
+            // 承認済みがない場合は、overview画像を優先
+            const overviewImage = park.dog_park_facility_images.find((img: any) => img.image_type === 'overview');
+            if (overviewImage) {
+              displayImageUrl = overviewImage.image_url;
+            } else {
+              // overviewがない場合は最初の画像を使用
+              displayImageUrl = park.dog_park_facility_images[0].image_url;
+            }
+          }
+        }
+        
+        // 現在のメンテナンス情報を取得
+        let currentMaintenance = null;
+        if (park.maintenance_schedules && park.maintenance_schedules.length > 0) {
+          const now = new Date();
+          currentMaintenance = park.maintenance_schedules.find((maintenance: any) => {
+            const startDate = new Date(maintenance.start_date);
+            const endDate = new Date(maintenance.end_date);
+            return maintenance.status === 'active' || 
+                   (maintenance.status === 'scheduled' && now >= startDate && now <= endDate);
+          });
+        }
         
         return {
           id: park.id || '',
@@ -93,10 +140,11 @@ export function useParkData() {
               .map(([key]) => key)
               .join(',') : park.facilities) : 
             park.facility_details || '',
-          image_url: park.image_url || park.cover_image_url || 'https://via.placeholder.com/400x300?text=' + encodeURIComponent(park.name || 'ドッグパーク'),
+          image_url: displayImageUrl || 'https://via.placeholder.com/400x300?text=' + encodeURIComponent(park.name || 'ドッグパーク'),
           average_rating: Number(park.average_rating) || 4.0,
           review_count: Number(park.review_count) || Math.floor(Math.random() * 50) + 5,
           created_at: park.created_at || '',
+          currentMaintenance: currentMaintenance || undefined,
         };
       });
 

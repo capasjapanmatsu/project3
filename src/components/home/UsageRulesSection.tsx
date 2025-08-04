@@ -1,9 +1,12 @@
 import { FileText } from 'lucide-react';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import useAuth from '../../context/AuthContext';
 import Button from '../Button';
 
 export const UsageRulesSection: React.FC = () => {
+  const { user } = useAuth();
+
   return (
     <>
       {/* 利用ルールへのリンク */}
@@ -27,11 +30,11 @@ export const UsageRulesSection: React.FC = () => {
         <h2 className="text-2xl font-bold text-center text-blue-900 mb-6">料金体系</h2>
         <div className="grid md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h3 className="text-xl font-semibold text-gray-900 mb-3">単発利用</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">1Dayパス</h3>
             <div className="text-3xl font-bold text-blue-600 mb-2">¥800</div>
             <p className="text-gray-600 mb-4">1回の利用料金</p>
             <ul className="text-sm text-gray-600 space-y-1">
-              <li>• 最大3時間まで</li>
+              <li>• 24時間利用可能（1施設に限ります）</li>
               <li>• 愛犬3頭まで</li>
               <li>• 全国の提携施設で利用可能</li>
             </ul>
@@ -45,7 +48,7 @@ export const UsageRulesSection: React.FC = () => {
               <li>• 全国のドッグラン使い放題</li>
               <li>• ペットショップ10%OFF</li>
               <li>• 優先予約権</li>
-              <li>• 専用サポート</li>
+              <li>• 施設貸し切り20％OFF</li>
             </ul>
             <div className="mt-4">
               <span className="bg-white text-purple-600 px-3 py-1 rounded-full text-xs font-medium">
@@ -59,17 +62,17 @@ export const UsageRulesSection: React.FC = () => {
             <div className="text-3xl font-bold text-green-600 mb-2">¥4,400</div>
             <p className="text-gray-600 mb-4">1時間の貸し切り料金</p>
             <ul className="text-sm text-gray-600 space-y-1">
-              <li>• 完全プライベート空間</li>
-              <li>• 愛犬制限なし</li>
-              <li>• イベント・パーティーに最適</li>
+              <li>• 施設丸ごと完全プライベート空間</li>
+              <li>• 予約者が共有したら誰でも入場可能（制限なし）</li>
+              <li>• イベント　パーティー　オフ会　しつけ教室や講習会などに</li>
             </ul>
           </div>
         </div>
         
         <div className="text-center mt-8">
-          <Link to="/register">
+          <Link to={user ? "/parks" : "/register"}>
             <Button className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-3">
-              今すぐ始める
+              {user ? "ドッグラン一覧を見る" : "今すぐ始める"}
             </Button>
           </Link>
         </div>

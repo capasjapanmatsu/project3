@@ -363,7 +363,7 @@ export function OrderHistory() {
             ドッグラン利用履歴
           </Button>
         </Link>
-        <Link to="/shop">
+        <Link to="/petshop">
           <Button variant="secondary" size="sm">
             <ShoppingBag className="w-4 h-4 mr-2" />
             ショップに戻る
@@ -410,7 +410,7 @@ export function OrderHistory() {
           <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-700 mb-2">注文履歴がありません</h2>
           <p className="text-gray-500 mb-6">まだ商品をご注文いただいていません</p>
-          <Button onClick={() => window.location.href = '/shop'}>
+          <Button onClick={() => window.location.href = '/petshop'}>
             ショッピングを始める
           </Button>
         </Card>

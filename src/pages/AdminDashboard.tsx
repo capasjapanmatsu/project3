@@ -24,6 +24,7 @@ import { FraudDetectionResult, getFraudDetectionStats, getHighRiskUsers } from '
 import { supabase } from '../utils/supabase';
 import AdminFacilityApproval from './AdminFacilityApproval';
 import { AdminParkManagement } from './AdminParkManagement';
+import AdminVaccineApproval from './AdminVaccineApproval';
 
 interface AdminStats {
   totalUsers: number;
@@ -66,7 +67,7 @@ interface FraudStats {
 export function AdminDashboard() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'parks' | 'facilities' | 'users' | 'maintenance' | 'fraud' | 'sponsors'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'parks' | 'facilities' | 'users' | 'maintenance' | 'fraud' | 'sponsors' | 'vaccine-approval'>('overview');
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalParks: 0,
@@ -391,6 +392,7 @@ export function AdminDashboard() {
             { id: 'parks', label: 'ドッグラン', icon: Building, badge: stats.pendingParks },
             { id: 'facilities', label: 'その他施設', icon: Building, badge: stats.pendingFacilities },
             { id: 'users', label: 'ユーザー', icon: Users },
+            { id: 'vaccine-approval', label: 'ワクチン証明書', icon: Shield, badge: stats.pendingVaccines },
             { id: 'fraud', label: '不正検知', icon: ShieldAlert },
             { id: 'maintenance', label: 'メンテナンス', icon: Settings },
             { id: 'sponsors', label: 'スポンサー', icon: Monitor }
@@ -637,6 +639,10 @@ export function AdminDashboard() {
         {/* ドッグラン承認管理タブ */}
         {activeTab === 'parks' && (
           <AdminParkManagement />
+        )}
+
+        {activeTab === 'vaccine-approval' && (
+          <AdminVaccineApproval />
         )}
 
         {activeTab === 'users' && (

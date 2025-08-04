@@ -39,6 +39,14 @@ export interface DogPark {
   average_rating: number;
   review_count: number;
   created_at: string;
+  currentMaintenance?: {
+    id: string;
+    title: string;
+    description?: string;
+    start_date: string;
+    end_date: string;
+    is_emergency: boolean;
+  };
 }
 
 export interface DogParkImage {

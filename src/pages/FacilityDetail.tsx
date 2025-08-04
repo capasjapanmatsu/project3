@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import ImageCropper from '../components/ImageCropper';
 import { SEO } from '../components/SEO';
 import { CouponDisplay } from '../components/coupons/CouponDisplay';
 import useAuth from '../context/AuthContext';
@@ -44,6 +45,7 @@ interface FacilityReview {
   comment: string;
   visit_date: string;
   created_at: string;
+  image_url?: string; // 追加
 }
 
 interface ReviewSummary {
@@ -56,6 +58,59 @@ interface ReviewSummary {
   rating_2_count: number;
   rating_1_count: number;
 }
+
+// 画像処理ユーティリティ関数
+const processReviewImage = async (file: File): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      // 1:1のアスペクト比でトリミング
+      const size = Math.min(img.width, img.height);
+      const offsetX = (img.width - size) / 2;
+      const offsetY = (img.height - size) / 2;
+      
+      // 最適なサイズ（600x600）にリサイズ
+      const targetSize = 600;
+      canvas.width = targetSize;
+      canvas.height = targetSize;
+      
+      // 画像を描画
+      ctx?.drawImage(img, offsetX, offsetY, size, size, 0, 0, targetSize, targetSize);
+      
+      // 圧縮してBlobに変換
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            const processedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            resolve(processedFile);
+          } else {
+            reject(new Error('画像の処理に失敗しました'));
+          }
+        },
+        'image/jpeg',
+        0.8 // 80%の品質で圧縮
+      );
+    };
+    
+    img.onerror = () => reject(new Error('画像の読み込みに失敗しました'));
+    img.src = URL.createObjectURL(file);
+  });
+};
+
+// ファイルサイズをフォーマット
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
 
 export function FacilityDetail() {
   const { id: facilityId } = useParams();
@@ -79,11 +134,33 @@ export function FacilityDetail() {
   const [newReview, setNewReview] = useState({
     rating: 5,
     comment: '',
-    visit_date: new Date().toISOString().split('T')[0]
+    visit_date: new Date().toISOString().split('T')[0],
+    image_url: ''
   });
   const [userDogs, setUserDogs] = useState<any[]>([]);
   const [selectedDogId, setSelectedDogId] = useState<string>('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [reviewImageModal, setReviewImageModal] = useState<string | null>(null);
+
+  // 画像処理用のstate
+  const [showImageCropper, setShowImageCropper] = useState(false);
+  const [reviewImageFile, setReviewImageFile] = useState<File | null>(null);
+  const [reviewImagePreview, setReviewImagePreview] = useState<string | null>(null);
+  const [croppedImageFile, setCroppedImageFile] = useState<File | null>(null);
+
+  // ImageCropperの完了処理
+  const handleImageCropComplete = (croppedFile: File) => {
+    setCroppedImageFile(croppedFile);
+    setReviewImagePreview(URL.createObjectURL(croppedFile));
+    setShowImageCropper(false);
+  };
+
+  // ImageCropperのキャンセル処理
+  const handleImageCropCancel = () => {
+    setReviewImageFile(null);
+    setShowImageCropper(false);
+  };
 
   // カテゴリの日本語マッピング
   const CATEGORY_LABELS: { [key: string]: string } = {
@@ -166,6 +243,7 @@ export function FacilityDetail() {
             comment,
             visit_date,
             created_at,
+            image_url,
             profiles(name)
           `)
           .eq('facility_id', facilityId)
@@ -180,9 +258,8 @@ export function FacilityDetail() {
         // ログインユーザーの犬一覧を取得
         user ? supabase
           .from('dogs')
-          .select('id, name')
-          .eq('owner_id', user.id)
-          .eq('is_active', true) : Promise.resolve({ data: [] })
+          .select('id, name, gender')
+          .eq('owner_id', user.id) : Promise.resolve({ data: [] })
       ]);
 
       if (reviewsResult.data) {
@@ -388,6 +465,53 @@ export function FacilityDetail() {
         ))}
       </div>
     );
+  };
+
+  // 画像アップロード関数
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // 画像ファイルかチェック
+    if (!file.type.startsWith('image/')) {
+      alert('画像ファイルを選択してください。');
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      // 画像を処理（300x300、1:1、圧縮率0.8）
+      const processedBlob = await processReviewImage(file);
+      
+      // 元のファイルサイズと処理後のサイズを表示
+      console.log(`画像処理: ${formatFileSize(file.size)} → ${formatFileSize(processedBlob.size)}`);
+
+      // ファイル名を生成（ユーザーID + タイムスタンプ）
+      const fileName = `${user.id}_${Date.now()}.jpg`; // 処理後はJPEG
+      const filePath = `facility-reviews/${fileName}`;
+
+      // Supabaseストレージにアップロード
+      const { data, error } = await supabase.storage
+        .from('facility-images')
+        .upload(filePath, processedBlob, {
+          contentType: 'image/jpeg'
+        });
+
+      if (error) throw error;
+
+      // パブリックURLを取得
+      const { data: { publicUrl } } = supabase.storage
+        .from('facility-images')
+        .getPublicUrl(filePath);
+
+      // フォームに画像URLを設定
+      setNewReview(prev => ({ ...prev, image_url: publicUrl }));
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('画像のアップロードに失敗しました。');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   if (isLoading) {
@@ -621,7 +745,7 @@ export function FacilityDetail() {
                   <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                       <Star className="w-5 h-5 text-yellow-400 mr-2" />
-                      評価・レビュー
+                      レビュー
                     </h3>
                     
                     <div className="flex items-center space-x-4 mb-4">
@@ -838,7 +962,7 @@ export function FacilityDetail() {
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">
                 <Star className="w-8 h-8 inline mr-3 text-yellow-400" />
-                レビュー・評価
+                レビュー
               </h2>
               <p className="text-gray-600">他の飼い主さんの体験談をご覧ください</p>
             </div>
@@ -856,6 +980,20 @@ export function FacilityDetail() {
               </div>
             )}
 
+            {/* ワンちゃん未登録の場合のメッセージ */}
+            {user && userDogs.length === 0 && (
+              <div className="text-center mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-yellow-800 mb-2">
+                  レビューを投稿するには、ワンちゃんの登録が必要です
+                </p>
+                <Link to="/dog-registration">
+                  <Button variant="secondary" size="sm">
+                    ワンちゃんを登録する
+                  </Button>
+                </Link>
+              </div>
+            )}
+
             {/* レビュー投稿フォーム */}
             {showReviewForm && (
               <Card className="p-6 mb-8 border-blue-200 bg-blue-50">
@@ -870,6 +1008,41 @@ export function FacilityDetail() {
                       const selectedDog = userDogs.find(d => d.id === selectedDogId);
                       const dogName = selectedDog ? `${selectedDog.name}${selectedDog.gender === 'male' ? 'くん' : 'ちゃん'}の飼い主さん` : 'ワンちゃんの飼い主さん';
 
+                      let imageUrl = '';
+                      
+                      // トリミング済み画像がある場合はアップロード
+                      if (croppedImageFile) {
+                        setUploadingImage(true);
+                        try {
+                          // Supabaseストレージにアップロード
+                          const fileName = `review_${user.id}_${facilityId}_${Date.now()}.jpg`;
+                          const filePath = `facility-reviews/${fileName}`;
+                          
+                          const { data: uploadData, error: uploadError } = await supabase.storage
+                            .from('facility-images')
+                            .upload(filePath, croppedImageFile, {
+                              cacheControl: '3600',
+                              upsert: false,
+                              contentType: 'image/jpeg'
+                            });
+
+                          if (uploadError) throw uploadError;
+
+                          // 公開URLを取得
+                          const { data: urlData } = supabase.storage
+                            .from('facility-images')
+                            .getPublicUrl(filePath);
+                          
+                          imageUrl = urlData.publicUrl;
+                        } catch (imageError) {
+                          console.error('Image upload error:', imageError);
+                          throw new Error('画像のアップロードに失敗しました');
+                        } finally {
+                          setUploadingImage(false);
+                        }
+                      }
+
+                      // レビューをデータベースに保存
                       const { error } = await supabase
                         .from('facility_reviews')
                         .insert({
@@ -878,7 +1051,8 @@ export function FacilityDetail() {
                           dog_name: dogName,
                           rating: newReview.rating,
                           comment: newReview.comment,
-                          visit_date: newReview.visit_date
+                          visit_date: newReview.visit_date,
+                          image_url: imageUrl || null
                         });
 
                       if (error) throw error;
@@ -887,8 +1061,13 @@ export function FacilityDetail() {
                       setNewReview({
                         rating: 5,
                         comment: '',
-                        visit_date: new Date().toISOString().split('T')[0]
+                        visit_date: new Date().toISOString().split('T')[0],
+                        image_url: ''
                       });
+                      setReviewImageFile(null);
+                      setReviewImagePreview(null);
+                      setCroppedImageFile(null);
+                      setSelectedDogId('');
                       setShowReviewForm(false);
                       
                       // データを再取得
@@ -897,7 +1076,7 @@ export function FacilityDetail() {
                       alert('レビューを投稿しました！');
                     } catch (error) {
                       console.error('Error submitting review:', error);
-                      alert('レビューの投稿に失敗しました。');
+                      alert(error instanceof Error ? error.message : 'レビューの投稿に失敗しました');
                     } finally {
                       setIsSubmittingReview(false);
                     }
@@ -915,6 +1094,7 @@ export function FacilityDetail() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       required
                     >
+                      <option value="">ワンちゃんを選択してください</option>
                       {userDogs.map(dog => (
                         <option key={dog.id} value={dog.id}>
                           {dog.name}{dog.gender === 'male' ? 'くん' : 'ちゃん'}
@@ -980,6 +1160,76 @@ export function FacilityDetail() {
                     />
                   </div>
 
+                  {/* 画像アップロード */}
+                  <div className="mb-4">
+                    <label htmlFor="review-image" className="block text-sm font-medium text-gray-700 mb-2">
+                      画像を追加（任意）
+                    </label>
+                    <div className="flex items-center space-x-4">
+                      <input
+                        type="file"
+                        id="review-image"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            // ファイルサイズチェック（10MB以下）
+                            if (file.size > 10 * 1024 * 1024) {
+                              alert('ファイルサイズは10MB以下にしてください');
+                              return;
+                            }
+                            // ImageCropperを表示
+                            setReviewImageFile(file);
+                            setShowImageCropper(true);
+                          }
+                        }}
+                        className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      {(reviewImageFile || croppedImageFile) && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setReviewImageFile(null);
+                            setReviewImagePreview(null);
+                            setCroppedImageFile(null);
+                          }}
+                        >
+                          削除
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {uploadingImage && (
+                      <div className="mt-2 text-sm text-gray-500 flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                        画像を処理中...
+                      </div>
+                    )}
+                    
+                    {reviewImagePreview && (
+                      <div className="mt-3">
+                        <p className="text-sm text-gray-600 mb-2">プレビュー（1:1にトリミング・圧縮されます）</p>
+                        <div className="flex items-center space-x-3">
+                          <img 
+                            src={reviewImagePreview} 
+                            alt="レビュー画像プレビュー" 
+                            className="w-20 h-20 rounded-lg object-cover border border-gray-200 shadow-sm"
+                          />
+                          <div className="text-sm text-gray-500">
+                            <p>元のサイズ: {reviewImageFile ? formatFileSize(reviewImageFile.size) : ''}</p>
+                            <p className="text-green-600">→ トリミング済み: {croppedImageFile ? formatFileSize(croppedImageFile.size) : ''}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <p className="text-xs text-gray-500 mt-2">
+                      JPG, PNG, GIF対応 / 最大10MB / 手動で1:1にトリミングできます
+                    </p>
+                  </div>
+
                   {/* ボタン */}
                   <div className="flex space-x-3">
                     <Button
@@ -1024,6 +1274,37 @@ export function FacilityDetail() {
                       </div>
                     </div>
                     <p className="text-gray-700 leading-relaxed">{review.comment}</p>
+                    {/* レビュー画像表示（サムネイル） */}
+                    {review.image_url && (
+                      <div className="mt-3">
+                        <img 
+                          src={review.image_url} 
+                          alt="レビュー画像" 
+                          className="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity shadow-md border border-gray-200"
+                          onClick={() => setReviewImageModal(review.image_url || null)}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">画像をタップで拡大</p>
+                      </div>
+                    )}
+
+                    {/* レビュー画像モーダル */}
+                    {reviewImageModal && (
+                      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+                        <div className="relative max-w-4xl max-h-full">
+                          <button
+                            onClick={() => setReviewImageModal(null)}
+                            className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
+                          >
+                            <X className="w-8 h-8" />
+                          </button>
+                          <img
+                            src={reviewImageModal}
+                            alt="レビュー画像（拡大）"
+                            className="max-w-full max-h-full object-contain rounded-lg"
+                          />
+                        </div>
+                      </div>
+                    )}
                     <p className="text-xs text-gray-400 mt-3">
                       投稿日: {new Date(review.created_at).toLocaleDateString()}
                     </p>
@@ -1097,6 +1378,38 @@ export function FacilityDetail() {
               setShowCouponDisplay(false);
               setDisplayingCoupon(null);
             }}
+          />
+        )}
+
+        {/* レビュー画像拡大モーダル */}
+        {reviewImageModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div className="relative max-w-2xl w-full">
+              <button
+                onClick={() => setReviewImageModal(null)}
+                className="absolute top-4 right-4 text-white hover:text-gray-300 z-10 bg-black bg-opacity-50 rounded-full p-2"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              
+              <img
+                src={reviewImageModal}
+                alt="レビュー画像拡大"
+                className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Image Cropper Modal */}
+        {showImageCropper && reviewImageFile && (
+          <ImageCropper
+            imageFile={reviewImageFile}
+            onCropComplete={handleImageCropComplete}
+            onCancel={handleImageCropCancel}
+            aspectRatio={1}
+            maxWidth={600}
+            maxHeight={600}
           />
         )}
       </div>

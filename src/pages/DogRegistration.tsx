@@ -182,12 +182,22 @@ export function DogRegistration() {
 
       if (formData.rabiesVaccineImage) {
         const rabiesUploadResult = await uploadVaccineImage(formData.rabiesVaccineImage, user.id, 'rabies');
-        rabiesImageUrl = rabiesUploadResult.url;
+        
+        if (!rabiesUploadResult.success) {
+          throw new Error(`狂犬病ワクチン証明書のアップロードに失敗しました: ${rabiesUploadResult.error}`);
+        }
+        
+        rabiesImageUrl = rabiesUploadResult.publicUrl || '';
       }
 
       if (formData.comboVaccineImage) {
         const comboUploadResult = await uploadVaccineImage(formData.comboVaccineImage, user.id, 'combo');
-        comboImageUrl = comboUploadResult.url;
+        
+        if (!comboUploadResult.success) {
+          throw new Error(`混合ワクチン証明書のアップロードに失敗しました: ${comboUploadResult.error}`);
+        }
+        
+        comboImageUrl = comboUploadResult.publicUrl || '';
       }
 
       // 誕生日を日付形式に変換
@@ -203,9 +213,7 @@ export function DogRegistration() {
             breed: formData.breed,
             birth_date: birthDate,
             gender: formData.gender,
-            profile_image_url: profileImageUrl.publicUrl,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            image_url: profileImageUrl.publicUrl
           }
         ])
         .select()
@@ -215,40 +223,32 @@ export function DogRegistration() {
         throw new Error(`ワンちゃんの登録に失敗しました: ${dogError.message}`);
       }
 
-      // ワクチン証明書の情報を保存
-      const vaccineInserts = [];
-
-      if (rabiesImageUrl) {
-        vaccineInserts.push({
+      // ワクチン証明書の情報を保存（新しいテーブル構造に対応）
+      if (rabiesImageUrl || comboImageUrl) {
+        const vaccineData: any = {
           dog_id: dogData.id,
-          vaccine_type: 'rabies',
-          certificate_image_url: rabiesImageUrl,
-          expiry_date: formData.rabiesExpiryDate,
-          status: 'pending',
-          created_at: new Date().toISOString()
-        });
-      }
+          status: 'pending' as const
+        };
 
-      if (comboImageUrl) {
-        vaccineInserts.push({
-          dog_id: dogData.id,
-          vaccine_type: 'combo',
-          certificate_image_url: comboImageUrl,
-          expiry_date: formData.comboExpiryDate,
-          status: 'pending',
-          created_at: new Date().toISOString()
-        });
-      }
+        // 狂犬病ワクチン証明書がある場合
+        if (rabiesImageUrl) {
+          vaccineData.rabies_vaccine_image = rabiesImageUrl;
+          vaccineData.rabies_expiry_date = formData.rabiesExpiryDate;
+        }
 
-      if (vaccineInserts.length > 0) {
-        const { error: vaccineError } = await supabase
+        // 混合ワクチン証明書がある場合
+        if (comboImageUrl) {
+          vaccineData.combo_vaccine_image = comboImageUrl;
+          vaccineData.combo_expiry_date = formData.comboExpiryDate;
+        }
+
+        const { data: savedVaccineData, error: vaccineError } = await supabase
           .from('vaccine_certifications')
-          .insert(vaccineInserts);
+          .insert([vaccineData])
+          .select();
 
         if (vaccineError) {
-          console.error('ワクチン証明書の保存エラー:', vaccineError);
-          // ワクチン証明書の保存エラーは警告として処理（ワンちゃんの登録は成功）
-          logger.warn('ワクチン証明書の保存でエラーが発生しましたが、ワンちゃんの登録は完了しました', { error: vaccineError });
+          throw new Error(`ワクチン証明書の保存に失敗しました: ${vaccineError.message}`);
         }
       }
 
@@ -428,8 +428,8 @@ export function DogRegistration() {
                   onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
                   options={[
                     { value: '', label: '性別を選択してください' },
-                    { value: 'male', label: 'オス' },
-                    { value: 'female', label: 'メス' }
+                    { value: 'オス', label: 'オス' },
+                    { value: 'メス', label: 'メス' }
                   ]}
                   required
                 />

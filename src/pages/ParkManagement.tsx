@@ -181,6 +181,7 @@ export function ParkManagement() {
   // メンテナンス関連のstate
   const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>([]);
   const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
+  const [editingMaintenance, setEditingMaintenance] = useState<MaintenanceSchedule | null>(null);
   const [maintenanceForm, setMaintenanceForm] = useState({
     title: '',
     description: '',
@@ -230,9 +231,31 @@ export function ParkManagement() {
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
+  const [imageTypeToUpload, setImageTypeToUpload] = useState<string>('');
+  const [originalFileName, setOriginalFileName] = useState<string>('');
+  const [imageToUpload, setImageToUpload] = useState<{ image_type: string; file: File } | null>(null);
 
   // ウォークスルー関連state
   const [showWalkthrough, setShowWalkthrough] = useState(false);
+
+  // メンテナンス予定取得関数
+  const fetchMaintenanceSchedules = async () => {
+    if (!parkId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('maintenance_schedules')
+        .select('*')
+        .eq('dog_park_id', parkId)
+        .order('start_date', { ascending: true });
+
+      if (error) throw error;
+
+      setMaintenanceSchedules(data || []);
+    } catch (error) {
+      console.error('Error fetching maintenance schedules:', error);
+    }
+  };
 
   // テスト用: URLパラメータでウォークスルーを強制表示
   useEffect(() => {
@@ -325,10 +348,11 @@ export function ParkManagement() {
     }
   }, [parkId, user]);
 
-  // パークデータが取得された後に画像データを取得
+  // パークデータが取得された後に画像データとメンテナンス予定を取得
   useEffect(() => {
     if (park) {
       void fetchFacilityImages();
+      void fetchMaintenanceSchedules();
     }
   }, [park]);
 
@@ -464,6 +488,341 @@ export function ParkManagement() {
   const handlePinError = (errorMessage: string) => {
     setError(errorMessage);
     setTimeout(() => setError(''), 5000);
+  };
+
+  // 画像選択関数
+  const handleImageSelect = (imageType: string, file: File) => {
+    setImageTypeToUpload(imageType);
+    setOriginalFileName(file.name);
+    setImageToUpload({ image_type: imageType, file });
+    setShowImageCropper(true);
+  };
+
+  // 画像クロップ完了関数
+  const handleCropComplete = async (croppedFile: File) => {
+    if (!parkId || !imageTypeToUpload) return;
+
+    try {
+      setImageLoading(true);
+      setShowImageCropper(false);
+      setError('');
+
+      // ファイル名を元のファイル名に設定
+      const fileWithName = new File([croppedFile], originalFileName, { type: croppedFile.type });
+
+      // ファイルをSupabaseストレージにアップロード
+      const fileName = `${imageTypeToUpload}_${Date.now()}_${originalFileName}`;
+      const filePath = `${parkId}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('dog-park-images')
+        .upload(filePath, fileWithName, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // 公開URLを取得
+      const { data: { publicUrl } } = supabase.storage
+        .from('dog-park-images')
+        .getPublicUrl(filePath);
+
+      // 既存の画像レコードをチェック
+      const { data: existingImage, error: selectError } = await supabase
+        .from('dog_park_facility_images')
+        .select('id')
+        .eq('park_id', parkId)
+        .eq('image_type', imageTypeToUpload)
+        .single();
+
+      if (selectError && selectError.code !== 'PGRST116') {
+        throw selectError;
+      }
+
+      let dbError;
+      if (existingImage) {
+        // 既存レコードを更新
+        const { error } = await supabase
+          .from('dog_park_facility_images')
+          .update({
+            image_url: publicUrl,
+            is_approved: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingImage.id);
+        dbError = error;
+      } else {
+        // 新しいレコードを挿入
+        const { error } = await supabase
+          .from('dog_park_facility_images')
+          .insert({
+            park_id: parkId,
+            image_type: imageTypeToUpload,
+            image_url: publicUrl,
+            is_approved: null
+          });
+        dbError = error;
+      }
+
+      if (dbError) throw dbError;
+
+      // 画像リストを更新
+      await fetchFacilityImages();
+
+      setSuccess('画像をアップロードしました');
+      setTimeout(() => setSuccess(''), 3000);
+
+      // 状態をリセット
+      setImageTypeToUpload('');
+      setOriginalFileName('');
+      setImageToUpload(null);
+
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      setError('画像のアップロードに失敗しました');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  // 画像クロップキャンセル関数
+  const handleCropCancel = () => {
+    setShowImageCropper(false);
+    setImageTypeToUpload('');
+    setOriginalFileName('');
+    setImageToUpload(null);
+  };
+
+  // 画像削除関数
+  const handleImageDelete = async (imageId?: string, imageType?: string) => {
+    if (!imageId) return;
+
+    try {
+      setImageLoading(true);
+      setError('');
+
+      const { error } = await supabase
+        .from('dog_park_facility_images')
+        .delete()
+        .eq('id', imageId);
+
+      if (error) throw error;
+
+      // 画像リストを更新
+      await fetchFacilityImages();
+
+      setSuccess('画像を削除しました');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      setError('画像の削除に失敗しました');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  // メンテナンス予定追加関数
+  const handleMaintenanceSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!parkId || !user) return;
+
+    try {
+      setIsMaintenanceLoading(true);
+      setError('');
+
+      // 日時のバリデーション
+      const startDate = new Date(maintenanceForm.start_date);
+      const endDate = new Date(maintenanceForm.end_date);
+      
+      if (endDate <= startDate) {
+        setError('終了日時は開始日時より後に設定してください。');
+        return;
+      }
+
+      // UTC時間に変換
+      const startDateUTC = convertLocalDateTimeToUTC(maintenanceForm.start_date);
+      const endDateUTC = convertLocalDateTimeToUTC(maintenanceForm.end_date);
+
+      if (!startDateUTC || !endDateUTC) {
+        setError('日時の形式が正しくありません。');
+        return;
+      }
+
+      // データベースにメンテナンス予定を保存
+      const { error: insertError } = await supabase
+        .from('maintenance_schedules')
+        .insert({
+          dog_park_id: parkId,
+          title: maintenanceForm.title,
+          description: maintenanceForm.description || null,
+          start_date: startDateUTC,
+          end_date: endDateUTC,
+          status: 'scheduled',
+          is_emergency: maintenanceForm.is_emergency,
+          notify_users: maintenanceForm.notify_users
+        });
+
+      if (insertError) throw insertError;
+
+      // フォームをリセット
+      setMaintenanceForm({
+        title: '',
+        description: '',
+        start_date: '',
+        end_date: '',
+        is_emergency: false,
+        notify_users: true
+      });
+
+      setShowMaintenanceForm(false);
+      setSuccess('メンテナンス予定を追加しました。');
+      setTimeout(() => setSuccess(''), 3000);
+
+      // メンテナンス予定を再取得
+      await fetchMaintenanceSchedules();
+
+    } catch (error) {
+      console.error('Error adding maintenance schedule:', error);
+      setError('メンテナンス予定の追加に失敗しました。');
+      setTimeout(() => setError(''), 5000);
+    } finally {
+      setIsMaintenanceLoading(false);
+    }
+  };
+
+  // メンテナンス編集開始
+  const handleMaintenanceEdit = (maintenance: MaintenanceSchedule) => {
+    setEditingMaintenance(maintenance);
+    setMaintenanceForm({
+      title: maintenance.title,
+      description: maintenance.description || '',
+      start_date: convertUTCToLocalDateTime(maintenance.start_date),
+      end_date: convertUTCToLocalDateTime(maintenance.end_date),
+      is_emergency: maintenance.is_emergency,
+      notify_users: maintenance.notify_users || true
+    });
+    setShowMaintenanceForm(true);
+  };
+
+  // メンテナンス更新
+  const handleMaintenanceUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!parkId || !user || !editingMaintenance) return;
+
+    try {
+      setIsMaintenanceLoading(true);
+      setError('');
+
+      // 日時のバリデーション
+      const startDate = new Date(maintenanceForm.start_date);
+      const endDate = new Date(maintenanceForm.end_date);
+      
+      if (endDate <= startDate) {
+        setError('終了日時は開始日時より後に設定してください。');
+        return;
+      }
+
+      // UTC時間に変換
+      const startDateUTC = convertLocalDateTimeToUTC(maintenanceForm.start_date);
+      const endDateUTC = convertLocalDateTimeToUTC(maintenanceForm.end_date);
+
+      if (!startDateUTC || !endDateUTC) {
+        setError('日時の形式が正しくありません。');
+        return;
+      }
+
+      // データベースのメンテナンス予定を更新
+      const { error: updateError } = await supabase
+        .from('maintenance_schedules')
+        .update({
+          title: maintenanceForm.title,
+          description: maintenanceForm.description || null,
+          start_date: startDateUTC,
+          end_date: endDateUTC,
+          is_emergency: maintenanceForm.is_emergency,
+          notify_users: maintenanceForm.notify_users
+        })
+        .eq('id', editingMaintenance.id)
+        .eq('dog_park_id', parkId);
+
+      if (updateError) throw updateError;
+
+      // フォームをリセット
+      setMaintenanceForm({
+        title: '',
+        description: '',
+        start_date: '',
+        end_date: '',
+        is_emergency: false,
+        notify_users: true
+      });
+
+      setShowMaintenanceForm(false);
+      setEditingMaintenance(null);
+      setSuccess('メンテナンス予定を更新しました。');
+      setTimeout(() => setSuccess(''), 3000);
+
+      // メンテナンス予定を再取得
+      await fetchMaintenanceSchedules();
+
+    } catch (error) {
+      console.error('Error updating maintenance schedule:', error);
+      setError('メンテナンス予定の更新に失敗しました。');
+      setTimeout(() => setError(''), 5000);
+    } finally {
+      setIsMaintenanceLoading(false);
+    }
+  };
+
+  // メンテナンス削除
+  const handleMaintenanceDelete = async (maintenanceId: string) => {
+    if (!parkId || !user) return;
+
+    if (!window.confirm('このメンテナンス予定を削除しますか？この操作は取り消せません。')) {
+      return;
+    }
+
+    try {
+      setIsMaintenanceLoading(true);
+      setError('');
+
+      const { error: deleteError } = await supabase
+        .from('maintenance_schedules')
+        .delete()
+        .eq('id', maintenanceId)
+        .eq('dog_park_id', parkId);
+
+      if (deleteError) throw deleteError;
+
+      setSuccess('メンテナンス予定を削除しました。');
+      setTimeout(() => setSuccess(''), 3000);
+
+      // メンテナンス予定を再取得
+      await fetchMaintenanceSchedules();
+
+    } catch (error) {
+      console.error('Error deleting maintenance schedule:', error);
+      setError('メンテナンス予定の削除に失敗しました。');
+      setTimeout(() => setError(''), 5000);
+    } finally {
+      setIsMaintenanceLoading(false);
+    }
+  };
+
+  // メンテナンスフォームキャンセル
+  const handleMaintenanceCancel = () => {
+    setShowMaintenanceForm(false);
+    setEditingMaintenance(null);
+    setMaintenanceForm({
+      title: '',
+      description: '',
+      start_date: '',
+      end_date: '',
+      is_emergency: false,
+      notify_users: true
+    });
   };
 
   // 公開・非公開切り替え関数
@@ -821,12 +1180,92 @@ export function ParkManagement() {
                 </Button>
             </div>
             
-                  {/* メンテナンス予定がない場合の表示 */}
-                  <div className="text-center py-8">
-                    <Wrench className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500 font-medium">メンテナンス予定がありません</p>
-                    <p className="text-gray-400 text-sm">施設のメンテナンス予定を追加してください</p>
-                </div>
+            {/* メンテナンス予定の表示 */}
+            {maintenanceSchedules.length > 0 ? (
+              <div className="space-y-4">
+                {maintenanceSchedules.map((schedule) => (
+                  <div key={schedule.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-medium text-gray-900">{schedule.title}</h3>
+                      <div className="flex items-center space-x-2">
+                        {schedule.is_emergency && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <AlertTriangle className="w-3 h-3 mr-1" />
+                            緊急
+                          </span>
+                        )}
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          schedule.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                          schedule.status === 'active' ? 'bg-green-100 text-green-800' :
+                          schedule.status === 'completed' ? 'bg-gray-100 text-gray-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {schedule.status === 'scheduled' ? '予定' :
+                           schedule.status === 'active' ? '実行中' :
+                           schedule.status === 'completed' ? '完了' : 'キャンセル'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {schedule.description && (
+                      <p className="text-sm text-gray-600 mb-3">{schedule.description}</p>
+                    )}
+                    
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-700">開始:</span>
+                        <span className="ml-2 text-gray-600">
+                          {convertUTCToLocalDateTime(schedule.start_date).replace('T', ' ')}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">終了:</span>
+                        <span className="ml-2 text-gray-600">
+                          {convertUTCToLocalDateTime(schedule.end_date).replace('T', ' ')}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {schedule.notify_users && (
+                      <div className="mt-2 flex items-center text-xs text-blue-600">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        ユーザー通知有効
+                      </div>
+                    )}
+                    
+                    {/* 編集・削除ボタン */}
+                    <div className="mt-4 flex justify-end space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleMaintenanceEdit(schedule)}
+                        className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                        disabled={isMaintenanceLoading}
+                      >
+                        <Edit className="w-4 h-4 mr-1" />
+                        編集
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleMaintenanceDelete(schedule.id)}
+                        className="text-red-600 border-red-600 hover:bg-red-50"
+                        disabled={isMaintenanceLoading}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        削除
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Wrench className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 font-medium">メンテナンス予定がありません</p>
+                <p className="text-gray-400 text-sm">施設のメンテナンス予定を追加してください</p>
+              </div>
+            )}
 
                   <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
                     <div className="flex items-start space-x-3">
@@ -1393,9 +1832,9 @@ export function ParkManagement() {
             </div>
 
       {/* Image Cropper Modal */}
-      {showImageCropper && selectedImageFile && (
+      {showImageCropper && imageToUpload?.file && (
         <ImageCropper
-          imageFile={selectedImageFile}
+          imageFile={imageToUpload.file}
           onCropComplete={handleCropComplete}
           onCancel={handleCropCancel}
           aspectRatio={1} // 1:1比率でクロップ
@@ -1422,6 +1861,136 @@ export function ParkManagement() {
               />
                 </div>
               </div>
+        </div>
+      )}
+
+      {/* メンテナンス予定追加モーダル */}
+      {showMaintenanceForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">
+                  {editingMaintenance ? 'メンテナンス予定を編集' : 'メンテナンス予定を追加'}
+                </h2>
+                <button
+                  onClick={handleMaintenanceCancel}
+                  className="text-gray-500 hover:text-gray-700 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={editingMaintenance ? handleMaintenanceUpdate : handleMaintenanceSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    メンテナンス名 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={maintenanceForm.title}
+                    onChange={(e) => setMaintenanceForm(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="例: 設備点検、清掃作業"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    詳細説明
+                  </label>
+                  <textarea
+                    value={maintenanceForm.description}
+                    onChange={(e) => setMaintenanceForm(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    rows={3}
+                    placeholder="メンテナンス内容の詳細を入力してください"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      開始日時 <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={maintenanceForm.start_date}
+                      onChange={(e) => setMaintenanceForm(prev => ({ ...prev, start_date: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      終了日時 <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={maintenanceForm.end_date}
+                      onChange={(e) => setMaintenanceForm(prev => ({ ...prev, end_date: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="is_emergency"
+                      checked={maintenanceForm.is_emergency}
+                      onChange={(e) => setMaintenanceForm(prev => ({ ...prev, is_emergency: e.target.checked }))}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="is_emergency" className="ml-2 block text-sm text-gray-700">
+                      緊急メンテナンス（即座に施設利用を停止）
+                    </label>
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="notify_users"
+                      checked={maintenanceForm.notify_users}
+                      onChange={(e) => setMaintenanceForm(prev => ({ ...prev, notify_users: e.target.checked }))}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="notify_users" className="ml-2 block text-sm text-gray-700">
+                      利用者にメール通知を送信
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setShowMaintenanceForm(false)}
+                  >
+                    キャンセル
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isMaintenanceLoading}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isMaintenanceLoading ? (
+                      <div className="flex items-center">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        {editingMaintenance ? '更新中...' : '追加中...'}
+                      </div>
+                    ) : (
+                      editingMaintenance ? 'メンテナンス予定を更新' : 'メンテナンス予定を追加'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       )}
 

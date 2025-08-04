@@ -1,18 +1,18 @@
+import {
+    AlertTriangle,
+    ArrowLeft,
+    CheckCircle,
+    CreditCard,
+    Lock,
+    Shield
+} from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  CreditCard, 
-  ArrowLeft, 
-  Shield, 
-  CheckCircle,
-  AlertTriangle,
-  Lock
-} from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
-import { supabase } from '../utils/supabase';
 import useAuth from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
 
 export function PaymentSetup() {
   const { user } = useAuth();
@@ -359,7 +359,7 @@ export function PaymentSetup() {
             </div>
             <div className="text-sm text-blue-800 space-y-1">
               <p>• 入場QR発行時に自動課金</p>
-              <p>• 単発利用: ¥800/日</p>
+                              <p>• 1Dayパス: ¥800/日</p>
               <p>• サブスク会員は追加料金なし</p>
               <p>• 利用明細はメールで送信</p>
               <p>• 返金は利用前のみ可能</p>

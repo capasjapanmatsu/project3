@@ -654,24 +654,36 @@ export function AdminParkManagement() {
       setSuccess('');
 
 
-      // ステータス更新を実行
-      const updateData: any = { status: nextStatus };
-      
-      // 第二審査承認時はデフォルトで非公開に設定
-      if (nextStatus === 'approved') {
-        updateData.is_public = false;
-      }
-      
-      const { error: updateError } = await supabase
-        .from('dog_parks')
-        .update(updateData)
-        .eq('id', parkId);
+      // 第二審査承認の場合は専用関数を使用
+      if (park.status === 'second_stage_review' && nextStatus === 'approved') {
+        const { error: approvalError } = await supabase.rpc('approve_second_stage_review', {
+          park_id_param: parkId
+        });
 
-      if (updateError) {
-        console.error('❌ 承認エラー詳細:', updateError);
+        if (approvalError) {
+          console.error('❌ 第二審査承認エラー:', approvalError);
+          showError(`第二審査承認に失敗しました: ${approvalError.message || '不明なエラー'}`);
+          return;
+        }
+      } else {
+        // その他のステータス更新
+        const updateData: any = { status: nextStatus };
+        
+        // 第二審査承認時はデフォルトで非公開に設定
+        if (nextStatus === 'approved') {
+          updateData.is_public = false;
+        }
+        
+        const { error: updateError } = await supabase
+          .from('dog_parks')
+          .update(updateData)
+          .eq('id', parkId);
 
-        if (updateError.code === '23514') {
-          showError(`承認処理に失敗しました: ステータス "${nextStatus}" が許可されていません。
+        if (updateError) {
+          console.error('❌ 承認エラー詳細:', updateError);
+
+          if (updateError.code === '23514') {
+            showError(`承認処理に失敗しました: ステータス "${nextStatus}" が許可されていません。
 
 📋 データベースの制約を更新してください：
 
@@ -684,10 +696,11 @@ ALTER TABLE dog_parks DROP CONSTRAINT IF EXISTS dog_parks_status_check;
 ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('pending', 'first_stage_passed', 'second_stage_waiting', 'second_stage_review', 'smart_lock_testing', 'approved', 'rejected'));
 
 5. ページを再読み込み`);
-        } else {
-          showError(`承認処理に失敗しました: ${updateError.message || '不明なエラー'}`);
+          } else {
+            showError(`承認処理に失敗しました: ${updateError.message || '不明なエラー'}`);
+          }
+          return;
         }
-        return;
       }
 
       console.log('✅ ステータス更新完了:', nextStatus);
@@ -1325,7 +1338,7 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
                                   <img
                                     src={image.image_url}
                                     alt={`設備画像 ${index + 1}`}
-                                    className="w-full h-24 object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity"
+                                    className="w-full aspect-square object-cover rounded-md border cursor-pointer hover:opacity-80 transition-opacity"
                                     onClick={() => handleImageClick(image.image_url, image.image_type, park.name)}
                                   />
                                   <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-b-md">

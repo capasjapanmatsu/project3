@@ -28,7 +28,7 @@ import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import type { Dog, DogPark, NewsAnnouncement, Notification, Profile, Reservation } from '../types';
 import { supabase } from '../utils/supabase';
-// import { handleVaccineUploadFixed } from '../utils/vaccineUploadFixed'; // TEMP: File not found
+
 
 export function UserDashboard() {
   const { user, logout, isAdmin } = useAuth();
@@ -346,21 +346,7 @@ export function UserDashboard() {
         return;
       }
 
-      // ワクチン証明書のアップロード処理 - TEMP: Disabled due to missing function
-      // if (rabiesVaccineFile || comboVaccineFile) {
-      //   const vaccineResult = await handleVaccineUploadFixed(
-      //     selectedDog.id,
-      //     rabiesVaccineFile || undefined,
-      //     comboVaccineFile || undefined,
-      //     rabiesExpiryDate,
-      //     comboExpiryDate
-      //   );
-      // 
-      //   if (!vaccineResult.success) {
-      //     setError(vaccineResult.error || 'ワクチン証明書のアップロードに失敗しました');
-      //     return;
-      //   }
-      // }
+
 
       // 犬の情報更新
       const updateData: any = {

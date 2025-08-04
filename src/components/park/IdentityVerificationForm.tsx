@@ -1,8 +1,9 @@
 import { AlertTriangle, Shield } from 'lucide-react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../../utils/supabase';
 import Button from '../Button';
 import Card from '../Card';
+import ImageCropper from '../ImageCropper'; // Added import for ImageCropper
 
 interface IdentityVerificationFormProps {
   onBack: () => void;
@@ -21,10 +22,36 @@ export default function IdentityVerificationForm({
 }: IdentityVerificationFormProps) {
   const [identityFile, setIdentityFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  
+  // Image cropping states
+  const [showImageCropper, setShowImageCropper] = useState(false);
+  const [croppingFile, setCroppingFile] = useState<File | null>(null);
+
+  // Image cropper handlers
+  const handleImageCropComplete = (croppedFile: File) => {
+    setIdentityFile(croppedFile);
+    setShowImageCropper(false);
+    setCroppingFile(null);
+  };
+
+  const handleImageCropCancel = () => {
+    setShowImageCropper(false);
+    setCroppingFile(null);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setIdentityFile(e.target.files[0]);
+      const file = e.target.files[0];
+      
+      // ファイルサイズチェック（10MB以下）
+      if (file.size > 10 * 1024 * 1024) {
+        alert('ファイルサイズは10MB以下にしてください');
+        return;
+      }
+      
+      // ImageCropperを表示
+      setCroppingFile(file);
+      setShowImageCropper(true);
     }
   };
 
@@ -42,12 +69,6 @@ export default function IdentityVerificationForm({
     onError('');
 
     try {
-        name: identityFile.name,
-        type: identityFile.type,
-        size: identityFile.size,
-        lastModified: identityFile.lastModified
-      });
-
       // ファイル名例: userId_タイムスタンプ_元ファイル名
       const fileName = `identity_${user.id}_${Date.now()}_${identityFile.name}`;
       
@@ -167,6 +188,18 @@ export default function IdentityVerificationForm({
           </div>
         </div>
       </div>
+
+      {/* Image Cropper Modal */}
+      {showImageCropper && croppingFile && (
+        <ImageCropper
+          imageFile={croppingFile}
+          onCropComplete={handleImageCropComplete}
+          onCancel={handleImageCropCancel}
+          aspectRatio={85.6 / 54.0} // 免許証の比率
+          maxWidth={600}
+          maxHeight={400}
+        />
+      )}
     </div>
   );
 }

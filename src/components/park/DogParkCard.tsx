@@ -103,11 +103,41 @@ export function DogParkCard({ park, userLocation, distance }: DogParkCardProps) 
       <div className="p-4">
         {/* パーク名と営業状況 */}
         <div className="flex items-start justify-between mb-2">
-          <h3 className="font-semibold text-lg text-gray-900 flex-1">
-            {park.name}
-          </h3>
+          <div className="flex-1">
+            <h3 className="font-semibold text-lg text-gray-900">
+              {park.name}
+            </h3>
+            {/* メンテナンス情報 */}
+            {park.currentMaintenance && (
+              <div className="mt-1">
+                <p className="text-red-600 text-sm font-medium">
+                  {park.currentMaintenance.title}
+                  {park.currentMaintenance.is_emergency && ' (緊急)'}
+                </p>
+                <p className="text-red-500 text-xs">
+                  {new Date(park.currentMaintenance.start_date).toLocaleDateString('ja-JP')} 
+                  {' '}
+                  {new Date(park.currentMaintenance.start_date).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+                  {' 〜 '}
+                  {new Date(park.currentMaintenance.end_date).toLocaleDateString('ja-JP')} 
+                  {' '}
+                  {new Date(park.currentMaintenance.end_date).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+                {park.currentMaintenance.description && (
+                  <p className="text-red-500 text-xs">
+                    {park.currentMaintenance.description}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
           <div className="flex items-center space-x-2 ml-2">
-            {isCurrentlyOpen ? (
+            {park.currentMaintenance ? (
+              <span className="flex items-center text-red-600 text-sm">
+                <AlertTriangle className="w-4 h-4 mr-1" />
+                メンテナンス中
+              </span>
+            ) : isCurrentlyOpen ? (
               <span className="flex items-center text-green-600 text-sm">
                 <CheckCircle className="w-4 h-4 mr-1" />
                 営業中
@@ -143,7 +173,7 @@ export function DogParkCard({ park, userLocation, distance }: DogParkCardProps) 
         {park.price && (
           <div className="flex items-center text-gray-600 text-sm mb-3">
             <Coins className="w-4 h-4 mr-1" />
-            <span>¥{park.price}/時間</span>
+            <span>¥{park.price}/日</span>
           </div>
         )}
 
@@ -189,19 +219,32 @@ export function DogParkCard({ park, userLocation, distance }: DogParkCardProps) 
           <Link to={`/parks/${park.id}`} className="flex-1">
             <Button
               variant="outline"
-              className="w-full flex items-center justify-center"
+              className="w-full flex items-center justify-center !rounded-lg"
+              style={{ borderRadius: '0.5rem' }}
             >
               <ExternalLink className="w-4 h-4 mr-1" />
-              詳細を見る
+              詳細
             </Button>
           </Link>
-          {isCurrentlyOpen && park.current_occupancy < park.max_capacity && (
-                            <Link to={`/reservation/${park.id}`} className="flex-1">
-              <Button className="w-full">
+          {park.currentMaintenance ? (
+            <Button 
+              className="w-full opacity-50 cursor-not-allowed !rounded-lg" 
+              disabled
+              title="メンテナンス中のため予約できません"
+              style={{ borderRadius: '0.5rem' }}
+            >
+              予約不可
+            </Button>
+          ) : isCurrentlyOpen && park.current_occupancy < park.max_capacity ? (
+            <Link to={`/reservation/${park.id}`} className="flex-1">
+              <Button 
+                className="w-full !rounded-lg"
+                style={{ borderRadius: '0.5rem' }}
+              >
                 予約する
               </Button>
             </Link>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

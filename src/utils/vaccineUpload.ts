@@ -2,11 +2,18 @@
 import { supabase } from './supabase';
 
 /**
+ * ワクチン証明書の種類
+ */
+export type VaccineType = 'rabies' | 'combo' | 'mixed';
+
+/**
  * ワクチン証明書のアップロード結果の型定義
  */
 export interface VaccineUploadResult {
   success: boolean;
   filePath?: string;
+  publicUrl?: string;
+  fileName?: string;
   error?: string;
   errorCode?: string;
 }
@@ -61,15 +68,15 @@ export const uploadVaccineImage = async (
       throw new Error(fileValidation.error);
     }
 
-    const processedFile = await processVaccineImage(file);
     const fileName = `${dogIdTyped}_${vaccineType}_${Date.now()}.jpg`;
     const filePath = `${dogIdTyped}/${fileName}`;
 
     const { data, error } = await supabase.storage
       .from('vaccine-certs')
-      .upload(filePath, processedFile, {
+      .upload(filePath, file, {
         cacheControl: '3600',
-        upsert: false
+        upsert: false,
+        contentType: file.type
       });
 
     if (error) {
