@@ -18,7 +18,7 @@ import {
     X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { NearbyDogs } from '../components/NearbyDogs';
@@ -28,6 +28,7 @@ import { supabase } from '../utils/supabase';
 
 export function Community() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'notifications' | 'messages' | 'blacklist' | 'nearby'>('friends');
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [friends, setFriends] = useState<Friendship[]>([]);
@@ -42,6 +43,14 @@ export function Community() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [blacklistedDogs, setBlacklistedDogs] = useState<any[]>([]);
+
+  // 未ログイン時はログイン画面にリダイレクト
+  useEffect(() => {
+    if (!user) {
+      navigate('/login?redirect=/community&message=' + encodeURIComponent('コミュニティ機能を利用するにはログインが必要です'));
+      return;
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -446,6 +455,11 @@ export function Community() {
     }
     return 'ワンちゃんの飼い主さん';
   };
+
+  // 未ログイン時は何も表示しない（リダイレクト処理は上のuseEffectで実行済み）
+  if (!user) {
+    return null;
+  }
 
   if (isLoading) {
     return (

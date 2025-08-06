@@ -1,3 +1,15 @@
+import {
+    Bed,
+    Building2,
+    Coffee,
+    GraduationCap,
+    Heart,
+    Home,
+    Scissors,
+    ShoppingBag,
+    Star,
+    Utensils
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { DogParkCard } from '../components/park/DogParkCard';
 import { EmptyState } from '../components/park/EmptyState';
@@ -34,19 +46,20 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 };
 
 // カテゴリアイコン取得関数
-const getCategoryIcon = (categoryId: string): string => {
-  const icons: { [key: string]: string } = {
-    'pet_hotel': '🏨',
-    'pet_salon': '✂️',
-    'veterinary': '🏥',
-    'pet_cafe': '☕',
-    'pet_restaurant': '🍽️',
-    'pet_shop': '🛍️',
-    'pet_accommodation': '🏠',
-    'dog_training': '🎓',
-    'pet_friendly_other': '🌟'
+const getCategoryIcon = (categoryId: string): React.ReactNode => {
+  const iconClass = "w-4 h-4 text-white";
+  const icons: { [key: string]: React.ReactNode } = {
+    'pet_hotel': <Bed className={iconClass} />,
+    'pet_salon': <Scissors className={iconClass} />,
+    'veterinary': <Heart className={iconClass} />,
+    'pet_cafe': <Coffee className={iconClass} />,
+    'pet_restaurant': <Utensils className={iconClass} />,
+    'pet_shop': <ShoppingBag className={iconClass} />,
+    'pet_accommodation': <Home className={iconClass} />,
+    'dog_training': <GraduationCap className={iconClass} />,
+    'pet_friendly_other': <Star className={iconClass} />
   };
-  return icons[categoryId] || '🏢';
+  return icons[categoryId] || <Building2 className={iconClass} />;
 };
 
 export function DogParkList() {
@@ -528,13 +541,13 @@ export function DogParkList() {
                 <div className="flex flex-wrap items-center gap-2 mb-3 pt-3">
                   <button
                     onClick={handleSelectAll}
-                    className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                    className="px-3 py-1.5 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
                   >
                     全選択
                   </button>
                   <button
                     onClick={handleDeselectAll}
-                    className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                    className="px-3 py-1.5 text-xs bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
                   >
                     全解除
                   </button>
@@ -545,13 +558,20 @@ export function DogParkList() {
                     <button
                       key={categoryId}
                       onClick={() => handleCategoryToggle(categoryId)}
-                      className={`px-3 py-2 text-sm rounded-full border transition-all ${
+                      className={`flex items-center gap-2 px-4 py-2.5 text-sm rounded-lg border transition-all ${
                         selectedCategories.includes(categoryId)
                           ? 'bg-blue-500 text-white border-blue-500 shadow-md'
-                          : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                       }`}
                     >
-                      {getCategoryIcon(categoryId)} {categoryName}
+                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded ${
+                        selectedCategories.includes(categoryId)
+                          ? 'bg-blue-600'
+                          : 'bg-gray-400'
+                      }`}>
+                        {getCategoryIcon(categoryId)}
+                      </span>
+                      {categoryName}
                     </button>
                   ))}
                 </div>

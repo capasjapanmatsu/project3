@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Eye, EyeOff, Lock, Mail, UserPlus } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Dog, Eye, EyeOff, Lock, Mail, UserPlus } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
@@ -296,34 +296,141 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       />
       
       <style>
-        {`@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@300;400;500;700;900&display=swap');`}
+        {`@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@300;400;500;700;900&display=swap');
+        
+        @keyframes logoSlideIn {
+          0% {
+            transform: translateX(-100px) rotate(-180deg);
+            opacity: 0;
+          }
+          50% {
+            transform: translateX(10px) rotate(10deg);
+          }
+          100% {
+            transform: translateX(0) rotate(0deg);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes textReveal {
+          0% {
+            transform: translateY(20px);
+            opacity: 0;
+            letter-spacing: 0.3em;
+          }
+          50% {
+            letter-spacing: 0.1em;
+          }
+          100% {
+            transform: translateY(0);
+            opacity: 1;
+            letter-spacing: normal;
+          }
+        }
+        
+        @keyframes jpPop {
+          0% {
+            transform: scale(0) rotate(180deg);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.2) rotate(10deg);
+          }
+          100% {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes subtitleFade {
+          0% {
+            transform: translateX(-20px);
+            opacity: 0;
+          }
+          100% {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes shimmer {
+          0% {
+            background-position: -200% center;
+          }
+          100% {
+            background-position: 200% center;
+          }
+        }
+        
+        .logo-icon {
+          animation: logoSlideIn 0.8s ease-out forwards;
+        }
+        
+        .text-dogpark {
+          animation: textReveal 0.6s ease-out 0.3s forwards;
+          opacity: 0;
+        }
+        
+        .text-jp {
+          animation: jpPop 0.5s ease-out 0.7s forwards;
+          opacity: 0;
+          display: inline-block;
+        }
+        
+        .subtitle-text {
+          animation: subtitleFade 0.6s ease-out 1s forwards;
+          opacity: 0;
+        }
+        
+        .shimmer-text {
+          background: linear-gradient(
+            90deg,
+            #3b82f6 0%,
+            #60a5fa 25%,
+            #93c5fd 50%,
+            #60a5fa 75%,
+            #3b82f6 100%
+          );
+          background-size: 200% auto;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          animation: shimmer 3s linear infinite;
+          animation-delay: 1.2s;
+        }
+        `}
       </style>
 
       <div className="min-h-screen flex flex-col">
         {/* 上部：白い背景エリア（ロゴ） */}
-        <div className="bg-white px-6 py-4 shadow-sm">
+        <div className="bg-white px-6 py-4 shadow-sm overflow-hidden">
           <div className="flex items-center">
-            {/* ロゴアイコン（青い丸なし） */}
-            <img
-              src="/icons/icon_android_48x48.png"
-              alt="ドッグパーク"
-              className="w-12 h-12 sm:w-16 sm:h-16"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-                const parent = (e.target as HTMLElement).parentElement;
-                if (parent) {
-                  parent.innerHTML = '<span class="text-4xl sm:text-5xl">🐕</span>';
-                }
-              }}
-            />
+            {/* ロゴアイコン（アニメーション付き） */}
+            <div className="logo-icon">
+              <img
+                src="/icons/icon_android_48x48.png"
+                alt="ドッグパーク"
+                className="w-12 h-12 sm:w-16 sm:h-16"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  const parent = (e.target as HTMLElement).parentElement;
+                  if (parent) {
+                    const dogIcon = document.createElement('div');
+                    dogIcon.className = 'w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center';
+                    dogIcon.innerHTML = '<svg class="w-full h-full text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M18,4C16.29,4 15.25,4.33 14.65,4.61C13.88,4.23 13,4 12,4C11,4 10.12,4.23 9.35,4.61C8.75,4.33 7.71,4 6,4C3,4 1,12 1,14C1,14.83 2.32,15.59 4.14,15.9C4.78,18.14 7.8,19.85 11.5,20V15.72C10.91,15.35 10,14.68 10,14C10,13 11,12 12,12C13,12 14,13 14,14C14,14.68 13.09,15.35 12.5,15.72V20C16.2,19.85 19.22,18.14 19.86,15.9C21.68,15.59 23,14.83 23,14C23,12 21,4 18,4Z"/></svg>';
+                    parent.replaceChild(dogIcon, e.target as HTMLElement);
+                  }
+                }}
+              />
+            </div>
             
-            {/* テキスト部分 */}
+            {/* テキスト部分（タイポグラフィアニメーション） */}
             <div className="ml-4">
               <h1 className="text-xl sm:text-2xl font-bold leading-tight">
-                <span className="text-black">ドッグパーク</span>
-                <span className="text-blue-500">JP</span>
+                <span className="text-dogpark text-black">ドッグパーク</span>
+                <span className="text-jp shimmer-text ml-1">JP</span>
               </h1>
-              <p className="text-sm sm:text-base text-gray-600 leading-tight">
+              <p className="subtitle-text text-sm sm:text-base text-gray-600 leading-tight">
                 愛犬との素敵な時間を
               </p>
             </div>
@@ -357,56 +464,56 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
               <div className="space-y-2 px-4">
                 {/* 1行目: さぁ ワンちゃんと */}
                 <h2 
-                  className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
-                  style={{ 
-                    fontFamily: 'Zen Maru Gothic, sans-serif',
-                    textShadow: `0 0 10px rgba(255,255,255,${textOpacity}), 0 0 20px rgba(255,255,255,${textOpacity}), 0 0 30px rgba(255,255,255,${textOpacity * 0.8}), 2px 2px 4px rgba(255,255,255,${textOpacity}), -2px -2px 4px rgba(255,255,255,${textOpacity}), 2px -2px 4px rgba(255,255,255,${textOpacity}), -2px 2px 4px rgba(255,255,255,${textOpacity})`
-                  }}
-                >
-                  {message1.split('').map((char, index) => (
-                    <span
-                      key={index}
-                      className={`inline-block transition-all duration-700 ease-in-out ${
-                        textCharacters[index] 
-                          ? 'opacity-100 translate-y-0 scale-100' 
-                          : 'opacity-0 translate-y-3 scale-98'
-                      }`}
-                      style={{
-                        transitionDelay: `${index * 70}ms`,
-                        color: textCharacters[index] ? `rgba(53, 94, 59, ${textOpacity})` : 'rgba(53, 94, 59, 0.1)',
-                        transformOrigin: 'center bottom'
-                      }}
-                    >
-                      {char === '　' ? '\u00A0' : char}
-                    </span>
-                  ))}
+                className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
+                style={{ 
+                  fontFamily: 'Zen Maru Gothic, sans-serif',
+                  textShadow: `0 0 10px rgba(255,255,255,${textOpacity}), 0 0 20px rgba(255,255,255,${textOpacity}), 0 0 30px rgba(255,255,255,${textOpacity * 0.8}), 2px 2px 4px rgba(255,255,255,${textOpacity}), -2px -2px 4px rgba(255,255,255,${textOpacity}), 2px -2px 4px rgba(255,255,255,${textOpacity}), -2px 2px 4px rgba(255,255,255,${textOpacity})`
+                }}
+              >
+                {message1.split('').map((char, index) => (
+                  <span
+                    key={index}
+                    className={`inline-block transition-all duration-700 ease-in-out ${
+                      textCharacters[index] 
+                        ? 'opacity-100 translate-y-0 scale-100' 
+                        : 'opacity-0 translate-y-3 scale-98'
+                    }`}
+                    style={{
+                      transitionDelay: `${index * 70}ms`,
+                      color: textCharacters[index] ? `rgba(53, 94, 59, ${textOpacity})` : 'rgba(53, 94, 59, 0.1)',
+                      transformOrigin: 'center bottom'
+                    }}
+                  >
+                    {char === '　' ? '\u00A0' : char}
+                  </span>
+                ))}
                 </h2>
                 
                 {/* 2行目: 冒険に出かけよう！ */}
                 <h2 
-                  className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
-                  style={{ 
-                    fontFamily: 'Zen Maru Gothic, sans-serif',
-                    textShadow: `0 0 10px rgba(255,255,255,${textOpacity}), 0 0 20px rgba(255,255,255,${textOpacity}), 0 0 30px rgba(255,255,255,${textOpacity * 0.8}), 2px 2px 4px rgba(255,255,255,${textOpacity}), -2px -2px 4px rgba(255,255,255,${textOpacity}), 2px -2px 4px rgba(255,255,255,${textOpacity}), -2px 2px 4px rgba(255,255,255,${textOpacity})`
-                  }}
-                >
-                  {message2.split('').map((char, index) => (
-                    <span
-                      key={index + message1.length}
-                      className={`inline-block transition-all duration-700 ease-in-out ${
-                        textCharacters[index + message1.length] 
-                          ? 'opacity-100 translate-y-0 scale-100' 
-                          : 'opacity-0 translate-y-3 scale-98'
-                      }`}
-                      style={{
-                        transitionDelay: `${(index + message1.length) * 70}ms`,
-                        color: textCharacters[index + message1.length] ? `rgba(60, 110, 71, ${textOpacity})` : 'rgba(60, 110, 71, 0.1)',
-                        transformOrigin: 'center bottom'
-                      }}
-                    >
-                      {char}
-                    </span>
-                  ))}
+                className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
+                style={{ 
+                  fontFamily: 'Zen Maru Gothic, sans-serif',
+                  textShadow: `0 0 10px rgba(255,255,255,${textOpacity}), 0 0 20px rgba(255,255,255,${textOpacity}), 0 0 30px rgba(255,255,255,${textOpacity * 0.8}), 2px 2px 4px rgba(255,255,255,${textOpacity}), -2px -2px 4px rgba(255,255,255,${textOpacity}), 2px -2px 4px rgba(255,255,255,${textOpacity}), -2px 2px 4px rgba(255,255,255,${textOpacity})`
+                }}
+              >
+                {message2.split('').map((char, index) => (
+                  <span
+                    key={index + message1.length}
+                    className={`inline-block transition-all duration-700 ease-in-out ${
+                      textCharacters[index + message1.length] 
+                        ? 'opacity-100 translate-y-0 scale-100' 
+                        : 'opacity-0 translate-y-3 scale-98'
+                    }`}
+                    style={{
+                      transitionDelay: `${(index + message1.length) * 70}ms`,
+                      color: textCharacters[index + message1.length] ? `rgba(60, 110, 71, ${textOpacity})` : 'rgba(60, 110, 71, 0.1)',
+                      transformOrigin: 'center bottom'
+                    }}
+                  >
+                    {char}
+                  </span>
+                ))}
                 </h2>
               </div>
             </div>
@@ -414,7 +521,18 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
           {/* プリロード進行表示（プリロード中のみ） */}
           {isPreloading && (
-            <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 w-80 max-w-[90vw]">
+            <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 w-80 max-w-[90vw]">
+              {/* スピナー */}
+              <div className="flex justify-center mb-6">
+                <div className="relative">
+                  <div className="w-16 h-16 border-4 border-gray-400/50 rounded-full"></div>
+                  <div className="absolute top-0 left-0 w-16 h-16 border-4 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                    <Dog className="w-8 h-8 text-gray-600" />
+                  </div>
+                </div>
+              </div>
+              
               {/* プログレスバーコンテナ */}
               <div className="bg-white/20 backdrop-blur-sm rounded-full p-2 shadow-lg">
                 {/* プログレスバー背景 */}
@@ -427,13 +545,13 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   
                   {/* 走る犬のアイコン */}
                   <div 
-                    className="absolute top-1/2 transform -translate-y-1/2 text-2xl transition-all duration-300 ease-out"
+                    className="absolute top-1/2 transform -translate-y-1/2 transition-all duration-300 ease-out"
                     style={{ 
-                      left: `calc(${dogPosition}% - 16px)`,
+                      left: `calc(${dogPosition}% - 12px)`,
                       transform: 'translateY(-50%)'
                     }}
                   >
-                    🐕‍🦺
+                    <Dog className="w-6 h-6 text-gray-700 drop-shadow-md" />
                   </div>
                 </div>
               </div>

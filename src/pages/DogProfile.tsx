@@ -1,6 +1,6 @@
 import { ArrowLeft, Calendar, CheckCircle, Heart, MapPin, PawPrint, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import useAuth from '../context/AuthContext';
@@ -22,6 +22,7 @@ export function DogProfile() {
   const { id, dogId } = useParams<{ id?: string; dogId?: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [dog, setDog] = useState<DogProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -367,20 +368,21 @@ export function DogProfile() {
                  <div className="mt-6 pt-4 border-t border-gray-200">
                    <div className="flex items-center justify-between">
                      <div className="flex items-center space-x-2">
-                       <span className="text-sm text-gray-600">{likeCount}件のいいね</span>
+                       <Heart className="w-5 h-5 text-rose-500 fill-rose-500" />
+                       <span className="text-lg font-medium text-gray-700">{likeCount}件のいいね</span>
                      </div>
-                     {user && (
-                       <Button
-                         onClick={handleLike}
-                         disabled={isLikeLoading}
-                         variant={isLiked ? "primary" : "secondary"}
-                         size="sm"
-                         className={`px-4 py-2 ${isLiked ? 'bg-pink-500 hover:bg-pink-600 text-white' : 'bg-white hover:bg-pink-50 text-pink-600 border-pink-300'}`}
-                       >
-                         <Heart className={`w-4 h-4 mr-1 ${isLiked ? 'fill-current' : ''}`} />
-                         {isLiked ? 'いいね済み' : 'いいね'}
-                       </Button>
-                     )}
+                     <button
+                       onClick={user ? handleLike : () => navigate('/login?redirect=' + location.pathname)}
+                       disabled={isLikeLoading}
+                       className={`px-6 py-3 rounded-lg font-medium shadow-md transition-all transform hover:scale-105 flex items-center ${
+                         isLiked 
+                           ? 'bg-rose-500 hover:bg-rose-600 text-white' 
+                           : 'bg-white hover:bg-rose-50 text-rose-500 border-2 border-rose-400'
+                       } ${isLikeLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                     >
+                       <Heart className={`w-5 h-5 mr-2 ${isLiked ? 'fill-current' : ''}`} />
+                       <span className="font-semibold">{isLiked ? 'いいね済み' : 'いいね'}</span>
+                     </button>
                    </div>
                  </div>
 

@@ -667,9 +667,22 @@ export function FacilityDetail() {
                     {facility.name}
                   </h1>
                   
-                  <div className="flex items-start text-gray-600">
-                    <MapPin className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-lg">{facility.address}</span>
+                  <div className="space-y-3">
+                    <div className="flex items-start text-gray-600">
+                      <MapPin className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+                      <span className="text-lg">{facility.address}</span>
+                    </div>
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      className="w-full sm:w-auto"
+                      onClick={() => {
+                        const encodedAddress = encodeURIComponent(facility.address);
+                        window.open(`https://maps.google.com/maps?q=${encodedAddress}`, '_blank');
+                      }}
+                    >
+                      Google Mapsで開く
+                    </Button>
                   </div>
                 </div>
 
@@ -742,6 +755,32 @@ export function FacilityDetail() {
                         </span>
                       </div>
                     )}
+                  </div>
+                </div>
+
+                {/* アクセス */}
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    アクセス
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-start text-gray-600">
+                      <MapPin className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+                      <span>{facility.address}</span>
+                    </div>
+                    <div className="mt-3">
+                      <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => {
+                          const encodedAddress = encodeURIComponent(facility.address);
+                          window.open(`https://maps.google.com/maps?q=${encodedAddress}`, '_blank');
+                        }}
+                      >
+                        Google Mapsで開く
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
