@@ -19,7 +19,7 @@ const recruitmentBanners: SponsorBanner[] = [
     title: 'スポンサー募集中',
     description: 'あなたの広告をここに掲載しませんか？多くのドッグオーナーにリーチできます！',
     image_url: '',
-    website_url: '/sponsor-application',
+    website_url: '/sponsor-inquiry',
     is_active: true,
     display_order: 1,
     created_at: new Date().toISOString()
@@ -29,7 +29,7 @@ const recruitmentBanners: SponsorBanner[] = [
     title: 'ペット関連サービス募集',
     description: 'ペット関連サービスの宣伝に最適！効果的な広告枠をご提供します。',
     image_url: '',
-    website_url: '/sponsor-application',
+    website_url: '/sponsor-inquiry',
     is_active: true,
     display_order: 2,
     created_at: new Date().toISOString()
@@ -39,7 +39,7 @@ const recruitmentBanners: SponsorBanner[] = [
     title: '愛犬家向け広告募集',
     description: '愛犬家コミュニティに向けて、あなたのサービスを紹介してください！',
     image_url: '',
-    website_url: '/sponsor-application',
+    website_url: '/sponsor-inquiry',
     is_active: true,
     display_order: 3,
     created_at: new Date().toISOString()
@@ -49,7 +49,7 @@ const recruitmentBanners: SponsorBanner[] = [
     title: 'ドッグフード・用品広告',
     description: 'ドッグフードやペット用品の広告掲載で売上アップを実現しましょう！',
     image_url: '',
-    website_url: '/sponsor-application',
+    website_url: '/sponsor-inquiry',
     is_active: true,
     display_order: 4,
     created_at: new Date().toISOString()
@@ -59,7 +59,7 @@ const recruitmentBanners: SponsorBanner[] = [
     title: '動物病院・サービス',
     description: '動物病院やペットケアサービスの宣伝で地域の愛犬家にアピール！',
     image_url: '',
-    website_url: '/sponsor-application',
+    website_url: '/sponsor-inquiry',
     is_active: true,
     display_order: 5,
     created_at: new Date().toISOString()
@@ -88,9 +88,9 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
     return () => clearInterval(slideInterval);
   }, [isPlaying, isHovering, banners.length]);
 
-  // バナークリックハンドラー（スポンサー募集画面へ遷移）
+  // バナークリックハンドラー（スポンサーお問い合わせ画面へ遷移）
   const handleBannerClick = useCallback(() => {
-    navigate('/sponsor-application');
+    navigate('/sponsor-inquiry');
   }, [navigate]);
 
   // インデックス計算ヘルパー（循環）
@@ -120,7 +120,7 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
 
   return (
     <section 
-      className="w-full mb-8 px-4 relative"
+      className="w-full mb-8 relative"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       aria-label="スポンサー募集カルーセル"

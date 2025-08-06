@@ -653,10 +653,10 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           </div>
         </div>
 
-        {/* バージョン情報 */}
+        {/* 著作権表示 */}
         <div className="flex-shrink-0 text-center pb-6">
-          <div className="text-sm text-blue-300 opacity-60">
-            v1.0.0
+          <div className="text-sm text-gray-600 opacity-80">
+            © 2025 CAPAS Co., Ltd. All rights reserved.
           </div>
         </div>
       </div>

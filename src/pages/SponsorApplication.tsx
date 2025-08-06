@@ -101,6 +101,10 @@ export function SponsorApplication() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // アクセス制限を削除（公開ページとして誰でもアクセス可能）
+  // const [accessDenied, setAccessDenied] = useState(false);
+
+  // アクセス制限を削除 - 公開ページとして誰でもアクセス可能
 
   // フォームデータの更新
   const handleInputChange = (field: keyof SponsorFormData, value: string | number | File | null) => {

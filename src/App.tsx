@@ -102,6 +102,7 @@ const SubscriptionIntro = React.lazy(() => import('./pages/SubscriptionIntro').t
 const TermsOfService = React.lazy(() => import('./pages/TermsOfService').then(module => ({ default: module.TermsOfService })));
 const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy').then(module => ({ default: module.PrivacyPolicy })));
 const SponsorApplication = React.lazy(() => import('./pages/SponsorApplication').then(module => ({ default: module.SponsorApplication })));
+const SponsorInquiry = React.lazy(() => import('./pages/SponsorInquiry'));
 const NotFound = React.lazy(() => import('./pages/NotFound').then(module => ({ default: module.NotFound })));
 
 // デバッグページ
@@ -141,6 +142,7 @@ const AdminFacilityApproval = React.lazy(() => import('./pages/AdminFacilityAppr
 const AdminShopManagement = React.lazy(() => import('./pages/AdminShopManagement').then(module => ({ default: module.AdminShopManagement })));
 const AdminRevenueReport = React.lazy(() => import('./pages/AdminRevenueReport').then(module => ({ default: module.AdminRevenueReport })));
 const AdminNewsManagement = React.lazy(() => import('./pages/AdminNewsManagement').then(module => ({ default: module.AdminNewsManagement })));
+const AdminSponsors = React.lazy(() => import('./pages/AdminSponsors').then(module => ({ default: module.AdminSponsors })));
 
 // オーナー・運営関連
 const MyParksManagement = React.lazy(() => import('./pages/MyParksManagement').then(module => ({ default: module.MyParksManagement })));
@@ -187,6 +189,10 @@ const App: React.FC = () => {
   
   // スプラッシュ画面の制御（Hooksはコンポーネントの最上部で宣言）
   const [showSplash, setShowSplash] = useState(() => {
+    // sponsor-applicationページへの直接アクセスの場合はスプラッシュをスキップ
+    if (location.pathname === '/sponsor-application' || location.pathname === '/sponsor-inquiry') {
+      return false;
+    }
     // 初回起動時のみスプラッシュ画面を表示
     const hasSeenSplash = localStorage.getItem('hasSeenSplash');
     return !hasSeenSplash;
@@ -200,7 +206,23 @@ const App: React.FC = () => {
     setShowSplash(false);
     
     // ログイン済みユーザーの場合は適切なページにリダイレクト
-    if (isAuthenticated && user) {
+    // ただし、公開ページ（sponsor-inquiry等）にアクセスしている場合はリダイレクトしない
+    const publicPaths = [
+      '/sponsor-inquiry',
+      '/sponsor-application',  // スポンサー申し込みページも公開
+      '/contact',
+      '/about',
+      '/terms',
+      '/privacy',
+      '/parks',
+      '/facilities',
+      '/products',
+      '/dog-info'
+    ];
+    
+    const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
+    
+    if (isAuthenticated && user && !isPublicPath) {
       const searchParams = new URLSearchParams(location.search);
       const redirectTo = searchParams.get('redirect') || '/dashboard';
       navigate(redirectTo, { replace: true });
@@ -380,6 +402,11 @@ const App: React.FC = () => {
               <Route path="/privacy" element={
                 <Suspense fallback={<PageSkeleton />}>
                   <PrivacyPolicy />
+                </Suspense>
+              } />
+              <Route path="/sponsor-inquiry" element={
+                <Suspense fallback={<PageSkeleton />}>
+                  <SponsorInquiry />
                 </Suspense>
               } />
               <Route path="/sponsor-application" element={
@@ -591,6 +618,13 @@ const App: React.FC = () => {
                 <AdminRoute>
                   <Suspense fallback={<DashboardSkeleton />}>
                     <AdminUserManagement />
+                  </Suspense>
+                </AdminRoute>
+              } />
+              <Route path="/admin/sponsors" element={
+                <AdminRoute>
+                  <Suspense fallback={<DashboardSkeleton />}>
+                    <AdminSponsors />
                   </Suspense>
                 </AdminRoute>
               } />

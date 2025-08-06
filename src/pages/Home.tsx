@@ -149,7 +149,7 @@ export function Home() {
           </FadeIn>
         )}
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full">
           {/* ヒーローセクション */}
           <section
             id="hero-section"
@@ -183,7 +183,7 @@ export function Home() {
             </AnimatedElement>
           </section>
 
-          <main id="main-content" className="space-y-12 py-8">
+          <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 py-8">
             {/* 新着情報セクション - 安定版 */}
             <section
               id="news-section"

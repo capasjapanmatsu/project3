@@ -60,18 +60,25 @@ const CampaignModal: React.FC<CampaignModalProps> = ({ isOpen, onClose }) => {
           onClick={(e) => e.stopPropagation()}
         >
           {/* ヘッダー - グラデーション背景（縦幅を縮小） */}
-          <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 px-6 py-4 text-white relative">
+          <div className="bg-gradient-to-br from-sky-100 via-sky-200 to-blue-200 px-6 py-4 text-slate-700 relative" style={{
+            backgroundImage: `
+              radial-gradient(ellipse 200px 100px at 20% 30%, rgba(255, 255, 255, 0.4) 0%, transparent 50%),
+              radial-gradient(ellipse 150px 80px at 80% 20%, rgba(255, 255, 255, 0.3) 0%, transparent 50%),
+              radial-gradient(ellipse 180px 90px at 60% 70%, rgba(255, 255, 255, 0.2) 0%, transparent 50%),
+              radial-gradient(ellipse 120px 60px at 30% 80%, rgba(255, 255, 255, 0.3) 0%, transparent 50%)
+            `
+          }}>
             <button
               onClick={handleClose}
-              className="absolute top-3 right-4 text-white hover:text-gray-200 transition-colors"
+              className="absolute top-3 right-4 text-slate-700 hover:text-slate-900 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
             
             <div className="text-center">
               <div className="flex justify-center mb-2">
-                <div className="bg-white bg-opacity-20 rounded-full p-2">
-                  <Sparkles className="w-6 h-6 text-yellow-300" />
+                <div className="bg-white bg-opacity-30 rounded-full p-2">
+                  <Sparkles className="w-6 h-6 text-yellow-500" />
                 </div>
               </div>
               <h2 className="text-xl font-bold mb-1">
@@ -136,7 +143,7 @@ const CampaignModal: React.FC<CampaignModalProps> = ({ isOpen, onClose }) => {
             <div className="space-y-2">
               <Button
                 onClick={handleSubscribeClick}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-2.5 text-base shadow-lg"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 text-base shadow-lg"
               >
                 🚀 今すぐ無料で始める
               </Button>

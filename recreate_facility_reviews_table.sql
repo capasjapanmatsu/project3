@@ -1,11 +1,10 @@
--- 既存のポリシーを削除してからテーブルとポリシーを作成
-DROP POLICY IF EXISTS "Anyone can view facility reviews" ON facility_reviews;
-DROP POLICY IF EXISTS "Users can insert their own facility reviews" ON facility_reviews;
-DROP POLICY IF EXISTS "Users can update their own facility reviews" ON facility_reviews;
-DROP POLICY IF EXISTS "Users can delete their own facility reviews" ON facility_reviews;
+-- facility_reviewsテーブルを削除して再作成（一意制約なし）
 
--- テーブルが存在しない場合のみ作成
-CREATE TABLE IF NOT EXISTS facility_reviews (
+-- 既存のテーブルを削除
+DROP TABLE IF EXISTS facility_reviews CASCADE;
+
+-- 新しいテーブルを作成（一意制約なし）
+CREATE TABLE facility_reviews (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   facility_id UUID NOT NULL,
   user_id UUID NOT NULL,
@@ -18,10 +17,15 @@ CREATE TABLE IF NOT EXISTS facility_reviews (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- インデックスを作成（一意制約ではない通常のインデックス）
+CREATE INDEX idx_facility_reviews_facility_id ON facility_reviews(facility_id);
+CREATE INDEX idx_facility_reviews_user_id ON facility_reviews(user_id);
+CREATE INDEX idx_facility_reviews_created_at ON facility_reviews(created_at);
+
 -- RLSポリシーを有効化
 ALTER TABLE facility_reviews ENABLE ROW LEVEL SECURITY;
 
--- 新しいポリシーを作成
+-- RLSポリシーを作成
 CREATE POLICY "Anyone can view facility reviews" ON facility_reviews
   FOR SELECT USING (true);
 

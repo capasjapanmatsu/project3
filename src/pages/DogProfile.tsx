@@ -129,18 +129,31 @@ export function DogProfile() {
   };
 
   const checkLikeStatus = async () => {
-    if (!user || !currentDogId) return;
+    if (!currentDogId) return;
 
     try {
-      const { data, error } = await supabase
+      // いいね数を取得
+      const { data: likeData, error: likeError } = await supabase
         .from('dog_likes')
         .select('id')
-        .eq('user_id', user.id)
-        .eq('dog_id', currentDogId)
-        .maybeSingle();
+        .eq('dog_id', currentDogId);
 
-      if (!error && data) {
-        setIsLiked(true);
+      if (!likeError && likeData) {
+        setLikeCount(likeData.length);
+      }
+
+      // ユーザーがログインしている場合、いいね状態を確認
+      if (user) {
+        const { data: userLikeData, error: userLikeError } = await supabase
+          .from('dog_likes')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('dog_id', currentDogId)
+          .maybeSingle();
+
+        if (!userLikeError && userLikeData) {
+          setIsLiked(true);
+        }
       }
     } catch (err) {
       console.error('Error checking like status:', err);

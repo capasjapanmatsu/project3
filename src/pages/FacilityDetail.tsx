@@ -189,31 +189,32 @@ export function FacilityDetail() {
       setError(null);
 
       // 基本的な施設情報のみを取得（エラー回避のため簡素化）
-      const [facilityResult, imagesResult, couponsResult] = await Promise.all([
-        // 施設基本情報
-        supabase
-          .from('pet_facilities')
-          .select('*')
-          .eq('id', facilityId)
-          .eq('status', 'approved')
-          .single(),
+      const facilityResult = await supabase
+        .from('pet_facilities')
+        .select('*')
+        .eq('id', facilityId)
+        .eq('status', 'approved')
+        .single();
 
-        // 施設画像
-        supabase
-          .from('pet_facility_images')
-          .select('id, facility_id, image_url, image_type, display_order, created_at, alt_text')
-          .eq('facility_id', facilityId)
-          .order('display_order', { ascending: true }),
+      // 施設画像（エラーを無視）
+      const imagesResult = await supabase
+        .from('pet_facility_images')
+        .select('id, facility_id, image_url, image_type, display_order, created_at, alt_text')
+        .eq('facility_id', facilityId)
+        .order('display_order', { ascending: true })
+        .then(result => result)
+        .catch(() => ({ data: [], error: null }));
 
-        // アクティブなクーポン
-        supabase
-          .from('facility_coupons')
-          .select('*')
-          .eq('facility_id', facilityId)
-          .eq('is_active', true)
-          .gte('validity_end', new Date().toISOString())
-          .order('created_at', { ascending: false })
-      ]);
+      // アクティブなクーポン（エラーを無視）
+      const couponsResult = await supabase
+        .from('facility_coupons')
+        .select('*')
+        .eq('facility_id', facilityId)
+        .eq('is_active', true)
+        .gte('validity_end', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .then(result => result)
+        .catch(() => ({ data: [], error: null }));
 
       if (facilityResult.error) throw facilityResult.error;
       if (!facilityResult.data) {
@@ -229,41 +230,45 @@ export function FacilityDetail() {
 
       setFacility(facilityData);
       
-      // レビューデータの取得
-      const [reviewsResult, reviewSummaryResult, userDogsResult] = await Promise.all([
-        // レビュー一覧を取得
-        supabase
-          .from('facility_reviews')
-          .select(`
-            id,
-            facility_id,
-            user_id,
-            dog_name,
-            rating,
-            comment,
-            visit_date,
-            created_at,
-            image_url,
-            profiles(name)
-          `)
-          .eq('facility_id', facilityId)
-          .order('created_at', { ascending: false }),
-        
-        // レビューサマリーを取得
-        supabase
-          .from('facility_reviews')
-          .select('rating')
-          .eq('facility_id', facilityId),
-        
-        // ログインユーザーの犬一覧を取得
-        user ? supabase
-          .from('dogs')
-          .select('id, name, gender')
-          .eq('owner_id', user.id) : Promise.resolve({ data: [] })
-      ]);
+      // レビューデータの取得（エラーを無視、シンプルなクエリ）
+      const reviewsResult = await supabase
+        .from('facility_reviews')
+        .select(`
+          id,
+          facility_id,
+          user_id,
+          dog_name,
+          rating,
+          comment,
+          visit_date,
+          created_at,
+          image_url
+        `)
+        .eq('facility_id', facilityId)
+        .order('created_at', { ascending: false })
+        .then(result => result)
+        .catch(() => ({ data: [], error: null }));
+      
+      // レビューサマリーを取得（エラーを無視）
+      const reviewSummaryResult = await supabase
+        .from('facility_reviews')
+        .select('rating')
+        .eq('facility_id', facilityId)
+        .then(result => result)
+        .catch(() => ({ data: [], error: null }));
+      
+      // ログインユーザーの犬一覧を取得
+      const userDogsResult = user ? await supabase
+        .from('dogs')
+        .select('id, name, gender')
+        .eq('owner_id', user.id) : { data: [] };
 
       if (reviewsResult.data) {
+        console.log('Reviews data:', reviewsResult.data);
         setReviews(reviewsResult.data);
+      } else {
+        console.log('No reviews data:', reviewsResult);
+        setReviews([]);
       }
 
       // レビューサマリーを計算
@@ -1019,7 +1024,7 @@ export function FacilityDetail() {
                           const filePath = `facility-reviews/${fileName}`;
                           
                           const { data: uploadData, error: uploadError } = await supabase.storage
-                            .from('facility-images')
+                            .from('dog-images')
                             .upload(filePath, croppedImageFile, {
                               cacheControl: '3600',
                               upsert: false,
@@ -1030,7 +1035,7 @@ export function FacilityDetail() {
 
                           // 公開URLを取得
                           const { data: urlData } = supabase.storage
-                            .from('facility-images')
+                            .from('dog-images')
                             .getPublicUrl(filePath);
                           
                           imageUrl = urlData.publicUrl;
@@ -1210,24 +1215,15 @@ export function FacilityDetail() {
                     
                     {reviewImagePreview && (
                       <div className="mt-3">
-                        <p className="text-sm text-gray-600 mb-2">プレビュー（1:1にトリミング・圧縮されます）</p>
                         <div className="flex items-center space-x-3">
                           <img 
                             src={reviewImagePreview} 
                             alt="レビュー画像プレビュー" 
                             className="w-20 h-20 rounded-lg object-cover border border-gray-200 shadow-sm"
                           />
-                          <div className="text-sm text-gray-500">
-                            <p>元のサイズ: {reviewImageFile ? formatFileSize(reviewImageFile.size) : ''}</p>
-                            <p className="text-green-600">→ トリミング済み: {croppedImageFile ? formatFileSize(croppedImageFile.size) : ''}</p>
-                          </div>
                         </div>
                       </div>
                     )}
-                    
-                    <p className="text-xs text-gray-500 mt-2">
-                      JPG, PNG, GIF対応 / 最大10MB / 手動で1:1にトリミングできます
-                    </p>
                   </div>
 
                   {/* ボタン */}
@@ -1253,6 +1249,7 @@ export function FacilityDetail() {
 
             {/* レビュー一覧 */}
             <div className="space-y-6">
+              {console.log('Current reviews state:', reviews)}
               {reviews.length > 0 ? (
                 reviews.map((review) => (
                   <Card key={review.id} className="p-6">

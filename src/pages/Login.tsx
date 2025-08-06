@@ -268,6 +268,23 @@ export function Login() {
             </button>
           </p>
         </div>
+        
+        {/* スキップリンク */}
+        <div className="mt-8 text-center">
+          <button
+            onClick={() => navigate('/')}
+            className="text-sm text-blue-600 hover:text-blue-700 underline"
+          >
+            スキップ
+          </button>
+        </div>
+        
+        {/* 著作権表示 */}
+        <div className="mt-4 pb-4 text-center">
+          <p className="text-xs text-gray-500">
+            © 2025 CAPAS Co., Ltd. All rights reserved.
+          </p>
+        </div>
       </div>
     );
   }

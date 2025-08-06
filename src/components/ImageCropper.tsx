@@ -167,15 +167,26 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
           });
 
           // 追加の圧縮処理
-          const optimizedFile = await processImage(file, {
-            maxWidth: size,
-            maxHeight: size,
-            quality: 0.85,
-            maxSizeMB: 0.3, // 300KB未満
-            outputFormat: 'jpeg'
-          });
+          try {
+            const optimizedBlob = await processImage(file, {
+              maxWidth: size,
+              maxHeight: size,
+              quality: 0.85,
+              maxSizeMB: 0.3, // 300KB未満
+              outputFormat: 'jpeg'
+            });
 
-          onCropComplete(optimizedFile);
+            const optimizedFile = new File([optimizedBlob], 'optimized-image.jpg', {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+
+            onCropComplete(optimizedFile);
+          } catch (processError) {
+            console.error('Image optimization error:', processError);
+            // 最適化に失敗した場合、元のファイルを使用
+            onCropComplete(file);
+          }
         },
         'image/jpeg',
         0.9

@@ -205,7 +205,7 @@ export function NearbyDogs() {
   };
 
   const handleDogClick = (dog: NearbyDog) => {
-    navigate(`/dog/${dog.id}`);
+    navigate(`/dog-profile/${dog.id}`);
   };
 
 

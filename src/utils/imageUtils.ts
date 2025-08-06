@@ -7,6 +7,8 @@ export interface ImageProcessOptions {
   maxHeight: number;
   quality: number; // 0.1 - 1.0
   aspectRatio?: number; // 1 for square
+  maxSizeMB?: number; // 最大ファイルサイズ（MB）
+  outputFormat?: 'jpeg' | 'png' | 'webp';
 }
 
 /**
@@ -55,15 +57,35 @@ export const processImage = (
         );
 
         // Blobとして出力（圧縮）
+        const outputFormat = options.outputFormat || 'jpeg';
+        const mimeType = `image/${outputFormat}`;
+        
         canvas.toBlob(
           (blob) => {
             if (blob) {
-              resolve(blob);
+              // ファイルサイズチェック
+              if (options.maxSizeMB && blob.size > options.maxSizeMB * 1024 * 1024) {
+                // サイズが大きすぎる場合、品質を下げて再試行
+                const lowerQuality = Math.max(0.1, options.quality - 0.2);
+                canvas.toBlob(
+                  (smallerBlob) => {
+                    if (smallerBlob) {
+                      resolve(smallerBlob);
+                    } else {
+                      reject(new Error('Failed to create compressed blob'));
+                    }
+                  },
+                  mimeType,
+                  lowerQuality
+                );
+              } else {
+                resolve(blob);
+              }
             } else {
               reject(new Error('Failed to create blob'));
             }
           },
-          'image/jpeg',
+          mimeType,
           options.quality
         );
       } catch (error) {

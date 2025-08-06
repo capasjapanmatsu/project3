@@ -19,8 +19,18 @@ export const OwnerRecruitmentBanner: React.FC = () => {
 
   return (
     <section className="relative overflow-hidden">
-      <div className="bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 text-white p-8 rounded-xl shadow-2xl">
-        <div className="flex items-center justify-between">
+      <div 
+        className="relative text-white p-8 rounded-xl shadow-2xl"
+        style={{
+          backgroundImage: 'url(/images/owner-recruitment-bg.webp)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
+        {/* 背景画像の上に半透明オーバーレイを追加してテキストを読みやすくする */}
+        <div className="absolute inset-0 bg-black bg-opacity-40 rounded-xl"></div>
+        <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="bg-white/20 p-3 rounded-full">
               <Building className="w-8 h-8" />
@@ -45,8 +55,8 @@ export const OwnerRecruitmentBanner: React.FC = () => {
             <p className="text-sm opacity-80 mt-2">初期費用無料・サポート充実</p>
           </div>
         </div>
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 z-20"></div>
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12 z-20"></div>
       </div>
     </section>
   );
