@@ -1,5 +1,5 @@
 -- ============================================
--- ステップ6: 履歴保存とコミュニティ連携のためのデータ基盤構築
+-- ステップ6: 履歴保存とコミュニティ連携のためのデータ基盤構築（修正版）
 -- ============================================
 
 -- 1. access_logsテーブルの拡張
@@ -128,6 +128,10 @@ CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created
 -- dog_park_stats のRLSポリシー
 ALTER TABLE dog_park_stats ENABLE ROW LEVEL SECURITY;
 
+-- 既存のポリシーを削除（存在する場合）
+DROP POLICY IF EXISTS "Users can view own dog stats" ON dog_park_stats;
+DROP POLICY IF EXISTS "Service role can manage stats" ON dog_park_stats;
+
 -- 自分の犬の統計は閲覧可能
 CREATE POLICY "Users can view own dog stats" ON dog_park_stats
   FOR SELECT
@@ -147,6 +151,9 @@ CREATE POLICY "Service role can manage stats" ON dog_park_stats
 -- shared_access_logs のRLSポリシー
 ALTER TABLE shared_access_logs ENABLE ROW LEVEL SECURITY;
 
+-- 既存のポリシーを削除（存在する場合）
+DROP POLICY IF EXISTS "Users can view own shared logs" ON shared_access_logs;
+
 -- 自分が関わる記録は閲覧可能
 CREATE POLICY "Users can view own shared logs" ON shared_access_logs
   FOR SELECT
@@ -157,6 +164,11 @@ CREATE POLICY "Users can view own shared logs" ON shared_access_logs
 
 -- friendships のRLSポリシー
 ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
+
+-- 既存のポリシーを削除（存在する場合）
+DROP POLICY IF EXISTS "Users can view own friendships" ON friendships;
+DROP POLICY IF EXISTS "Users can create friendships" ON friendships;
+DROP POLICY IF EXISTS "Users can update own friendships" ON friendships;
 
 -- 自分が関わる友達関係は閲覧可能
 CREATE POLICY "Users can view own friendships" ON friendships
@@ -181,6 +193,9 @@ CREATE POLICY "Users can update own friendships" ON friendships
 
 -- blacklists のRLSポリシー
 ALTER TABLE blacklists ENABLE ROW LEVEL SECURITY;
+
+-- 既存のポリシーを削除（存在する場合）
+DROP POLICY IF EXISTS "Users can manage own blacklist" ON blacklists;
 
 -- 自分のブラックリストのみ管理可能
 CREATE POLICY "Users can manage own blacklist" ON blacklists
@@ -361,10 +376,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- 更新日時を自動更新するトリガー（関数が存在しない場合は作成）
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = CURRENT_TIMESTAMP;
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
+
 -- 更新日時を自動更新するトリガー（新規テーブル用）
+DROP TRIGGER IF EXISTS update_dog_park_stats_updated_at ON dog_park_stats;
 CREATE TRIGGER update_dog_park_stats_updated_at BEFORE UPDATE ON dog_park_stats
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_friendships_updated_at ON friendships;
 CREATE TRIGGER update_friendships_updated_at BEFORE UPDATE ON friendships
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
