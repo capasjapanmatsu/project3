@@ -1,4 +1,4 @@
-import { Mail, MapPin, PawPrint } from 'lucide-react';
+import { Building, Handshake, Mail, MapPin, PawPrint, Store } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 
@@ -9,9 +9,9 @@ export function Footer() {
   return (
     <footer className="bg-gray-900 text-white py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           {/* Logo & Description */}
-          <div>
+          <div className="md:col-span-2 lg:col-span-1">
             <div className="flex items-center mb-4">
               <PawPrint className="h-8 w-8 text-blue-400 mr-2" />
               <h3 className="text-xl font-bold">ドッグパークJP</h3>
@@ -90,24 +90,47 @@ export function Footer() {
               </li>
             </ul>
           </div>
-          
-          {/* Contact */}
+
+          {/* For business */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">お問い合わせ</h3>
-            <ul className="space-y-3">
-              <li className="flex items-start">
-                <Mail className="w-5 h-5 text-gray-400 mr-2 mt-0.5" />
-                <span className="text-gray-400">info@dogparkjp.com</span>
+            <h3 className="text-lg font-semibold mb-4">事業者向け</h3>
+            <ul className="space-y-2">
+              <li>
+                <Link to="/park-registration-agreement" className="text-gray-400 hover:text-white transition-colors flex items-center">
+                  <PawPrint className="w-4 h-4 mr-2" />
+                  ドッグラン経営者募集
+                </Link>
               </li>
-              <li className="flex items-start">
-                <MapPin className="w-5 h-5 text-gray-400 mr-2 mt-0.5" />
-                <span className="text-gray-400">
-                  〒861-0563<br />
-                  熊本県山鹿市鹿央町千田１７１８－１３<br />
-                  株式会社ＣＡＰＡＳ
-                </span>
+              <li>
+                <Link to="/facility-registration" className="text-gray-400 hover:text-white transition-colors flex items-center">
+                  <Store className="w-4 h-4 mr-2" />
+                  ワンちゃんを行ける施設オーナー募集
+                </Link>
+              </li>
+              <li>
+                <Link to="/sponsor-inquiry" className="text-gray-400 hover:text-white transition-colors flex items-center">
+                  <Handshake className="w-4 h-4 mr-2" />
+                  スポンサー募集
+                </Link>
               </li>
             </ul>
+          </div>
+        </div>
+
+        {/* Contact Section - Full Width */}
+        <div className="border-t border-gray-700 pt-8 mb-8">
+          <h3 className="text-lg font-semibold mb-4">お問い合わせ</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-start">
+              <Mail className="w-5 h-5 text-gray-400 mr-2 mt-0.5" />
+              <span className="text-gray-400">info@dogparkjp.com</span>
+            </div>
+            <div className="flex items-start">
+              <MapPin className="w-5 h-5 text-gray-400 mr-2 mt-0.5" />
+              <span className="text-gray-400">
+                〒861-0563 熊本県山鹿市鹿央町千田１７１８－１３ 株式会社ＣＡＰＡＳ
+              </span>
+            </div>
           </div>
         </div>
         
