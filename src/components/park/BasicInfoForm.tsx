@@ -294,7 +294,7 @@ export default function BasicInfoForm({
                 <ul className="space-y-1 text-xs">
                   <li>• 詳細な施設情報と必要書類の審査を行います</li>
                   <li>• 審査期間は通常3-5営業日です</li>
-                  <li>• 通過後、QRコード実証検査の日程調整を行います</li>
+                  <li>• 通過後、スマートロックシステムの実証検査の日程調整を行います</li>
                   <li>• 実証検査完了後、一般公開となります</li>
                 </ul>
               </div>

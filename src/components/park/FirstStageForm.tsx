@@ -140,7 +140,7 @@ export default function FirstStageForm({
             <div className="text-sm text-blue-800 space-y-1">
               <p><strong>第一審査・本人確認:</strong> 基本的な条件の確認と本人確認書類の審査</p>
               <p><strong>第二審査:</strong> 詳細な施設情報</p>
-              <p><strong>スマートロック実証検査:</strong> 実際の施設での動作確認</p>
+              <p><strong>スマートロックシステムの実証検査:</strong> 実際の施設での動作確認</p>
               <p><strong>掲載・運営開始:</strong> 一般公開と予約受付開始</p>
             </div>
             <div className="mt-3 flex items-center">
@@ -810,7 +810,7 @@ export default function FirstStageForm({
                   <li>• 本人確認書類の住所・氏名が登録情報と一致することを確認します</li>
                   <li>• 通過後、詳細な施設情報の入力に進みます</li>
                   <li>• 第二審査では書類審査を行います</li>
-                  <li>• 最終的にQRコード実証検査を経て掲載開始となります</li>
+                  <li>• 最終的にスマートロックシステムの実証検査を経て掲載開始となります</li>
                 </ul>
               </div>
             </div>

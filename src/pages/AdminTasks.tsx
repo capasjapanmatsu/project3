@@ -185,7 +185,7 @@ export function AdminTasks() {
           type: 'park_review',
           title: approved ? '審査結果のお知らせ' : '審査結果について',
           message: approved 
-            ? `${park.name}の審査が通過しました。${park.status === 'pending' ? '詳細情報の入力にお進みください。' : 'QRコード実証検査の準備に入ります。'}`
+            ? `${park.name}の審査が通過しました。${park.status === 'pending' ? '詳細情報の入力にお進みください。' : 'スマートロックシステムの実証検査の準備に入ります。'}`
             : `${park.name}の審査が不通過となりました。詳細はダッシュボードをご確認ください。`,
           data: { park_id: parkId }
         }]);
