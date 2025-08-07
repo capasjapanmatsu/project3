@@ -249,3 +249,49 @@ export interface DeletePinParams {
   /** スマートロックのID */
   lockId: string;
 }
+
+/**
+ * Sciener Webhook: ロック記録通知
+ * lockRecord/notify Webhookから受信するペイロード
+ */
+export interface ScienerWebhookPayload {
+  /** スマートロックのID */
+  lockId: string;
+  
+  /** 使用されたPINコード */
+  keyboardPwd: string;
+  
+  /** 
+   * 記録タイプ
+   * 2: 解錠成功
+   * その他: 各種イベント
+   */
+  recordType: number;
+  
+  /** イベント発生時刻（Unixタイムスタンプ、ミリ秒） */
+  date: number;
+  
+  /** ユーザー名（オプション） */
+  username?: string;
+  
+  /** 追加のメタデータ */
+  [key: string]: any;
+}
+
+/**
+ * Webhook処理結果
+ * Webhook処理後のレスポンス
+ */
+export interface WebhookProcessResult {
+  /** 処理の成功/失敗 */
+  success: boolean;
+  
+  /** 処理メッセージ */
+  message: string;
+  
+  /** 更新されたAccessLog */
+  updatedLog?: AccessLog;
+  
+  /** エラー詳細 */
+  error?: string;
+}

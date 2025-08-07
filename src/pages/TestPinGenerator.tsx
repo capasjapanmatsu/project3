@@ -1,7 +1,10 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Send, CheckCircle, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { PinGenerator } from '../components/PinGenerator';
 import useAuth from '../context/AuthContext';
+import { testWebhookNotification, createTestUnlockPayload, checkWebhookEndpoint } from '../utils/webhookTest';
+import Button from '../components/Button';
 
 /**
  * PIN発行システムのテストページ
@@ -9,6 +12,11 @@ import useAuth from '../context/AuthContext';
  */
 export function TestPinGenerator() {
   const { user } = useAuth();
+  const [webhookTestPin, setWebhookTestPin] = useState('');
+  const [webhookTestLockId, setWebhookTestLockId] = useState('123456');
+  const [webhookTestResult, setWebhookTestResult] = useState<string>('');
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
+  const [endpointStatus, setEndpointStatus] = useState<'checking' | 'online' | 'offline'>('checking');
 
   // テスト用のドッグランロック情報
   const testLocks = [
@@ -23,6 +31,39 @@ export function TestPinGenerator() {
       lockId: 123457
     }
   ];
+
+  // Webhookエンドポイントの確認
+  useEffect(() => {
+    checkWebhookEndpoint().then(isOnline => {
+      setEndpointStatus(isOnline ? 'online' : 'offline');
+    });
+  }, []);
+
+  // Webhookテスト実行
+  const handleWebhookTest = async () => {
+    if (!webhookTestPin || !webhookTestLockId) {
+      setWebhookTestResult('❌ PINとLock IDを入力してください');
+      return;
+    }
+
+    setIsTestingWebhook(true);
+    setWebhookTestResult('');
+
+    try {
+      const payload = createTestUnlockPayload(webhookTestLockId, webhookTestPin, 2);
+      const result = await testWebhookNotification(payload);
+
+      if (result.success) {
+        setWebhookTestResult(`✅ 成功: ${result.message}`);
+      } else {
+        setWebhookTestResult(`❌ 失敗: ${result.error || result.message}`);
+      }
+    } catch (error) {
+      setWebhookTestResult(`❌ エラー: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsTestingWebhook(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -166,13 +207,13 @@ export function TestPinGenerator() {
             </div>
 
             <div className="flex items-start">
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-400 text-xs font-medium mr-3 mt-0.5">
-                ○
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-800 text-xs font-medium mr-3 mt-0.5">
+                ✓
               </span>
               <div>
-                <p className="font-medium text-gray-900">アクセスログ管理</p>
+                <p className="font-medium text-gray-900">Webhook受信エンドポイント</p>
                 <p className="text-sm text-gray-600">
-                  入退場履歴の記録と表示（未実装）
+                  lockRecord/notify Webhookでの解錠通知受信とAccessLog更新
                 </p>
               </div>
             </div>
@@ -188,6 +229,114 @@ export function TestPinGenerator() {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Webhookテストセクション */}
+        <div className="mt-12 p-6 bg-white rounded-lg shadow-md">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <Send className="w-5 h-5 mr-2 text-purple-600" />
+            Webhook受信テスト
+          </h3>
+
+          {/* エンドポイント状態 */}
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">
+                Webhookエンドポイント状態:
+              </span>
+              <div className="flex items-center">
+                {endpointStatus === 'checking' ? (
+                  <>
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2 animate-pulse" />
+                    <span className="text-sm text-yellow-700">確認中...</span>
+                  </>
+                ) : endpointStatus === 'online' ? (
+                  <>
+                    <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                    <span className="text-sm text-green-700">オンライン</span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="w-5 h-5 text-red-600 mr-2" />
+                    <span className="text-sm text-red-700">オフライン</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* テストフォーム */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                テスト用PIN（6桁）
+              </label>
+              <input
+                type="text"
+                value={webhookTestPin}
+                onChange={(e) => setWebhookTestPin(e.target.value)}
+                placeholder="123456"
+                maxLength={6}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Lock ID
+              </label>
+              <input
+                type="text"
+                value={webhookTestLockId}
+                onChange={(e) => setWebhookTestLockId(e.target.value)}
+                placeholder="123456"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <Button
+              onClick={handleWebhookTest}
+              disabled={isTestingWebhook || endpointStatus !== 'online'}
+              className="w-full bg-purple-600 hover:bg-purple-700"
+            >
+              {isTestingWebhook ? (
+                <span className="flex items-center justify-center">
+                  <Send className="w-5 h-5 mr-2 animate-pulse" />
+                  テスト送信中...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center">
+                  <Send className="w-5 h-5 mr-2" />
+                  解錠通知をテスト送信
+                </span>
+              )}
+            </Button>
+
+            {/* テスト結果 */}
+            {webhookTestResult && (
+              <div className={`mt-4 p-4 rounded-lg ${
+                webhookTestResult.startsWith('✅') 
+                  ? 'bg-green-50 border border-green-200 text-green-800'
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}>
+                <p className="text-sm">{webhookTestResult}</p>
+              </div>
+            )}
+          </div>
+
+          {/* 使用方法 */}
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h4 className="text-sm font-medium text-blue-900 mb-2">
+              テスト方法：
+            </h4>
+            <ol className="text-xs text-blue-800 space-y-1">
+              <li>1. 上部のPIN発行セクションで新しいPINを発行</li>
+              <li>2. 発行されたPINをコピーしてテスト用PINに入力</li>
+              <li>3. Lock IDは発行時と同じものを使用</li>
+              <li>4. 「解錠通知をテスト送信」ボタンをクリック</li>
+              <li>5. AccessLogのステータスが更新されることを確認</li>
+            </ol>
           </div>
         </div>
       </div>
