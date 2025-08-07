@@ -226,7 +226,7 @@ export default function ParkRegistrationAgreement() {
               <p><strong>本人確認:</strong> 安全なプラットフォーム運営のための本人確認</p>
               <p><strong>第一審査:</strong> 基本的な条件の確認</p>
               <p><strong>第二審査:</strong> 詳細な施設情報と書類審査</p>
-              <p><strong>QRコード実証検査:</strong> 実際の施設での動作確認</p>
+              <p><strong>スマートロックシステムの実証検査:</strong> 実際の施設での動作確認</p>
               <p><strong>掲載・運営開始:</strong> 一般公開と予約受付開始</p>
             </div>
             <div className="mt-3 flex items-center">
