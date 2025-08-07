@@ -93,7 +93,7 @@ export function ReservationForm({
             <h3 className="font-semibold text-blue-900">料金体系</h3>
           </div>
           <div className="text-sm text-blue-800 space-y-1">
-            <p>• 1日券: ¥800（24時間有効）</p>
+            <p>• 1Dayパス: ¥800（24時間有効）</p>
             <p>• 2頭目以降: +¥400/頭（半額）</p>
             <p>• サブスク: 月額¥3,800（3頭まで使い放題）</p>
             <p>• 施設貸し切り: ¥4,400/時間（サブスク会員20%OFF）</p>
@@ -268,7 +268,7 @@ export function ReservationForm({
             支払い方法
           </label>
           <div className="space-y-4">
-            {/* 1日券 - サブスク会員の場合は表示しない */}
+            {/* 1Dayパス - サブスク会員の場合は表示しない */}
             {!hasSubscription && (
               <label className={`flex items-center space-x-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
                 formData.paymentType === 'single'
@@ -285,7 +285,7 @@ export function ReservationForm({
                 <div className="flex-1">
                   <div className="flex items-center space-x-2">
                     <Calculator className="w-5 h-5 text-blue-600" />
-                    <span className="font-medium">1日券（段階的料金制）</span>
+                    <span className="font-medium">1Dayパス（段階的料金制）</span>
                   </div>
                   <p className="text-sm text-gray-600">
                     1頭目¥800 + 2頭目以降¥400/頭・24時間有効
@@ -491,7 +491,7 @@ export function ReservationForm({
             {/* 支払い方法に応じた内容表示 */}
             {formData.paymentType === 'single' && (
               <div>
-                <p>1日券料金: ¥{calculateDayPassPrice().toLocaleString()}（{selectedDogs.length}頭・段階的料金）</p>
+                <p>1Dayパス料金: ¥{calculateDayPassPrice().toLocaleString()}（{selectedDogs.length}頭・段階的料金）</p>
                 <p className="text-xs">24時間有効・全国のドッグランで利用可能</p>
               </div>
             )}

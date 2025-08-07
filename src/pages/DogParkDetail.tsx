@@ -890,7 +890,7 @@ export function DogParkDetail() {
                     <div>
                       <h2 className="text-xl font-semibold text-orange-900 mb-3">本日の貸し切り時間</h2>
                       <p className="text-sm text-orange-800 mb-4">
-                        以下の時間帯は施設貸し切りのため、通常利用（1日券・サブスク）での入場はできません。
+                        以下の時間帯は施設貸し切りのため、通常利用（1Dayパス・サブスク）での入場はできません。
                       </p>
                       <div className="space-y-3">
                         {todayRentals.map((rental, index) => {

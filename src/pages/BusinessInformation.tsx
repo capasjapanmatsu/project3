@@ -74,7 +74,7 @@ export function BusinessInformation() {
                       <th className="py-3 text-left align-top">サービス内容</th>
                       <td className="py-3">
                         <ul className="list-disc pl-5 space-y-1">
-                          <li>ドッグラン施設の利用（1日券）</li>
+                          <li>ドッグラン施設の利用（1Dayパス）</li>
                           <li>ドッグラン施設の利用（サブスクリプション）</li>
                           <li>ドッグラン施設の貸し切り予約</li>
                           <li>ペット用品の販売</li>
@@ -98,7 +98,7 @@ export function BusinessInformation() {
                       <th className="py-3 text-left w-1/3 align-top">料金</th>
                       <td className="py-3">
                         <ul className="list-disc pl-5 space-y-1">
-                          <li>ドッグラン1日券：800円（税込）</li>
+                          <li>ドッグラン1Dayパス：800円（税込）</li>
                           <li>サブスクリプション：3,800円/月（税込）</li>
                           <li>施設貸し切り：4,400円/時間（税込）</li>
                           <li>ペット用品：各商品ページに表示された価格</li>
@@ -118,7 +118,7 @@ export function BusinessInformation() {
                       <th className="py-3 text-left align-top">支払い時期</th>
                       <td className="py-3">
                         <ul className="list-disc pl-5 space-y-1">
-                          <li>ドッグラン1日券：利用時に即時決済</li>
+                          <li>ドッグラン1Dayパス：利用時に即時決済</li>
                           <li>サブスクリプション：申込時に初回決済、以降は毎月自動更新</li>
                           <li>施設貸し切り：予約確定時に即時決済</li>
                           <li>ペット用品：注文確定時に即時決済</li>

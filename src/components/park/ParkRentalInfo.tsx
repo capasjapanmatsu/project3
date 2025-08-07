@@ -21,7 +21,7 @@ export function ParkRentalInfo({ rentalInfo }: ParkRentalInfoProps) {
         <div>
           <h2 className="text-xl font-semibold text-orange-900 mb-3">施設貸し切り予約あり</h2>
           <p className="text-sm text-orange-800 mb-4">
-            以下の日時は施設貸し切りのため、通常利用（1日券・サブスク）での入場はできません。
+            以下の日時は施設貸し切りのため、通常利用（1Dayパス・サブスク）での入場はできません。
           </p>
           <div className="space-y-4">
             {rentalInfo.map((rental, index) => (

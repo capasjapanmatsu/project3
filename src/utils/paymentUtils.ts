@@ -62,7 +62,7 @@ export const checkPaymentStatus = async (userId: string): Promise<PaymentStatus>
       };
     }
 
-    // ワンデイパス（entrance_qr_codes）確認
+    // 1Dayパス（entrance_qr_codes）確認
     const { data: dayPassData, error: dayPassError } = await supabase
       .from('entrance_qr_codes')
       .select('*')
@@ -125,7 +125,7 @@ export const checkParkAccess = async (
       };
     }
 
-    // ワンデイパス確認（管理者権限含む）
+    // 1Dayパス確認（管理者権限含む）
     if (paymentStatus.hasDayPass) {
       // 管理者権限の場合は全施設利用可能
       if (paymentStatus.paymentType === 'admin_grant') {
@@ -136,7 +136,7 @@ export const checkParkAccess = async (
         };
       }
 
-      // 通常のワンデイパスの場合、対象の犬がアクセス権を持っているか確認
+      // 通常の1Dayパスの場合、対象の犬がアクセス権を持っているか確認
       const { data: accessData, error: accessError } = await supabase
         .from('entrance_qr_codes')
         .select('dog_id')
@@ -176,7 +176,7 @@ export const checkParkAccess = async (
     return {
       hasAccess: false,
       paymentStatus,
-      reason: '利用にはサブスクリプションまたはワンデイパスの購入が必要です'
+      reason: '利用にはサブスクリプションまたは1Dayパスの購入が必要です'
     };
 
   } catch (error) {
@@ -206,7 +206,7 @@ export const generatePaymentUrl = (
   if (paymentType === 'subscription') {
     return `${baseUrl}/subscription?return_to=${encodeURIComponent('/access-control')}`;
   } else {
-    // ワンデイパス購入の場合、対象のドッグランを指定
+    // 1Dayパス購入の場合、対象のドッグランを指定
     const params = new URLSearchParams({
       park_id: parkId,
       dog_ids: dogIds.join(','),

@@ -17,8 +17,8 @@ export const products: Product[] = [
   {
     id: 'prod_SUPYdaPibyt70U',
     priceId: 'price_1Ra8ZvAHWLDQ7ynZQnuailVL',
-    name: 'ドッグラン1日券',
-    description: 'ドッグラン施設利用1日券です',
+    name: 'ドッグラン1Dayパス',
+    description: 'ドッグラン施設利用1Dayパスです',
     mode: 'payment',
   },
   {

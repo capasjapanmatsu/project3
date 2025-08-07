@@ -314,9 +314,9 @@ export function AccessControl() {
       return '✅ サブスクリプション会員（全国利用可能）';
     } else if (paymentStatus.hasDayPass) {
       const validUntil = paymentStatus.validUntil ? new Date(paymentStatus.validUntil).toLocaleString('ja-JP') : '';
-      return `✅ ワンデイパス利用可能（${validUntil}まで）`;
+      return `✅ 1Dayパス利用可能（${validUntil}まで）`;
     } else {
-      return '⚠️ 利用にはサブスクリプションまたはワンデイパスが必要です';
+      return '⚠️ 利用にはサブスクリプションまたは1Dayパスが必要です';
     }
   }, [paymentStatus]);
 
@@ -686,7 +686,7 @@ export function AccessControl() {
                             <CreditCard className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" />
                             <div className="text-sm text-yellow-800">
                               <p className="font-medium mb-1">決済が必要です</p>
-                              <p>この施設を利用するには、サブスクリプションまたはワンデイパスの購入が必要です。</p>
+                              <p>この施設を利用するには、サブスクリプションまたは1Dayパスの購入が必要です。</p>
                             </div>
                           </div>
                         </div>
@@ -705,7 +705,7 @@ export function AccessControl() {
                             className="w-full"
                           >
                             <Key className="w-4 h-4 mr-2" />
-                            ワンデイパス購入（¥800〜）
+                            1Dayパス購入（¥800〜）
                           </Button>
                         </div>
                       </div>

@@ -239,7 +239,7 @@ export function DoorLockButton({
                   className="w-full"
                 >
                   <Calendar className="w-3 h-3 mr-1" />
-                  1日券購入
+                  1Dayパス購入
                 </Button>
               </div>
             </div>

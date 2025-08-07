@@ -47,7 +47,7 @@ export function ReservationSidebar({ hasSubscription }: ReservationSidebarProps)
         </h3>
         <div className="space-y-2 text-sm text-blue-800">
           <div>
-            <p className="font-medium">1日券（段階的料金制）</p>
+            <p className="font-medium">1Dayパス（段階的料金制）</p>
             <div className="ml-2 space-y-1">
               <p>• 1頭目: ¥800</p>
               <p>• 2頭目: +¥400</p>
@@ -83,17 +83,17 @@ export function ReservationSidebar({ hasSubscription }: ReservationSidebarProps)
         <div className="space-y-1 text-sm text-green-800">
           <p>• 安全なクレジットカード決済</p>
           <p>• 決済完了後、即座にPINコード発行</p>
-          <p>• 24時間有効（1日券の場合）</p>
+          <p>• 24時間有効（1Dayパスの場合）</p>
           <p>• 全国のドッグランで利用可能</p>
           <p>• 最大3頭まで同時入場</p>
         </div>
       </Card>
 
-      {/* 1日券の特徴 */}
+      {/* 1Dayパスの特徴 */}
       <Card className="p-4 bg-green-50 border-green-200">
         <div className="flex items-center space-x-2 mb-2">
           <Calculator className="w-5 h-5 text-green-600" />
-          <h3 className="font-semibold text-green-900">1日券の特徴</h3>
+          <h3 className="font-semibold text-green-900">1Dayパスの特徴</h3>
         </div>
         <div className="space-y-1 text-sm text-green-800">
           <p>• 24時間有効（発行から24時間後に失効）</p>

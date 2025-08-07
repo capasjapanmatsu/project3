@@ -268,7 +268,7 @@ export function ParkReservation() {
     return basePrice * hours; // 通常価格
   };
 
-  // 1日券の料金計算（段階的料金制）
+  // 1Dayパスの料金計算（段階的料金制）
   const calculateDayPassPrice = () => {
     const dogCount = selectedDogs.length;
     if (dogCount === 0) return 0;
@@ -364,11 +364,11 @@ export function ParkReservation() {
       // 注文番号を生成
       const orderNumber = `DP${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
-      // 1日券の場合
+      // 1Dayパスの場合
       if (formData.paymentType === 'single') {
         const dayPassProduct = products.find(p => p.mode === 'payment');
         if (!dayPassProduct) {
-          setError('1日券商品が見つかりません。');
+          setError('1Dayパス商品が見つかりません。');
           setIsLoading(false);
           return;
         }

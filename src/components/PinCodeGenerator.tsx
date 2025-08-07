@@ -430,14 +430,14 @@ export function PinCodeGenerator({
                             className="w-full"
                           >
                             <Calendar className="w-4 h-4 mr-2" />
-                            1日券を購入（¥800）
+                            1Dayパスを購入（¥800）
                           </Button>
                         </motion.div>
                       </div>
                       
                       <p className="text-xs text-blue-700 mt-3">
                         • サブスクリプション：全国のドッグランが使い放題<br/>
-                        • 1日券：選択したドッグランで24時間利用可能
+                        • 1Dayパス：選択したドッグランで24時間利用可能
                       </p>
                     </motion.div>
                   )}

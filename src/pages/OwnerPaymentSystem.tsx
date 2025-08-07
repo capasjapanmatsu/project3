@@ -611,12 +611,12 @@ export function OwnerPaymentSystem() {
             <div className="text-sm text-gray-700 space-y-1">
               <p>• 売上の<span className="font-medium">80%</span>がオーナー様に支払われます</p>
               <p>• 残りの<span className="font-medium">20%</span>は当社の手数料となります</p>
-              <p>• 手数料には、決済手数料、システム利用料、保険料などが含まれます</p>
+              <p>• 手数料には、決済手数料、システム利用料などが含まれます</p>
               <p>• 収益は以下の項目から発生します：</p>
               <ul className="list-disc pl-5 space-y-1 mt-1">
-                <li>通常利用（1日券）：800円/日</li>
+                <li>通常利用（1Dayパス）：800円/日</li>
                 <li>施設貸し切り：4,400円/時間</li>
-                <li>プライベートブース：サブスク使い放題・1日券でも利用可能（追加料金なし）</li>
+                <li>プライベートブース：サブスク使い放題・1Dayパスでも利用可能（追加料金なし）</li>
               </ul>
               <p>• サブスクリプション収益は利用回数に応じて分配されます</p>
             </div>
