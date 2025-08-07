@@ -11,9 +11,11 @@ interface PinGeneratorProps {
   lockId: string;
   lockName: string;
   userId: string;
+  dogId?: string;
+  dogRunId?: string;
 }
 
-export const PinGenerator: React.FC<PinGeneratorProps> = ({ lockId, lockName, userId }) => {
+export const PinGenerator: React.FC<PinGeneratorProps> = ({ lockId, lockName, userId, dogId, dogRunId }) => {
   const [pinType, setPinType] = useState<'entry' | 'exit'>('entry');
   const [currentPin, setCurrentPin] = useState<string>('');
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
@@ -101,7 +103,9 @@ export const PinGenerator: React.FC<PinGeneratorProps> = ({ lockId, lockName, us
           status: pinType === 'entry' ? 'issued' as const : 'exit_requested' as const,
           issued_at: new Date(),
           expires_at: response.endDate,
-          keyboard_pwd_id: response.keyboardPwdId
+          keyboard_pwd_id: response.keyboardPwdId,
+          dog_id: dogId,
+          dog_run_id: dogRunId
         };
         
         const createdLog = await createAccessLog(logData);

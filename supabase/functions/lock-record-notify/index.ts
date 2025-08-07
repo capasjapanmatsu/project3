@@ -213,6 +213,57 @@ serve(async (req) => {
 
     console.log('✅ AccessLog updated successfully:', updatedLog);
 
+    // 入場時の追加処理（統計更新、同時利用者記録、通知生成）
+    if (newStatus === 'entered' && updatedLog.dog_id && updatedLog.dog_run_id) {
+      console.log('🎯 Processing entry log for community features...');
+      
+      try {
+        // process_entry_log関数を呼び出し
+        const { error: processError } = await supabase.rpc('process_entry_log', {
+          p_user_id: updatedLog.user_id,
+          p_dog_id: updatedLog.dog_id,
+          p_dog_run_id: updatedLog.dog_run_id,
+          p_used_at: usedAtTime
+        });
+
+        if (processError) {
+          console.error('⚠️ Failed to process entry log:', processError);
+        } else {
+          console.log('✅ Entry log processed successfully');
+        }
+      } catch (error) {
+        console.error('⚠️ Error processing entry log:', error);
+      }
+    }
+
+    // 退場時の滞在時間計算
+    if (newStatus === 'exited' && updatedLog.dog_run_id) {
+      console.log('⏱️ Calculating stay duration...');
+      
+      try {
+        // calculate_duration関数を呼び出し
+        const { data: duration, error: durationError } = await supabase.rpc('calculate_duration', {
+          p_user_id: updatedLog.user_id,
+          p_dog_run_id: updatedLog.dog_run_id,
+          p_exit_time: usedAtTime
+        });
+
+        if (durationError) {
+          console.error('⚠️ Failed to calculate duration:', durationError);
+        } else if (duration) {
+          // AccessLogに滞在時間を記録
+          await supabase
+            .from('access_logs')
+            .update({ duration })
+            .eq('id', log.id);
+          
+          console.log(`✅ Stay duration calculated: ${duration}ms (${Math.round(duration / 60000)} minutes)`);
+        }
+      } catch (error) {
+        console.error('⚠️ Error calculating duration:', error);
+      }
+    }
+
     // 成功レスポンス
     return new Response(
       JSON.stringify({ 
