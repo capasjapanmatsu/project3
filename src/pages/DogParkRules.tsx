@@ -286,8 +286,8 @@ export function DogParkRules() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="text-center p-4 bg-blue-50 rounded-lg">
             <h3 className="text-lg font-semibold text-blue-800 mb-2">営業時間</h3>
-            <p className="text-xl md:text-2xl font-bold text-blue-600 mb-2">6:00 - 22:00</p>
-            <p className="text-sm text-blue-700">年中無休・24時間無人営業</p>
+            <p className="text-lg font-bold text-blue-600 mb-2">年中無休・24時間営業</p>
+            <p className="text-sm text-blue-700">※メンテナンス時は休業することがあります</p>
           </div>
           
           <div className="text-center p-4 bg-green-50 rounded-lg">
@@ -344,6 +344,9 @@ export function DogParkRules() {
             );
           })}
         </div>
+        <p className="text-sm text-gray-600 mt-4 text-center">
+          ※施設により設備・サービス内容が異なります。
+        </p>
       </Card>
 
       {/* 緊急時の対応 */}
