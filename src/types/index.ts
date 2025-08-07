@@ -381,3 +381,6 @@ export interface NewParkOpening {
   updated_at: string;
   park_id?: string;
 }
+
+// PINコード管理システム関連の型定義をエクスポート
+export * from './pinCode';

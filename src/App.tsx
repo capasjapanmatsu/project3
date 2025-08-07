@@ -107,6 +107,7 @@ const NotFound = React.lazy(() => import('./pages/NotFound').then(module => ({ d
 
 // デバッグページ
 // const MapDebug = React.lazy(() => import('./pages/MapDebug').then(module => ({ default: module.MapDebug })));
+const TestPinGenerator = React.lazy(() => import('./pages/TestPinGenerator'));
 
 // 保護されたページ
 const UserDashboard = React.lazy(() => import('./pages/UserDashboard'));
@@ -438,6 +439,17 @@ const App: React.FC = () => {
                   </Suspense>
                 </ProtectedRoute>
               } />
+              
+              {/* PIN発行テストページ（開発環境のみ） */}
+              {import.meta.env.DEV && (
+                <Route path="/test-pin-generator" element={
+                  <ProtectedRoute>
+                    <Suspense fallback={<PageSkeleton />}>
+                      <TestPinGenerator />
+                    </Suspense>
+                  </ProtectedRoute>
+                } />
+              )}
               <Route path="/my-facilities-management" element={
                 <ProtectedRoute>
                   <Suspense fallback={<PageSkeleton />}>

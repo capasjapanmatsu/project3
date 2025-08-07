@@ -1,3 +1,12 @@
+import {
+    Activity,
+    Book,
+    Dog,
+    GraduationCap,
+    Heart,
+    Sparkles,
+    Utensils
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useAuth from '../../context/AuthContext';
 import Button from '../Button';
@@ -7,10 +16,11 @@ interface DogInfoCard {
   id: string;
   title: string;
   description: string;
-  icon: string;
+  icon: React.ComponentType<{ className?: string }>;
   category: 'health' | 'training' | 'walk' | 'food' | 'care';
   link: string;
   color: string;
+  iconColor: string;
 }
 
 const dogInfoCards: DogInfoCard[] = [
@@ -18,55 +28,61 @@ const dogInfoCards: DogInfoCard[] = [
     id: 'health',
     title: '健康管理',
     description: 'ワクチン接種、定期検診、病気の予防について詳しく解説します。',
-    icon: '🏥',
+    icon: Heart,
     category: 'health',
     link: '/dog-info/health',
-    color: 'bg-red-50 border-red-200 hover:bg-red-100'
+    color: 'bg-red-50 border-red-200 hover:bg-red-100',
+    iconColor: 'text-red-600'
   },
   {
     id: 'training',
     title: 'しつけのコツ',
     description: '基本的なコマンドから問題行動の改善まで、効果的なしつけ方法を紹介。',
-    icon: '🎓',
+    icon: GraduationCap,
     category: 'training',
     link: '/dog-info/training',
-    color: 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+    color: 'bg-blue-50 border-blue-200 hover:bg-blue-100',
+    iconColor: 'text-blue-600'
   },
   {
     id: 'walk',
     title: 'お散歩ガイド',
     description: '安全で楽しいお散歩の方法、適切な運動量、散歩コースの選び方。',
-    icon: '🐕',
+    icon: Dog,
     category: 'walk',
     link: '/dog-info/walk',
-    color: 'bg-green-50 border-green-200 hover:bg-green-100'
+    color: 'bg-green-50 border-green-200 hover:bg-green-100',
+    iconColor: 'text-green-600'
   },
   {
     id: 'food',
     title: '食事・栄養',
     description: '年齢や体調に合わせた食事選び、栄養バランス、おやつの与え方。',
-    icon: '🍖',
+    icon: Utensils,
     category: 'food',
     link: '/dog-info/food',
-    color: 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+    color: 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100',
+    iconColor: 'text-yellow-600'
   },
   {
     id: 'care',
     title: 'お手入れ',
     description: 'ブラッシング、爪切り、歯磨きなど、日常のお手入れ方法を解説。',
-    icon: '🛁',
+    icon: Sparkles,
     category: 'care',
     link: '/dog-info/care',
-    color: 'bg-purple-50 border-purple-200 hover:bg-purple-100'
+    color: 'bg-purple-50 border-purple-200 hover:bg-purple-100',
+    iconColor: 'text-purple-600'
   },
   {
     id: 'breeds',
     title: '犬種図鑑',
     description: '人気の犬種から珍しい犬種まで、特徴や性格、飼育のポイントを紹介。',
-    icon: '📚',
+    icon: Book,
     category: 'health',
     link: '/dog-info/breeds',
-    color: 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100'
+    color: 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100',
+    iconColor: 'text-indigo-600'
   }
 ];
 
@@ -79,11 +95,11 @@ export function DogInfoCorner() {
         {/* ヘッダー */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-4">
-            <span className="text-4xl mr-3">🐕</span>
+            <Dog className="w-10 h-10 text-blue-600 mr-3" />
             <h2 className="text-3xl font-bold text-gray-900">
               ワンちゃん情報発信コーナー
             </h2>
-            <span className="text-4xl ml-3">📚</span>
+            <Book className="w-10 h-10 text-blue-600 ml-3" />
           </div>
           <p className="text-lg text-gray-600 max-w-3xl mx-auto">
             愛犬との暮らしをもっと楽しく、もっと健康に。専門家監修の情報で、
@@ -100,7 +116,7 @@ export function DogInfoCorner() {
             >
               <div className="p-6">
                 <div className="flex items-center mb-4">
-                  <span className="text-3xl mr-3">{card.icon}</span>
+                  <card.icon className={`w-8 h-8 mr-3 ${card.iconColor}`} />
                   <h3 className="text-xl font-semibold text-gray-900">
                     {card.title}
                   </h3>
@@ -124,9 +140,12 @@ export function DogInfoCorner() {
         {/* 特集セクション */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
           <div className="text-center mb-6">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              🎯 今月の特集
-            </h3>
+            <div className="flex items-center justify-center mb-2">
+              <Activity className="w-8 h-8 text-orange-600 mr-2" />
+              <h3 className="text-2xl font-bold text-gray-900">
+                今月の特集
+              </h3>
+            </div>
             <p className="text-gray-600">
               季節に合わせたワンちゃんケアのポイント
             </p>
