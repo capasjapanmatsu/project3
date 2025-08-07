@@ -386,7 +386,7 @@ export const getImageUrl = (bucket: string, path: string | null): string | null 
 };
 
 /**
- * ファイルアップロードの共通処理
+ * ファイルアップロードの共通処理（WebP変換対応）
  */
 export const uploadFile = async (
   bucket: string,
@@ -396,8 +396,18 @@ export const uploadFile = async (
     upsert?: boolean;
     cacheControl?: string;
     contentType?: string;
+    convertToWebP?: boolean; // WebP変換を行うか（デフォルト: true）
+    webPQuality?: number; // WebP品質（デフォルト: 80）
+    generateThumbnail?: boolean; // サムネイル生成（デフォルト: true）
   } = {}
-): Promise<{ success: boolean; path?: string; url?: string; error?: string }> => {
+): Promise<{ 
+  success: boolean; 
+  path?: string; 
+  url?: string; 
+  webpUrl?: string;
+  thumbnailUrl?: string;
+  error?: string 
+}> => {
   try {
     // ファイル検証
     if (!isValidImageFile(file)) {
@@ -408,6 +418,30 @@ export const uploadFile = async (
       return { success: false, error: 'ファイルサイズが大きすぎます（最大10MB）' };
     }
 
+    // WebP変換を使用する場合
+    if (options.convertToWebP !== false) {
+      const { uploadAndConvertToWebP } = await import('./webpConverter');
+      const result = await uploadAndConvertToWebP(bucket, file, path, {
+        quality: options.webPQuality ?? 80,
+        generateThumbnail: options.generateThumbnail ?? true,
+        thumbnailSize: 300,
+        keepOriginal: false, // オリジナルは削除してWebPのみ保存
+      });
+
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        path: result.webpPath,
+        url: result.webpUrl,
+        webpUrl: result.webpUrl,
+        thumbnailUrl: result.thumbnailUrl,
+      };
+    }
+
+    // 従来のアップロード処理（WebP変換なし）
     const { data, error } = await supabase.storage
       .from(bucket)
       .upload(path, file, {

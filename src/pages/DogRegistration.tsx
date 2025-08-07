@@ -14,6 +14,7 @@ import { logger } from '../utils/logger';
 import { notify } from '../utils/notification';
 import { supabase } from '../utils/supabase';
 import { uploadVaccineImage, validateVaccineFile } from '../utils/vaccineUpload';
+import { uploadAndConvertToWebP } from '../utils/webpConverter';
 
 export function DogRegistration() {
   const { user } = useAuth();
@@ -159,23 +160,26 @@ export function DogRegistration() {
     setError('');
 
     try {
-      // プロフィール画像のアップロード
+      // プロフィール画像のアップロード（WebP変換付き）
       const profileImagePath = `dog-profiles/${user.id}/${Date.now()}_${imageFile.name}`;
-      const { data: profileUploadData, error: profileUploadError } = await supabase.storage
-        .from('dog-images')
-        .upload(profileImagePath, imageFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
+      const uploadResult = await uploadAndConvertToWebP(
+        'dog-images',
+        imageFile,
+        profileImagePath,
+        {
+          quality: 80,
+          generateThumbnail: true,
+          thumbnailSize: 300,
+          keepOriginal: false
+        }
+      );
 
-      if (profileUploadError) {
-        throw new Error(`プロフィール画像のアップロードに失敗しました: ${profileUploadError.message}`);
+      if (!uploadResult.success) {
+        throw new Error(`プロフィール画像のアップロードに失敗しました: ${uploadResult.error}`);
       }
 
-      // プロフィール画像のURL取得
-      const { data: profileImageUrl } = supabase.storage
-        .from('dog-images')
-        .getPublicUrl(profileImagePath);
+      // WebP画像のURLを使用
+      const profileImageUrl = { publicUrl: uploadResult.webpUrl };
 
       // ワクチン画像のアップロード
       let rabiesImageUrl = '';
@@ -214,7 +218,7 @@ export function DogRegistration() {
             breed: formData.breed,
             birth_date: birthDate,
             gender: formData.gender,
-            image_url: profileImageUrl.publicUrl
+            image_url: uploadResult.webpUrl
           }
         ])
         .select()

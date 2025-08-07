@@ -36,6 +36,7 @@ import { SmartLockManager } from '../components/admin/SmartLockManager';
 import useAuth from '../context/AuthContext';
 import type { DogPark, SmartLock } from '../types';
 import { supabase } from '../utils/supabase';
+import { uploadAndConvertToWebP } from '../utils/webpConverter';
 
 // 施設画像タイプ定義
 const IMAGE_TYPES = {
@@ -511,20 +512,28 @@ export function ParkManagement() {
       // ファイル名を元のファイル名に設定
       const fileWithName = new File([croppedFile], originalFileName, { type: croppedFile.type });
 
-      // ファイルをSupabaseストレージにアップロード
+      // WebP変換付きアップロード
       const fileName = `${imageTypeToUpload}_${Date.now()}_${originalFileName}`;
       const filePath = `${parkId}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('dog-park-images')
-        .upload(filePath, fileWithName, { upsert: true });
+      const uploadResult = await uploadAndConvertToWebP(
+        'dog-park-images',
+        fileWithName,
+        filePath,
+        {
+          quality: 80,
+          generateThumbnail: true,
+          thumbnailSize: 300,
+          keepOriginal: false
+        }
+      );
 
-      if (uploadError) throw uploadError;
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'アップロードに失敗しました');
+      }
 
-      // 公開URLを取得
-      const { data: { publicUrl } } = supabase.storage
-        .from('dog-park-images')
-        .getPublicUrl(filePath);
+      // WebP画像のURLを使用
+      const publicUrl = uploadResult.webpUrl || '';
 
       // 既存の画像レコードをチェック
       const { data: existingImage, error: selectError } = await supabase

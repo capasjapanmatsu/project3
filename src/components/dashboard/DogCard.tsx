@@ -5,6 +5,7 @@ import type { Dog } from '../../types';
 import Button from '../Button';
 import Input from '../Input';
 import LazyImage from '../LazyImage';
+import { OptimizedImage } from '../OptimizedImage';
 import Select from '../Select';
 import VaccineBadge, { getVaccineStatusFromDog } from '../VaccineBadge';
 

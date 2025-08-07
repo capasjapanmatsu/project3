@@ -1,6 +1,7 @@
 // ワクチン証明書のアップロード機能
 
 import { supabase } from './supabase';
+import { uploadAndConvertToWebP } from './webpConverter';
 
 /**
  * ワクチン証明書の種類
@@ -15,6 +16,7 @@ export interface VaccineUploadResult {
   filePath?: string;
   publicUrl?: string;
   fileName?: string;
+  thumbnailUrl?: string;
   error?: string;
   errorCode?: string;
 }
@@ -54,7 +56,7 @@ export const validateVaccineFile = (file: File): { isValid: boolean; error?: str
 };
 
 /**
- * ワクチン証明書をアップロードする
+ * ワクチン証明書をアップロードする（WebP変換対応）
  */
 export const uploadVaccineImage = async (
   file: File,
@@ -72,24 +74,29 @@ export const uploadVaccineImage = async (
     const fileName = `${dogIdTyped}_${vaccineType}_${Date.now()}_${file.name}`;
     const filePath = `${dogIdTyped}/${fileName}`;
 
-    const { data, error } = await supabase.storage
-      .from('vaccine-certs')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
+    // WebP変換付きアップロード
+    const uploadResult = await uploadAndConvertToWebP(
+      'vaccine-certs',
+      file,
+      filePath,
+      {
+        quality: 80,
+        generateThumbnail: true,
+        thumbnailSize: 300,
+        keepOriginal: false // オリジナルは削除してWebPのみ保存
+      }
+    );
 
-    if (error) {
-      throw error;
+    if (!uploadResult.success) {
+      throw new Error(uploadResult.error || 'アップロードに失敗しました');
     }
-
-    const publicUrl = supabase.storage.from('vaccine-certs').getPublicUrl(data.path).data.publicUrl;
 
     return {
       success: true,
-      publicUrl,
+      publicUrl: uploadResult.webpUrl,
       fileName,
-      filePath: data.path
+      filePath: uploadResult.webpPath,
+      thumbnailUrl: uploadResult.thumbnailUrl
     };
 
   } catch (error) {
