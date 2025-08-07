@@ -1491,7 +1491,13 @@ export function ParkManagement() {
               <div className="text-center py-8">
                 <Key className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600 mb-4">スマートロックが設定されていません</p>
-                <Button onClick={() => setActiveTab('settings')} data-walkthrough="setup-smartlock-button">
+                <p className="text-sm text-gray-500 mb-4">PINコードを発行するにはスマートロックの登録が必要です</p>
+                <Button 
+                  onClick={() => setActiveTab('locks')} 
+                  data-walkthrough="setup-smartlock-button"
+                  className="flex items-center gap-2 mx-auto"
+                >
+                  <Shield className="w-4 h-4" />
                   スマートロックを設定する
                 </Button>
               </div>
@@ -1535,13 +1541,23 @@ export function ParkManagement() {
           <Card className="p-6 bg-yellow-50 border-yellow-200">
             <div className="flex items-start space-x-3">
               <AlertTriangle className="w-6 h-6 text-yellow-600 mt-1" />
-              <div>
+              <div className="flex-1">
                 <h3 className="font-semibold text-yellow-900 mb-2">重要な設定項目</h3>
                 <div className="text-sm text-yellow-800 space-y-2">
                   <p>• <strong>ロックID</strong>: ScienerまたはTTLock等のAPIで提供されるスマートロックの一意ID</p>
                   <p>• <strong>ロック名</strong>: 利用者に表示される名前（例：メインゲート、南側入口）</p>
                   <p>• <strong>有効状態</strong>: 無効にすると、そのロックではPINコードを発行できません</p>
                   <p>• 複数のスマートロックを登録して、利用者が選択できるようにすることも可能です</p>
+                </div>
+                <div className="mt-4 pt-4 border-t border-yellow-300">
+                  <Button 
+                    onClick={() => setActiveTab('pins')}
+                    variant="secondary"
+                    className="flex items-center gap-2"
+                  >
+                    <Key className="w-4 h-4" />
+                    PINコード管理に戻る
+                  </Button>
                 </div>
               </div>
             </div>
