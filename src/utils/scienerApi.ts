@@ -48,7 +48,7 @@ function getScienerErrorMessage(errcode: number): string {
     11: 'PINコードの上限に達しています',
     12: 'PIN期間が無効です',
     13: 'PINコードが無効です',
-    -1: 'APIサーバーエラー'
+    '-1': 'APIサーバーエラー'
   };
 
   return errorMessages[errcode] || `不明なエラー (code: ${errcode})`;
