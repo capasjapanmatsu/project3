@@ -2,6 +2,8 @@ import { AlertCircle, Clock, Key, LogIn, LogOut, RefreshCw } from 'lucide-react'
 import React, { useCallback, useEffect, useState } from 'react';
 import { CreatePinParams, CreatePinResponse } from '../types/pinCode';
 import { createSmartLockPin, createMockPin, generateRandomPin } from '../utils/scienerApi';
+import { useAccessLog, createAccessLog } from '../hooks/useAccessLog';
+import { StatusDisplay } from './StatusDisplay';
 import Button from './Button';
 import Card from './Card';
 
@@ -19,6 +21,9 @@ export const PinGenerator: React.FC<PinGeneratorProps> = ({ lockId, lockName, us
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [isExpired, setIsExpired] = useState(false);
+
+  // AccessLogの取得
+  const { currentLog, isLoading: isLoadingLog, refetch: refetchLogs } = useAccessLog(lockId);
 
   // カウントダウンタイマーの更新
   useEffect(() => {
@@ -87,6 +92,25 @@ export const PinGenerator: React.FC<PinGeneratorProps> = ({ lockId, lockName, us
         setCurrentPin(response.keyboardPwd);
         setExpiresAt(response.endDate);
         
+        // AccessLogを作成
+        const logData = {
+          user_id: userId,
+          lock_id: lockId,
+          pin: response.keyboardPwd,
+          pin_type: pinType,
+          status: pinType === 'entry' ? 'issued' as const : 'exit_requested' as const,
+          issued_at: new Date(),
+          expires_at: response.endDate,
+          keyboard_pwd_id: response.keyboardPwdId
+        };
+        
+        const createdLog = await createAccessLog(logData);
+        if (createdLog) {
+          console.log('✅ AccessLog created:', createdLog);
+          // ログを再取得して表示を更新
+          await refetchLogs();
+        }
+        
         // 成功ログ
         console.log('✅ PIN generated successfully:', {
           pin: response.keyboardPwd,
@@ -102,7 +126,7 @@ export const PinGenerator: React.FC<PinGeneratorProps> = ({ lockId, lockName, us
     } finally {
       setIsLoading(false);
     }
-  }, [pinType]);
+  }, [pinType, refetchLogs]);
 
   // 時間フォーマット（MM:SS形式）
   const formatTime = (seconds: number): string => {
@@ -110,6 +134,18 @@ export const PinGenerator: React.FC<PinGeneratorProps> = ({ lockId, lockName, us
     const secs = seconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // 入場中かどうかを判定
+  const isEntered = currentLog?.status === 'entered';
+  
+  // PINタイプを自動設定（入場中なら退場、そうでなければ入場）
+  useEffect(() => {
+    if (isEntered && pinType === 'entry') {
+      setPinType('exit');
+    } else if (!isEntered && pinType === 'exit') {
+      setPinType('entry');
+    }
+  }, [isEntered]);
 
   return (
     <Card className="max-w-md mx-auto">
@@ -124,6 +160,20 @@ export const PinGenerator: React.FC<PinGeneratorProps> = ({ lockId, lockName, us
             ロック名: {lockName}
           </p>
         </div>
+
+        {/* 現在のステータス表示 */}
+        {!isLoadingLog && currentLog && (
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">現在の状態</h3>
+            <StatusDisplay 
+              status={currentLog.status} 
+              pinType={currentLog.pin_type}
+              showDetails={true}
+              usedAt={currentLog.used_at ? new Date(currentLog.used_at) : undefined}
+              expiresAt={currentLog.expires_at ? new Date(currentLog.expires_at) : undefined}
+            />
+          </div>
+        )}
 
         {/* 入場/退場切り替えタブ */}
         <div className="flex mb-6 bg-gray-100 p-1 rounded-lg">
