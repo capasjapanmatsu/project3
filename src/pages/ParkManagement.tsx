@@ -32,9 +32,9 @@ import ImageCropper from '../components/ImageCropper'; // ImageCropperコンポ�
 import { LocationEditMap } from '../components/LocationEditMap';
 import { ParkManagementWalkthrough } from '../components/ParkManagementWalkthrough';
 import { PinCodeGenerator } from '../components/PinCodeGenerator';
+import { SmartLockManager } from '../components/admin/SmartLockManager';
 import useAuth from '../context/AuthContext';
 import type { DogPark, SmartLock } from '../types';
-
 import { supabase } from '../utils/supabase';
 
 // 施設画像タイプ定義
@@ -175,7 +175,7 @@ export function ParkManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'stats' | 'pins' | 'settings' | 'location'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'stats' | 'pins' | 'locks' | 'settings' | 'location'>('overview');
   const [smartLocks, setSmartLocks] = useState<SmartLock[]>([]);
   const [selectedLock, setSelectedLock] = useState<SmartLock | null>(null);
   const [pinPurpose, setPinPurpose] = useState<'entry' | 'exit'>('entry');
@@ -238,7 +238,6 @@ export function ParkManagement() {
 
   // ウォークスルー関連state
   const [showWalkthrough, setShowWalkthrough] = useState(false);
-  const [walkthroughChecked, setWalkthroughChecked] = useState(false);
 
   // メンテナンス予定取得関数
   const fetchMaintenanceSchedules = async () => {
@@ -263,8 +262,8 @@ export function ParkManagement() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('test_walkthrough') === 'true') {
-      console.log('🧪 テストモード: ウォークスルーは一時的に無効化されています');
-      // setShowWalkthrough(true); // 一時的に無効化
+      console.log('🧪 テストモード: ウォークスルーを強制表示');
+      setShowWalkthrough(true);
     }
   }, []);
 
@@ -272,19 +271,10 @@ export function ParkManagement() {
   const checkWalkthroughEligibility = useCallback(async () => {
     console.log('🔍 ウォークスルー判定開始:', { parkId, userId: user?.id, parkStatus: park?.status });
     
-    // 既にウォークスルーが表示中またはチェック済みの場合はスキップ
-    if (showWalkthrough || walkthroughChecked) {
-      console.log('🔍 ウォークスルー既に表示中またはチェック済み');
-      return;
-    }
-    
     if (!parkId || !user || !park) {
       console.log('❌ ウォークスルー判定: 必要なデータが不足', { parkId, user: !!user, park: !!park });
       return;
     }
-    
-    // チェック済みフラグを即座に立てる
-    setWalkthroughChecked(true);
 
     try {
       console.log('🔍 プロフィール情報をチェック中...');
@@ -325,7 +315,7 @@ export function ParkManagement() {
     } catch (error) {
       console.error('ウォークスルー判定エラー:', error);
     }
-  }, [parkId, user, park, walkthroughChecked, showWalkthrough]);
+  }, [parkId, user, park]);
 
   // ウォークスルー完了時の処理
   const handleWalkthroughComplete = useCallback(async () => {
@@ -350,10 +340,6 @@ export function ParkManagement() {
       setActiveTab('location');
     } else if (stepId === 'pins') {
       setActiveTab('pins');
-    } else if (stepId === 'settings') {
-      setActiveTab('settings');
-    } else if (stepId === 'overview') {
-      setActiveTab('overview');
     }
   }, []);
 
@@ -371,17 +357,10 @@ export function ParkManagement() {
     }
   }, [park]);
 
-  // ウォークスルーの発動を監視（初回のみ）
+  // ウォークスルーの発動を監視
   useEffect(() => {
-    // park が初めて取得された時のみ実行
-    if (park && park.status === 'approved' && !walkthroughChecked && !showWalkthrough) {
-      // 少し遅延させてから実行（レンダリング完了を待つ）
-      const timer = setTimeout(() => {
-        void checkWalkthroughEligibility();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [park?.id]); // park.idが変わった時のみ再実行
+    void checkWalkthroughEligibility();
+  }, [parkId, user, park]);
 
   // パークデータ取得関数
   const fetchParkData = async () => {
@@ -529,15 +508,16 @@ export function ParkManagement() {
       setShowImageCropper(false);
       setError('');
 
+      // ファイル名を元のファイル名に設定
+      const fileWithName = new File([croppedFile], originalFileName, { type: croppedFile.type });
+
       // ファイルをSupabaseストレージにアップロード
-      const fileName = `${imageTypeToUpload}_${Date.now()}_${croppedFile.name}`;
+      const fileName = `${imageTypeToUpload}_${Date.now()}_${originalFileName}`;
       const filePath = `${parkId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('dog-park-images')
-        .upload(filePath, croppedFile, { 
-          upsert: true
-        });
+        .upload(filePath, fileWithName, { upsert: true });
 
       if (uploadError) throw uploadError;
 
@@ -975,16 +955,15 @@ export function ParkManagement() {
               <div className="border-b border-gray-200">
                 <div className="flex space-x-8 px-6">
         <button
-          data-walkthrough="overview-tab"
-          className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
             activeTab === 'overview'
-              ? 'border-blue-500 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
           onClick={() => setActiveTab('overview')}
         >
           <Building className="w-4 h-4 inline mr-2" />
-          概要・メンテナンス
+                    概要・メンテナンス
         </button>
         <button
                     className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
@@ -1010,11 +989,22 @@ export function ParkManagement() {
           PINコード管理
         </button>
         <button
-          data-walkthrough="settings-tab"
-          className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+            activeTab === 'locks'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+          onClick={() => setActiveTab('locks')}
+          data-walkthrough="locks-tab"
+        >
+          <Shield className="w-4 h-4 inline mr-2" />
+          スマートロック管理
+        </button>
+        <button
+                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
             activeTab === 'settings'
-              ? 'border-blue-500 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
           onClick={() => setActiveTab('settings')}
         >
@@ -1116,7 +1106,6 @@ export function ParkManagement() {
                       type="button"
                       disabled={isToggleLoading}
                       onClick={() => handlePublicToggle(!editForm.is_public)}
-                      data-walkthrough="public-toggle"
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                         editForm.is_public ? 'bg-blue-600' : 'bg-gray-200'
                       } ${isToggleLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -1519,6 +1508,40 @@ export function ParkManagement() {
                   <p>• PINコードは5分間有効で、利用者が支払い後に発行されます</p>
                   <p>• オーナーは決済不要でPINコードを発行できます</p>
                   <p>• 施設貸し切りの場合、利用者は友達にPINコードを共有できます</p>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* スマートロック管理タブ */}
+      {activeTab === 'locks' && (
+        <div className="space-y-6">
+          <Card className="p-6">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold mb-2">スマートロック管理</h2>
+              <p className="text-gray-600 text-sm">
+                このドッグランのスマートロックを管理します。Sciener等のスマートロックIDを登録してください。
+              </p>
+            </div>
+            
+            <SmartLockManager 
+              parkId={parkId} 
+              parkName={park.name}
+            />
+          </Card>
+
+          <Card className="p-6 bg-yellow-50 border-yellow-200">
+            <div className="flex items-start space-x-3">
+              <AlertTriangle className="w-6 h-6 text-yellow-600 mt-1" />
+              <div>
+                <h3 className="font-semibold text-yellow-900 mb-2">重要な設定項目</h3>
+                <div className="text-sm text-yellow-800 space-y-2">
+                  <p>• <strong>ロックID</strong>: ScienerまたはTTLock等のAPIで提供されるスマートロックの一意ID</p>
+                  <p>• <strong>ロック名</strong>: 利用者に表示される名前（例：メインゲート、南側入口）</p>
+                  <p>• <strong>有効状態</strong>: 無効にすると、そのロックではPINコードを発行できません</p>
+                  <p>• 複数のスマートロックを登録して、利用者が選択できるようにすることも可能です</p>
                 </div>
               </div>
             </div>
