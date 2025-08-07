@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import AnimatedElement, { FadeIn, SlideUp } from '../components/accessibility/AnimatedElement';
+import AnimatedElement from '../components/accessibility/AnimatedElement';
 import { DogInfoCorner } from '../components/home/DogInfoCorner';
 import { FacilityRecruitmentBanner } from '../components/home/FacilityRecruitmentBanner';
 import { FeaturesSection } from '../components/home/FeaturesSection';
@@ -125,7 +125,7 @@ export function Home() {
   }, [fetchDogs, fetchNews]);
 
   // アニメーション設定をレスポンシブに調整
-  const animationDuration = isMobile ? 'fast' : 'normal';
+  // アニメーション設定（AnimatedElementで直接数値として使用）
   const staggerDelay = prefersReducedMotion ? 0 : 25;
 
   // isLoggedInをメモ化
@@ -140,13 +140,13 @@ export function Home() {
       <div className="min-h-screen bg-gray-50" role="main">
         {/* ネットワークエラーバナー */}
         {isOffline && (
-          <FadeIn duration="fast">
+          <AnimatedElement animation="fade" duration={300}>
             <NetworkErrorBanner 
               isOffline={isOffline}
               networkError={networkError}
               onRetryConnection={handleRetryConnection}
             />
-          </FadeIn>
+          </AnimatedElement>
         )}
 
         <div className="w-full">
@@ -157,9 +157,9 @@ export function Home() {
             className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
             tabIndex={-1}
           >
-            <SlideUp duration={animationDuration} delay={staggerDelay * 0}>
+            <AnimatedElement animation="slide" duration={isMobile ? 200 : 300} delay={staggerDelay * 0}>
               <HeroSection isLoggedIn={isLoggedIn} />
-            </SlideUp>
+            </AnimatedElement>
           </section>
 
           {/* 最近登録された犬のマーキー - 安定版 */}
@@ -168,13 +168,7 @@ export function Home() {
             className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
             tabIndex={-1}
           >
-            <AnimatedElement
-              animation="slideUp"
-              duration={animationDuration}
-              delay={staggerDelay * 1}
-              respectReducedMotion={true}
-              fallbackAnimation="fadeIn"
-            >
+            <AnimatedElement animation="slide" duration={isMobile ? 200 : 300} delay={staggerDelay * 1}>
               <MarqueeDogsSection
                 recentDogs={stableDogs}
                 isOffline={isOffline}
@@ -191,13 +185,7 @@ export function Home() {
               className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
               tabIndex={-1}
             >
-              <AnimatedElement
-                animation="slideUp"
-                duration={animationDuration}
-                delay={staggerDelay * 2}
-                respectReducedMotion={true}
-                fallbackAnimation="fadeIn"
-              >
+              <AnimatedElement animation="slide" duration={isMobile ? 200 : 300} delay={staggerDelay * 2}>
                 <h2
                   id="news-heading"
                   className="sr-only"
@@ -220,13 +208,7 @@ export function Home() {
               className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
               tabIndex={-1}
             >
-              <AnimatedElement
-                animation="slideUp"
-                duration={animationDuration}
-                delay={staggerDelay * 3}
-                respectReducedMotion={true}
-                fallbackAnimation="fadeIn"
-              >
+              <AnimatedElement animation="slide" duration={isMobile ? 200 : 300} delay={staggerDelay * 3}>
                 <h2
                   id="features-heading"
                   className="sr-only"
@@ -238,24 +220,12 @@ export function Home() {
             </section>
 
             {/* オーナー募集バナー */}
-            <AnimatedElement
-              animation="slideUp"
-              duration={animationDuration}
-              delay={staggerDelay * 4}
-              respectReducedMotion={true}
-              fallbackAnimation="fadeIn"
-            >
+            <AnimatedElement animation="slide" duration={isMobile ? 200 : 300} delay={staggerDelay * 4}>
               <OwnerRecruitmentBanner />
             </AnimatedElement>
 
             {/* 施設募集バナー */}
-            <AnimatedElement
-              animation="slideUp"
-              duration={animationDuration}
-              delay={staggerDelay * 5}
-              respectReducedMotion={true}
-              fallbackAnimation="fadeIn"
-            >
+            <AnimatedElement animation="slide" duration={isMobile ? 200 : 300} delay={staggerDelay * 5}>
               <FacilityRecruitmentBanner />
             </AnimatedElement>
 
@@ -266,13 +236,7 @@ export function Home() {
               className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
               tabIndex={-1}
             >
-              <AnimatedElement
-                animation="slideUp"
-                duration={animationDuration}
-                delay={staggerDelay * 6}
-                respectReducedMotion={true}
-                fallbackAnimation="fadeIn"
-              >
+              <AnimatedElement animation="slide" duration={isMobile ? 200 : 300} delay={staggerDelay * 6}>
                 <h2
                   id="usage-heading"
                   className="sr-only"
@@ -290,13 +254,7 @@ export function Home() {
               className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
               tabIndex={-1}
             >
-              <AnimatedElement
-                animation="slideUp"
-                duration={animationDuration}
-                delay={staggerDelay * 7}
-                respectReducedMotion={true}
-                fallbackAnimation="fadeIn"
-              >
+              <AnimatedElement animation="slide" duration={isMobile ? 200 : 300} delay={staggerDelay * 7}>
                 <h2
                   id="dog-info-heading"
                   className="sr-only"

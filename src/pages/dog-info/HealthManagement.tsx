@@ -193,7 +193,7 @@ export function HealthManagement() {
               <ol className="space-y-2 text-sm text-gray-700">
                 <li>1. <strong>落ち着いて状況を確認</strong> - パニックにならず、冷静に判断</li>
                 <li>2. <strong>獣医師に連絡</strong> - かかりつけ医または緊急病院に電話</li>
-                <li>3. <strong>安全な搬送</strong> - 必要に応じて救急車やタクシーを利用</li>
+                <li>3. <strong>安全な搬送</strong> - タクシーを利用 ※現在日本ではワンちゃんの救急車使用はできません。</li>
                 <li>4. <strong>症状の記録</strong> - 発症時間、症状の詳細をメモ</li>
                 <li>5. <strong>冷静な説明</strong> - 獣医師に正確な情報を伝える</li>
               </ol>
