@@ -4,6 +4,7 @@ import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-d
 import ErrorFallback from './components/ErrorFallback';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import SkipNavigation from './components/accessibility/SkipNavigation';
 import { AuthProvider } from './context/AuthContext';
 
 // 遅延読み込みするページコンポーネント
@@ -129,6 +130,7 @@ function App() {
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <AuthProvider>
         <Router>
+          <SkipNavigation />
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<Layout />}>

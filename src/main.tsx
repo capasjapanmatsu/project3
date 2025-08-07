@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import { AuthProvider } from './context/AuthContext';
 import './index.css';
+import './styles/a11y.css';
 
 // React Query設定
 const queryClient = new QueryClient({

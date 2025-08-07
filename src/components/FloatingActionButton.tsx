@@ -108,6 +108,7 @@ export const FloatingActionButton = () => {
                 setIsOpen(false);
                 navigate('/jp-passport');
               }}
+              aria-label="JPパスポート - ワクチン証明書を表示"
               className="flex items-center bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full px-12 py-4 shadow-xl transform transition-all duration-300 hover:scale-105 hover:-translate-x-2 min-w-[300px] border-2 border-white/20"
             >
               <Shield className="w-5 h-5 mr-3 drop-shadow-sm" />
@@ -130,6 +131,7 @@ export const FloatingActionButton = () => {
                 });
                 setIsOpen(false);
               }}
+              aria-label={`クーポンを表示 - ${userCoupons.length}枚保有`}
               className="flex items-center bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-full px-12 py-4 shadow-xl transform transition-all duration-300 hover:scale-105 hover:-translate-x-2 min-w-[300px] border-2 border-white/20"
             >
               <Gift className="w-5 h-5 mr-3 drop-shadow-sm" />
@@ -146,6 +148,9 @@ export const FloatingActionButton = () => {
           onClick={() => {
             setIsOpen(!isOpen);
           }}
+          aria-label={isOpen ? 'メニューを閉じる' : 'メニューを開く'}
+          aria-expanded={isOpen}
+          aria-haspopup="menu"
           className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transform transition-all duration-300 border-4 border-white/30 backdrop-blur-sm ${
             isOpen
               ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rotate-45 scale-95'

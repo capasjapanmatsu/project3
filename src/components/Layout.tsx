@@ -69,7 +69,7 @@ const Layout = ({ children }: LayoutProps) => {
       <div className="min-h-screen bg-gray-50 flex flex-col relative">
         <SEO />
         <Navbar />
-        <main className="flex-1 container mx-auto px-4 py-8">
+        <main id="main-content" className="flex-1 container mx-auto px-4 py-8" tabIndex={-1}>
           {children}
         </main>
         

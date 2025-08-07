@@ -1,246 +1,195 @@
-import { ReactNode, forwardRef, HTMLAttributes, CSSProperties } from 'react';
-import { useResponsive } from '../../hooks/useResponsive';
+import React, { useEffect, useState } from 'react';
 
-export type AnimationType = 
-  | 'fadeIn' 
-  | 'slideUp' 
-  | 'slideDown' 
-  | 'slideLeft' 
-  | 'slideRight' 
-  | 'scale' 
-  | 'bounce'
-  | 'pulse'
-  | 'spin';
-
-export type AnimationDuration = 'fast' | 'normal' | 'slow';
-export type AnimationEasing = 'linear' | 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out';
-
-interface AnimatedElementProps extends Omit<HTMLAttributes<HTMLElement>, 'style'> {
-  children: ReactNode;
-  animation?: AnimationType;
-  duration?: AnimationDuration;
-  easing?: AnimationEasing;
+interface AnimatedElementProps {
+  children: React.ReactNode;
+  className?: string;
+  animation?: 'fade' | 'slide' | 'scale' | 'none';
+  duration?: number;
   delay?: number;
-  repeat?: boolean | number;
-  triggerOnce?: boolean;
-  threshold?: number;
-  as?: keyof JSX.IntrinsicElements;
-  respectReducedMotion?: boolean;
-  fallbackAnimation?: AnimationType;
-  style?: CSSProperties;
+  as?: React.ElementType;
 }
 
-const AnimatedElement = forwardRef<HTMLElement, AnimatedElementProps>(({
+/**
+ * アクセシブルなアニメーション要素
+ * prefers-reduced-motionを考慮してアニメーションを制御
+ */
+export const AnimatedElement: React.FC<AnimatedElementProps> = ({
   children,
-  animation = 'fadeIn',
-  duration = 'normal',
-  easing = 'ease-out',
-  delay = 0,
-  repeat = false,
-  triggerOnce: _triggerOnce = true,
-  threshold: _threshold = 0.1,
-  as: Component = 'div',
-  respectReducedMotion = true,
-  fallbackAnimation = 'fadeIn',
   className = '',
-  ...props
-}, ref) => {
-  const { prefersReducedMotion } = useResponsive();
+  animation = 'fade',
+  duration = 300,
+  delay = 0,
+  as: Component = 'div',
+}) => {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
-  // プリファーリデュースモーションが有効な場合の処理
-  const shouldReduceMotion = respectReducedMotion && prefersReducedMotion;
-  const effectiveAnimation = shouldReduceMotion ? fallbackAnimation : animation;
-  
-  // アニメーション期間の設定
-  const durationClasses = {
-    fast: 'duration-200',
-    normal: 'duration-500',
-    slow: 'duration-1000',
-  };
+  useEffect(() => {
+    // ユーザーのモーション設定を確認
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
 
-  // イージングの設定
-  const easingClasses = {
-    linear: 'ease-linear',
-    ease: 'ease',
-    'ease-in': 'ease-in',
-    'ease-out': 'ease-out',
-    'ease-in-out': 'ease-in-out',
-  };
+    const handleChange = (e: MediaQueryListEvent) => {
+      setPrefersReducedMotion(e.matches);
+    };
 
-  // アニメーションタイプの設定
+    mediaQuery.addEventListener('change', handleChange);
+    
+    // アニメーション開始
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+    }, delay);
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange);
+      clearTimeout(timer);
+    };
+  }, [delay]);
+
+  // モーションを減らす設定の場合はアニメーションなし
+  if (prefersReducedMotion) {
+    return <Component className={className}>{children}</Component>;
+  }
+
+  // アニメーションクラスの定義
   const animationClasses = {
-    fadeIn: shouldReduceMotion 
-      ? 'opacity-100 transition-opacity' 
-      : 'opacity-0 animate-fade-in',
-    slideUp: shouldReduceMotion 
-      ? 'transform-none transition-transform' 
-      : 'transform translate-y-4 animate-slide-up',
-    slideDown: shouldReduceMotion 
-      ? 'transform-none transition-transform' 
-      : 'transform -translate-y-4 animate-slide-down',
-    slideLeft: shouldReduceMotion 
-      ? 'transform-none transition-transform' 
-      : 'transform translate-x-4 animate-slide-left',
-    slideRight: shouldReduceMotion 
-      ? 'transform-none transition-transform' 
-      : 'transform -translate-x-4 animate-slide-right',
-    scale: shouldReduceMotion 
-      ? 'transform-none transition-transform' 
-      : 'transform scale-95 animate-scale-in',
-    bounce: shouldReduceMotion 
-      ? 'transform-none' 
-      : 'animate-bounce',
-    pulse: shouldReduceMotion 
-      ? 'opacity-100' 
-      : 'animate-pulse',
-    spin: shouldReduceMotion 
-      ? 'transform-none' 
-      : 'animate-spin',
+    fade: {
+      initial: 'opacity-0',
+      animate: 'opacity-100',
+    },
+    slide: {
+      initial: 'transform translate-y-4 opacity-0',
+      animate: 'transform translate-y-0 opacity-100',
+    },
+    scale: {
+      initial: 'transform scale-95 opacity-0',
+      animate: 'transform scale-100 opacity-100',
+    },
+    none: {
+      initial: '',
+      animate: '',
+    },
   };
 
-  // リピート設定
-  const repeatClass = repeat === true 
-    ? 'animation-iteration-count-infinite' 
-    : typeof repeat === 'number' 
-      ? `animation-iteration-count-${repeat}` 
-      : '';
+  const transitionStyle = {
+    transition: `all ${duration}ms ease-out`,
+  };
 
-  // 遅延設定
-  const delayStyle = delay > 0 ? { animationDelay: `${delay}ms` } : {};
+  const animationClass = isVisible
+    ? animationClasses[animation].animate
+    : animationClasses[animation].initial;
 
-  // 最終的なクラス名
-  const animationClassName = [
-    animationClasses[effectiveAnimation],
-    durationClasses[duration],
-    easingClasses[easing],
-    repeatClass,
-    'transition-all',
-  ].filter(Boolean).join(' ');
-
-  const finalClassName = `${animationClassName} ${className}`.trim();
-
-  const Element = Component as any;
-  
   return (
-    <Element
-      ref={ref}
-      className={finalClassName}
-      style={{
-        ...delayStyle,
-        ...props.style,
-      }}
-      // アクセシビリティ属性
-      aria-hidden={shouldReduceMotion ? undefined : 'false'}
-      {...props}
+    <Component
+      className={`${className} ${animationClass}`}
+      style={transitionStyle}
     >
       {children}
-    </Element>
+    </Component>
   );
-});
+};
 
-AnimatedElement.displayName = 'AnimatedElement';
+/**
+ * フォーカストラップコンポーネント
+ * モーダルやダイアログ内でフォーカスをトラップする
+ */
+export const FocusTrap: React.FC<{
+  children: React.ReactNode;
+  active?: boolean;
+  returnFocus?: boolean;
+}> = ({ children, active = true, returnFocus = true }) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const previousFocusRef = React.useRef<HTMLElement | null>(null);
 
-// プリセットアニメーションコンポーネント
-export const FadeIn = forwardRef<HTMLElement, Omit<AnimatedElementProps, 'animation'>>((props, ref) => (
-  <AnimatedElement ref={ref} animation="fadeIn" {...props} />
-));
-FadeIn.displayName = 'FadeIn';
+  useEffect(() => {
+    if (!active) return;
 
-export const SlideUp = forwardRef<HTMLElement, Omit<AnimatedElementProps, 'animation'>>((props, ref) => (
-  <AnimatedElement ref={ref} animation="slideUp" {...props} />
-));
-SlideUp.displayName = 'SlideUp';
+    // 現在のフォーカスを保存
+    if (returnFocus) {
+      previousFocusRef.current = document.activeElement as HTMLElement;
+    }
 
-export const ScaleIn = forwardRef<HTMLElement, Omit<AnimatedElementProps, 'animation'>>((props, ref) => (
-  <AnimatedElement ref={ref} animation="scale" {...props} />
-));
-ScaleIn.displayName = 'ScaleIn';
+    const container = containerRef.current;
+    if (!container) return;
 
-// カスタムアニメーション用のCSS（globals.cssに追加する）
-export const animationCSS = `
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+    // フォーカス可能な要素を取得
+    const getFocusableElements = () => {
+      const focusableSelectors = [
+        'a[href]',
+        'button:not([disabled])',
+        'textarea:not([disabled])',
+        'input:not([disabled])',
+        'select:not([disabled])',
+        '[tabindex]:not([tabindex="-1"])',
+      ].join(',');
 
-@keyframes slide-up {
-  from { 
-    opacity: 0; 
-    transform: translateY(1rem); 
+      return Array.from(
+        container.querySelectorAll<HTMLElement>(focusableSelectors)
+      ).filter((el) => el.offsetParent !== null);
+    };
+
+    // キーボードイベントハンドラ
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+
+      const focusableElements = getFocusableElements();
+      if (focusableElements.length === 0) return;
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      const activeElement = document.activeElement;
+
+      if (e.shiftKey) {
+        // Shift + Tab
+        if (activeElement === firstElement) {
+          e.preventDefault();
+          lastElement.focus();
+        }
+      } else {
+        // Tab
+        if (activeElement === lastElement) {
+          e.preventDefault();
+          firstElement.focus();
+        }
+      }
+    };
+
+    // ESCキーでフォーカスを元に戻す
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && returnFocus && previousFocusRef.current) {
+        previousFocusRef.current.focus();
+      }
+    };
+
+    // 最初の要素にフォーカス
+    const focusableElements = getFocusableElements();
+    if (focusableElements.length > 0) {
+      focusableElements[0].focus();
+    }
+
+    container.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      container.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleEscape);
+      
+      // フォーカスを元に戻す
+      if (returnFocus && previousFocusRef.current) {
+        previousFocusRef.current.focus();
+      }
+    };
+  }, [active, returnFocus]);
+
+  if (!active) {
+    return <>{children}</>;
   }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
-  }
-}
 
-@keyframes slide-down {
-  from { 
-    opacity: 0; 
-    transform: translateY(-1rem); 
-  }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
-  }
-}
+  return (
+    <div ref={containerRef} tabIndex={-1}>
+      {children}
+    </div>
+  );
+};
 
-@keyframes slide-left {
-  from { 
-    opacity: 0; 
-    transform: translateX(1rem); 
-  }
-  to { 
-    opacity: 1; 
-    transform: translateX(0); 
-  }
-}
-
-@keyframes slide-right {
-  from { 
-    opacity: 0; 
-    transform: translateX(-1rem); 
-  }
-  to { 
-    opacity: 1; 
-    transform: translateX(0); 
-  }
-}
-
-@keyframes scale-in {
-  from { 
-    opacity: 0; 
-    transform: scale(0.95); 
-  }
-  to { 
-    opacity: 1; 
-    transform: scale(1); 
-  }
-}
-
-.animate-fade-in { animation: fade-in var(--animation-duration, 0.5s) var(--animation-easing, ease-out); }
-.animate-slide-up { animation: slide-up var(--animation-duration, 0.5s) var(--animation-easing, ease-out); }
-.animate-slide-down { animation: slide-down var(--animation-duration, 0.5s) var(--animation-easing, ease-out); }
-.animate-slide-left { animation: slide-left var(--animation-duration, 0.5s) var(--animation-easing, ease-out); }
-.animate-slide-right { animation: slide-right var(--animation-duration, 0.5s) var(--animation-easing, ease-out); }
-.animate-scale-in { animation: scale-in var(--animation-duration, 0.5s) var(--animation-easing, ease-out); }
-
-/* プリファーリデュースモーション対応 */
-@media (prefers-reduced-motion: reduce) {
-  .animate-fade-in,
-  .animate-slide-up,
-  .animate-slide-down,
-  .animate-slide-left,
-  .animate-slide-right,
-  .animate-scale-in,
-  .animate-bounce,
-  .animate-pulse,
-  .animate-spin {
-    animation: none !important;
-    transform: none !important;
-    opacity: 1 !important;
-  }
-}
-`;
-
-export default AnimatedElement; 
+export default AnimatedElement;
