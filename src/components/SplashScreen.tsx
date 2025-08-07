@@ -428,7 +428,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             <div className="ml-4">
               <h1 className="text-xl sm:text-2xl font-bold leading-tight">
                 <span className="text-dogpark text-black">ドッグパーク</span>
-                <span className="text-jp shimmer-text ml-1">JP</span>
+                <span className="text-jp text-blue-600 ml-1">JP</span>
               </h1>
               <p className="subtitle-text text-sm sm:text-base text-gray-600 leading-tight">
                 愛犬との素敵な時間を

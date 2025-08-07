@@ -2,7 +2,6 @@ import {
     Bell,
     Download,
     LogOut,
-    PawPrint,
     Settings,
     Shield,
     ShoppingCart
@@ -160,6 +159,84 @@ export const Navbar = memo(function Navbar() {
 
   return (
     <>
+      <style>
+        {`
+        @keyframes logoSlideIn {
+          0% {
+            transform: translateX(-100px) rotate(-180deg);
+            opacity: 0;
+          }
+          50% {
+            transform: translateX(10px) rotate(10deg);
+          }
+          100% {
+            transform: translateX(0) rotate(0deg);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes textReveal {
+          0% {
+            transform: translateY(20px);
+            opacity: 0;
+            letter-spacing: 0.3em;
+          }
+          50% {
+            letter-spacing: 0.1em;
+          }
+          100% {
+            transform: translateY(0);
+            opacity: 1;
+            letter-spacing: normal;
+          }
+        }
+        
+        @keyframes jpPop {
+          0% {
+            transform: scale(0) rotate(180deg);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.2) rotate(10deg);
+          }
+          100% {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes subtitleFade {
+          0% {
+            transform: translateX(-20px);
+            opacity: 0;
+          }
+          100% {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        
+        .navbar-logo-icon {
+          animation: logoSlideIn 0.8s ease-out forwards;
+        }
+        
+        .navbar-text-dogpark {
+          animation: textReveal 0.6s ease-out 0.3s forwards;
+          opacity: 0;
+        }
+        
+        .navbar-text-jp {
+          animation: jpPop 0.5s ease-out 0.7s forwards;
+          opacity: 0;
+          display: inline-block;
+        }
+        
+        .navbar-subtitle-text {
+          animation: subtitleFade 0.6s ease-out 1s forwards;
+          opacity: 0;
+        }
+        `}
+      </style>
       <nav className="bg-white shadow-lg sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center h-16">
@@ -168,21 +245,30 @@ export const Navbar = memo(function Navbar() {
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer group"
               aria-label="ドッグパークJP ホーム"
             >
-              <div className="relative">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-green-400 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
-                  <PawPrint className="h-7 w-7 text-white" aria-hidden="true" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-400 rounded-full opacity-80">
-                  <PawPrint className="h-2 w-2 text-white" aria-hidden="true" />
-                </div>
+              <div className="navbar-logo-icon">
+                <img
+                  src="/icons/icon_android_48x48.png"
+                  alt="ドッグパーク"
+                  className="w-12 h-12"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    const parent = (e.target as HTMLElement).parentElement;
+                    if (parent) {
+                      const fallback = document.createElement('div');
+                      fallback.className = 'w-12 h-12 bg-gradient-to-br from-blue-500 to-green-400 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow';
+                      fallback.innerHTML = '<svg class="h-7 w-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M18,4C16.29,4 15.25,4.33 14.65,4.61C13.88,4.23 13,4 12,4C11,4 10.12,4.23 9.35,4.61C8.75,4.33 7.71,4 6,4C3,4 1,12 1,14C1,14.83 2.32,15.59 4.14,15.9C4.78,18.14 7.8,19.85 11.5,20V15.72C10.91,15.35 10,14.68 10,14C10,13 11,12 12,12C13,12 14,13 14,14C14,14.68 13.09,15.35 12.5,15.72V20C16.2,19.85 19.22,18.14 19.86,15.9C21.68,15.59 23,14.83 23,14C23,12 21,4 18,4Z"/></svg>';
+                      parent.replaceChild(fallback, e.target as HTMLElement);
+                    }
+                  }}
+                />
               </div>
               
               <div className="flex flex-col">
-                <span className="text-xl font-bold text-gray-800 leading-tight">
-                  ドッグパーク
-                  <span className="text-blue-600">JP</span>
+                <span className="text-xl font-bold leading-tight">
+                  <span className="navbar-text-dogpark text-gray-800">ドッグパーク</span>
+                  <span className="navbar-text-jp text-blue-600 ml-1">JP</span>
                 </span>
-                <span className="text-xs text-gray-500 leading-none">
+                <span className="navbar-subtitle-text text-xs text-gray-500 leading-none">
                   愛犬との素敵な時間を
                 </span>
               </div>
