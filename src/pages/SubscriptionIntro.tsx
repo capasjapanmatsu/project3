@@ -12,22 +12,26 @@ import { supabase } from '../utils/supabase';
 
 const FEATURES = [
   {
-    icon: <Users className="w-8 h-8 text-blue-600" />,
+    Icon: Users,
+    iconColor: "text-blue-600",
     title: "全国どこでも使い放題",
     description: "登録済みドッグランが使い放題"
   },
   {
-    icon: <Crown className="w-8 h-8 text-yellow-600" />,
+    Icon: Crown,
+    iconColor: "text-yellow-600",
     title: "ペットショップ10%OFF",
     description: "対象ショップでのお買い物が常に10%オフ"
   },
   {
-    icon: <Shield className="w-8 h-8 text-green-600" />,
+    Icon: Shield,
+    iconColor: "text-green-600",
     title: "送料無料",
     description: "ペットショップでのご注文は送料無料"
   },
   {
-    icon: <Sparkles className="w-8 h-8 text-purple-600" />,
+    Icon: Sparkles,
+    iconColor: "text-purple-600",
     title: "ドッグラン施設貸切20%OFF",
     description: "プライベート空間をお得に利用"
   }
@@ -222,19 +226,22 @@ export function SubscriptionIntro() {
 
           {/* 機能一覧 */}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            {FEATURES.map((feature, index) => (
-              <Card key={index} className="text-center p-6 hover:shadow-lg transition-shadow">
-                <div className="flex justify-center mb-4">
-                  {feature.icon}
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  {feature.description}
-                </p>
-              </Card>
-            ))}
+            {FEATURES.map((feature, index) => {
+              const FeatureIcon = feature.Icon;
+              return (
+                <Card key={index} className="text-center p-6 hover:shadow-lg transition-shadow">
+                  <div className="flex justify-center mb-4">
+                    <FeatureIcon className={`w-8 h-8 ${feature.iconColor}`} />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {feature.title}
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    {feature.description}
+                  </p>
+                </Card>
+              );
+            })}
           </div>
 
           {/* 価格表示 */}
@@ -268,8 +275,10 @@ export function SubscriptionIntro() {
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-4"
                   disabled={loading}
                 >
-                  <Star className="w-5 h-5 mr-2" />
-                  今すぐ無料で始める（翌月から月額3,800円）
+                  <span className="flex items-center justify-center">
+                    <Star className="w-5 h-5 mr-2" />
+                    今すぐ無料で始める（翌月から月額3,800円）
+                  </span>
                 </Button>
               )}
             </Card>
