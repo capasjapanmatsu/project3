@@ -262,8 +262,7 @@ export default function FacilityRegistration() {
 
       // 住所から緯度・経度を取得
       console.log(`📍 住所をジオコーディング中: ${formData.address}`);
-      const formattedAddress = formatAddressForGeocoding(formData.address);
-      const geocodeResult = await geocodeAddress(formattedAddress);
+      const geocodeResult = await geocodeAddress(formData.address);
       
       let latitude = null;
       let longitude = null;

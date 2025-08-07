@@ -1,8 +1,8 @@
-import { Loader } from '@googlemaps/js-api-loader';
 import { MapPin, Search } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { geocodeAddress } from '../utils/geocoding';
 import Button from './Button';
+import { useGoogleMaps } from './GoogleMapsProvider';
 import Input from './Input';
 
 interface LocationEditMapProps {
@@ -31,18 +31,16 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [mapError, setMapError] = useState<string>('');
 
+  // GoogleMapsProviderからgoogleインスタンスを取得
+  const { isLoaded, google: googleInstance } = useGoogleMaps();
+
   // Google Maps初期化
   const initMap = useCallback(async () => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !googleInstance) return;
 
     try {
-      const loader = new Loader({
-        apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-        version: 'weekly',
-        libraries: ['places', 'geometry']
-      });
-
-      await loader.load();
+      // GoogleMapsProviderから提供されるgoogleインスタンスを使用
+      const google = googleInstance;
 
       const map = new google.maps.Map(mapRef.current, {
         center: { lat: latitude, lng: longitude },
@@ -159,8 +157,10 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
 
   // 初期化
   useEffect(() => {
-    void initMap();
-  }, [initMap]);
+    if (isLoaded && googleInstance) {
+      void initMap();
+    }
+  }, [initMap, isLoaded, googleInstance]);
 
   // 初期住所が設定されているが座標が未設定の場合、自動ジオコーディング
   useEffect(() => {

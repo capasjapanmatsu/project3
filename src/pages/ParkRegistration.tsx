@@ -9,6 +9,7 @@ import { useErrorHandler } from '../hooks/useErrorHandler';
 import { retryConfigs, useRetryWithRecovery } from '../hooks/useRetryWithRecovery';
 import type { DogPark } from '../types';
 import { formatAddressForGeocoding, geocodeAddress } from '../utils/geocoding';
+import { processParkImage } from '../utils/imageUtils';
 import { supabase } from '../utils/supabase';
 
 export default function ParkRegistration() {

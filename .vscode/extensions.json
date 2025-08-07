@@ -1,28 +1,16 @@
 {
   "recommendations": [
-    // 🔥 JavaScript/TypeScript必須
+    // 🔥 最小限必須拡張機能のみ
     "ms-vscode.vscode-typescript-next",
-    "dbaeumer.vscode-eslint",
+    "dbaeumer.vscode-eslint", 
     "esbenp.prettier-vscode",
-    
-    // ⚛️ React開発
-    "ms-vscode.vscode-typescript-next",
     "bradlc.vscode-tailwindcss",
-    
-    // 🛠️ 開発効率
-    "ms-vscode.vscode-json",
-    "redhat.vscode-yaml",
-    
-    // 🎨 UI/UX
-    "PKief.material-icon-theme",
-    
-    // 🚀 PWA開発
-    "ms-vscode.vscode-typescript-next"
+    "mikestead.dotenv"
   ],
   "unwantedRecommendations": [
-    // 重い拡張機能を除外
+    // パフォーマンスに影響する拡張機能を除外
     "ms-python.python",
-    "ms-dotnettools.csharp",
+    "ms-dotnettools.csharp", 
     "ms-vscode.vscode-java-pack",
     "redhat.java",
     "golang.go",
@@ -33,11 +21,16 @@
     "ms-kubernetes-tools.vscode-kubernetes-tools",
     "hashicorp.terraform",
     "ms-mssql.mssql",
-    "oracle.oracledevtools",
+    "oracle.oracledevtools", 
     "mongodb.mongodb-vscode",
     "ms-vscode.live-server",
     "ritwickdey.liveserver",
     "humao.rest-client",
-    "ms-vscode.rest-client"
+    "ms-vscode.rest-client",
+    "PKief.material-icon-theme",
+    "ms-vscode.vscode-json",
+    "redhat.vscode-yaml",
+    // 重複除去
+    "ms-vscode.vscode-typescript-next"
   ]
 }

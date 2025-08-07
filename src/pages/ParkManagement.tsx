@@ -34,6 +34,7 @@ import { ParkManagementWalkthrough } from '../components/ParkManagementWalkthrou
 import { PinCodeGenerator } from '../components/PinCodeGenerator';
 import useAuth from '../context/AuthContext';
 import type { DogPark, SmartLock } from '../types';
+
 import { supabase } from '../utils/supabase';
 
 // 施設画像タイプ定義
@@ -237,6 +238,7 @@ export function ParkManagement() {
 
   // ウォークスルー関連state
   const [showWalkthrough, setShowWalkthrough] = useState(false);
+  const [walkthroughChecked, setWalkthroughChecked] = useState(false);
 
   // メンテナンス予定取得関数
   const fetchMaintenanceSchedules = async () => {
@@ -261,8 +263,8 @@ export function ParkManagement() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('test_walkthrough') === 'true') {
-      console.log('🧪 テストモード: ウォークスルーを強制表示');
-      setShowWalkthrough(true);
+      console.log('🧪 テストモード: ウォークスルーは一時的に無効化されています');
+      // setShowWalkthrough(true); // 一時的に無効化
     }
   }, []);
 
@@ -270,10 +272,19 @@ export function ParkManagement() {
   const checkWalkthroughEligibility = useCallback(async () => {
     console.log('🔍 ウォークスルー判定開始:', { parkId, userId: user?.id, parkStatus: park?.status });
     
+    // 既にウォークスルーが表示中またはチェック済みの場合はスキップ
+    if (showWalkthrough || walkthroughChecked) {
+      console.log('🔍 ウォークスルー既に表示中またはチェック済み');
+      return;
+    }
+    
     if (!parkId || !user || !park) {
       console.log('❌ ウォークスルー判定: 必要なデータが不足', { parkId, user: !!user, park: !!park });
       return;
     }
+    
+    // チェック済みフラグを即座に立てる
+    setWalkthroughChecked(true);
 
     try {
       console.log('🔍 プロフィール情報をチェック中...');
@@ -314,7 +325,7 @@ export function ParkManagement() {
     } catch (error) {
       console.error('ウォークスルー判定エラー:', error);
     }
-  }, [parkId, user, park]);
+  }, [parkId, user, park, walkthroughChecked, showWalkthrough]);
 
   // ウォークスルー完了時の処理
   const handleWalkthroughComplete = useCallback(async () => {
@@ -339,6 +350,10 @@ export function ParkManagement() {
       setActiveTab('location');
     } else if (stepId === 'pins') {
       setActiveTab('pins');
+    } else if (stepId === 'settings') {
+      setActiveTab('settings');
+    } else if (stepId === 'overview') {
+      setActiveTab('overview');
     }
   }, []);
 
@@ -356,10 +371,17 @@ export function ParkManagement() {
     }
   }, [park]);
 
-  // ウォークスルーの発動を監視
+  // ウォークスルーの発動を監視（初回のみ）
   useEffect(() => {
-    void checkWalkthroughEligibility();
-  }, [parkId, user, park]);
+    // park が初めて取得された時のみ実行
+    if (park && park.status === 'approved' && !walkthroughChecked && !showWalkthrough) {
+      // 少し遅延させてから実行（レンダリング完了を待つ）
+      const timer = setTimeout(() => {
+        void checkWalkthroughEligibility();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [park?.id]); // park.idが変わった時のみ再実行
 
   // パークデータ取得関数
   const fetchParkData = async () => {
@@ -507,16 +529,15 @@ export function ParkManagement() {
       setShowImageCropper(false);
       setError('');
 
-      // ファイル名を元のファイル名に設定
-      const fileWithName = new File([croppedFile], originalFileName, { type: croppedFile.type });
-
       // ファイルをSupabaseストレージにアップロード
-      const fileName = `${imageTypeToUpload}_${Date.now()}_${originalFileName}`;
+      const fileName = `${imageTypeToUpload}_${Date.now()}_${croppedFile.name}`;
       const filePath = `${parkId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('dog-park-images')
-        .upload(filePath, fileWithName, { upsert: true });
+        .upload(filePath, croppedFile, { 
+          upsert: true
+        });
 
       if (uploadError) throw uploadError;
 
@@ -954,15 +975,16 @@ export function ParkManagement() {
               <div className="border-b border-gray-200">
                 <div className="flex space-x-8 px-6">
         <button
-                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+          data-walkthrough="overview-tab"
+          className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
             activeTab === 'overview'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              ? 'border-blue-500 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
           onClick={() => setActiveTab('overview')}
         >
           <Building className="w-4 h-4 inline mr-2" />
-                    概要・メンテナンス
+          概要・メンテナンス
         </button>
         <button
                     className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
@@ -988,10 +1010,11 @@ export function ParkManagement() {
           PINコード管理
         </button>
         <button
-                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+          data-walkthrough="settings-tab"
+          className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
             activeTab === 'settings'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              ? 'border-blue-500 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
           onClick={() => setActiveTab('settings')}
         >
@@ -1093,6 +1116,7 @@ export function ParkManagement() {
                       type="button"
                       disabled={isToggleLoading}
                       onClick={() => handlePublicToggle(!editForm.is_public)}
+                      data-walkthrough="public-toggle"
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                         editForm.is_public ? 'bg-blue-600' : 'bg-gray-200'
                       } ${isToggleLoading ? 'opacity-50 cursor-not-allowed' : ''}`}

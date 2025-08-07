@@ -1,4 +1,5 @@
 // ワクチン証明書のアップロード機能
+
 import { supabase } from './supabase';
 
 /**
@@ -68,15 +69,14 @@ export const uploadVaccineImage = async (
       throw new Error(fileValidation.error);
     }
 
-    const fileName = `${dogIdTyped}_${vaccineType}_${Date.now()}.jpg`;
+    const fileName = `${dogIdTyped}_${vaccineType}_${Date.now()}_${file.name}`;
     const filePath = `${dogIdTyped}/${fileName}`;
 
     const { data, error } = await supabase.storage
       .from('vaccine-certs')
       .upload(filePath, file, {
         cacheControl: '3600',
-        upsert: false,
-        contentType: file.type
+        upsert: false
       });
 
     if (error) {

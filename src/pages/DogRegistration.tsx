@@ -9,6 +9,7 @@ import { SEO } from '../components/SEO';
 import Select from '../components/Select';
 import useAuth from '../context/AuthContext';
 import { dogBreeds } from '../data/dogBreeds';
+
 import { logger } from '../utils/logger';
 import { notify } from '../utils/notification';
 import { supabase } from '../utils/supabase';

@@ -67,7 +67,7 @@ interface FraudStats {
 export function AdminDashboard() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'parks' | 'facilities' | 'users' | 'maintenance' | 'fraud' | 'sponsors' | 'vaccine-approval'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'parks' | 'facilities' | 'users' | 'maintenance' | 'fraud' | 'sponsors' | 'vaccine-approval' | 'inquiries'>('overview');
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalParks: 0,
@@ -108,6 +108,14 @@ export function AdminDashboard() {
       setProcessingError('');
       setProcessingSuccess('');
 
+      // 直接vaccine_certificationsテーブルから承認待ち件数を取得
+      const { count: vaccineCount, error: vaccineError } = await supabase
+        .from('vaccine_certifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      
+      console.log('🔍 ワクチン承認待ち件数（直接取得）:', vaccineCount, 'エラー:', vaccineError);
+
       // 管理者統計情報を取得
       const { data: statsData, error: statsError } = await supabase.rpc('get_admin_stats');
 
@@ -118,11 +126,14 @@ export function AdminDashboard() {
       console.log('📊 管理者統計データ:', typedStatsData);
 
       if (typedStatsData) {
+        // 直接取得したワクチン件数を優先的に使用
+        const actualPendingVaccines = vaccineCount !== null ? vaccineCount : (typedStatsData.pending_vaccines || 0);
+        
         setStats({
           totalUsers: typedStatsData.total_users || 0,
           totalParks: typedStatsData.total_parks || 0,
           pendingParks: typedStatsData.pending_parks || 0,
-          pendingVaccines: typedStatsData.pending_vaccines || 0,
+          pendingVaccines: actualPendingVaccines,
           pendingFacilities: typedStatsData.pending_facilities || 0,
           totalReservations: typedStatsData.total_reservations || 0,
           monthlyRevenue: typedStatsData.monthly_revenue || 0,
@@ -133,7 +144,7 @@ export function AdminDashboard() {
           unreadMessages: typedStatsData.unread_messages || 0
         });
         
-        console.log('🔢 申請中件数 - ドッグラン:', typedStatsData.pending_parks, 'その他施設:', typedStatsData.pending_facilities);
+        console.log('🔢 申請中件数 - ドッグラン:', typedStatsData.pending_parks, 'その他施設:', typedStatsData.pending_facilities, 'ワクチン(RPC):', typedStatsData.pending_vaccines, 'ワクチン(直接):', actualPendingVaccines);
       }
 
     } catch (error) {
@@ -397,8 +408,7 @@ export function AdminDashboard() {
               { id: 'vaccine-approval', label: 'ワクチン', icon: Shield, badge: stats.pendingVaccines }
             ].map((tab) => {
               const Icon = tab.icon;
-              const hasBadge = tab.badge !== undefined;
-              const isUrgent = tab.badge && tab.badge > 0;
+              const hasBadge = tab.badge !== undefined && tab.badge > 0;
               return (
                 <button
                   key={tab.id}
@@ -412,11 +422,7 @@ export function AdminDashboard() {
                   <Icon className="w-4 h-4 mr-2" />
                   <span>{tab.label}</span>
                   {hasBadge && (
-                    <span className={`ml-2 inline-flex items-center justify-center text-white text-xs font-bold rounded-full min-w-[22px] h-[22px] px-1.5 ${
-                      isUrgent 
-                        ? 'bg-red-500 shadow-lg animate-pulse' 
-                        : 'bg-gray-400'
-                    }`}>
+                    <span className="ml-2 inline-flex items-center justify-center text-white text-xs font-bold rounded-full min-w-[22px] h-[22px] px-1.5 bg-red-500 shadow-lg animate-pulse">
                       {tab.badge}
                     </span>
                   )}

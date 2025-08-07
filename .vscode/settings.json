@@ -9,7 +9,13 @@
     "**/build": true,
     "**/*.log": true,
     "**/.cache": true,
-    "**/coverage": true
+    "**/coverage": true,
+    "**/.next": true,
+    "**/.vercel": true,
+    "**/.netlify": true,
+    "**/tmp": true,
+    "**/temp": true,
+    "**/*.tsbuildinfo": true
   },
   "search.exclude": {
     "**/node_modules": true,
@@ -23,7 +29,21 @@
     "**/.cache": true,
     "**/coverage": true,
     "**/public/sw.js": true,
-    "**/public/manifest.json": true
+    "**/public/manifest.json": true,
+    "**/.next": true,
+    "**/.vercel": true,
+    "**/.netlify": true,
+    "**/tmp": true,
+    "**/temp": true,
+    "**/*.tsbuildinfo": true,
+    "**/*.mp4": true,
+    "**/*.avi": true,
+    "**/*.mov": true,
+    "**/*.mp3": true,
+    "**/*.wav": true,
+    "**/*.pdf": true,
+    "**/*.zip": true,
+    "**/*.tar.gz": true
   },
   "typescript.preferences.importModuleSpecifier": "relative",
   "typescript.suggest.autoImports": true,
@@ -33,7 +53,9 @@
   },
   "files.associations": {
     "*.tsx": "typescriptreact",
-    "*.ts": "typescript"
+    "*.ts": "typescript",
+    ".cursorignore": "ignore",
+    ".gitignore": "ignore"
   },
   "emmet.includeLanguages": {
     "typescriptreact": "html"
@@ -59,5 +81,52 @@
       "requestTimeout": 30000
     }
   ],
-  "sqltools.autoConnectTo": ["supabase-project3"]
+  "sqltools.autoConnectTo": ["supabase-project3"],
+  
+  // パフォーマンス設定
+  "editor.minimap.enabled": false,
+  "editor.renderControlCharacters": false,
+  "editor.renderWhitespace": "none",
+  "editor.occurrencesHighlight": "off",
+  "editor.selectionHighlight": false,
+  "editor.wordBasedSuggestions": "off",
+  "editor.suggest.localityBonus": true,
+  "editor.suggest.maxVisibleSuggestions": 10,
+  
+  // TypeScript パフォーマンス設定
+  "typescript.suggest.enabled": true,
+  "typescript.validate.enable": true,
+  "typescript.disableAutomaticTypeAcquisition": true,
+  "typescript.preferences.includePackageJsonAutoImports": "off",
+  
+  // Git パフォーマンス設定
+  "git.decorations.enabled": false,
+  "git.enableStatusBarSync": false,
+  
+  // ファイル設定
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.cache": true,
+    "**/*.tsbuildinfo": true
+  },
+  
+  // 拡張機能の制限
+  "extensions.autoUpdate": false,
+  "extensions.autoCheckUpdates": false,
+  
+  // .cursorignore ファイルの設定を参照
+  "files.useExperimentalFileWatcher": true,
+  "files.watcherExcludePatterns": [".cursorignore"],
+  
+  // Cursor関連の設定
+  "cursor.cpp.disableErrorSquiggles": true,
+  "cursor.general.enableLogging": false
 }

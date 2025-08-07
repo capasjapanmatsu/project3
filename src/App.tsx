@@ -253,13 +253,14 @@ const App: React.FC = () => {
       
       {/* メインアプリケーション */}
       {!showSplash && (
-        <MaintenanceProvider>
-          <Layout>
-            <ScrollToTop />
-            <CampaignModal 
-              isOpen={showCampaignModal} 
-              onClose={handleCampaignModalClose} 
-            />
+        <GoogleMapsProvider>
+          <MaintenanceProvider>
+            <Layout>
+              <ScrollToTop />
+              <CampaignModal 
+                isOpen={showCampaignModal} 
+                onClose={handleCampaignModalClose} 
+              />
               <Routes>
               {/* 🏠 公開ページ（高速表示） */}
               <Route path="/" element={
@@ -715,8 +716,9 @@ const App: React.FC = () => {
                 </Suspense>
               } />
               </Routes>
-          </Layout>
-        </MaintenanceProvider>
+            </Layout>
+          </MaintenanceProvider>
+        </GoogleMapsProvider>
       )}
     </>
   );

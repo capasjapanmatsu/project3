@@ -6,6 +6,7 @@ import Card from '../components/Card';
 import ImageCropper from '../components/ImageCropper'; // Added import for ImageCropper
 import Input from '../components/Input';
 import useAuth from '../context/AuthContext';
+
 import { supabase } from '../utils/supabase';
 
 interface FacilityImage {
@@ -314,32 +315,32 @@ export function ParkRegistrationSecondStage() {
           .from('dog-park-images')
           .getPublicUrl(uploadFileName);
 
-        // データベースに保存
-        const imageToUpdate = images.find(img => img.image_type === imageTypeToUpload);
-        if (imageToUpdate?.id) {
-          // Update existing image
-          const { error: updateError } = await supabase
-            .from('dog_park_facility_images')
-            .update({
-              image_url: publicUrl,
-              is_approved: null,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', imageToUpdate.id);
+              // データベースに保存
+      const imageToUpdate = images.find(img => img.image_type === imageTypeToUpload);
+      if (imageToUpdate?.id) {
+        // Update existing image
+        const { error: updateError } = await supabase
+          .from('dog_park_facility_images')
+          .update({
+            image_url: publicUrl,
+            is_approved: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', imageToUpdate.id);
 
-          if (updateError) throw updateError;
-        } else {
-          // Insert new image
-          const { error: insertError } = await supabase
-            .from('dog_park_facility_images')
-            .insert({
-              park_id: parkId,
-              image_type: imageTypeToUpload,
-              image_url: publicUrl
-            });
+        if (updateError) throw updateError;
+      } else {
+        // Insert new image
+        const { error: insertError } = await supabase
+          .from('dog_park_facility_images')
+          .insert({
+            park_id: parkId,
+            image_type: imageTypeToUpload,
+            image_url: publicUrl
+          });
 
-          if (insertError) throw insertError;
-        }
+        if (insertError) throw insertError;
+      }
 
         // データを再取得
         await fetchParkData();
@@ -384,7 +385,7 @@ export function ParkRegistrationSecondStage() {
           : img
       ));
 
-      // Upload to storage - safe file extension handling
+      // Upload to storage
       const fileName = imageToUpload.file.name || 'image.jpg';
       const fileExt = fileName.includes('.') ? fileName.split('.').pop() : 'jpg';
       const uploadFileName = `${parkId}/${imageType}_${Date.now()}.${fileExt}`;
@@ -402,14 +403,27 @@ export function ParkRegistrationSecondStage() {
 
       // Save to database
       if (imageToUpload.id) {
-        // Update existing image
+        // Update existing image - 承認状態は変更しない
+        const updateData: any = {
+          image_url: publicUrl,
+          updated_at: new Date().toISOString()
+        };
+        
+        // 既存の承認状態を確認
+        const { data: existingImage } = await supabase
+          .from('dog_park_facility_images')
+          .select('is_approved')
+          .eq('id', imageToUpload.id)
+          .single();
+        
+        // 承認済みでない場合のみnullにリセット
+        if (existingImage && existingImage.is_approved !== true) {
+          updateData.is_approved = null;
+        }
+        
         const { error: updateError } = await supabase
           .from('dog_park_facility_images')
-          .update({
-            image_url: publicUrl,
-            is_approved: null, // Reset approval status
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', imageToUpload.id);
 
         if (updateError) throw updateError;

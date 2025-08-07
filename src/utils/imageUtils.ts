@@ -8,7 +8,6 @@ export interface ImageProcessOptions {
   quality: number; // 0.1 - 1.0
   aspectRatio?: number; // 1 for square
   maxSizeMB?: number; // 最大ファイルサイズ（MB）
-  outputFormat?: 'jpeg' | 'png' | 'webp';
 }
 
 /**
@@ -30,19 +29,25 @@ export const processImage = (
 
     img.onload = () => {
       try {
-        // 1:1のアスペクト比でトリミング
+        // アスペクト比に応じたトリミング
         let sourceX = 0;
         let sourceY = 0;
         let sourceWidth = img.width;
         let sourceHeight = img.height;
 
-        if (options.aspectRatio === 1) {
-          // 正方形にトリミング
-          const minDimension = Math.min(img.width, img.height);
-          sourceWidth = minDimension;
-          sourceHeight = minDimension;
-          sourceX = (img.width - minDimension) / 2;
-          sourceY = (img.height - minDimension) / 2;
+        if (options.aspectRatio) {
+          const targetRatio = options.aspectRatio;
+          const currentRatio = img.width / img.height;
+
+          if (currentRatio > targetRatio) {
+            // 画像が目標より横長の場合、左右をトリミング
+            sourceWidth = img.height * targetRatio;
+            sourceX = (img.width - sourceWidth) / 2;
+          } else if (currentRatio < targetRatio) {
+            // 画像が目標より縦長の場合、上下をトリミング
+            sourceHeight = img.width / targetRatio;
+            sourceY = (img.height - sourceHeight) / 2;
+          }
         }
 
         // キャンバスサイズを設定
@@ -57,9 +62,6 @@ export const processImage = (
         );
 
         // Blobとして出力（圧縮）
-        const outputFormat = options.outputFormat || 'jpeg';
-        const mimeType = `image/${outputFormat}`;
-        
         canvas.toBlob(
           (blob) => {
             if (blob) {
@@ -75,7 +77,7 @@ export const processImage = (
                       reject(new Error('Failed to create compressed blob'));
                     }
                   },
-                  mimeType,
+                  'image/jpeg',
                   lowerQuality
                 );
               } else {
@@ -85,7 +87,7 @@ export const processImage = (
               reject(new Error('Failed to create blob'));
             }
           },
-          mimeType,
+          'image/jpeg',
           options.quality
         );
       } catch (error) {
@@ -98,17 +100,7 @@ export const processImage = (
   });
 };
 
-/**
- * レビュー用画像処理（300x300, 1:1, 圧縮率0.8）
- */
-export const processReviewImage = (file: File): Promise<Blob> => {
-  return processImage(file, {
-    maxWidth: 300,
-    maxHeight: 300,
-    quality: 0.8,
-    aspectRatio: 1
-  });
-};
+
 
 /**
  * ファイルサイズを人間が読める形式に変換

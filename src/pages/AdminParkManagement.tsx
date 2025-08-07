@@ -221,18 +221,10 @@ export function AdminParkManagement() {
   // 承認済みパークを取得する関数
   const fetchApprovedParks = async () => {
     try {
+      // まず承認済みパークを取得
       const { data: approvedParksData, error } = await supabase
         .from('dog_parks')
-        .select(`
-          *,
-          profiles:owner_id (
-            name,
-            address,
-            phone_number,
-            email,
-            postal_code
-          )
-        `)
+        .select('*')
         .eq('status', 'approved')
         .order('created_at', { ascending: false });
 
@@ -241,9 +233,34 @@ export function AdminParkManagement() {
         return [];
       }
 
+      if (!approvedParksData || approvedParksData.length === 0) {
+        return [];
+      }
+
+      // オーナーIDのリストを作成
+      const ownerIds = [...new Set(approvedParksData.map(park => park.owner_id))];
+
+      // プロファイル情報を別途取得
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, name, address, phone_number, email, postal_code')
+        .in('id', ownerIds);
+
+      if (profilesError) {
+        console.error('❌ プロファイル取得エラー:', profilesError);
+      }
+
+      // プロファイル情報をマップに変換
+      const profilesMap = new Map();
+      if (profilesData) {
+        profilesData.forEach(profile => {
+          profilesMap.set(profile.id, profile);
+        });
+      }
+
       // 承認済みパークを変換
       const convertedApprovedParks = approvedParksData.map(park => {
-        const profile = Array.isArray(park.profiles) ? park.profiles[0] : park.profiles;
+        const profile = profilesMap.get(park.owner_id);
         return convertPendingParkToParkData({
           id: park.id,
           name: park.name,
@@ -589,61 +606,45 @@ export function AdminParkManagement() {
     const park = parks.find(p => p.id === parkId);
     if (!park) return;
 
-    // 一時的な回避策：pendingから直接approvedに更新
-    const isTemporaryFix = window.confirm(
-      '⚠️ 一時的な回避策を使用しますか？\n\n' +
-      '「はい」を選択すると、第一審査から直接「承認済み」に変更されます。\n' +
-      '「いいえ」を選択すると、通常の承認処理を実行します（データベース制約の修正が必要）。'
-    );
-
     let nextStatus: string;
     let confirmMessage: string;
     let successMessage: string;
     let notificationTitle: string;
     let notificationMessage: string;
 
-    if (isTemporaryFix) {
-      // 一時的な回避策：second_stage_waitingにして申請タブに残す
-      nextStatus = 'second_stage_waiting';
-      confirmMessage = '⚠️ 一時的な回避策として、このドッグランを「第二審査提出待ち」にしてもよろしいですか？\n\n※ 申請タブに残り、後で再度承認処理ができます。';
-      successMessage = '⚠️ 一時的な回避策により、ドッグランのステータスが「第二審査提出待ち」に変更されました。';
-      notificationTitle = 'ドッグラン第一審査承認';
-      notificationMessage = `${park.name}の第一審査が承認されました。`;
-    } else {
-      // 通常の承認処理
-      switch (park.status) {
-        case 'pending':
-          nextStatus = 'second_stage_waiting';
-          confirmMessage = 'このドッグランの第一審査を承認してもよろしいですか？';
-          successMessage = 'ドッグランの第一審査を承認しました。';
-          notificationTitle = 'ドッグラン第一審査承認';
-          notificationMessage = `${park.name}の第一審査が承認されました。`;
-          break;
-        case 'second_stage_waiting':
-          nextStatus = 'second_stage_review';
-          confirmMessage = 'このドッグランを第二審査中に変更しますか？';
-          successMessage = 'ドッグランが第二審査中に変更されました。';
-          notificationTitle = 'ドッグラン第二審査開始';
-          notificationMessage = `${park.name}の第二審査が開始されました。`;
-          break;
-        case 'second_stage_review':
-          nextStatus = 'approved';
-          confirmMessage = 'このドッグランの第二審査を承認してもよろしいですか？\n承認後はデフォルトで非公開状態になり、オーナーが公開設定を行う必要があります。';
-          successMessage = 'ドッグランの第二審査を承認しました。オーナーが公開設定を行うまで非公開状態です。';
-          notificationTitle = 'ドッグラン第二審査承認';
-          notificationMessage = `${park.name}の第二審査が承認されました。`;
-          break;
-        case 'smart_lock_testing':
-          nextStatus = 'approved';
-          confirmMessage = 'このドッグランの承認を完了してもよろしいですか？';
-          successMessage = 'ドッグランが承認されました。';
-          notificationTitle = 'ドッグラン承認完了';
-          notificationMessage = `${park.name}が承認されました。`;
-          break;
-        default:
-          showError('このドッグランの現在のステータスでは承認できません。');
-          return;
-      }
+    // 通常の承認処理
+    switch (park.status) {
+      case 'pending':
+        nextStatus = 'second_stage_waiting';
+        confirmMessage = 'このドッグランの第一審査を承認してもよろしいですか？';
+        successMessage = 'ドッグランの第一審査を承認しました。';
+        notificationTitle = 'ドッグラン第一審査承認';
+        notificationMessage = `${park.name}の第一審査が承認されました。`;
+        break;
+      case 'second_stage_waiting':
+        nextStatus = 'second_stage_review';
+        confirmMessage = 'このドッグランを第二審査中に変更しますか？';
+        successMessage = 'ドッグランが第二審査中に変更されました。';
+        notificationTitle = 'ドッグラン第二審査開始';
+        notificationMessage = `${park.name}の第二審査が開始されました。`;
+        break;
+      case 'second_stage_review':
+        nextStatus = 'approved';
+        confirmMessage = 'このドッグランの第二審査を承認してもよろしいですか？\n承認後はデフォルトで非公開状態になり、オーナーが公開設定を行う必要があります。';
+        successMessage = 'ドッグランの第二審査を承認しました。オーナーが公開設定を行うまで非公開状態です。';
+        notificationTitle = 'ドッグラン第二審査承認';
+        notificationMessage = `${park.name}の第二審査が承認されました。`;
+        break;
+      case 'smart_lock_testing':
+        nextStatus = 'approved';
+        confirmMessage = 'このドッグランの承認を完了してもよろしいですか？';
+        successMessage = 'ドッグランが承認されました。';
+        notificationTitle = 'ドッグラン承認完了';
+        notificationMessage = `${park.name}が承認されました。`;
+        break;
+      default:
+        showError('このドッグランの現在のステータスでは承認できません。');
+        return;
     }
 
     const confirmApprove = window.confirm(confirmMessage);

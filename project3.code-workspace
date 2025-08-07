@@ -1,0 +1,68 @@
+# VS Code Workspace Settings
+# このファイルは.cursorignoreと連携してパフォーマンスを最適化します
+
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    // .cursorignoreと同期したファイル除外設定
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/build": true,
+      "**/.cache": true,
+      "**/tmp": true,
+      "**/temp": true,
+      "**/*.tsbuildinfo": true,
+      "**/.env": true,
+      "**/.env.local": true,
+      "**/coverage": true,
+      "**/.nyc_output": true,
+      "**/*.log": true,
+      "**/Thumbs.db": true,
+      "**/.DS_Store": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/build": true,
+      "**/.cache": true,
+      "**/tmp": true,
+      "**/temp": true,
+      "**/*.tsbuildinfo": true,
+      "**/coverage": true,
+      "**/*.log": true,
+      "**/*.mp4": true,
+      "**/*.avi": true,
+      "**/*.mov": true,
+      "**/*.mp3": true,
+      "**/*.wav": true,
+      "**/*.pdf": true,
+      "**/*.zip": true,
+      "**/*.tar.gz": true
+    },
+    "files.watcherExclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/build": true,
+      "**/.cache": true,
+      "**/tmp": true,
+      "**/temp": true,
+      "**/*.tsbuildinfo": true,
+      "**/coverage": true,
+      "**/*.log": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-vscode.vscode-typescript-next",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "bradlc.vscode-tailwindcss",
+      "mikestead.dotenv"
+    ]
+  }
+}

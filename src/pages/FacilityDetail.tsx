@@ -59,58 +59,7 @@ interface ReviewSummary {
   rating_1_count: number;
 }
 
-// 画像処理ユーティリティ関数
-const processReviewImage = async (file: File): Promise<File> => {
-  return new Promise((resolve, reject) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-    
-    img.onload = () => {
-      // 1:1のアスペクト比でトリミング
-      const size = Math.min(img.width, img.height);
-      const offsetX = (img.width - size) / 2;
-      const offsetY = (img.height - size) / 2;
-      
-      // 最適なサイズ（600x600）にリサイズ
-      const targetSize = 600;
-      canvas.width = targetSize;
-      canvas.height = targetSize;
-      
-      // 画像を描画
-      ctx?.drawImage(img, offsetX, offsetY, size, size, 0, 0, targetSize, targetSize);
-      
-      // 圧縮してBlobに変換
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            const processedFile = new File([blob], file.name, {
-              type: 'image/jpeg',
-              lastModified: Date.now()
-            });
-            resolve(processedFile);
-          } else {
-            reject(new Error('画像の処理に失敗しました'));
-          }
-        },
-        'image/jpeg',
-        0.8 // 80%の品質で圧縮
-      );
-    };
-    
-    img.onerror = () => reject(new Error('画像の読み込みに失敗しました'));
-    img.src = URL.createObjectURL(file);
-  });
-};
 
-// ファイルサイズをフォーマット
-const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
 
 export function FacilityDetail() {
   const { id: facilityId } = useParams();
@@ -485,22 +434,14 @@ export function FacilityDetail() {
 
     setUploadingImage(true);
     try {
-      // 画像を処理（300x300、1:1、圧縮率0.8）
-      const processedBlob = await processReviewImage(file);
-      
-      // 元のファイルサイズと処理後のサイズを表示
-      console.log(`画像処理: ${formatFileSize(file.size)} → ${formatFileSize(processedBlob.size)}`);
-
       // ファイル名を生成（ユーザーID + タイムスタンプ）
-      const fileName = `${user.id}_${Date.now()}.jpg`; // 処理後はJPEG
+      const fileName = `${user.id}_${Date.now()}_${file.name}`;
       const filePath = `facility-reviews/${fileName}`;
 
       // Supabaseストレージにアップロード
       const { data, error } = await supabase.storage
         .from('facility-images')
-        .upload(filePath, processedBlob, {
-          contentType: 'image/jpeg'
-        });
+        .upload(filePath, file);
 
       if (error) throw error;
 

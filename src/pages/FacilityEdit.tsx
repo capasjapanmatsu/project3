@@ -1,5 +1,6 @@
 import {
     AlertCircle,
+    AlertTriangle,
     ArrowLeft,
     Building,
     Calendar,
@@ -107,6 +108,7 @@ interface PetFacility {
   updated_at: string;
   latitude: number | null;
   longitude: number | null;
+  is_public?: boolean;
 }
 
 interface FacilityCategory {
@@ -148,8 +150,12 @@ export default function FacilityEdit() {
     website: '',
     description: '',
     latitude: null as number | null,
-    longitude: null as number | null
+    longitude: null as number | null,
+    is_public: false
   });
+  
+  // 公開/非公開トグル用のstate
+  const [isToggleLoading, setIsToggleLoading] = useState(false);
   
   // タブ管理用のstate
   const [activeTab, setActiveTab] = useState<'info' | 'images' | 'coupons' | 'schedule' | 'location'>('info');
@@ -197,7 +203,8 @@ export default function FacilityEdit() {
         website: facilityData.website || '',
         description: facilityData.description || '',
         latitude: facilityData.latitude || null,
-        longitude: facilityData.longitude || null
+        longitude: facilityData.longitude || null,
+        is_public: facilityData.is_public || false
       });
       
       // 営業日データの初期化
@@ -373,6 +380,40 @@ export default function FacilityEdit() {
     setShowImageCropper(false);
     setSelectedImageFile(null);
     setCurrentImageIndex(null);
+  };
+
+  // 公開・非公開切り替え関数
+  const handlePublicToggle = async (isPublic: boolean) => {
+    if (!facilityId || !user) return;
+
+    try {
+      setIsToggleLoading(true);
+      setError('');
+
+      const { error: updateError } = await supabase
+        .from('pet_facilities')
+        .update({ 
+          is_public: isPublic,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', facilityId)
+        .eq('owner_id', user.id);
+
+      if (updateError) throw updateError;
+
+      // formDataとfacilityデータを更新
+      setFormData(prev => ({ ...prev, is_public: isPublic }));
+      setFacility(prev => prev ? { ...prev, is_public: isPublic } : null);
+
+      setSuccess(isPublic ? '施設を公開しました' : '施設を非公開にしました');
+      setTimeout(() => setSuccess(''), 3000);
+
+    } catch (error: any) {
+      console.error('公開設定更新エラー:', error);
+      setError('公開設定の更新に失敗しました: ' + error.message);
+    } finally {
+      setIsToggleLoading(false);
+    }
   };
 
   // 画像削除処理
@@ -1061,10 +1102,10 @@ export default function FacilityEdit() {
                                   accept="image/*"
                                   onChange={(e) => handleImageSelect(e, index)}
                                   className="hidden"
-                                  id={`image-replace-${index}`}
+                                  id={`basic-image-replace-${index}`}
                                 />
                                 <label
-                                  htmlFor={`image-replace-${index}`}
+                                  htmlFor={`basic-image-replace-${index}`}
                                   className="bg-white text-gray-600 p-1 rounded shadow hover:bg-gray-50 cursor-pointer"
                                   title="画像を変更"
                                 >
@@ -1092,10 +1133,10 @@ export default function FacilityEdit() {
                               accept="image/*"
                               onChange={(e) => handleImageSelect(e)}
                               className="hidden"
-                              id="image-add"
+                              id="basic-image-add"
                             />
                             <label
-                              htmlFor="image-add"
+                              htmlFor="basic-image-add"
                               className="flex flex-col items-center cursor-pointer text-gray-500 hover:text-blue-600"
                             >
                               <Plus className="w-8 h-8 mb-2" />
@@ -1161,10 +1202,10 @@ export default function FacilityEdit() {
                               accept="image/*"
                               onChange={(e) => handleImageSelect(e, index)}
                               className="hidden"
-                              id={`image-replace-${index}`}
+                              id={`images-tab-replace-${index}`}
                             />
                             <label
-                              htmlFor={`image-replace-${index}`}
+                              htmlFor={`images-tab-replace-${index}`}
                               className="bg-white text-gray-600 p-1 rounded shadow hover:bg-gray-50 cursor-pointer"
                               title="画像を変更"
                             >
@@ -1192,10 +1233,10 @@ export default function FacilityEdit() {
                           accept="image/*"
                           onChange={(e) => handleImageSelect(e)}
                           className="hidden"
-                          id="image-add"
+                          id="images-tab-add"
                         />
                         <label
-                          htmlFor="image-add"
+                          htmlFor="images-tab-add"
                           className="flex flex-col items-center cursor-pointer text-gray-500 hover:text-blue-600"
                         >
                           <Plus className="w-8 h-8 mb-2" />
@@ -1379,6 +1420,58 @@ export default function FacilityEdit() {
               )}
             </div>
           </div>
+
+          {/* 公開・非公開設定（基本情報タブでのみ表示） */}
+          {activeTab === 'info' && facility?.status === 'approved' && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-6 flex items-center">
+                <Eye className="w-6 h-6 text-blue-600 mr-2" />
+                公開設定
+              </h2>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900 mb-1">施設の公開状態</h3>
+                    <p className="text-sm text-gray-600">
+                      公開設定を切り替えることで、施設を一覧に表示するかどうかを制御できます。
+                    </p>
+                  </div>
+                  
+                  <div className="ml-4">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.is_public}
+                        onChange={(e) => handlePublicToggle(e.target.checked)}
+                        disabled={isToggleLoading}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2 text-sm">
+                  <div className={`w-3 h-3 rounded-full ${formData.is_public ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                  <span className="font-medium">
+                    {formData.is_public ? '公開中' : '非公開'}
+                  </span>
+                </div>
+                
+                {!formData.is_public && (
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start">
+                      <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 mr-2" />
+                      <div className="text-sm text-yellow-800">
+                        <strong>注意:</strong> 非公開設定中は、施設が一覧に表示されず、新しい利用者からの予約を受け付けできません。
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
 
           {/* 削除セクション - ページの一番下（基本情報タブでのみ表示） */}
           {activeTab === 'info' && (

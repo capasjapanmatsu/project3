@@ -122,6 +122,57 @@ export function ParkManagementWalkthrough({
       position: 'top',
       showArrow: true,
       arrowBlinkCount: 3
+    },
+    {
+      id: 'overview-tab-final',
+      title: '🏢 概要・メンテナンスタブへ',
+      message: '最後に、公開設定を行います。「概要・メンテナンス」タブをタップしてください。',
+      targetSelector: '[data-walkthrough="overview-tab"]',
+      position: 'bottom',
+      showArrow: true,
+      arrowBlinkCount: 3,
+      action: () => {
+        onStepChange?.('overview');
+        // タブ切り替え後、公開設定がある位置までスクロール
+        setTimeout(() => {
+          const publicToggle = document.querySelector('[data-walkthrough="public-toggle"]');
+          if (publicToggle) {
+            const rect = publicToggle.getBoundingClientRect();
+            const scrollTop = window.pageYOffset + rect.top - 300;
+            window.scrollTo({
+              top: Math.max(0, scrollTop),
+              behavior: 'smooth'
+            });
+          } else {
+            // トグルが見つからない場合はページ下部へ
+            window.scrollTo({
+              top: document.body.scrollHeight / 3,
+              behavior: 'smooth'
+            });
+          }
+        }, 500);
+      }
+    },
+    {
+      id: 'public-setting',
+      title: '🌐 公開設定',
+      message: 'すべての準備が整ったら、「ドッグラーン一覧に表示」をオンにしてください。これであなたのドッグランが公開されます！',
+      targetSelector: '[data-walkthrough="public-toggle"]',
+      position: 'top',
+      showArrow: true,
+      arrowBlinkCount: 3,
+      action: () => {
+        // 公開設定トグルが見える位置にスクロール
+        setTimeout(() => {
+          const toggleElement = document.querySelector('[data-walkthrough="public-toggle"]');
+          if (toggleElement) {
+            toggleElement.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center'
+            });
+          }
+        }, 100);
+      }
     }
   ];
 
@@ -254,8 +305,22 @@ export function ParkManagementWalkthrough({
     
     // ボタンかどうかを判定
     const isButton = selector.includes('button') || element.tagName.toLowerCase() === 'button' || element.getAttribute('role') === 'button';
+    const isTab = selector.includes('tab');
     
-    if (isButton) {
+    if (isTab) {
+      // タブの場合：より強いハイライト効果
+      element.style.cssText += `
+        position: relative !important;
+        z-index: 9999 !important;
+        background-color: #3B82F6 !important;
+        color: white !important;
+        box-shadow: 0 0 0 4px #3B82F6, 0 0 0 8px rgba(59, 130, 246, 0.5), 0 0 40px rgba(59, 130, 246, 1.0), 0 0 80px rgba(59, 130, 246, 0.6) !important;
+        transform: scale(1.1) !important;
+        transition: all 0.3s ease-in-out !important;
+        border-radius: 8px !important;
+        filter: brightness(1.2) contrast(1.1) !important;
+      `;
+    } else if (isButton) {
       // ボタンの場合：背景色は変更せず、強いグロー効果とスケールアップで目立たせる
       element.style.cssText += `
         position: relative !important;
@@ -287,6 +352,7 @@ export function ParkManagementWalkthrough({
       element.style.boxShadow = originalBoxShadow;
       element.style.transform = originalTransform;
       element.style.backgroundColor = originalBackgroundColor;
+      element.style.color = ''; // 文字色をリセット
       element.style.borderRadius = '';
       element.style.transition = '';
       element.style.filter = '';
@@ -355,6 +421,13 @@ export function ParkManagementWalkthrough({
 
   // ウォークスルー完了
   const handleComplete = async () => {
+    // クリーンアップ処理を実行
+    document.querySelectorAll('[data-walkthrough-spotlight]').forEach(el => {
+      if ((el as any).__walkthroughCleanup) {
+        (el as any).__walkthroughCleanup();
+      }
+    });
+    
     try {
       if (user) {
         await supabase
@@ -371,6 +444,12 @@ export function ParkManagementWalkthrough({
 
   // スキップ
   const handleSkip = () => {
+    // クリーンアップ処理を実行
+    document.querySelectorAll('[data-walkthrough-spotlight]').forEach(el => {
+      if ((el as any).__walkthroughCleanup) {
+        (el as any).__walkthroughCleanup();
+      }
+    });
     void handleComplete();
   };
 
@@ -425,7 +504,7 @@ export function ParkManagementWalkthrough({
       {/* ツールチップ */}
       <div 
         ref={tooltipRef}
-        className={`fixed transition-all duration-500 ease-out ${
+        className={`fixed transition-opacity duration-300 ${
           currentStepData.id === 'map-explanation' 
             ? 'w-96 max-w-lg animate-expand z-[10001]' // マップステップでは最前面
             : currentStepData.id === 'setup-smartlock'
@@ -439,10 +518,12 @@ export function ParkManagementWalkthrough({
             ? '200px' // 位置を保存ステップでは固定位置（中央上部）
             : currentStepData.id === 'setup-smartlock'
             ? '120px' // スマートロック設定ステップでは上部固定
+            : currentStepData.id === 'public-setting'
+            ? `${targetElement ? targetElement.getBoundingClientRect().top - 280 : 200}px` // 公開設定ステップではより上に配置
             : targetElement && currentStepData.position === 'top' 
-            ? `${targetElement.getBoundingClientRect().top + window.pageYOffset - 200}px`
+            ? `${targetElement.getBoundingClientRect().top - 200}px`
             : targetElement && currentStepData.position === 'bottom'
-            ? `${targetElement.getBoundingClientRect().bottom + window.pageYOffset + 60}px`
+            ? `${targetElement.getBoundingClientRect().bottom + 60}px`
             : '50%',
           left: currentStepData.id === 'map-explanation'
             ? '50%' // マップステップでは中央に配置
@@ -460,7 +541,15 @@ export function ParkManagementWalkthrough({
       >
         <Card className="relative shadow-2xl border-blue-200">
           <button
-            onClick={onClose}
+            onClick={() => {
+              // クリーンアップ処理を実行
+              document.querySelectorAll('[data-walkthrough-spotlight]').forEach(el => {
+                if ((el as any).__walkthroughCleanup) {
+                  (el as any).__walkthroughCleanup();
+                }
+              });
+              onClose();
+            }}
             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
           >
             <X size={20} />

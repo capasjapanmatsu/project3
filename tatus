@@ -1,0 +1,20 @@
+[33m926fffee[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m UIデザイン改善：バナーボタン、施設アイコン、いいね機能、スプラッシュ画面アニメーション
+[33m6753cd2b[m 著作権表示をスプラッシュスクリーンとログインページに追加、管理画面のタブレイアウトを改善、スポンサー問い合わせ管理機能を追加
+[33mad5a6e93[m トップページ料金体系とメンテナンス管理機能を改善
+[33m4d22cba7[m feat: enable review functionality for facility detail pages - same as dog park reviews
+[33m9705c769[m fix: change ドッグパーク一覧 to ドッグラン一覧 for better Japanese recognition
+[33mde44abc5[m fix: add default exports to DogManagement and DogProfile components and update lazy imports
+[33mcd087447[m fix: correct UserDashboard dynamic import to use default export
+[33ma145a9ba[m remove: delete sidebar banner for mobile-first design - keep only top and footer banners
+[33mf641cfc1[m debug: force display banners with visible borders and console logs for testing
+[33m405c448f[m debug: add console logging for banner visibility and fix sidebar display breakpoint (lg->md)
+[33md0cb5fb9[m fix: center align 'New' label and title text to prevent cutoff - improve layout positioning
+[33ma47c912a[m feat: implement sidebar and footer banners - add banner types (top/sidebar/footer) with admin management
+[33mff5d4300[m fix: increase banner spacing to prevent overlap - add proper gaps between banners
+[33m616fa2d8[m style: further reduce banner spacing and increase width for better visual balance
+[33mccb0c237[m style: increase banner size, reduce spacing, and make edge banners actual size with peek effect
+[33mb274a9cf[m style: reduce banner spacing - make gaps between banners shorter
+[33m837752cb[m style: adjust banner spacing and reduce height - wider gaps between banners and compact design
+[33m1342918c[m feat: implement horizontal carousel - 5 banners visible with center focus and infinite loop
+[33meae84ad7[m style: remove control bar completely - clean banner only design
+[33m7961b157[m style: remove side peek banners, single row main banner only
