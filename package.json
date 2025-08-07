@@ -8,6 +8,8 @@
     "dev:safe": "node scripts/start-dev-safe.cjs",
     "build": "vite build",
     "build:unsafe": "vite build",
+    "build:analyze": "ANALYZE=true vite build --config vite.config.optimized.ts",
+    "build:optimized": "vite build --config vite.config.optimized.ts",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
@@ -19,7 +21,8 @@
     "create-test-data": "npx tsx scripts/create-test-data.ts",
     "geocode-facilities": "node scripts/geocode-facilities.js",
     "geocode-dog-parks": "node scripts/geocode-dog-parks.js",
-    "geocode-test": "node scripts/geocode-facilities.js --test"
+    "geocode-test": "node scripts/geocode-facilities.js --test",
+    "analyze": "vite-bundle-visualizer"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.2",
@@ -45,7 +48,6 @@
     "@stripe/stripe-js": "^2.4.0",
     "@supabase/supabase-js": "^2.50.2",
     "@tanstack/react-query": "^5.83.0",
-    "@tanstack/react-query-devtools": "^5.83.0",
     "browser-image-compression": "^2.0.2",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.0",
@@ -64,6 +66,7 @@
     "zustand": "^5.0.6"
   },
   "devDependencies": {
+    "@tanstack/react-query-devtools": "^5.83.0",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
@@ -85,8 +88,10 @@
     "typescript": "^5.2.2",
     "typescript-eslint": "^8.37.0",
     "vite": "^5.0.8",
+    "vite-bundle-visualizer": "^1.2.1",
     "vite-plugin-compression": "^0.5.1",
     "vite-plugin-pwa": "^0.17.4",
+    "web-vitals": "^3.5.2",
     "workbox-window": "^7.0.0"
   }
 }
