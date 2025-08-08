@@ -20,7 +20,6 @@ const ParkEdit: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    features: '',
     rules: '',
     operating_hours: '',
     contact_info: '',
@@ -60,7 +59,6 @@ const ParkEdit: React.FC = () => {
       setFormData({
         name: data.name || '',
         description: data.description || '',
-        features: data.features || '',
         rules: data.rules || '',
         operating_hours: data.operating_hours || '',
         contact_info: data.contact_info || '',
@@ -99,7 +97,6 @@ const ParkEdit: React.FC = () => {
         .update({
           name: formData.name,
           description: formData.description,
-          features: formData.features,
           rules: formData.rules,
           operating_hours: formData.operating_hours,
           contact_info: formData.contact_info,
@@ -118,9 +115,18 @@ const ParkEdit: React.FC = () => {
         navigate(`/parks/${id}/manage`);
       }, 2000);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating park:', error);
-      setError('更新に失敗しました。もう一度お試しください。');
+      // エラーメッセージを詳細に表示
+      const errorMessage = error?.message || error?.error_description || '更新に失敗しました。';
+      setError(`更新エラー: ${errorMessage}`);
+      
+      // デバッグ用にコンソールに詳細を出力
+      console.error('Update error details:', {
+        error,
+        formData,
+        parkId: id
+      });
     } finally {
       setSaving(false);
     }

@@ -30,6 +30,7 @@ const OptimizedMap = memo(({
 
   useEffect(() => {
     let isMounted = true;
+    let observer: IntersectionObserver | null = null;
 
     const loadMap = async () => {
       try {
@@ -98,25 +99,27 @@ const OptimizedMap = memo(({
     };
 
     // IntersectionObserverで遅延読み込み
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            observer.disconnect();
-            loadMap();
-          }
-        });
-      },
-      { rootMargin: '100px' }
-    );
-
     if (mapRef.current) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting && observer) {
+              observer.disconnect();
+              loadMap();
+            }
+          });
+        },
+        { rootMargin: '100px' }
+      );
+
       observer.observe(mapRef.current);
     }
 
     return () => {
       isMounted = false;
-      observer.disconnect();
+      if (observer) {
+        observer.disconnect();
+      }
       
       // マーカーのクリーンアップ
       markersRef.current.forEach(marker => {

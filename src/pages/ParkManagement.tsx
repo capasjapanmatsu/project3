@@ -1361,7 +1361,7 @@ export function ParkManagement() {
                 <h3 className="font-semibold text-blue-900 mb-3">収益配分</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-blue-800 mb-1">オーナー取り分（80%）</p>
+                    <p className="text-sm text-blue-800 mb-1">オーナー収益（80%）</p>
                     <p className="text-2xl font-bold text-blue-600">¥20,480</p>
                   </div>
                   <div>
@@ -1373,7 +1373,7 @@ export function ParkManagement() {
               
               <div className="bg-green-50 p-4 rounded-lg">
                 <h3 className="font-semibold text-green-900 mb-3">収益内訳</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-green-800 mb-1">通常利用</p>
                     <p className="text-xl font-bold text-green-600">¥12,800</p>
@@ -1382,11 +1382,6 @@ export function ParkManagement() {
                   <div>
                     <p className="text-sm text-green-800 mb-1">施設貸し切り</p>
                     <p className="text-xl font-bold text-green-600">¥8,800</p>
-                    <p className="text-xs text-green-700">2件</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-green-800 mb-1">プライベートブース</p>
-                    <p className="text-xl font-bold text-green-600">¥4,000</p>
                     <p className="text-xs text-green-700">2件</p>
                   </div>
                 </div>

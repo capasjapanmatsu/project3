@@ -217,22 +217,33 @@ export const Navbar = memo(function Navbar() {
         }
         
         .navbar-logo-icon {
-          animation: logoSlideIn 0.8s ease-out forwards;
+          animation: logoSlideIn 0.8s ease-out forwards !important;
+          animation-duration: 0.8s !important;
+          animation-iteration-count: 1 !important;
         }
         
         .navbar-text-dogpark {
-          animation: textReveal 0.6s ease-out 0.3s forwards;
+          animation: textReveal 0.6s ease-out 0.3s forwards !important;
+          animation-duration: 0.6s !important;
+          animation-delay: 0.3s !important;
+          animation-iteration-count: 1 !important;
           opacity: 0;
         }
         
         .navbar-text-jp {
-          animation: jpPop 0.5s ease-out 0.7s forwards;
+          animation: jpPop 0.5s ease-out 0.7s forwards !important;
+          animation-duration: 0.5s !important;
+          animation-delay: 0.7s !important;
+          animation-iteration-count: 1 !important;
           opacity: 0;
           display: inline-block;
         }
         
         .navbar-subtitle-text {
-          animation: subtitleFade 0.6s ease-out 1s forwards;
+          animation: subtitleFade 0.6s ease-out 1s forwards !important;
+          animation-duration: 0.6s !important;
+          animation-delay: 1s !important;
+          animation-iteration-count: 1 !important;
           opacity: 0;
         }
         `}

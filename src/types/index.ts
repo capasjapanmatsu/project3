@@ -25,6 +25,7 @@ export interface Dog {
 
 export interface DogPark {
   id: string;
+  owner_id?: string;
   name: string;
   description?: string;
   address: string;
@@ -34,11 +35,34 @@ export interface DogPark {
   current_occupancy: number;
   max_capacity: number;
   status: 'pending' | 'approved' | 'rejected';
-  facilities?: string;
+  rules?: string;
+  operating_hours?: string;
+  contact_info?: string;
+  facilities?: {
+    parking?: boolean;
+    restroom?: boolean;
+    water_supply?: boolean;
+    lighting?: boolean;
+    shade?: boolean;
+    agility_equipment?: boolean;
+    small_dog_area?: boolean;
+    large_dog_area?: boolean;
+    shower?: boolean;
+    agility?: boolean;
+    rest_area?: boolean;
+    water_station?: boolean;
+    // 拡張フィールド（データベースに個別カラムがない場合にfacilitiesに格納）
+    rules?: string;
+    operating_hours?: string;
+    contact_info?: string;
+    [key: string]: any; // その他の拡張フィールド用
+  };
   image_url?: string;
   average_rating: number;
   review_count: number;
   created_at: string;
+  updated_at?: string;
+  is_public?: boolean;
   currentMaintenance?: {
     id: string;
     title: string;

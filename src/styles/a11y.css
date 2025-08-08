@@ -83,9 +83,10 @@
 
 /* アニメーション無効化（モーション設定に応じて） */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  /* スプラッシュスクリーンとNavbar以外のアニメーションを無効化 */
+  *:not(.logo-icon):not(.text-dogpark):not(.text-jp):not(.subtitle-text):not(.navbar-logo-icon):not(.navbar-text-dogpark):not(.navbar-text-jp):not(.navbar-subtitle-text),
+  *:not(.logo-icon):not(.text-dogpark):not(.text-jp):not(.subtitle-text):not(.navbar-logo-icon):not(.navbar-text-dogpark):not(.navbar-text-jp):not(.navbar-subtitle-text)::before,
+  *:not(.logo-icon):not(.text-dogpark):not(.text-jp):not(.subtitle-text):not(.navbar-logo-icon):not(.navbar-text-dogpark):not(.navbar-text-jp):not(.navbar-subtitle-text)::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

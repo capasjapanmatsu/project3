@@ -353,50 +353,36 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           }
         }
         
-        @keyframes shimmer {
-          0% {
-            background-position: -200% center;
-          }
-          100% {
-            background-position: 200% center;
-          }
-        }
-        
+        /* スプラッシュスクリーンのアニメーションは常に有効にする */
         .logo-icon {
-          animation: logoSlideIn 0.8s ease-out forwards;
+          animation: logoSlideIn 0.8s ease-out forwards !important;
+          animation-duration: 0.8s !important;
+          animation-iteration-count: 1 !important;
         }
         
         .text-dogpark {
-          animation: textReveal 0.6s ease-out 0.3s forwards;
+          animation: textReveal 0.6s ease-out 0.3s forwards !important;
+          animation-duration: 0.6s !important;
+          animation-delay: 0.3s !important;
+          animation-iteration-count: 1 !important;
           opacity: 0;
         }
         
         .text-jp {
-          animation: jpPop 0.5s ease-out 0.7s forwards;
+          animation: jpPop 0.5s ease-out 0.7s forwards !important;
+          animation-duration: 0.5s !important;
+          animation-delay: 0.7s !important;
+          animation-iteration-count: 1 !important;
           opacity: 0;
           display: inline-block;
         }
         
         .subtitle-text {
-          animation: subtitleFade 0.6s ease-out 1s forwards;
+          animation: subtitleFade 0.6s ease-out 1s forwards !important;
+          animation-duration: 0.6s !important;
+          animation-delay: 1s !important;
+          animation-iteration-count: 1 !important;
           opacity: 0;
-        }
-        
-        .shimmer-text {
-          background: linear-gradient(
-            90deg,
-            #3b82f6 0%,
-            #60a5fa 25%,
-            #93c5fd 50%,
-            #60a5fa 75%,
-            #3b82f6 100%
-          );
-          background-size: 200% auto;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          animation: shimmer 3s linear infinite;
-          animation-delay: 1.2s;
         }
         `}
       </style>
