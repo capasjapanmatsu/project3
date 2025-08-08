@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '../components/Button';
+import Button from '../components/Button';
 import '../index.css';
 
 export default function Landing() {
