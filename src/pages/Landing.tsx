@@ -19,6 +19,7 @@ import {
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
+import '../index.css';
 
 export default function Landing() {
   const handleScrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
