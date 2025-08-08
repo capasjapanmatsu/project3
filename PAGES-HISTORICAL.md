@@ -23,6 +23,7 @@
 | ページ名（画面） | ファイルパス | ルーティング | 説明・備考 |
 |---|---|---|---|
 | トップページ | `src/pages/Home.tsx` | `/` | サイト入口、犬データとニュース表示、バナー |
+| ランディングページ | `src/pages/Landing.tsx` | `/landing` | ネット検索・広告用の特別なキャンペーンページ |
 | ユーザー登録画面 | `src/pages/Register.tsx` | `/register` | 新規ユーザー登録フォーム |
 | ユーザーログイン画面 | `src/pages/Login.tsx` | `/login` | メール＋パスワード認証 |
 | パスワード忘れ | `src/pages/ForgotPassword.tsx` | `/forgot-password` | パスワードリセット申請 |

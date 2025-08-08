@@ -10,6 +10,7 @@ import { AuthProvider } from './context/AuthContext';
 // 遅延読み込みするページコンポーネント
 // ホーム関連
 const Home = lazy(() => import('./pages/Home'));
+const Landing = lazy(() => import('./pages/Landing'));
 const About = lazy(() => import('./pages/About'));
 const Contact = lazy(() => import('./pages/Contact'));
 const Terms = lazy(() => import('./pages/Terms'));
@@ -136,6 +137,7 @@ function App() {
               <Route path="/" element={<Layout />}>
                 {/* Public Routes */}
                 <Route index element={<Home />} />
+                <Route path="landing" element={<Landing />} />
                 <Route path="about" element={<About />} />
                 <Route path="contact" element={<Contact />} />
                 <Route path="terms" element={<Terms />} />
