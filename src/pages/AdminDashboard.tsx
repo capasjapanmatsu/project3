@@ -242,6 +242,12 @@ export function AdminDashboard() {
               <p className="text-gray-600">システム全体の監視と管理</p>
             </div>
             <div className="flex items-center space-x-4">
+              <Link to="/landing" target="_blank">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Eye className="w-4 h-4 mr-2" />
+                  ランディングページ
+                </Button>
+              </Link>
               <span className="text-sm text-gray-600">
                 管理者: {user?.email}
               </span>
@@ -655,6 +661,27 @@ export function AdminDashboard() {
                     <Button variant="secondary">
                       <Users className="w-4 h-4 mr-2" />
                       ユーザー一覧
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </Card>
+
+            {/* ランディングページ管理 */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">ランディングページ管理</h3>
+              <div className="flex justify-between items-center p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+                <div>
+                  <h4 className="font-medium text-gray-900">ランディングページ</h4>
+                  <p className="text-sm text-gray-600">
+                    広告やSEO用のランディングページを確認・編集できます。
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Link to="/landing" target="_blank">
+                    <Button className="bg-blue-600 hover:bg-blue-700">
+                      <Eye className="w-4 h-4 mr-2" />
+                      プレビュー
                     </Button>
                   </Link>
                 </div>
