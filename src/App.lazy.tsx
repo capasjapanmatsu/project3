@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import SkipNavigation from './components/accessibility/SkipNavigation';
 import { AuthProvider } from './context/AuthContext';
+import { MaintenanceProvider } from './context/MaintenanceContext';
 
 // 遅延読み込みするページコンポーネント
 // ホーム関連
@@ -86,6 +87,7 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminFacilityApproval = lazy(() => import('./pages/AdminFacilityApproval'));
 const AdminSettings = lazy(() => import('./pages/AdminSettings'));
 const AccessControl = lazy(() => import('./pages/AccessControl'));
+const AdminMaintenanceManagement = lazy(() => import('./pages/AdminMaintenanceManagement'));
 
 // スポンサー関連
 const SponsorDashboard = lazy(() => import('./pages/SponsorDashboard'));
@@ -130,10 +132,11 @@ function App() {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <AuthProvider>
-        <Router>
-          <SkipNavigation />
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
+        <MaintenanceProvider>
+          <Router>
+            <SkipNavigation />
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
               <Route path="/" element={<Layout />}>
                 {/* Public Routes */}
                 <Route index element={<Home />} />
@@ -231,6 +234,7 @@ function App() {
                 <Route path="admin/facilities/approval" element={<ProtectedRoute adminOnly><AdminFacilityApproval /></ProtectedRoute>} />
                 <Route path="admin/settings" element={<ProtectedRoute adminOnly><AdminSettings /></ProtectedRoute>} />
                 <Route path="admin/access-control" element={<ProtectedRoute adminOnly><AccessControl /></ProtectedRoute>} />
+                <Route path="admin/maintenance" element={<ProtectedRoute adminOnly><AdminMaintenanceManagement /></ProtectedRoute>} />
                 
                 {/* Sponsor Routes */}
                 <Route path="sponsor" element={<SponsorDashboard />} />
@@ -257,6 +261,7 @@ function App() {
             </Routes>
           </Suspense>
         </Router>
+      </MaintenanceProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

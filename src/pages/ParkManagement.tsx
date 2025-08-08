@@ -960,79 +960,84 @@ export function ParkManagement() {
       )}
 
       {/* タブナビゲーション */}
-            <Card className="mb-6">
-              <div className="border-b border-gray-200">
-                <div className="flex space-x-8 px-6">
-        <button
-                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-            activeTab === 'overview'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-          onClick={() => setActiveTab('overview')}
-        >
-          <Building className="w-4 h-4 inline mr-2" />
-                    概要・メンテナンス
-        </button>
-        <button
-                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-            activeTab === 'stats'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-          onClick={() => setActiveTab('stats')}
-        >
-          <Star className="w-4 h-4 inline mr-2" />
-          統計・収益
-        </button>
-        <button
-                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-            activeTab === 'pins'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-          onClick={() => setActiveTab('pins')}
-          data-walkthrough="pins-tab"
-        >
-          <Key className="w-4 h-4 inline mr-2" />
-          PINコード管理
-        </button>
-        <button
-                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-            activeTab === 'locks'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-          onClick={() => setActiveTab('locks')}
-          data-walkthrough="locks-tab"
-        >
-          <Shield className="w-4 h-4 inline mr-2" />
-          スマートロック管理
-        </button>
-        <button
-                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-            activeTab === 'settings'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-          onClick={() => setActiveTab('settings')}
-        >
-          <Settings className="w-4 h-4 inline mr-2" />
-          設定
-        </button>
+            <Card className="mb-6 p-4">
+              <div className="space-y-2">
+                {/* 1段目のタブ */}
+                <div className="flex flex-wrap gap-2">
                   <button
-                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                    className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      activeTab === 'overview'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    onClick={() => setActiveTab('overview')}
+                  >
+                    <Building className="w-4 h-4 mr-1.5" />
+                    <span className="whitespace-nowrap">概要</span>
+                  </button>
+                  <button
+                    className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      activeTab === 'stats'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    onClick={() => setActiveTab('stats')}
+                  >
+                    <Star className="w-4 h-4 mr-1.5" />
+                    <span className="whitespace-nowrap">統計</span>
+                  </button>
+                  <button
+                    className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      activeTab === 'pins'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    onClick={() => setActiveTab('pins')}
+                    data-walkthrough="pins-tab"
+                  >
+                    <Key className="w-4 h-4 mr-1.5" />
+                    <span className="whitespace-nowrap">PIN</span>
+                  </button>
+                </div>
+                
+                {/* 2段目のタブ */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      activeTab === 'locks'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    onClick={() => setActiveTab('locks')}
+                    data-walkthrough="locks-tab"
+                  >
+                    <Shield className="w-4 h-4 mr-1.5" />
+                    <span className="whitespace-nowrap">ロック</span>
+                  </button>
+                  <button
+                    className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      activeTab === 'settings'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    onClick={() => setActiveTab('settings')}
+                  >
+                    <Settings className="w-4 h-4 mr-1.5" />
+                    <span className="whitespace-nowrap">設定</span>
+                  </button>
+                  <button
+                    className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       activeTab === 'location'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                     onClick={() => setActiveTab('location')}
                     data-walkthrough="location-tab"
                   >
-                    <MapPin className="w-4 h-4 inline mr-2" />
-                    位置調整
+                    <MapPin className="w-4 h-4 mr-1.5" />
+                    <span className="whitespace-nowrap">位置</span>
                   </button>
-      </div>
+                </div>
               </div>
             </Card>
 
@@ -1361,7 +1366,7 @@ export function ParkManagement() {
                 <h3 className="font-semibold text-blue-900 mb-3">収益配分</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-blue-800 mb-1">オーナー収益（80%）</p>
+                    <p className="text-sm text-blue-800 mb-1">オーナー取り分（80%）</p>
                     <p className="text-2xl font-bold text-blue-600">¥20,480</p>
                   </div>
                   <div>
@@ -1373,7 +1378,7 @@ export function ParkManagement() {
               
               <div className="bg-green-50 p-4 rounded-lg">
                 <h3 className="font-semibold text-green-900 mb-3">収益内訳</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm text-green-800 mb-1">通常利用</p>
                     <p className="text-xl font-bold text-green-600">¥12,800</p>
@@ -1382,6 +1387,11 @@ export function ParkManagement() {
                   <div>
                     <p className="text-sm text-green-800 mb-1">施設貸し切り</p>
                     <p className="text-xl font-bold text-green-600">¥8,800</p>
+                    <p className="text-xs text-green-700">2件</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-green-800 mb-1">プライベートブース</p>
+                    <p className="text-xl font-bold text-green-600">¥4,000</p>
                     <p className="text-xs text-green-700">2件</p>
                   </div>
                 </div>

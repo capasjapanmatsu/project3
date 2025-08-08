@@ -18,7 +18,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
-// 管理コンポーネントのインポートを削除（エラー回避のため）
+import AdminMaintenanceManagementComponent from '../components/admin/AdminMaintenanceManagement';
 import useAuth from '../context/AuthContext';
 import { FraudDetectionResult, getFraudDetectionStats, getHighRiskUsers } from '../utils/adminFraudDetection';
 import { supabase } from '../utils/supabase';
@@ -704,15 +704,12 @@ export function AdminDashboard() {
         )}
 
         {activeTab === 'maintenance' && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">メンテナンス管理</h3>
-            <p className="text-gray-600 mb-4">
-              システムのメンテナンスモードを管理できます。
-            </p>
-            <Link to="/admin/maintenance" className="text-blue-600 hover:text-blue-800">
-              メンテナンス設定画面へ →
-            </Link>
-          </Card>
+          <div>
+            <AdminMaintenanceManagementComponent 
+              onError={setProcessingError} 
+              onSuccess={setProcessingSuccess} 
+            />
+          </div>
         )}
         
         {/* お問い合わせタブ */}
