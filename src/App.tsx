@@ -64,6 +64,7 @@ const Login = React.lazy(() => import('./pages/Login').then(module => ({ default
 const Register = React.lazy(() => import('./pages/Register').then(module => ({ default: module.Register })));
 const ForgotPassword = React.lazy(() => import('./pages/ForgotPassword').then(module => ({ default: module.ForgotPassword })));
 const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
+const Landing = React.lazy(() => import('./pages/Landing'));
 
 // ドッグパーク関連ページ
 const DogParkList = React.lazy(() => import('./pages/DogParkList').then(module => ({ default: module.DogParkList })));
@@ -267,6 +268,11 @@ const App: React.FC = () => {
               <Route path="/" element={
                 <Suspense fallback={<PageSkeleton />}>
                   <Home />
+                </Suspense>
+              } />
+              <Route path="/landing" element={
+                <Suspense fallback={<PageSkeleton />}>
+                  <Landing />
                 </Suspense>
               } />
               <Route path="/login" element={
