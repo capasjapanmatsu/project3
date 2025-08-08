@@ -1,11 +1,24 @@
+import {
+  Award,
+  Calendar,
+  Camera,
+  Coffee,
+  Dog,
+  Instagram,
+  Lock,
+  MapPin,
+  MessageCircle,
+  Search,
+  Shield,
+  Smartphone,
+  Star,
+  Twitter,
+  Users,
+  Zap
+} from 'lucide-react';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { 
-  ChevronRight, MapPin, Dog, Shield, Calendar, Clock, Users, Star, 
-  CheckCircle, Heart, Zap, Smartphone, Search, Lock, Camera, MessageCircle,
-  Award, Share2, Coffee, Instagram, Twitter
-} from 'lucide-react';
 
 export default function Landing() {
   const handleScrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
@@ -39,6 +52,12 @@ export default function Landing() {
             <a href="#how-to-use" onClick={(e) => handleScrollToSection(e, 'how-to-use')} className="hover:text-blue-600 transition-colors">使い方</a>
             <a href="#facilities" onClick={(e) => handleScrollToSection(e, 'facilities')} className="hover:text-blue-600 transition-colors">施設情報</a>
             <Button variant="outline" onClick={handleAppDownload}>アプリをダウンロード</Button>
+            <Link to="/admin">
+              <Button variant="outline" className="bg-gray-800 text-white hover:bg-gray-700">
+                <Shield className="mr-2 h-4 w-4" />
+                管理者
+              </Button>
+            </Link>
           </nav>
         </div>
       </header>
@@ -447,6 +466,7 @@ export default function Landing() {
                 <li><Link to="/contact" className="hover:text-white transition-colors">お問い合わせ</Link></li>
                 <li><Link to="/terms-of-service" className="hover:text-white transition-colors">利用規約</Link></li>
                 <li><Link to="/privacy-policy" className="hover:text-white transition-colors">プライバシーポリシー</Link></li>
+                <li><Link to="/admin" className="hover:text-white transition-colors">管理者ページ</Link></li>
               </ul>
             </div>
             
