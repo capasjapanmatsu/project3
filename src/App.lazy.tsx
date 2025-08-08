@@ -137,10 +137,12 @@ function App() {
             <SkipNavigation />
             <Suspense fallback={<PageLoader />}>
               <Routes>
+                {/* Standalone Landing Page */}
+                <Route path="/landing" element={<Landing />} />
+                
               <Route path="/" element={<Layout />}>
                 {/* Public Routes */}
                 <Route index element={<Home />} />
-                <Route path="landing" element={<Landing />} />
                 <Route path="about" element={<About />} />
                 <Route path="contact" element={<Contact />} />
                 <Route path="terms" element={<Terms />} />
