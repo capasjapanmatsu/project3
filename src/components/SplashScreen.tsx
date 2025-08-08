@@ -427,7 +427,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         <div className="flex-1 relative">
           {/* 画面いっぱいの画像 */}
           <img
-            src="/images/splash-dog-running.jpg"
+            src="/images/splash-dog-running.webp"
             alt="走るワンちゃん"
             className="w-full h-full object-cover transition-opacity duration-1000"
             style={{ 
