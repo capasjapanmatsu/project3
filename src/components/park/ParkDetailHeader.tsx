@@ -1,3 +1,4 @@
+import { PARK_PLACEHOLDER_SVG } from '../../utils/placeholders';
 import type { DogPark, Reservation } from '../../types';
 
 interface ParkDetailHeaderProps {
@@ -16,12 +17,12 @@ export function ParkDetailHeader({ park, parkImages, todayRentals, onImageClick 
       {parkImages.length > 0 && (
         <div className="relative h-64 rounded-lg overflow-hidden">
           <img
-            src={parkImages[0].url}
+            src={parkImages[0].url || PARK_PLACEHOLDER_SVG}
             alt={park.name}
             className="w-full h-full object-cover cursor-pointer"
             onClick={() => onImageClick(0)}
             onError={(e) => {
-              e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
+              e.currentTarget.src = PARK_PLACEHOLDER_SVG;
             }}
           />
           <div className="absolute top-4 right-4">

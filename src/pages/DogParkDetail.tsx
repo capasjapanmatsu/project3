@@ -28,6 +28,7 @@ import { ParkReviewSection } from '../components/park/ParkReviewSection';
 import useAuth from '../context/AuthContext';
 import type { Dog, DogPark, DogParkReview, Profile, Reservation, UserParkReview } from '../types';
 import { supabase } from '../utils/supabase';
+import { PARK_PLACEHOLDER_SVG } from '../utils/placeholders';
 
 interface ParkImage {
   id: string;
@@ -153,6 +154,10 @@ export function DogParkDetail() {
           });
         });
         
+        // 画像が1枚も取得できなかった場合はローカルのプレースホルダーを使用
+        if (priorityImages.length === 0) {
+          priorityImages.push({ id: 'placeholder', url: PARK_PLACEHOLDER_SVG, caption: '画像未設定' });
+        }
         setParkImages(priorityImages);
       }
 

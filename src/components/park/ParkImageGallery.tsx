@@ -1,4 +1,5 @@
 import React from 'react';
+import { PARK_PLACEHOLDER_SVG } from '../../utils/placeholders';
 
 interface ParkImageGalleryProps {
   parkImages: { id: string; url: string; caption?: string }[];
@@ -19,11 +20,11 @@ export function ParkImageGallery({ parkImages, onImageClick }: ParkImageGalleryP
           onClick={() => onImageClick(index + 1)}
         >
           <img
-            src={image.url}
+            src={image.url || PARK_PLACEHOLDER_SVG}
             alt={image.caption || `画像 ${index + 2}`}
             className="w-full h-full object-cover"
             onError={(e) => {
-              e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
+              e.currentTarget.src = PARK_PLACEHOLDER_SVG;
             }}
           />
         </div>
@@ -37,9 +38,10 @@ export function ParkImageGallery({ parkImages, onImageClick }: ParkImageGalleryP
             <span className="text-white font-medium">+{parkImages.length - 6}</span>
           </div>
           <img
-            src={parkImages[6].url}
+            src={parkImages[6].url || PARK_PLACEHOLDER_SVG}
             alt={`その他の画像`}
             className="w-full h-full object-cover opacity-60"
+            onError={(e) => { e.currentTarget.src = PARK_PLACEHOLDER_SVG; }}
           />
         </div>
       )}

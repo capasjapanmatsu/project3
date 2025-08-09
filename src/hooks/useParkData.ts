@@ -40,6 +40,7 @@ import { useCallback, useState } from 'react';
 import { type DogPark } from '../types';
 import { type PetFacility } from '../types/facilities';
 import { supabase } from '../utils/supabase';
+import { PARK_PLACEHOLDER_SVG } from '../utils/placeholders';
 
 // ドッグパークデータ管理フック
 export function useParkData() {
@@ -140,7 +141,7 @@ export function useParkData() {
               .map(([key]) => key)
               .join(',') : park.facilities) : 
             park.facility_details || '',
-          image_url: displayImageUrl || 'https://via.placeholder.com/400x300?text=' + encodeURIComponent(park.name || 'ドッグパーク'),
+          image_url: displayImageUrl || PARK_PLACEHOLDER_SVG,
           average_rating: Number(park.average_rating) || 4.0,
           review_count: Number(park.review_count) || Math.floor(Math.random() * 50) + 5,
           created_at: park.created_at || '',

@@ -1,3 +1,4 @@
+import { PARK_PLACEHOLDER_SVG } from '../../utils/placeholders';
 // DogParkCard.tsx - ドッグパーク情報カードコンポーネント
 import {
     AlertTriangle,
@@ -79,26 +80,25 @@ export function DogParkCard({ park, userLocation, distance }: DogParkCardProps) 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
       {/* パーク画像 */}
-      {park.image_url && (
-        <div className="aspect-square relative overflow-hidden rounded-t-lg">
-          <img
-            src={park.image_url}
-            alt={park.name}
-            className="w-full h-full object-cover"
-          />
-          {/* お気に入りボタン */}
-          <button
-            className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              // お気に入り機能の実装
-            }}
-          >
-            <Heart className="w-4 h-4 text-gray-600 hover:text-red-500" />
-          </button>
-        </div>
-      )}
+      <div className="aspect-square relative overflow-hidden rounded-t-lg">
+        <img
+          src={park.image_url || PARK_PLACEHOLDER_SVG}
+          alt={park.name}
+          className="w-full h-full object-cover"
+          onError={(e) => { e.currentTarget.src = PARK_PLACEHOLDER_SVG; }}
+        />
+        {/* お気に入りボタン */}
+        <button
+          className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // お気に入り機能の実装
+          }}
+        >
+          <Heart className="w-4 h-4 text-gray-600 hover:text-red-500" />
+        </button>
+      </div>
 
       <div className="p-4">
         {/* パーク名と営業状況 */}
