@@ -189,6 +189,11 @@
   from = "/line/push"
   to = "/.netlify/functions/line-push"
   status = 200
+
+[[redirects]]
+  from = "/line/notify"
+  to = "/.netlify/functions/line-notify"
+  status = 200
   
 # プラグインの設定
 [[plugins]]

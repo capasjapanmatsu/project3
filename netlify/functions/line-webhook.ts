@@ -34,17 +34,35 @@ async function handleEvent(evt: import('@line/bot-sdk').WebhookEvent) {
   if (evt.type === 'follow' && evt.source.type === 'user' && evt.source.userId) {
     console.log('FOLLOW userId:', evt.source.userId);
     await safeReply(evt.replyToken, '友だち追加ありがとうございます！通知設定が完了しました。');
+    // TODO: Supabaseに upsert して通知ONを記録
+    // await supabase.from('user_line_link').upsert({ app_user_id, line_user_id: evt.source.userId })
     return;
   }
   // unfollow
   if (evt.type === 'unfollow' && evt.source.type === 'user' && evt.source.userId) {
     console.log('UNFOLLOW userId:', evt.source.userId);
+    // TODO: Supabaseで通知OFFに更新
+    // await supabase.from('user_line_link').update({ unfollowed_at: new Date().toISOString() }).eq('line_user_id', evt.source.userId)
     return;
   }
   // message:text
   if (evt.type === 'message' && evt.message.type === 'text') {
     const text = evt.message.text;
     console.log('MESSAGE:', text, 'from', evt.source.type);
+    // キーワード: 停止/開始
+    if (/^停止$/.test(text)) {
+      // TODO: DBで通知OFFにする
+      // await supabase.from('user_line_link').update({ notify: false }).eq('line_user_id', evt.source.userId)
+      await safeReply(evt.replyToken, '通知を停止しました。いつでも「開始」と送ると再開します。');
+      return;
+    }
+    if (/^開始$/.test(text)) {
+      // TODO: DBで通知ONにする
+      // await supabase.from('user_line_link').update({ notify: true }).eq('line_user_id', evt.source.userId)
+      await safeReply(evt.replyToken, '通知を再開しました。');
+      return;
+    }
+
     await safeReply(evt.replyToken, `受信: ${text}`);
     return;
   }
