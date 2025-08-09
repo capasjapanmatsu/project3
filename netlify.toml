@@ -44,6 +44,12 @@
   status = 200
   force = true
 
+# 静的パスの優先提供（/liff/login ディレクトリ直下の index.html を返す）
+[[redirects]]
+  from = "/liff/login"
+  to = "/liff/login/index.html"
+  status = 200
+
 # SPAのルーティング設定
 [[redirects]]
   from = "/*"
