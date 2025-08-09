@@ -24,8 +24,11 @@
   </div>
 
   <script>
-    // ★ 環境変数から埋め込み：まずは直書きでも可（Netlifyのビルドで置換する場合は自動化可能）
-    const LIFF_ID = "{{LIFF_ID}}"; // 例: 2007901083-yrjAg3Q5
+    // ★ LIFF_ID の決め方
+    // 1) URLクエリ ?liffId=XXXX を優先
+    // 2) それが無い場合は {{LIFF_ID}} を使用（手書き置換前提）
+    const params = new URL(location.href).searchParams;
+    const LIFF_ID = params.get('liffId') || "{{LIFF_ID}}"; // 例: 2007901083-yrjAg3Q5
 
     async function main() {
       const $status = document.getElementById('status');
