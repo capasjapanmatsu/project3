@@ -16,12 +16,27 @@ import {
   Users,
   Zap
 } from 'lucide-react';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
 import '../index.css';
 
 export default function Landing() {
+  const [showIntro, setShowIntro] = useState(true);
+  const [fadeIntro, setFadeIntro] = useState(false);
+  const [heroReady, setHeroReady] = useState(false);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setFadeIntro(true), 900);
+    const t2 = setTimeout(() => setShowIntro(false), 1500);
+    const t3 = setTimeout(() => setHeroReady(true), 50);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, []);
+
   const handleScrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
     e.preventDefault();
     const element = document.getElementById(sectionId);
@@ -40,21 +55,28 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen">
-      {/* ヘッダー */}
-      <header className="border-b bg-white/95 backdrop-blur sticky top-0 z-50">
+      {/* 簡易スプラッシュ演出 */}
+      {showIntro && (
+        <div className={`fixed inset-0 z-[60] bg-white flex items-center justify-center transition-opacity duration-700 ${fadeIntro ? 'opacity-0' : 'opacity-100'}`}>
+          <div className="text-center">
+            <Dog className="h-14 w-14 text-orange-500 mx-auto mb-4" />
+            <p className="text-gray-700 font-semibold">DogPark.jp</p>
+          </div>
+        </div>
+      )}
+
+      {/* ヘッダー（ヒーロー上に重ねる・透過） */}
+      <header className="absolute top-0 left-0 right-0 z-40">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-2">
-            <Dog className="h-8 w-8 text-orange-500" />
-            <span className="font-bold text-xl">DogPark.jp</span>
-          </Link>
-          <nav className="hidden md:flex items-center space-x-6">
-            <a href="#features" onClick={(e) => handleScrollToSection(e, 'features')} className="hover:text-blue-600 transition-colors">特徴</a>
-            <a href="#community" onClick={(e) => handleScrollToSection(e, 'community')} className="hover:text-blue-600 transition-colors">コミュニティ</a>
-            <a href="#how-to-use" onClick={(e) => handleScrollToSection(e, 'how-to-use')} className="hover:text-blue-600 transition-colors">使い方</a>
-            <a href="#facilities" onClick={(e) => handleScrollToSection(e, 'facilities')} className="hover:text-blue-600 transition-colors">施設情報</a>
-            <Button variant="outline" onClick={handleAppDownload}>アプリをダウンロード</Button>
+          <div />
+          <nav className="hidden md:flex items-center space-x-6 ml-auto text-white">
+            <a href="#features" onClick={(e) => handleScrollToSection(e, 'features')} className="text-white/90 hover:text-white transition-colors">特徴</a>
+            <a href="#community" onClick={(e) => handleScrollToSection(e, 'community')} className="text-white/90 hover:text-white transition-colors">コミュニティ</a>
+            <a href="#how-to-use" onClick={(e) => handleScrollToSection(e, 'how-to-use')} className="text-white/90 hover:text-white transition-colors">使い方</a>
+            <a href="#facilities" onClick={(e) => handleScrollToSection(e, 'facilities')} className="text-white/90 hover:text-white transition-colors">施設情報</a>
+            <Button variant="outline" className="border-white text-white hover:bg-white/10" onClick={handleAppDownload}>アプリをダウンロード</Button>
             <Link to="/admin">
-              <Button variant="outline" className="bg-gray-800 text-white hover:bg-gray-700">
+              <Button variant="outline" className="bg-white/10 text-white border-white hover:bg-white/20">
                 <Shield className="mr-2 h-4 w-4" />
                 管理者
               </Button>
@@ -63,19 +85,26 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* ヒーローセクション */}
-      <section className="py-20 px-4 bg-gradient-to-br from-orange-50 to-blue-50">
-        <div className="container mx-auto text-center max-w-4xl">
-          <div className="inline-flex items-center px-4 py-2 bg-white/80 backdrop-blur rounded-full text-sm font-medium mb-4">
-            <Zap className="h-4 w-4 mr-2 text-yellow-500" />
+      {/* ヒーローセクション（背景画像＋グラデーション） */}
+      <section className="relative min-h-[70vh] md:min-h-[80vh] flex items-center justify-center overflow-hidden">
+        <img
+          src="/images/splash-dog-running.webp"
+          alt="走るワンちゃん"
+          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-[2500ms] ${heroReady ? 'scale-100' : 'scale-110'}`}
+          style={{ filter: 'brightness(0.7)' }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-transparent" />
+        <div className={`relative z-10 container mx-auto px-4 text-center max-w-4xl transition-all duration-700 ${heroReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+          <div className="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur rounded-full text-sm font-medium mb-4 text-white">
+            <Zap className="h-4 w-4 mr-2 text-yellow-300" />
             全国初のスマートドッグランプラットフォーム
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 text-gray-900">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 text-white">
             愛犬と一緒に<br />
-            <span className="text-orange-600">新しい出会い</span>と<br />
-            <span className="text-blue-600">楽しい体験</span>を
+            <span className="text-orange-300">新しい出会い</span>と<br />
+            <span className="text-blue-200">楽しい体験</span>を
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
             スマートロックで24時間利用可能なドッグランと、愛犬家同士が繋がるコミュニティ。
             全国の犬と飼い主さんが集まる、新しいドッグライフプラットフォームです。
           </p>
@@ -84,7 +113,7 @@ export default function Landing() {
               <Smartphone className="mr-2 h-5 w-5" />
               無料アプリをダウンロード
             </Button>
-            <Button size="lg" variant="outline" onClick={handleSearchDogRun}>
+            <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10" onClick={handleSearchDogRun}>
               <Search className="mr-2 h-5 w-5" />
               近くのドッグランを探す
             </Button>
@@ -257,9 +286,12 @@ export default function Landing() {
             <div className="bg-white overflow-hidden shadow-lg rounded-xl">
               <div className="aspect-video relative bg-gray-200">
                 <img
-                  src="https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=400&h=300&fit=crop&crop=center"
+                  src="/images/facility-dogrun.webp"
                   alt="スマートドッグラン"
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=400&h=300&fit=crop&crop=center';
+                  }}
                 />
               </div>
               <div className="p-6">
@@ -276,9 +308,12 @@ export default function Landing() {
             <div className="bg-white overflow-hidden shadow-lg rounded-xl">
               <div className="aspect-video relative bg-gray-200">
                 <img
-                  src="https://images.unsplash.com/photo-1581888227599-779811939961?w=400&h=300&fit=crop&crop=center"
+                  src="/images/facility-cafe.webp"
                   alt="ペット同伴カフェ"
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1581888227599-779811939961?w=400&h=300&fit=crop&crop=center';
+                  }}
                 />
               </div>
               <div className="p-6">
@@ -295,9 +330,12 @@ export default function Landing() {
             <div className="bg-white overflow-hidden shadow-lg rounded-xl">
               <div className="aspect-video relative bg-gray-200">
                 <img
-                  src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=300&fit=crop&crop=center"
+                  src="/images/facility-hotel.webp"
                   alt="ペットホテル"
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=300&fit=crop&crop=center';
+                  }}
                 />
               </div>
               <div className="p-6">
@@ -314,9 +352,12 @@ export default function Landing() {
             <div className="bg-white overflow-hidden shadow-lg rounded-xl">
               <div className="aspect-video relative bg-gray-200">
                 <img
-                  src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop&crop=center"
+                  src="/images/facility-training.webp"
                   alt="ドッグトレーニング"
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop&crop=center';
+                  }}
                 />
               </div>
               <div className="p-6">

@@ -1,5 +1,5 @@
+import { Building, Calculator, CreditCard, Crown, Key, PawPrint } from 'lucide-react';
 import Card from '../Card';
-import { Crown, CreditCard, PawPrint, Calculator, Key, Building } from 'lucide-react';
 
 interface ReservationSidebarProps {
   hasSubscription: boolean;
@@ -83,7 +83,7 @@ export function ReservationSidebar({ hasSubscription }: ReservationSidebarProps)
         <div className="space-y-1 text-sm text-green-800">
           <p>• 安全なクレジットカード決済</p>
           <p>• 決済完了後、即座にPINコード発行</p>
-          <p>• 24時間有効（1Dayパスの場合）</p>
+          <p>• 入場時から24時間有効（1Dayパスの場合）</p>
           <p>• 全国のドッグランで利用可能</p>
           <p>• 最大3頭まで同時入場</p>
         </div>
@@ -96,7 +96,7 @@ export function ReservationSidebar({ hasSubscription }: ReservationSidebarProps)
           <h3 className="font-semibold text-green-900">1Dayパスの特徴</h3>
         </div>
         <div className="space-y-1 text-sm text-green-800">
-          <p>• 24時間有効（発行から24時間後に失効）</p>
+          <p>• 入場時から24時間有効</p>
           <p>• 最大3頭まで同時入場可能</p>
           <p>• 段階的料金制でお得</p>
           <p>• 全国のドッグランで利用可能</p>

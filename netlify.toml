@@ -179,6 +179,16 @@
 # エッジ関数の設定
 [functions]
   directory = "netlify/functions"
+
+[[redirects]]
+  from = "/line/webhook"
+  to = "/.netlify/functions/line-webhook"
+  status = 200
+
+[[redirects]]
+  from = "/line/push"
+  to = "/.netlify/functions/line-push"
+  status = 200
   
 # プラグインの設定
 [[plugins]]

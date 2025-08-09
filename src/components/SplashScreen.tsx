@@ -8,6 +8,30 @@ interface SplashScreenProps {
   onComplete: () => void;
 }
 
+const MIN_SPLASH_MS = 3500; // 最低表示 3.5秒
+const PREFETCH_CONCURRENCY = 4; // 同時ロード数
+
+// 汎用: 画像のプリロード
+const preloadImage = (src: string) => new Promise<void>((resolve) => {
+  const img = new Image();
+  img.onload = () => resolve();
+  img.onerror = () => resolve();
+  img.src = src;
+});
+
+// 汎用: <link rel="prefetch"> を追加
+const prefetchLink = (href: string, as?: string) => {
+  try {
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = href;
+    if (as) link.as = as as any;
+    document.head.appendChild(link);
+  } catch {
+    // no-op
+  }
+};
+
 const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -164,49 +188,95 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     setTimeout(imageAnimation, 800);
   }, [animateText]);
 
+  // 並列制御付きプリロード
+  const runWithConcurrency = useCallback(async (items: {name: string; loader: () => Promise<unknown>}[], update: (done: number, total: number) => void) => {
+    let index = 0;
+    let done = 0;
+    const total = items.length;
+
+    const worker = async () => {
+      while (index < total) {
+        const current = index++;
+        const task = items[current];
+        try {
+          await task.loader();
+        } catch (e) {
+          console.warn('Preload failed:', task.name, e);
+        } finally {
+          done++;
+          update(done, total);
+          await new Promise((r) => setTimeout(r, 120)); // 少し間隔
+        }
+      }
+    };
+
+    const workers = Array.from({ length: Math.min(PREFETCH_CONCURRENCY, total) }, () => worker());
+    await Promise.all(workers);
+  }, []);
+
   // 拡張プリロード処理（進歩追跡付き）
   useEffect(() => {
     let isMounted = true;
+    const startAt = Date.now();
     
     const preloadResources = async () => {
       if (!isMounted) return;
-      
-      const tasks = [
-        { name: 'ホーム画面', loader: () => import('../pages/Home') },
-        { name: '認証システム', loader: () => import('../context/AuthContext') },
-        { name: 'ナビゲーション', loader: () => import('../components/Navbar') },
-        { name: 'フッター', loader: () => import('../components/Footer') },
+
+      // 主要ページ・よく使うページ（優先）
+      const routeTasks: { name: string; loader: () => Promise<unknown> }[] = [
+        { name: 'Home', loader: () => import('../pages/Home') },
+        { name: 'DogParkList', loader: () => import('../pages/DogParkList') },
+        { name: 'DogParkDetail', loader: () => import('../pages/DogParkDetail') },
+        { name: 'UserDashboard', loader: () => import('../pages/UserDashboard') },
+        { name: 'ParkManagement', loader: () => import('../pages/ParkManagement') },
+        { name: 'ParkReservation', loader: () => import('../pages/ParkReservation') },
+        { name: 'JPPassport', loader: () => import('../pages/JPPassport') },
+        { name: 'SubscriptionIntro', loader: () => import('../pages/SubscriptionIntro') },
+        { name: 'Contact', loader: () => import('../pages/Contact') },
+        { name: 'PrivacyPolicy', loader: () => import('../pages/PrivacyPolicy') },
+        { name: 'TermsOfService', loader: () => import('../pages/TermsOfService') },
+        { name: 'AdminDashboard', loader: () => import('../pages/AdminDashboard') },
       ];
 
-      if (!isMounted) return;
-      setLoadingTasks(tasks.map(task => task.name));
-      let completedTasks = 0;
+      // 共通コンポーネント
+      const componentTasks: { name: string; loader: () => Promise<unknown> }[] = [
+        { name: 'Navbar', loader: () => import('../components/Navbar') },
+        { name: 'Footer', loader: () => import('../components/Footer') },
+        { name: 'BottomNavigation', loader: () => import('../components/BottomNavigation') },
+        { name: 'GoogleMapsProvider', loader: () => import('../components/GoogleMapsProvider') },
+        { name: 'DogParkCard', loader: () => import('../components/park/DogParkCard') },
+      ];
 
-      for (const task of tasks) {
-        if (!isMounted) break;
-        
-        try {
-          await task.loader();
-          completedTasks++;
-          
-          if (!isMounted) break;
-          
-          const progress = (completedTasks / tasks.length) * 100;
-          setPreloadProgress(progress);
-          setDogPosition(progress);
-          
-          // 各タスク間に少し間隔を開ける
-          await new Promise(resolve => setTimeout(resolve, 300));
-        } catch (error) {
-          console.warn(`⚠️ ${task.name}の読み込みエラー:`, error);
-          completedTasks++;
-          
-          if (!isMounted) break;
-          
-          const progress = (completedTasks / tasks.length) * 100;
-          setPreloadProgress(progress);
-          setDogPosition(progress);
-        }
+      // 画像・アイコン
+      const imageTasks: { name: string; loader: () => Promise<unknown> }[] = [
+        { name: 'Splash', loader: () => preloadImage('/images/splash-dog-running.webp') },
+        { name: 'Passport', loader: () => preloadImage('/images/passport-watermark.webp') },
+        { name: 'Icon192', loader: () => preloadImage('/icons/icon_android_192x192.png') },
+        { name: 'Icon144', loader: () => preloadImage('/icons/icon_android_144x144.png') },
+        { name: 'Favicon', loader: () => preloadImage('/favicon.svg') },
+      ];
+
+      // 事前にprefetchリンク（ブラウザに任せる）
+      ['/login', '/parks', '/dashboard', '/community', '/news'].forEach((p) => prefetchLink(p));
+
+      const tasks = [...routeTasks, ...componentTasks, ...imageTasks];
+      setLoadingTasks(tasks.map((t) => t.name));
+
+      let lastPercent = 0;
+      const update = (done: number, total: number) => {
+        if (!isMounted) return;
+        const percent = Math.max(lastPercent, Math.round((done / total) * 100));
+        lastPercent = percent;
+        setPreloadProgress(percent);
+        setDogPosition(percent);
+      };
+
+      await runWithConcurrency(tasks, update);
+
+      // 最低表示時間を満たすまで待機
+      const elapsed = Date.now() - startAt;
+      if (elapsed < MIN_SPLASH_MS) {
+        await new Promise((r) => setTimeout(r, MIN_SPLASH_MS - elapsed));
       }
 
       if (isMounted) {
@@ -219,7 +289,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     return () => {
       isMounted = false;
     };
-  }, []); // 空の依存配列で一度だけ実行
+  }, [runWithConcurrency]);
 
   // 開発環境でのメールアドレス自動入力
   useEffect(() => {

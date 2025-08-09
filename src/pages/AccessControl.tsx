@@ -13,7 +13,7 @@ import {
     Shield
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import LazyImage from '../components/LazyImage';
@@ -30,6 +30,7 @@ type ParkWithDistance = DogPark & { distance: number };
 export function AccessControl() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isActive: hasSubscription } = useSubscription();
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [parks, setParks] = useState<DogPark[]>([]);
@@ -237,7 +238,18 @@ export function AccessControl() {
           return;
         }
 
-        setParks(parksData || []);
+        const loadedParks = parksData || [];
+        setParks(loadedParks);
+
+        // クエリ ?park=ID があれば、その施設を選択しておく
+        const parkIdFromQuery = searchParams.get('park');
+        if (parkIdFromQuery) {
+          const found = loadedParks.find((p: any) => p.id === parkIdFromQuery);
+          if (found) {
+            const withDistance = { ...(found as DogPark), distance: 0 } as ParkWithDistance;
+            handleParkSelection(withDistance);
+          }
+        }
       } catch (error) {
         console.error('Error fetching parks:', error);
       }

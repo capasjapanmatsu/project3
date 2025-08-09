@@ -666,11 +666,18 @@ export function DogParkDetail() {
                       予約不可
                     </Button>
                   ) : (
-                    <Link to={`/reservation/${park.id}`}>
-                      <Button className="bg-blue-600 hover:bg-blue-700">
-                        予約する
-                      </Button>
-                    </Link>
+                    <div className="flex gap-2">
+                      <Link to={`/access-control?park=${park.id}`}>
+                        <Button className="bg-blue-600 hover:bg-blue-700">
+                          入場する
+                        </Button>
+                      </Link>
+                      <Link to={`/parks/${park.id}/reserve`}>
+                        <Button variant="secondary" className="bg-gray-600 hover:bg-gray-700">
+                          予約する
+                        </Button>
+                      </Link>
+                    </div>
                   )}
                 </div>
 
@@ -952,7 +959,7 @@ export function DogParkDetail() {
                     予約不可
                   </Button>
                 ) : (
-                  <Link to={`/reservation/${park.id}`}>
+                  <Link to={`/access-control?park=${park.id}`}>
                     <Button className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-3">
                       予約する
                     </Button>

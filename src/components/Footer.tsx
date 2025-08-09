@@ -1,4 +1,4 @@
-import { Building, Handshake, Mail, MapPin, PawPrint, Store } from 'lucide-react';
+import { Handshake, Mail, MapPin, PawPrint, Store } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 
@@ -7,7 +7,7 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
   
   return (
-    <footer className="bg-gray-900 text-white py-12">
+    <footer className="bg-gray-900 text-white py-16 pb-28 md:pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           {/* Logo & Description */}
@@ -141,7 +141,7 @@ export function Footer() {
             &copy; {currentYear} ドッグパークJP. All rights reserved.
           </p>
           <div className="flex space-x-6">
-            <Link to="/privacy" className="text-gray-400 hover:text-white transition-colors text-sm">
+            <Link to="/privacy-policy" className="text-gray-400 hover:text-white transition-colors text-sm">
               プライバシーポリシー
             </Link>
             <Link to="/terms" className="text-gray-400 hover:text-white transition-colors text-sm">

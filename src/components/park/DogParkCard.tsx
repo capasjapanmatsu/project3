@@ -235,16 +235,27 @@ export function DogParkCard({ park, userLocation, distance }: DogParkCardProps) 
             >
               予約不可
             </Button>
-          ) : isCurrentlyOpen && park.current_occupancy < park.max_capacity ? (
-            <Link to={`/reservation/${park.id}`} className="flex-1">
-              <Button 
-                className="w-full !rounded-lg"
-                style={{ borderRadius: '0.5rem' }}
-              >
-                予約する
-              </Button>
-            </Link>
-          ) : null}
+          ) : (
+            <>
+              <Link to={`/access-control?park=${park.id}`} className="flex-1">
+                <Button 
+                  className="w-full !rounded-lg"
+                  style={{ borderRadius: '0.5rem' }}
+                >
+                  入場する
+                </Button>
+              </Link>
+              <Link to={`/parks/${park.id}/reserve`} className="flex-1">
+                <Button 
+                  variant="secondary"
+                  className="w-full !rounded-lg"
+                  style={{ borderRadius: '0.5rem' }}
+                >
+                  予約する
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -93,7 +93,7 @@ export function ReservationForm({
             <h3 className="font-semibold text-blue-900">料金体系</h3>
           </div>
           <div className="text-sm text-blue-800 space-y-1">
-            <p>• 1Dayパス: ¥800（24時間有効）</p>
+            <p>• 1Dayパス: ¥800（入場時から24時間有効）</p>
             <p>• 2頭目以降: +¥400/頭（半額）</p>
             <p>• サブスク: 月額¥3,800（3頭まで使い放題）</p>
             <p>• 施設貸し切り: ¥4,400/時間（サブスク会員20%OFF）</p>
@@ -288,7 +288,7 @@ export function ReservationForm({
                     <span className="font-medium">1Dayパス（段階的料金制）</span>
                   </div>
                   <p className="text-sm text-gray-600">
-                    1頭目¥800 + 2頭目以降¥400/頭・24時間有効
+                    1頭目¥800 + 2頭目以降¥400/頭・入場時から24時間有効
                   </p>
                   {selectedDogs.length > 0 && (
                     <p className="text-sm text-blue-600 mt-1">
@@ -492,7 +492,7 @@ export function ReservationForm({
             {formData.paymentType === 'single' && (
               <div>
                 <p>1Dayパス料金: ¥{calculateDayPassPrice().toLocaleString()}（{selectedDogs.length}頭・段階的料金）</p>
-                <p className="text-xs">24時間有効・全国のドッグランで利用可能</p>
+                <p className="text-xs">入場時から24時間有効・全国のドッグランで利用可能</p>
               </div>
             )}
             
