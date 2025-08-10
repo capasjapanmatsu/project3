@@ -25,7 +25,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   if (!user || !isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // セッションCookieがあれば /liff/login へ誘導（LIFFでログイン→/dashboardへ）
+    return <Navigate to="/liff/login" replace />;
   }
   
   return <>{children}</>;

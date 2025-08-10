@@ -9,6 +9,7 @@ import {
 import { Suspense, lazy, memo, useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
+import { logoutSession } from '../utils/sessionClient';
 import { useSubscription } from '../hooks/useSubscription';
 import { log, safeSupabaseQuery } from '../utils/helpers';
 import { supabase } from '../utils/supabase';
@@ -150,6 +151,7 @@ export const Navbar = memo(function Navbar() {
 
   const handleLogout = useCallback(async () => {
     try {
+      await logoutSession();
       await logout();
       navigate('/');
     } catch (error) {
