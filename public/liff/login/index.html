@@ -26,9 +26,9 @@
   <script>
     // ★ LIFF_ID の決め方
     // 1) URLクエリ ?liffId=XXXX を優先
-    // 2) それが無い場合は {{LIFF_ID}} を使用（手書き置換前提）
+    // 2) それが無い場合は本番固定IDを使用
     const params = new URL(location.href).searchParams;
-    const LIFF_ID = params.get('liffId') || "{{LIFF_ID}}"; // 例: 2007901083-yrjAg3Q5
+    const LIFF_ID = params.get('liffId') || "2007901083-yrjAg3Q5";
 
     async function main() {
       const $status = document.getElementById('status');
