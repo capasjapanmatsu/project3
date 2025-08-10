@@ -31,7 +31,6 @@ import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { formatAddress, lookupPostalCode } from '../utils/postalCodeLookup';
 import { supabase } from '../utils/supabase';
-import { SESSION_COOKIE_NAME } from '../../netlify/functions/_lib/session';
 
 
 export function ProfileSettings() {
