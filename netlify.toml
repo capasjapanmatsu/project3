@@ -44,6 +44,21 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/auth/session"
+  to = "/.netlify/functions/auth-session"
+  status = 200
+
+[[redirects]]
+  from = "/auth/me"
+  to = "/.netlify/functions/auth-me"
+  status = 200
+
+[[redirects]]
+  from = "/auth/logout"
+  to = "/.netlify/functions/auth-logout"
+  status = 200
+
 # 静的パスの優先提供（/liff/login ディレクトリ直下の index.html を返す）
 [[redirects]]
   from = "/liff/login"

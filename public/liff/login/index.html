@@ -47,10 +47,12 @@
         const idToken = liff.getIDToken();
 
         $status.textContent = "サーバーで検証中…";
-        const res = await fetch('/.netlify/functions/line-login-verify', {
+        // 新APIへ切替
+        const res = await fetch('/.netlify/functions/auth-session', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken, lineUserId: profile.userId })
+          body: JSON.stringify({ idToken })
         });
 
         const data = await res.json();
@@ -61,8 +63,8 @@
           <p>ようこそ、${profile.displayName} さん。</p>
           <pre>${JSON.stringify({ lineUserId: profile.userId, verified: data.user }, null, 2)}</pre>
         `;
-        // TODO: 必要に応じて遷移
-        // location.href = "/mypage";
+        // 成功: ダッシュボードへ
+        location.assign('/dashboard');
       } catch (err) {
         console.error(err);
         $status.innerHTML = '<span class="err">エラー: ' + err.message + '</span>';
