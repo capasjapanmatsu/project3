@@ -3,7 +3,7 @@ import { SignJWT, jwtVerify, JWTPayload } from 'jose';
 const COOKIE_NAME = 'dpjp_session';
 
 function getSecret(): Uint8Array {
-  const secret = process.env.SESSION_SECRET as string | undefined;
+  const secret = (process.env.SESSION_SECRET || process.env.LINE_SESSION_SECRET) as string | undefined;
   if (!secret) throw new Error('SESSION_SECRET is not set');
   return new TextEncoder().encode(secret);
 }
