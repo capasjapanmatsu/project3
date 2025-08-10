@@ -25,6 +25,7 @@
     "analyze": "vite-bundle-visualizer"
   },
   "dependencies": {
+    "jose": "^5.3.0",
     "@line/bot-sdk": "^9.0.0",
     "@capacitor/android": "^7.4.2",
     "@capacitor/camera": "^7.0.1",
