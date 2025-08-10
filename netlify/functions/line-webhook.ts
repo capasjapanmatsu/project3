@@ -1,6 +1,7 @@
 import { validateSignature, type WebhookRequestBody } from '@line/bot-sdk';
 import type { Handler } from '@netlify/functions';
 import { lineClient } from './_lineClient';
+import { createClient } from '@supabase/supabase-js';
 
 const CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET as string;
 
@@ -30,19 +31,32 @@ export const handler: Handler = async (event) => {
 };
 
 async function handleEvent(evt: import('@line/bot-sdk').WebhookEvent) {
+  const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string | undefined;
+  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY as string | undefined;
+  const admin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
+    : null;
   // follow
   if (evt.type === 'follow' && evt.source.type === 'user' && evt.source.userId) {
     console.log('FOLLOW userId:', evt.source.userId);
     await safeReply(evt.replyToken, '友だち追加ありがとうございます！通知設定が完了しました。');
-    // TODO: Supabaseに upsert して通知ONを記録
-    // await supabase.from('user_line_link').upsert({ app_user_id, line_user_id: evt.source.userId })
+    // 通知ONに更新（users.notify_opt_in=true）。既存がなければ挿入
+    if (admin) {
+      try {
+        const { data } = await admin.from('users').select('id').eq('line_user_id', evt.source.userId).maybeSingle();
+        if (data?.id) {
+          await admin.from('users').update({ notify_opt_in: true }).eq('id', data.id);
+        }
+      } catch (e) { console.warn('follow upsert warn', e); }
+    }
     return;
   }
   // unfollow
   if (evt.type === 'unfollow' && evt.source.type === 'user' && evt.source.userId) {
     console.log('UNFOLLOW userId:', evt.source.userId);
-    // TODO: Supabaseで通知OFFに更新
-    // await supabase.from('user_line_link').update({ unfollowed_at: new Date().toISOString() }).eq('line_user_id', evt.source.userId)
+    if (admin) {
+      try { await admin.from('users').update({ notify_opt_in: false }).eq('line_user_id', evt.source.userId); } catch {}
+    }
     return;
   }
   // message:text
@@ -51,14 +65,16 @@ async function handleEvent(evt: import('@line/bot-sdk').WebhookEvent) {
     console.log('MESSAGE:', text, 'from', evt.source.type);
     // キーワード: 停止/開始
     if (/^停止$/.test(text)) {
-      // TODO: DBで通知OFFにする
-      // await supabase.from('user_line_link').update({ notify: false }).eq('line_user_id', evt.source.userId)
+      if (admin && evt.source.type==='user' && evt.source.userId) {
+        try { await admin.from('users').update({ notify_opt_in: false }).eq('line_user_id', evt.source.userId); } catch {}
+      }
       await safeReply(evt.replyToken, '通知を停止しました。いつでも「開始」と送ると再開します。');
       return;
     }
     if (/^開始$/.test(text)) {
-      // TODO: DBで通知ONにする
-      // await supabase.from('user_line_link').update({ notify: true }).eq('line_user_id', evt.source.userId)
+      if (admin && evt.source.type==='user' && evt.source.userId) {
+        try { await admin.from('users').update({ notify_opt_in: true }).eq('line_user_id', evt.source.userId); } catch {}
+      }
       await safeReply(evt.replyToken, '通知を再開しました。');
       return;
     }

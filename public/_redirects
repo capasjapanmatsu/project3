@@ -2,4 +2,5 @@
  /auth/session /.netlify/functions/auth-session 200!
  /auth/me /.netlify/functions/auth-me 200!
  /auth/logout /.netlify/functions/auth-logout 200!
+ /line/link-user /.netlify/functions/line-link-user 200!
 /* /index.html 200

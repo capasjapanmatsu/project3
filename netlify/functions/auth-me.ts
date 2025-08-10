@@ -18,7 +18,7 @@ export const handler: Handler = async (event) => {
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
     const { data, error } = await admin
       .from('users')
-      .select('id, line_user_id, display_name, picture_url')
+      .select('id, line_user_id, display_name, picture_url, notify_opt_in, app_user_id')
       .eq('id', uid)
       .single();
     if (error || !data) return { statusCode: 401, body: 'User not found' };

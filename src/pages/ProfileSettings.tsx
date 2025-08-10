@@ -31,6 +31,7 @@ import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { formatAddress, lookupPostalCode } from '../utils/postalCodeLookup';
 import { supabase } from '../utils/supabase';
+import { SESSION_COOKIE_NAME } from '../../netlify/functions/_lib/session';
 
 
 export function ProfileSettings() {
@@ -728,6 +729,35 @@ export function ProfileSettings() {
         </div>
 
         <div className="space-y-4">
+          <div className="p-4 bg-white rounded-lg border border-green-200">
+            <h3 className="font-semibold mb-2">LINE連携</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              現在のアプリユーザーとLINEアカウントを紐付けます。LIFFでログイン済みである必要があります。
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                try {
+                  if (!user?.id) return;
+                  // Cookieからは参照しないが、連携APIへ現在のappUserIdとlineUserIdを送る想定
+                  const res = await fetch('/line/link-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ appUserId: user.id, /*lineUserId: 明示指定したい場合ここに*/ })
+                  });
+                  if (!res.ok) throw new Error(await res.text());
+                  setSuccess('LINE連携を申請しました（既存のLINEログインと紐付け）。');
+                  setTimeout(() => setSuccess(''), 3000);
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : '連携に失敗しました');
+                }
+              }}
+            >
+              LINE連携する
+            </Button>
+          </div>
           <div className="p-4 bg-white rounded-lg border border-gray-200">
             <h3 className="font-semibold mb-2">パスワード変更</h3>
             <p className="text-sm text-gray-600 mb-3">
