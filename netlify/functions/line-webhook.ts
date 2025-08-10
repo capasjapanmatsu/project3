@@ -47,7 +47,7 @@ async function handleEvent(evt: import('@line/bot-sdk').WebhookEvent) {
   }
   // message:text
   if (evt.type === 'message' && evt.message.type === 'text') {
-    const text = evt.message.text;
+    const text = evt.message.text?.trim();
     console.log('MESSAGE:', text, 'from', evt.source.type);
     // キーワード: 停止/開始
     if (/^停止$/.test(text)) {

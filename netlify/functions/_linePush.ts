@@ -23,4 +23,11 @@ export async function pushReservation(to: string, payload: {
   await pushText(to, text);
 }
 
+export async function pushAlert(to: string, title: string, message: string) {
+  await lineClient.pushMessage(to, [
+    { type: 'text', text: `【${title}】` },
+    { type: 'text', text: message },
+  ] as any);
+}
+
 

@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { lineClient } from './_lineClient';
+import { createClient } from '@supabase/supabase-js';
 
 // ---- Flex 生成ユーティリティ ----
 function flexReservation(params: {
@@ -76,14 +77,19 @@ function badgeApprovedFlex(dogName: string, expires?: string) {
 }
 
 // ---- ハンドラ ----
+const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string | undefined;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY as string | undefined;
+
 export const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'POST only' };
   }
   try {
     const body = event.body ? JSON.parse(event.body) : {};
-    const { to, kind = 'text' } = body as {
-      to?: string;
+    const { to, userId, lineUserId, kind = 'text' } = body as {
+      to?: string; // LINE userId
+      userId?: string; // app users.app_user_id（アプリのユーザーID）
+      lineUserId?: string; // 直接指定
       kind?: 'text' | 'reservation' | 'badge_approved' | 'alert';
       message?: string;
       park?: string; time?: string; pin?: string; mapUrl?: string; note?: string;
@@ -91,7 +97,19 @@ export const handler: Handler = async (event) => {
       title?: string;
     };
 
-    const recipient = to || process.env.LINE_TEST_USER_ID;
+    let recipient = to || process.env.LINE_TEST_USER_ID as string | undefined;
+    // DB解決: userId または lineUserId から users テーブルを参照
+    if (!recipient && (userId || lineUserId)) {
+      if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+        const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+        if (userId) {
+          const { data } = await admin.from('users').select('line_user_id').eq('app_user_id', userId).maybeSingle();
+          recipient = data?.line_user_id || recipient;
+        } else if (lineUserId) {
+          recipient = lineUserId;
+        }
+      }
+    }
     if (!recipient) return { statusCode: 400, body: 'Missing "to"' };
 
     if (kind === 'text') {
