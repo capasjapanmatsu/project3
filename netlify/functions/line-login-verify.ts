@@ -1,6 +1,19 @@
 import type { Handler } from '@netlify/functions';
+import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 
 const LOGIN_CHANNEL_ID = process.env.LOGIN_CHANNEL_ID as string; // LINEログインのChannel ID（Bot用ではない）
+const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string | undefined;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY as string | undefined;
+const SESSION_SECRET = (process.env.SESSION_SECRET || process.env.LINE_SESSION_SECRET) as string | undefined;
+
+function signJwtHS256(payload: Record<string, any>, secret: string): string {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const base64url = (obj: any) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+  const unsigned = `${base64url(header)}.${base64url(payload)}`;
+  const sig = crypto.createHmac('sha256', secret).update(unsigned).digest('base64url');
+  return `${unsigned}.${sig}`;
+}
 
 export const handler: Handler = async (event) => {
   try {
@@ -58,10 +71,41 @@ export const handler: Handler = async (event) => {
       amr: verify.amr,
     });
 
-    // TODO: DB UPSERT（Supabaseなど）／自前JWT発行
+    // --- DB UPSERT（任意: SUPABASE_SERVICE_ROLE_KEY がある場合のみ） ---
+    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+        // user_line_link テーブル: line_user_id(PK), name, email, updated_at
+        const { error: upsertError } = await admin
+          .from('user_line_link')
+          .upsert({ line_user_id: lineUserId, name: verify.name ?? null, email: verify.email ?? null }, { onConflict: 'line_user_id' });
+        if (upsertError) {
+          console.warn('[line-login] upsert warning', upsertError.message);
+        }
+      } catch (e) {
+        console.warn('[line-login] upsert skipped', e);
+      }
+    } else {
+      console.warn('[line-login] SUPABASE_URL or SERVICE_ROLE_KEY not set; skipping DB upsert');
+    }
+
+    // --- 自前JWT発行＆Cookie設定（7日有効） ---
+    let setCookieHeader: string | undefined;
+    try {
+      if (SESSION_SECRET) {
+        const now = Math.floor(Date.now() / 1000);
+        const exp = now + 7 * 24 * 60 * 60;
+        const token = signJwtHS256({ sub: lineUserId, name: verify.name ?? null, aud: 'line', iat: now, exp }, SESSION_SECRET);
+        const maxAge = 7 * 24 * 60 * 60;
+        setCookieHeader = `dp_session=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
+      }
+    } catch (e) {
+      console.warn('[line-login] jwt issue skipped', e);
+    }
+
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(setCookieHeader ? { 'Set-Cookie': setCookieHeader } : {}) },
       body: JSON.stringify({ ok: true, user: { lineUserId, name: verify.name ?? null, email: verify.email ?? null } }),
     };
   } catch (err: any) {

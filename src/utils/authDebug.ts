@@ -1,3 +1,9 @@
+export function parseDpSessionCookie(): { token?: string } {
+  if (typeof document === 'undefined') return {};
+  const m = document.cookie.match(/(?:^|; )dp_session=([^;]+)/);
+  return { token: m ? decodeURIComponent(m[1]) : undefined };
+}
+
 import { supabase } from './supabase';
 
 export const debugAuthStatus = async () => {
