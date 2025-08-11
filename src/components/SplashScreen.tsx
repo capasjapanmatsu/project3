@@ -701,6 +701,16 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
               {/* フォーム共通コンテナ（高さ統一） */}
               <div className="min-h-[200px] flex flex-col justify-between">
+                {/* LINEログイン導線（メール不要） */}
+                <div className="mb-4">
+                  <button
+                    type="button"
+                    onClick={() => window.location.assign('/liff/login')}
+                    className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md transition-all"
+                  >
+                    LINEでログイン
+                  </button>
+                </div>
                 {/* パスワードログインフォーム */}
                 {isPasswordLogin ? (
                   <form onSubmit={(e) => { void handlePasswordLogin(e); }} className="space-y-4">

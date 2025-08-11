@@ -2,6 +2,7 @@ import { AlertTriangle, ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import LineLoginButton from '../components/LineLoginButton';
 import Card from '../components/Card';
 import Input from '../components/Input';
 import useAuth from '../context/AuthContext';
@@ -234,6 +235,15 @@ export function Login() {
           </form>
         )}
       </Card>
+
+      <div className="relative flex items-center py-4">
+        <div className="flex-grow border-t border-gray-200"></div>
+        <span className="mx-3 text-gray-400 text-sm">または</span>
+        <div className="flex-grow border-t border-gray-200"></div>
+      </div>
+
+      {/* LINEでログイン（メール無しで作成可） */}
+      <LineLoginButton full />
         
         {/* 管理者向け不具合報告 */}
         <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
