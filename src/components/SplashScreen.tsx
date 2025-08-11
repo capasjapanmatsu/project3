@@ -830,20 +830,19 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
               </div>
             </div>
 
-            {/* スキップボタン */}
-            {import.meta.env.DEV && (
-              <div className="text-center mt-4">
-                <button
-                  onClick={() => {
-                    localStorage.setItem('hasSeenSplash', 'true');
-                    onComplete();
-                  }}
-                  className="text-sm text-blue-400 hover:text-blue-600 underline"
-                >
-                  スキップ
-                </button>
-              </div>
-            )}
+            {/* スキップボタン（本番でも常に表示） */}
+            <div className="text-center mt-4">
+              <button
+                onClick={() => {
+                  try { localStorage.setItem('hasSeenSplash', 'true'); } catch {}
+                  onComplete();
+                }}
+                className="text-sm text-blue-500 hover:text-blue-700 underline"
+                aria-label="スプラッシュをスキップして本編へ進む"
+              >
+                スキップ
+              </button>
+            </div>
           </div>
         </div>
 
