@@ -74,6 +74,13 @@
   from = "/liff/login"
   to = "/liff/login/index.html"
   status = 200
+  force = true
+
+[[redirects]]
+  from = "/liff/login/*"
+  to = "/liff/login/index.html"
+  status = 200
+  force = true
 
 # SPAのルーティング設定
 [[redirects]]
