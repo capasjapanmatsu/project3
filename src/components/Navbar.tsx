@@ -9,7 +9,7 @@ import {
 import { Suspense, lazy, memo, useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
-import { logoutSession } from '../utils/sessionClient';
+import { fetchSessionUser, logoutSession, type SessionUser } from '../utils/sessionClient';
 import { useSubscription } from '../hooks/useSubscription';
 import { log, safeSupabaseQuery } from '../utils/helpers';
 import { supabase } from '../utils/supabase';
@@ -28,6 +28,7 @@ interface ProfileData {
 // Memoize the Navbar component to prevent unnecessary re-renders
 export const Navbar = memo(function Navbar() {
   const { user, logout, isAdmin } = useAuth();
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const navigate = useNavigate();
   const [userName, setUserName] = useState<string>('');
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -71,9 +72,25 @@ export const Navbar = memo(function Navbar() {
     };
   }, []);
 
+  // LIFFセッション確認（Supabase未ログインでもナビにログイン状態を反映）
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const me = await fetchSessionUser();
+        if (mounted) setSessionUser(me);
+      } catch {
+        if (mounted) setSessionUser(null);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  const isLoggedIn = Boolean(user || sessionUser);
+
   // Memoize fetch functions to prevent unnecessary re-renders
   const fetchUserName = useCallback(async () => {
-    if (!user) return;
+    if (!user && !sessionUser) return;
     
     try {
       const result = await safeSupabaseQuery(() =>
@@ -91,7 +108,9 @@ export const Navbar = memo(function Navbar() {
       if (result.data?.name) {
         setUserName(result.data.name);
       } else {
-        const metaName = (user.user_metadata?.name as string) || user.email?.split('@')[0];
+        const metaName = user
+          ? ((user.user_metadata?.name as string) || user.email?.split('@')[0])
+          : (sessionUser?.display_name || '');
         if (metaName) {
           setUserName(metaName);
         }
@@ -99,7 +118,7 @@ export const Navbar = memo(function Navbar() {
     } catch (error) {
       log('error', 'Exception in fetchUserName', { error, userId: user.id });
     }
-  }, [user]);
+  }, [user, sessionUser]);
 
   const fetchUnreadNotifications = useCallback(async () => {
     if (!user) return;
@@ -141,13 +160,18 @@ export const Navbar = memo(function Navbar() {
       void fetchUserName();
       void fetchUnreadNotifications();
       void fetchCartItemCount();
+    } else if (sessionUser) {
+      // LIFFセッションのみ：名前だけ反映し、その他は0に
+      setUserName(sessionUser.display_name || '');
+      setUnreadNotifications(0);
+      setCartItemCount(0);
     } else {
       setUserName('');
       setUnreadNotifications(0);
       setCartItemCount(0);
     }
     return undefined;
-  }, [user, isAdmin, fetchUserName, fetchUnreadNotifications, fetchCartItemCount]);
+  }, [user, sessionUser, isAdmin, fetchUserName, fetchUnreadNotifications, fetchCartItemCount]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -288,7 +312,7 @@ export const Navbar = memo(function Navbar() {
             </Link>
             
             <div className="flex items-center space-x-4">
-              {user ? (
+              {isLoggedIn ? (
                 <>
                   <span className="text-gray-700 hidden md:inline-block">
                     こんにちは、{userName || 'ユーザー'}さん
@@ -390,7 +414,7 @@ export const Navbar = memo(function Navbar() {
                     </Link>
                   )}
                   
-                  {/* ログアウトボタン */}
+                  {/* ログアウトボタン（LIFFセッションも含めてログアウト） */}
                   <button
                     onClick={() => {
                       void handleLogout();
