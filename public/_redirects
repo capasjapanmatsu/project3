@@ -1,3 +1,4 @@
+ /liff/login /liff/login/index.html 200!
  /line/notify /.netlify/functions/line-notify 200!
  /auth/session /.netlify/functions/auth-session 200!
  /auth/me /.netlify/functions/auth-me 200!
