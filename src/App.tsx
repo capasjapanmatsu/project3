@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { fetchSessionUser } from './utils/sessionClient';
 import useAuth from './context/AuthContext';
 import { MaintenanceProvider } from './context/MaintenanceContext';
 
@@ -16,19 +17,34 @@ import { SEO } from './components/SEO';
 import ScrollToTop from './components/ScrollToTop';
 import SplashScreen from './components/SplashScreen';
 
-// 保護されたルートコンポーネント
+// 保護されたルートコンポーネント（LIFFセッションで判定）
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isAuthenticated, loading } = useAuth();
-  
-  if (loading) {
-    return <PageSkeleton />;
-  }
-  
-  if (!user || !isAuthenticated) {
-    // セッションCookieがあれば /liff/login へ誘導（LIFFでログイン→/dashboardへ）
-    return <Navigate to="/liff/login" replace />;
-  }
-  
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isLoading, setIsLoading] = useState(true);
+  const [allowed, setAllowed] = useState(false);
+
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const me = await fetchSessionUser();
+        if (!mounted) return;
+        if (me) {
+          setAllowed(true);
+        } else {
+          const redirect = encodeURIComponent(location.pathname + location.search);
+          navigate(`/liff/login?redirect=${redirect}`, { replace: true });
+        }
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [location.pathname, location.search, navigate]);
+
+  if (isLoading) return <PageSkeleton />;
+  if (!allowed) return null;
   return <>{children}</>;
 };
 
