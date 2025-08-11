@@ -64,6 +64,11 @@
   to = "/.netlify/functions/line-link-user"
   status = 200
 
+[[redirects]]
+  from = "/line/unlink-user"
+  to = "/.netlify/functions/line-unlink-user"
+  status = 200
+
 # 静的パスの優先提供（/liff/login ディレクトリ直下の index.html を返す）
 [[redirects]]
   from = "/liff/login"

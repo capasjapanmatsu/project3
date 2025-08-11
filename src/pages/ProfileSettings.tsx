@@ -747,32 +747,58 @@ export function ProfileSettings() {
               現在のアプリユーザーとLINEアカウントを紐付けます。LIFFでログイン済みである必要があります。
             </p>
             <div className="flex items-center gap-2">
-              <Button
-                variant={linked ? 'secondary' : 'primary'}
-                size="sm"
-                isLoading={linking}
-                disabled={linking}
-                onClick={async () => {
-                  setError(''); setSuccess(''); setLinking(true);
-                  try {
-                    if (!user?.id) throw new Error('ログインが必要です');
-                    const res = await fetch('/line/link-user', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      credentials: 'include',
-                      body: JSON.stringify({ appUserId: user.id })
-                    });
-                    if (!res.ok) throw new Error(await res.text());
-                    setLinked(true);
-                    setSuccess('LINE連携が完了しました');
-                    setTimeout(() => setSuccess(''), 2500);
-                  } catch (e) {
-                    setError(e instanceof Error ? e.message : '連携に失敗しました');
-                  } finally { setLinking(false); }
-                }}
-              >
-                {linked ? '連携済み（解除予定）' : 'LINE連携する'}
-              </Button>
+              {linked ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  isLoading={linking}
+                  disabled={linking}
+                  onClick={async () => {
+                    setError(''); setSuccess(''); setLinking(true);
+                    try {
+                      const res = await fetch('/line/unlink-user', {
+                        method: 'POST',
+                        credentials: 'include'
+                      });
+                      if (!res.ok) throw new Error(await res.text());
+                      setLinked(false);
+                      setSuccess('LINE連携を解除しました');
+                      setTimeout(() => setSuccess(''), 2500);
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : '解除に失敗しました');
+                    } finally { setLinking(false); }
+                  }}
+                >
+                  連携済み（解除する）
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  isLoading={linking}
+                  disabled={linking}
+                  onClick={async () => {
+                    setError(''); setSuccess(''); setLinking(true);
+                    try {
+                      if (!user?.id) throw new Error('ログインが必要です');
+                      const res = await fetch('/line/link-user', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ appUserId: user.id })
+                      });
+                      if (!res.ok) throw new Error(await res.text());
+                      setLinked(true);
+                      setSuccess('LINE連携が完了しました');
+                      setTimeout(() => setSuccess(''), 2500);
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : '連携に失敗しました');
+                    } finally { setLinking(false); }
+                  }}
+                >
+                  LINE連携する
+                </Button>
+              )}
 
               {linked !== null && (
                 <span className={`text-sm ${linked ? 'text-green-600' : 'text-gray-500'}`}>
