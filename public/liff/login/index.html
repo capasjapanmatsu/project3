@@ -63,6 +63,8 @@
           <p>ようこそ、${profile.displayName} さん。</p>
           <pre>${JSON.stringify({ lineUserId: profile.userId, verified: data.user }, null, 2)}</pre>
         `;
+        // スプラッシュを一度だけスキップするフラグ
+        try { localStorage.setItem('skipSplashOnce', '1'); } catch {}
         // 成功: ダッシュボードへ
         location.assign('/dashboard');
       } catch (err) {

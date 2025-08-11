@@ -170,6 +170,16 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
   // 画像とテキストのアニメーション
   useEffect(() => {
+    // LIFFログイン直後は一度だけスプラッシュをスキップ
+    try {
+      const skip = localStorage.getItem('skipSplashOnce');
+      if (skip === '1') {
+        localStorage.removeItem('skipSplashOnce');
+        onComplete();
+        return; // 以降のスプラッシュ表示ロジックは実行しない
+      }
+    } catch {}
+
     const imageAnimation = () => {
       const fadeIn = () => {
         setImageOpacity(prev => {
