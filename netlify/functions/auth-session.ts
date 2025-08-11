@@ -25,7 +25,11 @@ export const handler: Handler = async (event) => {
     });
     const verify = await verifyRes.json() as any;
     if (!verifyRes.ok) {
-      return { statusCode: 401, body: JSON.stringify({ ok: false, error: verify.error_description || 'verify failed' }) };
+      return {
+        statusCode: 401,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ok: false, error: verify.error_description || 'verify failed' })
+      };
     }
 
     const lineUserId: string = verify.sub;
@@ -65,8 +69,10 @@ export const handler: Handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      multiValueHeaders: { 'Set-Cookie': [cookie] },
+      headers: {
+        'Content-Type': 'application/json',
+        'Set-Cookie': cookie
+      },
       body: JSON.stringify({ ok: true }),
     };
   } catch (e: any) {

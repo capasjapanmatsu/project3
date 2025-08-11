@@ -56,7 +56,16 @@
         });
 
         const data = await res.json();
-        if (!res.ok || !data.ok) throw new Error(data.error || '検証に失敗しました');
+        if (!res.ok || !data.ok) {
+          // トークン期限切れなどの際は再ログインを要求
+          if (res.status === 401 && data && typeof data.error === 'string' && data.error.toLowerCase().includes('expired')) {
+            $status.textContent = 'トークン期限切れのため再ログインします…';
+            try { await liff.logout(); } catch {}
+            liff.login({ scope: ['profile','openid'], prompt: 'consent' });
+            return;
+          }
+          throw new Error(data.error || '検証に失敗しました');
+        }
 
         $status.innerHTML = '<span class="ok">ログイン成功！</span>';
         $result.innerHTML = `
@@ -71,7 +80,10 @@
         console.error(err);
         $status.innerHTML = '<span class="err">エラー: ' + err.message + '</span>';
         $retry.style.display = 'inline-block';
-        $retry.onclick = () => location.reload();
+        $retry.onclick = async () => {
+          try { await liff.logout(); } catch {}
+          location.reload();
+        };
       }
     }
 
