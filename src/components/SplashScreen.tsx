@@ -712,13 +712,34 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
               {/* フォーム共通コンテナ（高さ統一） */}
               <div className="min-h-[200px] flex flex-col justify-between">
                 {/* LINEログイン導線（メール不要） */}
-                <div className="mb-4">
+                <div className="mb-2">
                   <button
                     type="button"
-                    onClick={() => window.location.assign('/liff/login')}
+                    onClick={() => {
+                      try {
+                        // LIFF後のワンタイムスキップと、当面の再表示抑止の両方
+                        localStorage.setItem('skipSplashOnce', '1');
+                        localStorage.setItem('hasSeenSplash', 'true');
+                      } catch {}
+                      window.location.assign('/liff/login');
+                    }}
                     className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md transition-all"
+                    aria-label="LINEでログイン（スプラッシュをスキップ）"
                   >
                     LINEでログイン
+                  </button>
+                </div>
+                {/* 画面内で確実に見えるスキップ導線（カード内） */}
+                <div className="mb-4 text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try { localStorage.setItem('hasSeenSplash', 'true'); } catch {}
+                      onComplete();
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-700 underline"
+                  >
+                    今はスキップして先へ進む
                   </button>
                 </div>
                 {/* パスワードログインフォーム */}
@@ -820,7 +841,11 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                 <p className="text-center text-sm text-gray-600">
                   アカウントをお持ちでない方は{' '}
                   <button
-                    onClick={() => navigate('/register')}
+                    onClick={() => {
+                      try { localStorage.setItem('hasSeenSplash', 'true'); } catch {}
+                      onComplete();
+                      navigate('/register');
+                    }}
                     className="text-blue-500 hover:text-blue-700 underline font-medium inline-flex items-center"
                   >
                     <UserPlus className="w-4 h-4 mr-1" />
