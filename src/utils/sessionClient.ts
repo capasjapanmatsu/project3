@@ -3,6 +3,8 @@ export interface SessionUser {
   line_user_id: string;
   display_name?: string | null;
   picture_url?: string | null;
+  app_user_id?: string | null;
+  notify_opt_in?: boolean | null;
 }
 
 export async function fetchSessionUser(): Promise<SessionUser | null> {
