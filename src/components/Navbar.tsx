@@ -9,9 +9,9 @@ import {
 import { Suspense, lazy, memo, useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
-import { fetchSessionUser, logoutSession, type SessionUser } from '../utils/sessionClient';
 import { useSubscription } from '../hooks/useSubscription';
 import { log, safeSupabaseQuery } from '../utils/helpers';
+import { fetchSessionUser, logoutSession, type SessionUser } from '../utils/sessionClient';
 import { supabase } from '../utils/supabase';
 
 // PWADebugPanelをレイジーロード
