@@ -1,9 +1,9 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { fetchSessionUser } from './utils/sessionClient';
 import useAuth from './context/AuthContext';
 import { MaintenanceProvider } from './context/MaintenanceContext';
+import { fetchSessionUser } from './utils/sessionClient';
 
 // レイアウトコンポーネント
 import { BottomNavigation } from './components/BottomNavigation';
@@ -57,7 +57,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   if (!user || !isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/liff/login" replace />;
   }
   
   if (!isAdmin) {

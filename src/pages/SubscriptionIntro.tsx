@@ -94,7 +94,7 @@ export function SubscriptionIntro() {
   const handleSubscribe = async () => {
     if (!user) {
       // ログイン後にこのページに戻ってくるためのリダイレクトパラメータを追加
-      navigate('/login?redirect=/subscription-intro&message=サブスクリプションにご加入いただくには、まずログインが必要です。');
+      navigate('/liff/login?redirect=/subscription-intro&message=サブスクリプションにご加入いただくには、まずログインが必要です。');
       return;
     }
 

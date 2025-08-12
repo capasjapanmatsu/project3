@@ -47,7 +47,7 @@ export function Community() {
   // 未ログイン時はログイン画面にリダイレクト
   useEffect(() => {
     if (!user) {
-      navigate('/login?redirect=/community&message=' + encodeURIComponent('コミュニティ機能を利用するにはログインが必要です'));
+      navigate('/liff/login?redirect=/community&message=' + encodeURIComponent('コミュニティ機能を利用するにはログインが必要です'));
       return;
     }
   }, [user, navigate]);
