@@ -34,7 +34,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           setAllowed(true);
         } else {
           const redirect = encodeURIComponent(location.pathname + location.search);
-          navigate(`/liff/login?redirect=${redirect}`, { replace: true });
+          window.location.assign(`/liff/login?redirect=${redirect}`);
         }
       } finally {
         if (mounted) setIsLoading(false);
