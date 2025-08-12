@@ -17,34 +17,37 @@ import { SEO } from './components/SEO';
 import ScrollToTop from './components/ScrollToTop';
 import SplashScreen from './components/SplashScreen';
 
-// 保護されたルートコンポーネント（LIFFセッションで判定）
+// 保護されたルートコンポーネント（Supabase または LIFF セッションどちらでもOK）
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isLoading, setIsLoading] = useState(true);
-  const [allowed, setAllowed] = useState(false);
+  const [liffAllowed, setLiffAllowed] = useState<boolean | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    // Supabaseユーザーがいれば即許可
+    if (loading) return;
+    if (user) {
+      setLiffAllowed(true);
+      return;
+    }
+
+    // なければ LIFF セッションを確認
     let mounted = true;
     (async () => {
-      try {
-        const me = await fetchSessionUser();
-        if (!mounted) return;
-        if (me) {
-          setAllowed(true);
-        } else {
-          const redirect = encodeURIComponent(location.pathname + location.search);
-          window.location.assign(`/liff/login?redirect=${redirect}`);
-        }
-      } finally {
-        if (mounted) setIsLoading(false);
+      const me = await fetchSessionUser();
+      if (!mounted) return;
+      setLiffAllowed(Boolean(me));
+      if (!me) {
+        const redirect = encodeURIComponent(location.pathname + location.search);
+        navigate(`/login?redirect=${redirect}`, { replace: true });
       }
     })();
     return () => { mounted = false; };
-  }, [location.pathname, location.search, navigate]);
+  }, [user, loading, location.pathname, location.search, navigate]);
 
-  if (isLoading) return <PageSkeleton />;
-  if (!allowed) return null;
+  if (loading || liffAllowed === null) return <PageSkeleton />;
+  if (!user && !liffAllowed) return null;
   return <>{children}</>;
 };
 
