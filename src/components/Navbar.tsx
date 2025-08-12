@@ -90,7 +90,12 @@ export const Navbar = memo(function Navbar() {
 
   // Memoize fetch functions to prevent unnecessary re-renders
   const fetchUserName = useCallback(async () => {
-    if (!user && !sessionUser) return;
+    // LIFF の display_name を最優先で採用
+    if (sessionUser?.display_name) {
+      setUserName(sessionUser.display_name);
+      return;
+    }
+    if (!user) return;
     
     try {
       const result = await safeSupabaseQuery(() =>
@@ -108,9 +113,7 @@ export const Navbar = memo(function Navbar() {
       if (result.data?.name) {
         setUserName(result.data.name);
       } else {
-        const metaName = user
-          ? ((user.user_metadata?.name as string) || user.email?.split('@')[0])
-          : (sessionUser?.display_name || '');
+        const metaName = (user.user_metadata?.name as string) || user.email?.split('@')[0] || '';
         if (metaName) {
           setUserName(metaName);
         }

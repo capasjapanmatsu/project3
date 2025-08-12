@@ -44,6 +44,7 @@
 
         $status.textContent = "プロフィール取得中…";
         const profile = await liff.getProfile();
+        try { sessionStorage.setItem('liff_display_name', profile.displayName || ''); } catch {}
         const idToken = liff.getIDToken();
 
         $status.textContent = "サーバーで検証中…";
