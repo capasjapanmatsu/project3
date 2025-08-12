@@ -67,7 +67,7 @@ export function ProductDetail() {
         user ? supabase
           .from('cart_items')
           .select('*, product:products(*)')
-          .eq('user_id', user.id) : Promise.resolve({ data: [] }),
+          .eq('user_id', user?.id) : Promise.resolve({ data: [] }),
           
         supabase
           .from('product_images')

@@ -569,7 +569,7 @@ export function MapView({
         const { data: dogs, error } = await supabase
           .from('dogs')
           .select('id, name, image_url')
-          .eq('user_id', user.id)
+          .eq('user_id', user?.id)
           .order('created_at', { ascending: true });
 
         if (!error && dogs && dogs.length > 0) {

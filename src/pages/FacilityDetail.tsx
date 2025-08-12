@@ -272,7 +272,7 @@ export function FacilityDetail() {
       const { data, error } = await supabase
         .from('user_coupons')
         .select('*')
-        .eq('user_id', user.id)
+          .eq('user_id', user?.id)
         .eq('facility_id', facilityId);
 
       if (error) {

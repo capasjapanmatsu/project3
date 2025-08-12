@@ -115,7 +115,7 @@ export function NearbyDogs() {
           created_at,
           profiles!dogs_owner_id_fkey(name)
         `)
-        .neq('owner_id', user.id)
+        .neq('owner_id', (user?.id || effectiveUserId) as any)
         .limit(50);
 
       if (dogsError) throw dogsError;
