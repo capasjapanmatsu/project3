@@ -58,7 +58,7 @@ export const FloatingActionButton = () => {
             pet_facilities (name)
           )
         `)
-        .eq('user_id', user.id)
+        .eq('user_id', user?.id)
         .is('used_at', null)
         .gte('facility_coupons.end_date', new Date().toISOString());
 

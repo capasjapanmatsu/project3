@@ -397,7 +397,7 @@ export default function FacilityEdit() {
           updated_at: new Date().toISOString()
         })
         .eq('id', facilityId)
-        .eq('owner_id', user.id);
+        .eq('owner_id', user?.id);
 
       if (updateError) throw updateError;
 

@@ -63,7 +63,7 @@ export function JPPassport() {
             created_at
           )
         `)
-        .eq('owner_id', user.id)
+        .eq('owner_id', user?.id)
         .order('name');
 
       if (error) {

@@ -37,7 +37,7 @@ export function useAccessLog(lockId?: string): UseAccessLogReturn {
       let query = supabase
         .from('access_logs')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', user?.id)
         .order('issued_at', { ascending: false });
 
       // lockIdが指定されている場合はフィルタリング

@@ -27,7 +27,7 @@ import type { Dog, DogEncounter, FriendRequest, Friendship, Message, Notificatio
 import { supabase } from '../utils/supabase';
 
 export function Community() {
-  const { user } = useAuth();
+  const { user, effectiveUserId } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'notifications' | 'messages' | 'blacklist' | 'nearby'>('friends');
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
@@ -53,11 +53,11 @@ export function Community() {
   }, [user, navigate]);
 
   useEffect(() => {
-    if (user) {
+    if (user || effectiveUserId) {
       // 🚀 最適化されたデータ取得とリアルタイム設定
       initializeCommunityPage();
     }
-  }, [user]);
+  }, [user, effectiveUserId]);
 
   const initializeCommunityPage = async () => {
     try {
@@ -102,7 +102,7 @@ export function Community() {
         event: '*',
         schema: 'public',
         table: 'friend_requests',
-        filter: `requested_id=eq.${user.id}`,
+        filter: `requested_id=eq.${user?.id || effectiveUserId}`,
       }, () => {
         void fetchFriendRequests();
       })
@@ -114,7 +114,7 @@ export function Community() {
         event: '*',
         schema: 'public',
         table: 'notifications',
-        filter: `user_id=eq.${user.id}`,
+        filter: `user_id=eq.${user?.id || effectiveUserId}`,
       }, () => {
         void fetchNotifications();
       })
@@ -126,7 +126,7 @@ export function Community() {
         event: '*',
         schema: 'public',
         table: 'messages',
-        filter: `receiver_id=eq.${user.id}`,
+        filter: `receiver_id=eq.${user?.id || effectiveUserId}`,
       }, () => {
         void fetchMessages();
       })

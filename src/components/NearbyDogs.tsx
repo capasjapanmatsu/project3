@@ -26,7 +26,7 @@ interface UserLocation {
 }
 
 export function NearbyDogs() {
-  const { user } = useAuth();
+  const { user, effectiveUserId } = useAuth();
   const navigate = useNavigate();
   const [nearbyDogs, setNearbyDogs] = useState<NearbyDog[]>([]);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);

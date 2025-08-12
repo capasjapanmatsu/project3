@@ -72,7 +72,7 @@ export function SubscriptionIntro() {
         const { data: subscription, error } = await supabase
           .from('stripe_user_subscriptions')
           .select('id, stripe_subscription_id')
-          .eq('user_id', user.id)
+           .eq('user_id', user?.id)
           .eq('status', 'active')
           .maybeSingle();
 
@@ -110,7 +110,7 @@ export function SubscriptionIntro() {
       const { data: subscriptionHistory, error: historyError } = await supabase
         .from('stripe_user_subscriptions')
         .select('id, created_at')
-        .eq('user_id', user.id)
+         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (historyError) {

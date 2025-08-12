@@ -23,4 +23,13 @@ export async function logoutSession(): Promise<void> {
   } catch {}
 }
 
+export async function getEffectiveUserId(): Promise<string | null> {
+  try {
+    const me = await fetchSessionUser();
+    return me?.app_user_id || me?.id || null;
+  } catch {
+    return null;
+  }
+}
+
 

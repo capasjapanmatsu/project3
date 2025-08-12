@@ -206,11 +206,12 @@ export function FacilityDetail() {
         .then(result => result)
         .catch(() => ({ data: [], error: null }));
       
-      // ログインユーザーの犬一覧を取得
-      const userDogsResult = user ? await supabase
+      // ログインユーザーの犬一覧を取得（LIFFログイン対応）
+      const uid = user?.id;
+      const userDogsResult = uid ? await supabase
         .from('dogs')
         .select('id, name, gender')
-        .eq('owner_id', user.id) : { data: [] };
+        .eq('owner_id', uid) : { data: [] };
 
       if (reviewsResult.data) {
         console.log('Reviews data:', reviewsResult.data);
@@ -243,12 +244,12 @@ export function FacilityDetail() {
       }
 
       // ユーザーが既に取得したクーポンをチェック
-      if (user && couponsResult.data && couponsResult.data.length > 0) {
+      if (uid && couponsResult.data && couponsResult.data.length > 0) {
         const couponIds = couponsResult.data.map(c => c.id);
         const { data: userCouponsData } = await supabase
           .from('user_coupons')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', uid)
           .in('coupon_id', couponIds);
 
         setUserCoupons(userCouponsData || []);
@@ -287,7 +288,7 @@ export function FacilityDetail() {
 
   const handleObtainCoupon = async (couponId: string) => {
     if (!user) {
-      navigate('/login');
+      navigate('/liff/login');
       return;
     }
 
@@ -886,7 +887,7 @@ export function FacilityDetail() {
                             
                             <div className="pt-4">
                               {!user ? (
-                                <Link to="/login">
+                                <Link to="/liff/login">
                                   <Button className="w-full py-3 text-base" variant="outline">
                                     ログインしてクーポンを取得
                                   </Button>
