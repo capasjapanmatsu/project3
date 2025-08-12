@@ -69,7 +69,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/login" className="text-gray-400 hover:text-white transition-colors">
+                <Link to="/liff/login" className="text-gray-400 hover:text-white transition-colors">
                   ログイン
                 </Link>
               </li>

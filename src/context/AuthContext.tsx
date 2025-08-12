@@ -15,6 +15,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  effectiveUserId?: string | null;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   signInWithMagicLink: (email: string) => Promise<{ success: boolean; error?: string }>;
@@ -29,6 +30,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
+  effectiveUserId: null,
   logout: async () => { await Promise.resolve(); },
   isAuthenticated: false,
   signInWithMagicLink: async () => { await Promise.resolve(); return { success: false }; },
@@ -46,6 +48,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [effectiveUserId, setEffectiveUserId] = useState<string | null>(null);
 
   const fetchUserProfile = useCallback(async (userId: string, userEmail?: string): Promise<UserProfile | null> => {
     try {
@@ -104,6 +107,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUserProfile(null); // プロフィール取得スキップ
           setIsAdmin(user.email === 'capasjapan@gmail.com');
           setLoading(false);
+          setEffectiveUserId(user.id);
         } else {
           if (isMounted) {
             setSession(null);
@@ -112,6 +116,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUserProfile(null);
             setIsAdmin(false);
             setLoading(false);
+            setEffectiveUserId(null);
           }
         }
       } catch (err) {
@@ -139,6 +144,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(false);
         setUserProfile(null);
         setIsAdmin(false);
+        setEffectiveUserId(null);
         setLoading(false);
       } else if (event === 'SIGNED_IN' && session) {
         // ログイン成功時の即座の状態更新
@@ -147,11 +153,13 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(true);
         setUserProfile(null); // プロフィール取得スキップ
         setIsAdmin(session.user.email === 'capasjapan@gmail.com');
+        setEffectiveUserId(session.user.id);
         setLoading(false);
       } else if (event === 'TOKEN_REFRESHED' && session) {
         // トークン更新時
         setSession(session);
         setUser(session.user);
+        setEffectiveUserId(session.user.id);
         setLoading(false);
       }
     });

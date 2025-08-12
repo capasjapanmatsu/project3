@@ -27,7 +27,7 @@ interface ProfileData {
 
 // Memoize the Navbar component to prevent unnecessary re-renders
 export const Navbar = memo(function Navbar() {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, effectiveUserId } = useAuth();
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const navigate = useNavigate();
   const [userName, setUserName] = useState<string>('');
@@ -86,11 +86,16 @@ export const Navbar = memo(function Navbar() {
     return () => { mounted = false; };
   }, []);
 
-  const isLoggedIn = Boolean(user || sessionUser);
+  const isLoggedIn = Boolean(user || sessionUser || effectiveUserId);
 
   // Memoize fetch functions to prevent unnecessary re-renders
   const fetchUserName = useCallback(async () => {
-    if (!user && !sessionUser) return;
+    // LIFF の display_name を最優先で採用
+    if (sessionUser?.display_name) {
+      setUserName(sessionUser.display_name);
+      return;
+    }
+    if (!user) return;
     
     try {
       const result = await safeSupabaseQuery(() =>
@@ -108,9 +113,7 @@ export const Navbar = memo(function Navbar() {
       if (result.data?.name) {
         setUserName(result.data.name);
       } else {
-        const metaName = user
-          ? ((user.user_metadata?.name as string) || user.email?.split('@')[0])
-          : (sessionUser?.display_name || '');
+        const metaName = (user.user_metadata?.name as string) || user.email?.split('@')[0] || '';
         if (metaName) {
           setUserName(metaName);
         }
@@ -128,7 +131,7 @@ export const Navbar = memo(function Navbar() {
         supabase
           .from('notifications')
           .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
+          .eq('user_id', user?.id || effectiveUserId)
           .eq('read', false)
       );
       
@@ -146,7 +149,7 @@ export const Navbar = memo(function Navbar() {
         supabase
           .from('cart_items')
           .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
+          .eq('user_id', user?.id || effectiveUserId)
       );
       
       setCartItemCount(result.data || 0);
@@ -429,7 +432,7 @@ export const Navbar = memo(function Navbar() {
               ) : (
                 <>
                   <Link 
-                    to="/login" 
+                    to="/liff/login" 
                     className="text-gray-600 hover:text-blue-600 transition-colors"
                   >
                     ログイン

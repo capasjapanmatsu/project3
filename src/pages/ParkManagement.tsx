@@ -375,7 +375,7 @@ export function ParkManagement() {
         .from('dog_parks')
         .select('*')
         .eq('id', parkId)
-        .eq('owner_id', user.id)
+        .eq('owner_id', user?.id)
         .single();
       
       if (parkError) {
@@ -850,7 +850,7 @@ export function ParkManagement() {
           updated_at: new Date().toISOString()
         })
         .eq('id', parkId)
-        .eq('owner_id', user.id);
+        .eq('owner_id', user?.id);
 
       if (updateError) {
         throw updateError;

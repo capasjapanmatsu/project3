@@ -257,7 +257,7 @@ export function DogParkDetail() {
             *,
             vaccine_certifications!inner(*)
           `)
-          .eq('owner_id', user.id)
+          .eq('owner_id', user?.id)
           .eq('vaccine_certifications.status', 'approved'),
         
         // レビュー権限チェック
@@ -281,7 +281,7 @@ export function DogParkDetail() {
             dog:dogs(*)
           `)
           .eq('park_id', parkId)
-          .eq('user_id', user.id)
+          .eq('user_id', user?.id)
           .eq('status', 'confirmed')
           .eq('date', new Date().toISOString().split('T')[0])
           .order('start_time', { ascending: true })

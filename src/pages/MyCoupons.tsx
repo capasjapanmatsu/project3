@@ -57,7 +57,7 @@ export function MyCoupons() {
             )
           )
         `)
-        .eq('user_id', user.id)
+        .eq('user_id', user?.id)
         .order('obtained_at', { ascending: false });
 
       if (error) throw error;

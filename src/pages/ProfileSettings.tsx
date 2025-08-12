@@ -90,7 +90,7 @@ export function ProfileSettings() {
       fetchProfile();
       // fetchMFAStatus(); // 一時的に無効化
     } else {
-      navigate('/login');
+    navigate('/liff/login');
     }
   }, [user, navigate]);
 

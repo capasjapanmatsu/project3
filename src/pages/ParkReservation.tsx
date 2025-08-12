@@ -24,7 +24,7 @@ interface TimeSlot {
 export function ParkReservation() {
   const { id: parkId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, effectiveUserId } = useAuth();
   const { isActive: hasSubscription } = useSubscription();
   const { createCheckoutSession, loading: checkoutLoading } = useStripe();
   const [isLoading, setIsLoading] = useState(false);
@@ -68,8 +68,8 @@ export function ParkReservation() {
   }, [park?.max_capacity]);
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login');
+    if (!user && !effectiveUserId) {
+    navigate('/liff/login');
       return;
     }
 
@@ -79,7 +79,8 @@ export function ParkReservation() {
     }
     
     async function fetchData() {
-      if (!user || !parkId) return;
+      const uid = user?.id || effectiveUserId;
+      if (!uid || !parkId) return;
       
       try {
         const [dogsResponse, parkResponse] = await Promise.all([
@@ -89,7 +90,7 @@ export function ParkReservation() {
               *,
               vaccine_certifications(*)
             `)
-            .eq('owner_id', user.id),
+            .eq('owner_id', uid),
           supabase
             .from('dog_parks')
             .select('*')

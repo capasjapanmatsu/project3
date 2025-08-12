@@ -511,7 +511,7 @@ export function UserDashboard() {
             マイページ
           </h1>
           <p className="text-gray-600 mt-1">
-            ようこそ、{profile?.name || zustandUser?.name || 'ユーザー'}さん！
+            ようこそ、{profile?.name || zustandUser?.name || sessionStorage.getItem('liff_display_name') || 'ユーザー'}さん！
           </p>
         </div>
         <div className="flex items-center space-x-4">

@@ -105,7 +105,7 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
               *,
               coupon:facility_coupons(*)
             `)
-            .eq('user_id', user.id)
+            .eq('user_id', user?.id)
             .in('coupon_id', couponIds);
 
           if (userCouponsError) throw userCouponsError;

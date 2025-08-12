@@ -148,7 +148,7 @@ export function DogProfile() {
         const { data: userLikeData, error: userLikeError } = await supabase
           .from('dog_likes')
           .select('id')
-          .eq('user_id', user.id)
+          .eq('user_id', user?.id)
           .eq('dog_id', currentDogId)
           .maybeSingle();
 
@@ -171,7 +171,7 @@ export function DogProfile() {
         const { error } = await supabase
           .from('dog_likes')
           .delete()
-          .eq('user_id', user.id)
+          .eq('user_id', user?.id)
           .eq('dog_id', dog.id);
 
         if (error) throw error;

@@ -81,7 +81,7 @@ export function PetShop() {
     const { data, error } = await supabase
       .from('cart_items')
       .select('*, product:products(*)')
-      .eq('user_id', user.id);
+      .eq('user_id', user?.id);
 
     if (error) throw error;
     setCartItems(data || []);

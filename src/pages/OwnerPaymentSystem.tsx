@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, DollarSign, Calendar, Building, BarChart4, Download, CheckCircle, AlertTriangle, Ban, FileText, Clock } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Ban, BarChart4, Building, Calendar, CheckCircle, Clock, DollarSign, Download, FileText } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import useAuth from '../context/AuthContext';
@@ -54,7 +54,7 @@ export function OwnerPaymentSystem() {
 
   useEffect(() => {
     if (!user) {
-      navigate('/login');
+      navigate('/liff/login');
       return;
     }
     

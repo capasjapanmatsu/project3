@@ -28,7 +28,7 @@ import { supabase } from '../utils/supabase';
 type ParkWithDistance = DogPark & { distance: number };
 
 export function AccessControl() {
-  const { user } = useAuth();
+  const { user, effectiveUserId } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { isActive: hasSubscription } = useSubscription();
@@ -148,7 +148,8 @@ export function AccessControl() {
 
   useEffect(() => {
     const fetchInitialData = async () => {
-      if (!user) return;
+      const uid = user?.id || effectiveUserId;
+      if (!uid) return;
 
       // 🚀 フェーズ1: 最優先データ（犬情報）を最初に取得
       try {
@@ -164,7 +165,7 @@ export function AccessControl() {
               approved_at
             )
           `)
-          .eq('owner_id', user.id);
+          .eq('owner_id', uid as any);
 
         if (error) {
           console.warn('Error fetching dogs:', error);
@@ -257,10 +258,11 @@ export function AccessControl() {
 
     // 🔄 決済状況確認の分離関数
     const fetchPaymentStatusData = async () => {
-      if (!user) return;
+      const uid2 = user?.id || effectiveUserId;
+      if (!uid2) return;
       
       try {
-        const status = await checkPaymentStatus(user.id);
+        const status = await checkPaymentStatus(uid2);
         setPaymentStatus(status);
       } catch (error) {
         console.error('Error checking payment status:', error);
