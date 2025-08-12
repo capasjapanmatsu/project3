@@ -68,6 +68,8 @@
           throw new Error(data.error || '検証に失敗しました');
         }
 
+        // iOS/LINE WebView 対策：Cookie反映待ち
+        await new Promise(r => setTimeout(r, 0));
         $status.innerHTML = '<span class="ok">ログイン成功！</span>';
         $result.innerHTML = `
           <p>ようこそ、${profile.displayName} さん。</p>

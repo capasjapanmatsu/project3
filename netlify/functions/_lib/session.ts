@@ -24,7 +24,9 @@ export async function verifySessionToken(token: string): Promise<JWTPayload & { 
 }
 
 export function buildSessionCookie(token: string, maxAgeSec = 60 * 60 * 12): string {
-  return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=${maxAgeSec}`;
+  // Domain は apex とサブドメイン双方で使えるように親ドメインを指定
+  const domain = process.env.COOKIE_DOMAIN || '.dogparkjp.com';
+  return `${COOKIE_NAME}=${token}; Path=/; Domain=${domain}; HttpOnly; Secure; SameSite=None; Max-Age=${maxAgeSec}`;
 }
 
 export function buildClearCookie(): string {
