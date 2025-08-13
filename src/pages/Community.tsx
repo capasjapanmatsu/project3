@@ -54,24 +54,24 @@ export function Community() {
   }, [user, effectiveUserId, navigate]);
 
   useEffect(() => {
-    if (user || effectiveUserId) {
+    const id = user?.id || effectiveUserId;
+    if (id) {
       // 🚀 最適化されたデータ取得とリアルタイム設定
-      initializeCommunityPage();
+      initializeCommunityPage(id);
     }
   }, [user, effectiveUserId]);
 
-  const initializeCommunityPage = async () => {
+  const initializeCommunityPage = async (id: string) => {
     try {
       // フェーズ1: 即座にUIを表示（基本的なタブ構造）
       // 初期状態のisLoading=trueで表示開始
       
       // フェーズ2: クリティカルデータの優先取得
       setIsLoading(true);
-      if (!uid) return;
       await Promise.allSettled([
-        fetchFriendRequests(uid),
-        fetchFriends(uid),
-        fetchNotifications(uid)
+        fetchFriendRequests(id),
+        fetchFriends(id),
+        fetchNotifications(id)
       ]);
       
       // 基本的なコミュニケーション機能で画面表示を開始
@@ -79,10 +79,10 @@ export function Community() {
       
       // フェーズ3: 追加データの並列取得（バックグラウンド）
       void Promise.allSettled([
-        fetchMessages(),
-        fetchDogEncounters(),
-        fetchUserDogs(),
-        fetchBlacklistedDogs()
+        fetchMessages(id),
+        fetchDogEncounters(id),
+        fetchUserDogs(id),
+        fetchBlacklistedDogs(id)
       ]);
       
       // フェーズ4: リアルタイムサブスクリプション設定（最後）
@@ -207,21 +207,21 @@ export function Community() {
     }
   };
 
-  const fetchMessages = async () => {
+  const fetchMessages = async (uid: string) => {
     const { data, error } = await supabase
       .from('latest_messages')
       .select(`
         *,
         sender:profiles!messages_sender_id_fkey(*)
       `)
-      .or(`sender_id.eq.${user?.id},receiver_id.eq.${user?.id}`)
+      .or(`sender_id.eq.${uid},receiver_id.eq.${uid}`)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
     setMessages(data || []);
   };
 
-  const fetchDogEncounters = async () => {
+  const fetchDogEncounters = async (uid: string) => {
     const { data, error } = await supabase
       .from('dog_encounters')
       .select(`
@@ -237,17 +237,17 @@ export function Community() {
     setDogEncounters(data || []);
   };
 
-  const fetchUserDogs = async () => {
+  const fetchUserDogs = async (uid: string) => {
     const { data, error } = await supabase
       .from('dogs')
       .select('*')
-      .eq('owner_id', user?.id);
+      .eq('owner_id', uid);
     
     if (error) throw error;
     setUserDogs(data || []);
   };
 
-  const fetchBlacklistedDogs = async () => {
+  const fetchBlacklistedDogs = async (uid: string) => {
     const { data, error } = await supabase
       .from('dog_blacklist')
       .select(`
@@ -257,7 +257,7 @@ export function Community() {
           owner:profiles!dogs_owner_id_fkey(*)
         )
       `)
-      .eq('user_id', user?.id)
+      .eq('user_id', uid)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
