@@ -62,7 +62,8 @@ export function SubscriptionIntro() {
 
   // ページ読み込み時にサブスクリプション状態をチェック
   useEffect(() => {
-    if (!user) {
+    const uid = user?.id;
+    if (!uid) {
       setLoading(false);
       return;
     }
@@ -72,7 +73,7 @@ export function SubscriptionIntro() {
         const { data: subscription, error } = await supabase
           .from('stripe_user_subscriptions')
           .select('id, stripe_subscription_id')
-           .eq('user_id', user?.id)
+           .eq('user_id', uid)
           .eq('status', 'active')
           .maybeSingle();
 

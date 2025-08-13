@@ -28,6 +28,7 @@ import { supabase } from '../utils/supabase';
 
 export function Community() {
   const { user, effectiveUserId } = useAuth();
+  const uid = user?.id || effectiveUserId;
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'notifications' | 'messages' | 'blacklist' | 'nearby'>('friends');
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
@@ -66,10 +67,11 @@ export function Community() {
       
       // フェーズ2: クリティカルデータの優先取得
       setIsLoading(true);
+      if (!uid) return;
       await Promise.allSettled([
-        fetchFriendRequests(),
-        fetchFriends(),
-        fetchNotifications()
+        fetchFriendRequests(uid),
+        fetchFriends(uid),
+        fetchNotifications(uid)
       ]);
       
       // 基本的なコミュニケーション機能で画面表示を開始
@@ -94,7 +96,7 @@ export function Community() {
 
   // 🔄 リアルタイムサブスクリプション設定を分離
   const setupRealtimeSubscriptions = () => {
-    if (!user) return;
+    if (!uid) return;
 
     const friendRequestsSubscription = supabase
       .channel('friend_requests_changes')
@@ -102,7 +104,7 @@ export function Community() {
         event: '*',
         schema: 'public',
         table: 'friend_requests',
-        filter: `requested_id=eq.${user?.id || effectiveUserId}`,
+        filter: `requested_id=eq.${uid}`,
       }, () => {
         void fetchFriendRequests();
       })
@@ -114,7 +116,7 @@ export function Community() {
         event: '*',
         schema: 'public',
         table: 'notifications',
-        filter: `user_id=eq.${user?.id || effectiveUserId}`,
+        filter: `user_id=eq.${uid}`,
       }, () => {
         void fetchNotifications();
       })
@@ -126,7 +128,7 @@ export function Community() {
         event: '*',
         schema: 'public',
         table: 'messages',
-        filter: `receiver_id=eq.${user?.id || effectiveUserId}`,
+        filter: `receiver_id=eq.${uid}`,
       }, () => {
         void fetchMessages();
       })
@@ -159,14 +161,14 @@ export function Community() {
     }
   };
 
-  const fetchFriendRequests = async () => {
+  const fetchFriendRequests = async (uid: string) => {
     const { data, error } = await supabase
       .from('friend_requests')
       .select(`
         *,
         requester:profiles!friend_requests_requester_id_fkey(*)
       `)
-      .eq('requested_id', user?.id)
+      .eq('requested_id', uid)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
     
@@ -174,21 +176,21 @@ export function Community() {
     setFriendRequests(data || []);
   };
 
-  const fetchFriends = async () => {
+  const fetchFriends = async (uid: string) => {
     const { data, error } = await supabase
       .rpc('get_friends_with_dogs', {
-        p_user_id: user?.id
+        p_user_id: uid
       });
     
     if (error) throw error;
     setFriends(data || []);
   };
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (uid: string) => {
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
-      .eq('user_id', user?.id)
+      .eq('user_id', uid)
       .order('created_at', { ascending: false })
       .limit(20);
     
