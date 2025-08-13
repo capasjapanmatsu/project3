@@ -24,6 +24,7 @@ import { DogManagementSection } from '../components/dashboard/DogManagementSecti
 import { NotificationSection } from '../components/dashboard/NotificationSection';
 import { ParkModal } from '../components/dashboard/ParkModal';
 import useAuth from '../context/AuthContext';
+import { useMe } from '../hooks/useMe';
 import { useSubscription } from '../hooks/useSubscription';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
@@ -33,6 +34,7 @@ import { supabase } from '../utils/supabase';
 
 export function UserDashboard() {
   const { user, logout, isAdmin } = useAuth();
+  const { me, loading: meLoading } = useMe();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -103,17 +105,21 @@ export function UserDashboard() {
       setIsLoading(true);
       
       // フェーズ1: 最優先データ（プロフィール・犬情報）
+      // Supabaseは user?.id が無い場合は呼ばない
+      const uid = user?.id || me?.id;
+      if (!uid) throw new Error('not_authenticated');
+
       const [profileResponse, dogsResponse] = await Promise.all([
         supabase
           .from('profiles')
           .select('*')
-          .eq('id', user?.id)
+          .eq('id', uid)
           .single(),
         
         supabase
           .from('dogs')
           .select('*, vaccine_certifications(*)')
-          .eq('owner_id', user?.id)
+          .eq('owner_id', uid)
           .order('created_at', { ascending: false })
       ]);
 
@@ -124,7 +130,7 @@ export function UserDashboard() {
       // Zustand Storeの更新
       if (profileResponse.data && !zustandUser) {
         setUser({
-          id: user?.id || '',
+          id: uid || '',
           email: user?.email || '',
           name: profileResponse.data.name,
           role: profileResponse.data.user_type || 'user'
@@ -143,20 +149,20 @@ export function UserDashboard() {
         supabase
           .from('dog_parks')
           .select('*')
-          .eq('owner_id', user?.id)
+          .eq('owner_id', uid)
           .order('created_at', { ascending: false }),
         
         supabase
           .from('reservations')
           .select('*, dog_park:dog_parks(*), dog:dogs(*)')
-          .eq('user_id', user?.id)
+          .eq('user_id', uid)
           .order('created_at', { ascending: false })
           .limit(5),
         
         supabase
           .from('notifications')
           .select('*')
-          .eq('user_id', user?.id)
+          .eq('user_id', uid)
           .eq('read', false)
           .order('created_at', { ascending: false })
           .limit(5)
@@ -183,7 +189,7 @@ export function UserDashboard() {
         supabase
           .from('pet_facilities')
           .select('*')
-          .eq('owner_id', user?.id)
+          .eq('owner_id', uid)
           .order('created_at', { ascending: false })
           .then(response => {
             if (response.data) {
@@ -204,7 +210,7 @@ export function UserDashboard() {
               vaccine_certifications(*)
             )
           `)
-          .eq('user_id', user?.id)
+          .eq('user_id', uid)
           .order('created_at', { ascending: false })
           .limit(10)
           .then(response => {
@@ -226,7 +232,7 @@ export function UserDashboard() {
               pet_facilities (name)
             )
           `)
-          .eq('user_id', user?.id)
+          .eq('user_id', uid)
           .is('used_at', null)
           .gte('facility_coupons.end_date', new Date().toISOString())
           .then(response => {

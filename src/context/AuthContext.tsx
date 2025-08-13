@@ -1,5 +1,6 @@
 import { Session, User } from '@supabase/supabase-js';
 import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { fetchSessionUser } from '../utils/sessionClient';
 import { supabase } from '../utils/supabase';
 
 interface UserProfile {
@@ -171,6 +172,24 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []); // 依存配列を空に戻す
 
+  // Supabaseユーザーが居ない場合でも、LIFFセッションがあれば有効なユーザーIDを反映
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (user) return; // Supabaseログイン中は不要
+      try {
+        const me = await fetchSessionUser();
+        if (!mounted) return;
+        if (me) {
+          setEffectiveUserId(me.app_user_id || me.id);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+    return () => { mounted = false; };
+  }, [user]);
+
   const signInWithMagicLink = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const { error } = await supabase.auth.signInWithOtp({
@@ -316,6 +335,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     loading,
     logout,
     isAuthenticated,
+    effectiveUserId,
     signInWithMagicLink,
     signInWithPassword,
     verify2FA,
@@ -328,6 +348,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     loading,
     logout,
     isAuthenticated,
+    effectiveUserId,
     signInWithMagicLink,
     signInWithPassword,
     verify2FA,

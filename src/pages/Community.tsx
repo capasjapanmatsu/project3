@@ -44,13 +44,13 @@ export function Community() {
   const [success, setSuccess] = useState('');
   const [blacklistedDogs, setBlacklistedDogs] = useState<any[]>([]);
 
-  // 未ログイン時はログイン画面にリダイレクト
+  // 未ログイン時はログイン画面にリダイレクト（メールログイン優先）
   useEffect(() => {
-    if (!user) {
-      navigate('/liff/login?redirect=/community&message=' + encodeURIComponent('コミュニティ機能を利用するにはログインが必要です'));
+    if (!user && !effectiveUserId) {
+      navigate('/login?redirect=/community&message=' + encodeURIComponent('コミュニティ機能を利用するにはログインが必要です'));
       return;
     }
-  }, [user, navigate]);
+  }, [user, effectiveUserId, navigate]);
 
   useEffect(() => {
     if (user || effectiveUserId) {
