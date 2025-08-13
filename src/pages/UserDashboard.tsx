@@ -33,7 +33,7 @@ import { supabase } from '../utils/supabase';
 
 
 export function UserDashboard() {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, lineUser, isLineAuthenticated } = useAuth();
   const { me, loading: meLoading } = useMe();
   const navigate = useNavigate();
   const location = useLocation();
@@ -105,16 +105,29 @@ export function UserDashboard() {
       setIsLoading(true);
       
       // フェーズ1: 最優先データ（プロフィール・犬情報）
-      // Supabaseは user?.id が無い場合は呼ばない
-      const uid = user?.id || me?.id;
-      if (!uid) throw new Error('not_authenticated');
+      // LINEユーザーまたはSupabaseユーザーのIDを取得
+      const uid = user?.id || lineUser?.id || me?.id;
+      if (!uid) {
+        // どちらの認証もない場合はローディングを解除してリダイレクト
+        setIsLoading(false);
+        setGlobalLoading(false);
+        return;
+      }
 
+      // LINEユーザーの場合、profilesテーブルにエントリがない可能性があるので、エラーを無視
       const [profileResponse, dogsResponse] = await Promise.all([
         supabase
           .from('profiles')
           .select('*')
           .eq('id', uid)
-          .single(),
+          .single()
+          .then(result => {
+            // LINEユーザーの場合、profilesにデータがない可能性があるのでエラーを無視
+            if (result.error && isLineAuthenticated) {
+              return { data: null, error: null };
+            }
+            return result;
+          }),
         
         supabase
           .from('dogs')
@@ -124,6 +137,7 @@ export function UserDashboard() {
       ]);
 
       // 基本情報を即座に表示
+      // LINEユーザーの場合、profileがnullでも続行
       setProfile(profileResponse.data);
       setDogs(dogsResponse.data || []);
       
@@ -258,7 +272,7 @@ export function UserDashboard() {
     } finally {
       setGlobalLoading(false);
     }
-  }, [user?.id, zustandUser, setUser, setGlobalLoading, addNotification]);
+  }, [user?.id, lineUser?.id, isLineAuthenticated, zustandUser, setUser, setGlobalLoading, addNotification]);
 
   // 🚦 Data Loading (認証チェックはProtectedRouteが担当)
   useEffect(() => {
@@ -517,7 +531,7 @@ export function UserDashboard() {
             マイページ
           </h1>
           <p className="text-gray-600 mt-1">
-            ようこそ、{profile?.name || zustandUser?.name || sessionStorage.getItem('liff_display_name') || 'ユーザー'}さん！
+            ようこそ、{profile?.name || lineUser?.display_name || zustandUser?.name || sessionStorage.getItem('liff_display_name') || 'ユーザー'}さん！
           </p>
         </div>
         <div className="flex items-center space-x-4">

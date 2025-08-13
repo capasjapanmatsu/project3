@@ -27,8 +27,8 @@ import type { Dog, DogEncounter, FriendRequest, Friendship, Message, Notificatio
 import { supabase } from '../utils/supabase';
 
 export function Community() {
-  const { user, effectiveUserId } = useAuth();
-  const uid = user?.id || effectiveUserId;
+  const { user, effectiveUserId, lineUser, isLineAuthenticated } = useAuth();
+  const uid = user?.id || lineUser?.id || effectiveUserId;
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'notifications' | 'messages' | 'blacklist' | 'nearby'>('friends');
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
@@ -47,19 +47,19 @@ export function Community() {
 
   // 未ログイン時はログイン画面にリダイレクト（メールログイン優先）
   useEffect(() => {
-    if (!user && !effectiveUserId) {
+    if (!user && !lineUser && !effectiveUserId) {
       navigate('/login?redirect=/community&message=' + encodeURIComponent('コミュニティ機能を利用するにはログインが必要です'));
       return;
     }
-  }, [user, effectiveUserId, navigate]);
+  }, [user, lineUser, effectiveUserId, navigate]);
 
   useEffect(() => {
-    const id = user?.id || effectiveUserId;
+    const id = user?.id || lineUser?.id || effectiveUserId;
     if (id) {
       // 🚀 最適化されたデータ取得とリアルタイム設定
       initializeCommunityPage(id);
     }
-  }, [user, effectiveUserId]);
+  }, [user, lineUser, effectiveUserId]);
 
   const initializeCommunityPage = async (id: string) => {
     try {
@@ -459,7 +459,7 @@ export function Community() {
   };
 
   // 未ログイン時は何も表示しない（リダイレクト処理は上のuseEffectで実行済み）
-  if (!user) {
+  if (!user && !lineUser && !effectiveUserId) {
     return null;
   }
 

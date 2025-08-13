@@ -1,6 +1,6 @@
 import { Session, User } from '@supabase/supabase-js';
 import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { fetchSessionUser } from '../utils/sessionClient';
+import { SessionUser, fetchSessionUser } from '../utils/sessionClient';
 import { supabase } from '../utils/supabase';
 
 interface UserProfile {
@@ -25,6 +25,8 @@ interface AuthContextType {
   setIsTrustedDevice: (trusted: boolean) => void;
   isAdmin: boolean;
   userProfile: UserProfile | null;
+  lineUser: SessionUser | null;  // LINEユーザー情報を追加
+  isLineAuthenticated: boolean;  // LINE認証フラグを追加
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -40,6 +42,8 @@ const AuthContext = createContext<AuthContextType>({
   setIsTrustedDevice: () => {},
   isAdmin: false,
   userProfile: null,
+  lineUser: null,
+  isLineAuthenticated: false,
 });
 
 const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -50,6 +54,8 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [effectiveUserId, setEffectiveUserId] = useState<string | null>(null);
+  const [lineUser, setLineUser] = useState<SessionUser | null>(null);
+  const [isLineAuthenticated, setIsLineAuthenticated] = useState(false);
 
   const fetchUserProfile = useCallback(async (userId: string, userEmail?: string): Promise<UserProfile | null> => {
     try {
@@ -86,7 +92,22 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     const initializeAuth = async () => {
       try {
-        // 初期認証状態の確認（ログ削除）
+        // 1. まずLINEセッションを確認
+        try {
+          const lineSessionUser = await fetchSessionUser();
+          if (lineSessionUser && isMounted) {
+            setLineUser(lineSessionUser);
+            setIsLineAuthenticated(true);
+            setEffectiveUserId(lineSessionUser.app_user_id || lineSessionUser.id);
+            // LINEユーザーの場合はSupabaseチェックをスキップしてloadingを解除
+            setLoading(false);
+            return; // LINEユーザーの場合はここで終了
+          }
+        } catch (lineError) {
+          console.log('LINE session not found, checking Supabase auth...');
+        }
+
+        // 2. LINEセッションがない場合はSupabase認証を確認
         const { data: { user }, error } = await supabase.auth.getUser();
         
         if (error) {
@@ -96,13 +117,15 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
             setIsAuthenticated(false);
             setUserProfile(null);
             setIsAdmin(false);
+            setLineUser(null);
+            setIsLineAuthenticated(false);
             setLoading(false);
           }
           return;
         }
 
         if (user && isMounted) {
-          // 初期状態設定
+          // Supabaseユーザーの初期状態設定
           setUser(user);
           setIsAuthenticated(true);
           setUserProfile(null); // プロフィール取得スキップ
@@ -116,6 +139,8 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
             setIsAuthenticated(false);
             setUserProfile(null);
             setIsAdmin(false);
+            setLineUser(null);
+            setIsLineAuthenticated(false);
             setLoading(false);
             setEffectiveUserId(null);
           }
@@ -127,6 +152,8 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
           setIsAuthenticated(false);
           setUserProfile(null);
           setIsAdmin(false);
+          setLineUser(null);
+          setIsLineAuthenticated(false);
           setLoading(false);
         }
       }
@@ -171,24 +198,6 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
       subscription.unsubscribe();
     };
   }, []); // 依存配列を空に戻す
-
-  // Supabaseユーザーが居ない場合でも、LIFFセッションがあれば有効なユーザーIDを反映
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      if (user) return; // Supabaseログイン中は不要
-      try {
-        const me = await fetchSessionUser();
-        if (!mounted) return;
-        if (me) {
-          setEffectiveUserId(me.app_user_id || me.id);
-        }
-      } catch {
-        // ignore
-      }
-    })();
-    return () => { mounted = false; };
-  }, [user]);
 
   const signInWithMagicLink = useCallback(async (email: string): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -276,8 +285,22 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = useCallback(async () => {
     try {
-      // 複数のSupabaseクライアントセッションを強制的にクリア
-      await supabase.auth.signOut({ scope: 'global' });
+      // LINEセッションのログアウト処理
+      if (lineUser || isLineAuthenticated) {
+        try {
+          await fetch('/auth/logout', { 
+            method: 'POST', 
+            credentials: 'include' 
+          });
+        } catch (e) {
+          console.error('LINE logout error:', e);
+        }
+      }
+      
+      // Supabaseセッションのログアウト処理
+      if (user || isAuthenticated) {
+        await supabase.auth.signOut({ scope: 'global' });
+      }
       
       // ローカル状態をクリア
       setSession(null);
@@ -285,12 +308,16 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsAuthenticated(false);
       setUserProfile(null);
       setIsAdmin(false);
+      setLineUser(null);
+      setIsLineAuthenticated(false);
+      setEffectiveUserId(null);
       
       // ローカルストレージを完全にクリア
       try {
         localStorage.removeItem('isTrustedDevice');
         localStorage.removeItem('pre_payment_auth_state');
         localStorage.removeItem('supabase.auth.token');
+        localStorage.removeItem('skipSplashOnce');
         sessionStorage.clear();
         
         // Supabase関連のキーを全て削除
@@ -309,7 +336,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // 追加: ページをリロードしてセッション状態を完全にリセット
       void setTimeout(() => {
-        window.location.reload();
+        window.location.href = '/';
       }, 100);
       
     } catch (error) {
@@ -321,13 +348,16 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsAuthenticated(false);
       setUserProfile(null);
       setIsAdmin(false);
+      setLineUser(null);
+      setIsLineAuthenticated(false);
+      setEffectiveUserId(null);
       
       // 強制リロード
       void setTimeout(() => {
-        window.location.reload();
+        window.location.href = '/';
       }, 100);
     }
-  }, []);
+  }, [lineUser, isLineAuthenticated, user, isAuthenticated]);
 
   const value = useMemo(() => ({
     user,
@@ -342,6 +372,8 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsTrustedDevice,
     isAdmin,
     userProfile,
+    lineUser,
+    isLineAuthenticated,
   }), [
     user,
     session,
@@ -355,6 +387,8 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsTrustedDevice,
     isAdmin,
     userProfile,
+    lineUser,
+    isLineAuthenticated,
   ]);
 
   return (
