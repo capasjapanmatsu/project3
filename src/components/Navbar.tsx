@@ -180,6 +180,8 @@ export const Navbar = memo(function Navbar() {
     try {
       await logoutSession();
       await logout();
+      // セッションCookieがHttpOnlyのため、念のためトップへ遷移
+      window.location.assign('/');
       navigate('/');
     } catch (error) {
       log('error', 'ログアウトエラー', { error });

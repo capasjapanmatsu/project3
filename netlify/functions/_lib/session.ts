@@ -30,7 +30,8 @@ export function buildSessionCookie(token: string, maxAgeSec = 60 * 60 * 12): str
 }
 
 export function buildClearCookie(): string {
-  return `${COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  const domain = process.env.COOKIE_DOMAIN || '.dogparkjp.com';
+  return `${COOKIE_NAME}=; Path=/; Domain=${domain}; HttpOnly; Secure; SameSite=None; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
 
 export function readCookie(headers: Record<string, string | undefined>): string | undefined {
