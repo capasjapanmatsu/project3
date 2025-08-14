@@ -75,13 +75,25 @@ export async function uploadAndConvertToWebP(
         },
       });
       if (direct.error) {
-        throw new Error(`WebP変換に失敗しました: ${direct.error.message}`);
+        // 変換に失敗した場合はオリジナルURLでフォールバック
+        const { data: original } = supabase.storage.from(bucket).getPublicUrl(path);
+        return {
+          success: true,
+          originalUrl: original.publicUrl,
+          originalPath: path,
+        };
       }
       data = direct.data as any;
     }
 
     if (!data.success) {
-      throw new Error(data.error || 'WebP変換に失敗しました');
+      // 失敗時もオリジナルでフォールバック
+      const { data: original } = supabase.storage.from(bucket).getPublicUrl(path);
+      return {
+        success: true,
+        originalUrl: original.publicUrl,
+        originalPath: path,
+      };
     }
 
     return {
@@ -94,11 +106,21 @@ export async function uploadAndConvertToWebP(
       originalPath: data.originalPath,
     };
   } catch (error) {
-    console.error('WebP conversion error:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : '画像の変換に失敗しました',
-    };
+    // 例外時もオリジナルでフォールバックして登録継続
+    try {
+      const { data: original } = supabase.storage.from(bucket).getPublicUrl(path);
+      return {
+        success: true,
+        originalUrl: original.publicUrl,
+        originalPath: path,
+      };
+    } catch (e) {
+      console.error('WebP conversion error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '画像の変換に失敗しました',
+      };
+    }
   }
 }
 
