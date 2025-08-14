@@ -45,7 +45,8 @@ export async function uploadAndConvertToWebP(
     // Edge FunctionでWebP変換（同一オリジンのプロキシを優先。失敗時は直接Invokeにフォールバック）
     let data: any | undefined;
     try {
-      const resp = await fetch('/functions/v1/convert-to-webp', {
+      // Netlify Functions をダイレクトに叩く（OPTIONSも確実に到達）
+      const resp = await fetch('/.netlify/functions/convert-to-webp-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
