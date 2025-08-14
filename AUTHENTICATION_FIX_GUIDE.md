@@ -139,3 +139,4 @@ graph TD
 2. **認証チェック**: `user || lineUser || effectiveUserId` のパターンを使用
 3. **プロフィール取得**: LINEユーザーの場合、profilesテーブルにデータがない可能性を考慮
 
+

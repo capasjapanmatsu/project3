@@ -141,3 +141,4 @@ GRANT SELECT ON public.user_auth_info TO anon;
 COMMENT ON FUNCTION public.sync_line_user_to_profile() IS 'LINEユーザーとprofilesテーブルを同期する関数';
 COMMENT ON VIEW public.user_auth_info IS 'ユーザーの認証情報を統合したビュー';
 
+
