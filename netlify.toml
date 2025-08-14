@@ -80,6 +80,16 @@
   to = "/.netlify/functions/convert-to-webp-proxy"
   status = 200
 
+[[redirects]]
+  from = "/api/assistant-chat"
+  to = "/.netlify/functions/assistant-chat"
+  status = 200
+
+[[redirects]]
+  from = "/api/embeddings"
+  to = "/.netlify/functions/embeddings"
+  status = 200
+
 # 静的パスの優先提供（/liff/login ディレクトリ直下の index.html を返す）
 [[redirects]]
   from = "/liff/login"
