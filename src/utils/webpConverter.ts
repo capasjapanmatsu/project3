@@ -42,20 +42,41 @@ export async function uploadAndConvertToWebP(
       throw new Error(`ファイルのアップロードに失敗しました: ${uploadError.message}`);
     }
 
-    // Edge FunctionでWebP変換
-    const { data, error } = await supabase.functions.invoke('convert-to-webp', {
-      body: {
-        bucket,
-        path,
-        quality: options.quality ?? 80,
-        generateThumbnail: options.generateThumbnail ?? true,
-        thumbnailSize: options.thumbnailSize ?? 300,
-        keepOriginal: options.keepOriginal ?? false,
-      },
-    });
-
-    if (error) {
-      throw new Error(`WebP変換に失敗しました: ${error.message}`);
+    // Edge FunctionでWebP変換（同一オリジンのプロキシを優先。失敗時は直接Invokeにフォールバック）
+    let data: any | undefined;
+    try {
+      const resp = await fetch('/functions/v1/convert-to-webp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bucket,
+          path,
+          quality: options.quality ?? 80,
+          generateThumbnail: options.generateThumbnail ?? true,
+          thumbnailSize: options.thumbnailSize ?? 300,
+          keepOriginal: options.keepOriginal ?? false,
+        })
+      });
+      if (!resp.ok) {
+        throw new Error(await resp.text());
+      }
+      data = await resp.json();
+    } catch (proxyError) {
+      // 直接 Supabase Edge Function を呼ぶ
+      const direct = await supabase.functions.invoke('convert-to-webp', {
+        body: {
+          bucket,
+          path,
+          quality: options.quality ?? 80,
+          generateThumbnail: options.generateThumbnail ?? true,
+          thumbnailSize: options.thumbnailSize ?? 300,
+          keepOriginal: options.keepOriginal ?? false,
+        },
+      });
+      if (direct.error) {
+        throw new Error(`WebP変換に失敗しました: ${direct.error.message}`);
+      }
+      data = direct.data as any;
     }
 
     if (!data.success) {
