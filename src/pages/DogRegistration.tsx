@@ -17,7 +17,7 @@ import { uploadVaccineImage, validateVaccineFile } from '../utils/vaccineUpload'
 import { uploadAndConvertToWebP } from '../utils/webpConverter';
 
 export function DogRegistration() {
-  const { user } = useAuth();
+  const { user, lineUser, effectiveUserId } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -104,8 +104,10 @@ export function DogRegistration() {
   // フォームの送信処理
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!user) {
+
+    const uid = (user?.id || lineUser?.id || effectiveUserId) as string | undefined;
+
+    if (!uid) {
       setError('ログインが必要です。');
       return;
     }
@@ -161,7 +163,7 @@ export function DogRegistration() {
 
     try {
       // プロフィール画像のアップロード（WebP変換付き）
-      const profileImagePath = `dog-profiles/${user.id}/${Date.now()}_${imageFile.name}`;
+      const profileImagePath = `dog-profiles/${uid}/${Date.now()}_${imageFile.name}`;
       const uploadResult = await uploadAndConvertToWebP(
         'dog-images',
         imageFile,
@@ -186,7 +188,7 @@ export function DogRegistration() {
       let comboImageUrl = '';
 
       if (formData.rabiesVaccineImage) {
-        const rabiesUploadResult = await uploadVaccineImage(formData.rabiesVaccineImage, user.id, 'rabies');
+        const rabiesUploadResult = await uploadVaccineImage(formData.rabiesVaccineImage, uid, 'rabies');
         
         if (!rabiesUploadResult.success) {
           throw new Error(`狂犬病ワクチン証明書のアップロードに失敗しました: ${rabiesUploadResult.error}`);
@@ -196,7 +198,7 @@ export function DogRegistration() {
       }
 
       if (formData.comboVaccineImage) {
-        const comboUploadResult = await uploadVaccineImage(formData.comboVaccineImage, user.id, 'combo');
+        const comboUploadResult = await uploadVaccineImage(formData.comboVaccineImage, uid, 'combo');
         
         if (!comboUploadResult.success) {
           throw new Error(`混合ワクチン証明書のアップロードに失敗しました: ${comboUploadResult.error}`);
@@ -213,7 +215,7 @@ export function DogRegistration() {
         .from('dogs')
         .insert([
           {
-            owner_id: user.id,
+            owner_id: uid,
             name: formData.name.trim(),
             breed: formData.breed,
             birth_date: birthDate,
