@@ -27,12 +27,33 @@ export const handler: Handler = async (event) => {
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
     const { data: userRow, error: userErr } = await admin
       .from('users')
-      .select('app_user_id')
+      .select('app_user_id, display_name, picture_url, id')
       .eq('id', uid)
       .single();
     if (userErr) return { statusCode: 500, body: userErr.message };
-    const appUserId = userRow?.app_user_id as string | undefined;
-    if (!appUserId) return { statusCode: 409, body: 'not_linked' };
+    let appUserId = userRow?.app_user_id as string | undefined;
+
+    // app_user_id がない場合は自動で Supabase Auth ユーザーを作成してリンク
+    if (!appUserId) {
+      const syntheticEmail = `line-${uid}@line.local`;
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+        email: syntheticEmail,
+        email_confirm: true,
+        user_metadata: {
+          line_user_id: uid,
+          display_name: userRow?.display_name ?? null,
+          picture_url: userRow?.picture_url ?? null,
+          provider: 'line'
+        }
+      });
+      if (createErr || !created?.user?.id) {
+        return { statusCode: 500, body: createErr?.message || 'failed_to_create_user' };
+      }
+      appUserId = created.user.id;
+      const { error: linkErr } = await admin.from('users').update({ app_user_id: appUserId }).eq('id', uid);
+      if (linkErr) return { statusCode: 500, body: linkErr.message };
+      // profiles レコードは存在しない前提でもアプリは継続できるため作成は任意
+    }
 
     // 3) Auth Admin でユーザーの email を取得
     const { data: appUser, error: getUserErr } = await admin.auth.admin.getUserById(appUserId);

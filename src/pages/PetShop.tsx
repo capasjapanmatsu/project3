@@ -23,7 +23,7 @@ import type { CartItem, Product } from '../types';
 import { supabase } from '../utils/supabase';
 
 export function PetShop() {
-  const { user } = useAuth();
+  const { user, lineUser, effectiveUserId } = useAuth();
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -50,7 +50,7 @@ export function PetShop() {
 
   useEffect(() => {
     fetchData();
-  }, [user]);
+  }, [user, lineUser, effectiveUserId]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -78,17 +78,19 @@ export function PetShop() {
   };
 
   const fetchCartItems = async () => {
+    const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
     const { data, error } = await supabase
       .from('cart_items')
       .select('*, product:products(*)')
-      .eq('user_id', user?.id);
+      .eq('user_id', uid as any);
 
     if (error) throw error;
     setCartItems(data || []);
   };
 
   const addToCart = async (productId: string, quantity: number = 1) => {
-    if (!user) {
+    const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
+    if (!uid) {
       navigate('/login');
       return;
     }
@@ -110,7 +112,7 @@ export function PetShop() {
         const { error } = await supabase
           .from('cart_items')
           .insert([{
-            user_id: user?.id,
+            user_id: uid,
             product_id: productId,
             quantity: quantity,
           }]);

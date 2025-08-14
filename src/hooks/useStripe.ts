@@ -22,6 +22,22 @@ export function useStripe() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // LINEログイン時にSupabaseセッションを確実に用意
+  const ensureSupabaseSession = useCallback(async (): Promise<void> => {
+    const { data: { user: sbUser } } = await supabase.auth.getUser();
+    if (sbUser) return;
+    if (!lineUser && !effectiveUserId) return;
+    try {
+      const resp = await fetch('/line/exchange-supabase-session', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      if (!resp.ok) return;
+      const { access_token, refresh_token } = await resp.json() as { access_token: string; refresh_token: string };
+      await supabase.auth.setSession({ access_token, refresh_token });
+    } catch {}
+  }, [lineUser, effectiveUserId]);
+
   const createCheckoutSession = useCallback(async ({
     priceId,
     mode,
@@ -37,6 +53,8 @@ export function useStripe() {
     setError(null);
 
     try {
+      // Supabaseセッションを確実に準備
+      await ensureSupabaseSession();
       // ユーザーIDを取得（LINEユーザーとメールユーザー両方対応）
       const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
       

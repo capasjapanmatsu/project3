@@ -26,7 +26,7 @@ type CouponWithFacility = UserCoupon & {
 };
 
 export function MyCoupons() {
-  const { user } = useAuth();
+  const { user, lineUser, effectiveUserId } = useAuth();
   const [coupons, setCoupons] = useState<CouponWithFacility[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'available' | 'used' | 'expired'>('available');
@@ -35,13 +35,14 @@ export function MyCoupons() {
   const [displayingCoupon, setDisplayingCoupon] = useState<CouponWithFacility | null>(null);
 
   useEffect(() => {
-    if (user) {
+    if (user || lineUser || effectiveUserId) {
       fetchMyCoupons();
     }
-  }, [user]);
+  }, [user, lineUser, effectiveUserId]);
 
   const fetchMyCoupons = async () => {
-    if (!user) return;
+    const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
+    if (!uid) return;
 
     try {
       setIsLoading(true);
@@ -57,7 +58,7 @@ export function MyCoupons() {
             )
           )
         `)
-        .eq('user_id', user?.id)
+        .eq('user_id', uid)
         .order('obtained_at', { ascending: false });
 
       if (error) throw error;
@@ -141,7 +142,7 @@ export function MyCoupons() {
 
   const filteredCoupons = filterCoupons();
 
-  if (!user) {
+  if (!user && !lineUser && !effectiveUserId) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="p-8 text-center max-w-md">

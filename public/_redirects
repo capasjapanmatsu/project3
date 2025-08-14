@@ -6,4 +6,5 @@
  /auth/logout /.netlify/functions/auth-logout 200!
  /line/link-user /.netlify/functions/line-link-user 200!
  /line/unlink-user /.netlify/functions/line-unlink-user 200!
+ /line/exchange-supabase-session /.netlify/functions/line-exchange-supabase-session 200!
 /* /index.html 200
