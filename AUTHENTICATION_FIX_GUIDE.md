@@ -138,3 +138,4 @@ graph TD
 1. **新機能追加時**: 必ず`effectiveUserId`を使用してユーザーIDを取得
 2. **認証チェック**: `user || lineUser || effectiveUserId` のパターンを使用
 3. **プロフィール取得**: LINEユーザーの場合、profilesテーブルにデータがない可能性を考慮
+

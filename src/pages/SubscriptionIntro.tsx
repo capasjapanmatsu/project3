@@ -45,7 +45,7 @@ const SUBSCRIPTION_PLAN = {
 };
 
 export function SubscriptionIntro() {
-  const { user } = useAuth();
+  const { user, lineUser, effectiveUserId } = useAuth();
   const navigate = useNavigate();
   const { createCheckoutSession } = useStripe();
   const [searchParams] = useSearchParams();
@@ -62,7 +62,7 @@ export function SubscriptionIntro() {
 
   // ページ読み込み時にサブスクリプション状態をチェック
   useEffect(() => {
-    const uid = user?.id;
+    const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
     if (!uid) {
       setLoading(false);
       return;
@@ -90,12 +90,13 @@ export function SubscriptionIntro() {
     };
 
     void checkSubscriptionStatus();
-  }, [user]);
+  }, [user, lineUser, effectiveUserId]);
 
   const handleSubscribe = async () => {
-    if (!user) {
+    const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
+    if (!uid) {
       // ログイン後にこのページに戻ってくるためのリダイレクトパラメータを追加
-      navigate('/liff/login?redirect=/subscription-intro&message=サブスクリプションにご加入いただくには、まずログインが必要です。');
+      navigate('/login?redirect=/subscription-intro&message=サブスクリプションにご加入いただくには、まずログインが必要です。');
       return;
     }
 
@@ -111,7 +112,7 @@ export function SubscriptionIntro() {
       const { data: subscriptionHistory, error: historyError } = await supabase
         .from('stripe_user_subscriptions')
         .select('id, created_at')
-         .eq('user_id', user?.id)
+         .eq('user_id', uid)
         .order('created_at', { ascending: false });
 
       if (historyError) {

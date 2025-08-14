@@ -18,3 +18,6 @@
 [33m1342918c[m feat: implement horizontal carousel - 5 banners visible with center focus and infinite loop
 [33meae84ad7[m style: remove control bar completely - clean banner only design
 [33m7961b157[m style: remove side peek banners, single row main banner only
+ add_missing_columns_to_dog_parks.sql |   2 [32m+[m
+ src/pages/ProfileSettings.tsx        | 227 [32m+++++++++++++++++++++++++[m[31m----------[m
+ 2 files changed, 164 insertions(+), 65 deletions(-)

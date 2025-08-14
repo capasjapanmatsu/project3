@@ -1,5 +1,6 @@
 import { loadStripe } from '@stripe/stripe-js';
 import { useCallback, useState } from 'react';
+import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 
 interface CheckoutParams {
@@ -17,6 +18,7 @@ interface CheckoutParams {
 
 
 export function useStripe() {
+  const { user, lineUser, effectiveUserId } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,18 +37,47 @@ export function useStripe() {
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // ユーザーIDを取得（LINEユーザーとメールユーザー両方対応）
+      const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
       
-      if (!session?.access_token) {
+      if (!uid) {
+        throw new Error('認証が必要です');
+      }
+
+      // LINEユーザーの場合、Supabaseセッションがないため、別の方法で認証トークンを取得
+      let accessToken: string | undefined;
+      let userEmail: string | undefined;
+      
+      if (user) {
+        // メールユーザーの場合
+        const { data: { session } } = await supabase.auth.getSession();
+        accessToken = session?.access_token;
+        userEmail = session?.user.email;
+      } else if (lineUser) {
+        // LINEユーザーの場合、仮のトークンを使用（Edge Function側で処理）
+        // profilesテーブルからユーザー情報を取得
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', uid)
+          .single();
+        
+        userEmail = profile?.email || `line_${lineUser.line_user_id}@line.local`;
+        // LINEユーザー用の特殊なトークンを設定
+        accessToken = `line_user_${uid}`;
+      }
+      
+      if (!accessToken && !lineUser) {
         throw new Error('認証が必要です');
       }
 
       // 決済前に認証状態を保存
       localStorage.setItem('pre_payment_auth_state', JSON.stringify({
-        user_id: session.user.id,
-        user_email: session.user.email,
+        user_id: uid,
+        user_email: userEmail || '',
         timestamp: Date.now(),
-        return_url: window.location.href
+        return_url: window.location.href,
+        is_line_user: !!lineUser
       }));
 
       const requestBody: Record<string, unknown> = {
@@ -83,11 +114,16 @@ export function useStripe() {
         });
       }
 
+      // LINEユーザーの場合はuser_idをリクエストボディに追加
+      if (lineUser) {
+        requestBody.user_id = uid;
+      }
+
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify(requestBody),
       });
@@ -132,7 +168,7 @@ export function useStripe() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user, lineUser, effectiveUserId]);
 
   return {
     createCheckoutSession,

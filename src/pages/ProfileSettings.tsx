@@ -34,7 +34,7 @@ import { supabase } from '../utils/supabase';
 
 
 export function ProfileSettings() {
-  const { user } = useAuth();
+  const { user, lineUser, isLineAuthenticated, effectiveUserId } = useAuth();
   const navigate = useNavigate();
   const { subscription, loading: subscriptionLoading, isActive: hasSubscription } = useSubscription();
   const [isLoading, setIsLoading] = useState(true);
@@ -86,37 +86,72 @@ export function ProfileSettings() {
   // const [mfaStatus, setMfaStatus] = useState<'enabled' | 'disabled' | 'loading'>('loading');
 
   useEffect(() => {
-    if (user) {
+    // LINEユーザーまたはSupabaseユーザーがログインしている場合
+    if (user || lineUser || effectiveUserId) {
       fetchProfile();
       // fetchMFAStatus(); // 一時的に無効化
     } else {
-    navigate('/liff/login');
+      // どちらの認証もない場合はログインページへ
+      navigate('/login');
     }
-  }, [user, navigate]);
+  }, [user, lineUser, effectiveUserId, navigate]);
 
   const fetchProfile = async () => {
     try {
       setIsLoading(true);
       
+      // ユーザーIDを取得（LINEユーザーまたはSupabaseユーザー）
+      const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
+      
+      if (!uid) {
+        // LINEユーザーの初回ログイン時（まだprofileがない場合）のデフォルト値を設定
+        const defaultData = {
+          name: lineUser?.display_name || '',
+          nickname: '',
+          postal_code: '',
+          address: '',
+          phone_number: '',
+          email: user?.email || '',
+        };
+        setFormData(defaultData);
+        setOriginalData(defaultData);
+        setIsLoading(false);
+        return;
+      }
+      
+      // profilesテーブルからデータを取得
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user?.id)
+        .or(`id.eq.${uid},line_user_id.eq.${lineUser?.line_user_id || 'null'}`)
         .single();
       
-      if (error) throw error;
-      
-      const profileData = {
-        name: data.name || '',
-        nickname: data.nickname || '',
-        postal_code: data.postal_code || '',
-        address: data.address || '',
-        phone_number: data.phone_number || '',
-        email: user?.email || '',
-      };
-      
-      setFormData(profileData);
-      setOriginalData(profileData); // 元のデータを保存
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('Profile fetch error:', error);
+        // どちらのユーザータイプでもprofileがまだない場合はデフォルト値を設定
+        const defaultData = {
+          name: lineUser?.display_name || user?.email?.split('@')[0] || '',
+          nickname: '',
+          postal_code: '',
+          address: '',
+          phone_number: '',
+          email: user?.email || '',
+        };
+        setFormData(defaultData);
+        setOriginalData(defaultData);
+      } else if (data) {
+        const profileData = {
+          name: data.name || lineUser?.display_name || '',
+          nickname: data.nickname || '',
+          postal_code: data.postal_code || '',
+          address: data.address || '',
+          phone_number: data.phone_number || '',
+          email: data.email || user?.email || '',
+        };
+        
+        setFormData(profileData);
+        setOriginalData(profileData);
+      }
 
       // 連携状態を取得
       try {
@@ -130,7 +165,7 @@ export function ProfileSettings() {
       } catch { setLinked(null); }
     } catch (err) {
       console.error('Error fetching profile:', err);
-      setError((err as Error).message || 'プロフィールの取得に失敗しました。');
+      setError('プロフィールの取得に失敗しました。');
     } finally {
       setIsLoading(false);
     }
@@ -224,10 +259,8 @@ export function ProfileSettings() {
     setSuccess('');
 
     try {
-      // 入力値の検証
-      if (!formData.name.trim()) {
-        throw new Error('お名前を入力してください');
-      }
+      // 入力値の検証（名前は任意に変更）
+      // どちらのログイン方法でも名前は任意とする
 
       // 郵便番号の形式チェック（ハイフンありの形式）
       if (formData.postal_code && !formData.postal_code.match(/^\d{3}-\d{4}$/)) {
@@ -239,24 +272,30 @@ export function ProfileSettings() {
         throw new Error('電話番号は正しい形式で入力してください（例：090-1234-5678）');
       }
 
+      // ユーザーIDを取得
+      const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
+      
+      if (!uid) {
+        throw new Error('ユーザー情報が取得できません');
+      }
+
       // 住所変更の検出
       const addressChanged = (
         originalData.postal_code !== formData.postal_code ||
         originalData.address !== formData.address
       );
 
-      // 本人確認済みユーザーの住所変更チェック
+      // 本人確認済みユーザーの住所変更チェック（メールユーザーのみ）
       let identityResetRequired = false;
-      if (addressChanged) {
+      if (!isLineAuthenticated && addressChanged && user?.id) {
         const { data: ownerVerification, error: verificationError } = await supabase
           .from('owner_verifications')
           .select('id, status')
-          .eq('user_id', user?.id)
+          .eq('user_id', user.id)
           .eq('status', 'verified')
           .single();
 
         if (verificationError && verificationError.code !== 'PGRST116') {
-          // エラーが発生した場合はログに記録するが、処理は続行
           console.error('Error checking owner verification:', verificationError);
         }
 
@@ -265,19 +304,38 @@ export function ProfileSettings() {
         }
       }
 
-      // プロフィール更新
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          name: formData.name,
-          nickname: formData.nickname,
-          postal_code: formData.postal_code,
-          address: formData.address,
-          phone_number: formData.phone_number,
-        })
-        .eq('id', user?.id);
+      // プロフィール更新の準備
+      const updateData: any = {
+        name: formData.name || lineUser?.display_name || '',
+        nickname: formData.nickname,
+        postal_code: formData.postal_code,
+        address: formData.address,
+        phone_number: formData.phone_number,
+        email: formData.email,
+      };
 
-      if (updateError) throw updateError;
+      // LINEユーザーの場合、line_user_idも設定
+      if (isLineAuthenticated && lineUser?.line_user_id) {
+        updateData.line_user_id = lineUser.line_user_id;
+        updateData.is_line_user = true;
+        updateData.auth_type = 'line';
+      } else if (user) {
+        updateData.auth_type = 'email';
+      }
+
+      // プロフィール更新（どちらのユーザータイプでもupsertを使用）
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: uid,
+          ...updateData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'id'
+        });
+      
+      if (upsertError) throw upsertError;
 
       // 本人確認ステータスの再設定
       if (identityResetRequired) {
@@ -535,13 +593,34 @@ export function ProfileSettings() {
         throw new Error('確認のため「delete」と入力してください');
       }
 
-      // アカウント削除
-      const { error } = await supabase.auth.admin.deleteUser(user?.id || '');
+      // ユーザーIDを取得
+      const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
+      
+      if (!uid) {
+        throw new Error('ユーザー情報が取得できません');
+      }
 
-      if (error) throw error;
-
-      // ログアウト
-      await supabase.auth.signOut();
+      // LINEユーザーの場合
+      if (isLineAuthenticated) {
+        // LINEセッションのログアウト
+        await fetch('/auth/logout', { 
+          method: 'POST', 
+          credentials: 'include' 
+        });
+        
+        // profilesテーブルから削除（もし存在すれば）
+        await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', uid);
+      } else {
+        // 通常のSupabaseユーザーの場合
+        const { error } = await supabase.auth.admin.deleteUser(uid);
+        if (error) throw error;
+        
+        // ログアウト
+        await supabase.auth.signOut();
+      }
       
       // ホームページにリダイレクト
       navigate('/', { replace: true });
@@ -630,10 +709,10 @@ export function ProfileSettings() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
-                label="お名前 *"
+                label="お名前"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
+                placeholder="お名前（任意）"
                 icon={<User className="w-4 h-4 text-gray-500" />}
               />
 
@@ -645,12 +724,13 @@ export function ProfileSettings() {
                 icon={<User className="w-4 h-4 text-gray-500" />}
               />
               
+              {/* メールアドレスフィールド（どちらのユーザータイプでも任意） */}
               <Input
-                label="メールアドレス *"
+                label="メールアドレス"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
+                placeholder="メールアドレス（任意）"
                 icon={<Mail className="w-4 h-4 text-gray-500" />}
               />
             </div>
@@ -742,9 +822,10 @@ export function ProfileSettings() {
 
         <div className="space-y-4">
           <div className="p-4 bg-white rounded-lg border border-green-200">
-            <h3 className="font-semibold mb-2">LINE連携</h3>
+            <h3 className="font-semibold mb-2">LINE通知連携</h3>
             <p className="text-sm text-gray-600 mb-3">
-              現在のアプリユーザーとLINEアカウントを紐付けます。LIFFでログイン済みである必要があります。
+              dogparkjp公式LINEと友達になり、アプリ内の通知をLINEで受け取れます。
+              ドッグラン入退場時のPIN発行通知などもLINEで受信できます。
             </p>
             <div className="flex items-center gap-2">
               {linked ? (
@@ -769,7 +850,7 @@ export function ProfileSettings() {
                     } finally { setLinking(false); }
                   }}
                 >
-                  連携済み（解除する）
+                  通知連携済み（解除する）
                 </Button>
               ) : (
                 <Button
@@ -780,23 +861,24 @@ export function ProfileSettings() {
                   onClick={async () => {
                     setError(''); setSuccess(''); setLinking(true);
                     try {
-                      if (!user?.id) throw new Error('ログインが必要です');
+                      const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
+                      if (!uid) throw new Error('ログインが必要です');
                       const res = await fetch('/line/link-user', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
-                        body: JSON.stringify({ appUserId: user.id })
+                        body: JSON.stringify({ appUserId: uid })
                       });
                       if (!res.ok) throw new Error(await res.text());
                       setLinked(true);
-                      setSuccess('LINE連携が完了しました');
+                      setSuccess('LINE通知連携が完了しました');
                       setTimeout(() => setSuccess(''), 2500);
                     } catch (e) {
                       setError(e instanceof Error ? e.message : '連携に失敗しました');
                     } finally { setLinking(false); }
                   }}
                 >
-                  LINE連携する
+                  LINE通知を連携する
                 </Button>
               )}
 
@@ -807,20 +889,23 @@ export function ProfileSettings() {
               )}
             </div>
           </div>
-          <div className="p-4 bg-white rounded-lg border border-gray-200">
-            <h3 className="font-semibold mb-2">パスワード変更</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              アカウントのセキュリティを保つため、定期的にパスワードを変更することをおすすめします。
-            </p>
-            <Button 
-              variant="secondary" 
-              size="sm"
-              onClick={() => setShowPasswordModal(true)}
-            >
-              <Key className="w-4 h-4 mr-2" />
-              パスワードを変更
-            </Button>
-          </div>
+          {/* パスワード変更セクション（メールユーザーのみ表示） */}
+          {user && (
+            <div className="p-4 bg-white rounded-lg border border-gray-200">
+              <h3 className="font-semibold mb-2">パスワード変更</h3>
+              <p className="text-sm text-gray-600 mb-3">
+                アカウントのセキュリティを保つため、定期的にパスワードを変更することをおすすめします。
+              </p>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={() => setShowPasswordModal(true)}
+              >
+                <Key className="w-4 h-4 mr-2" />
+                パスワードを変更
+              </Button>
+            </div>
+          )}
 
           {/* サブスクリプション管理セクション */}        
           <div className="p-4 bg-white rounded-lg border border-purple-200">
