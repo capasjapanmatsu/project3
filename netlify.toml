@@ -75,6 +75,11 @@
   to = "/.netlify/functions/line-exchange-supabase-session"
   status = 200
 
+[[redirects]]
+  from = "/functions/v1/convert-to-webp"
+  to = "/.netlify/functions/convert-to-webp-proxy"
+  status = 200
+
 # 静的パスの優先提供（/liff/login ディレクトリ直下の index.html を返す）
 [[redirects]]
   from = "/liff/login"

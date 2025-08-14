@@ -7,4 +7,5 @@
  /line/link-user /.netlify/functions/line-link-user 200!
  /line/unlink-user /.netlify/functions/line-unlink-user 200!
  /line/exchange-supabase-session /.netlify/functions/line-exchange-supabase-session 200!
+ /functions/v1/convert-to-webp /.netlify/functions/convert-to-webp-proxy 200!
 /* /index.html 200
