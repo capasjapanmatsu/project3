@@ -99,9 +99,38 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
             setLineUser(lineSessionUser);
             setIsLineAuthenticated(true);
             setEffectiveUserId(lineSessionUser.app_user_id || lineSessionUser.id);
-            // LINEユーザーの場合はSupabaseチェックをスキップしてloadingを解除
-            setLoading(false);
-            return; // LINEユーザーの場合はここで終了
+            // LINEユーザーの場合でも、Supabaseセッションへ自動交換を試みる
+            try {
+              const resp = await fetch('/line/exchange-supabase-session', {
+                method: 'POST',
+                credentials: 'include'
+              });
+              if (resp.ok) {
+                const { access_token, refresh_token } = await resp.json() as { access_token: string; refresh_token: string };
+                const { data, error } = await supabase.auth.setSession({
+                  access_token,
+                  refresh_token
+                });
+                if (!error && data?.session && isMounted) {
+                  setSession(data.session);
+                  setUser(data.session.user);
+                  setIsAuthenticated(true);
+                  setUserProfile(null);
+                  setIsAdmin(data.session.user.email === 'capasjapan@gmail.com');
+                  setEffectiveUserId(data.session.user.id);
+                  setLoading(false);
+                  return; // 交換成功時はここで終了
+                }
+              } else if (resp.status === 409) {
+                // app_user_id 未リンク。LINEセッションのみで続行
+                setLoading(false);
+                return;
+              }
+            } catch (_) {
+              // 交換失敗時はLINEセッションとして続行
+              setLoading(false);
+              return;
+            }
           }
         } catch (lineError) {
           console.log('LINE session not found, checking Supabase auth...');
