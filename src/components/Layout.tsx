@@ -83,7 +83,9 @@ const Layout = ({ children }: LayoutProps) => {
         {/* フローティングアクションボタン */}
         <FloatingActionButton />
         {/* どの画面からも使えるAIチャット */}
-        <AIChatWidget />
+        <div id="ai-chat-root">
+          <AIChatWidget />
+        </div>
         
         {/* サイドバナー（固定配置） */}
         

@@ -129,10 +129,10 @@ export default function AIChatWidget() {
         }}
         aria-expanded={isOpen}
         aria-controls="ai-chat-widget-panel"
-        className={`fixed top-1/2 left-0 z-50 flex items-center justify-center h-14 w-12 sm:w-14 rounded-r-xl shadow-2xl border border-white/40 text-white transition-all ${
+        className={`fixed top-1/2 left-0 -translate-y-1/2 ml-[-8px] z-50 flex items-center justify-center h-14 w-12 sm:w-14 rounded-r-xl shadow-2xl border border-white/40 text-white transition-all ${
           isOpen ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'
         }`}
-        style={{ transform: 'translate(-35%, -50%)' }}
+        data-ai-widget="true"
         title="AIに質問"
       >
         <MessageCircle className="w-6 h-6" />
