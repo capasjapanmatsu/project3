@@ -11,13 +11,22 @@ export default function QuickChat() {
     setLoading(true);
     setReply('');
     try {
-      const res = await fetch('/api/assistant-chat', {
+      // 1st try: pretty path via redirects (Netlify production想定)
+      let res = await fetch('/api/assistant-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: input })
       });
-      const json = await res.json();
-      setReply(json.reply || '');
+      // 404 の場合は Functions の生パスにフォールバック
+      if (res.status === 404) {
+        res = await fetch('/.netlify/functions/assistant-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: input })
+        });
+      }
+      const json = await res.json().catch(() => ({}));
+      setReply(json.reply || (res.ok ? '' : 'エラーが発生しました。しばらくしてからお試しください。'));
     } catch (e) {
       setReply('エラーが発生しました。しばらくしてからお試しください。');
     } finally {
