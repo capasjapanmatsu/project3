@@ -1,4 +1,4 @@
-import { MessageCircle, Send, X, Trash2, Loader2 } from 'lucide-react';
+import { Loader2, MessageCircle, Send, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type ChatMessage = {
@@ -147,6 +147,7 @@ export default function AIChatWidget() {
         className={`fixed top-1/2 right-4 -translate-y-1/2 z-[9999] flex items-center justify-center h-16 w-16 rounded-full shadow-2xl ring-4 ring-white/70 text-white transition-all animate-bounce ${
           isOpen ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-fuchsia-500 hover:from-indigo-600 hover:to-fuchsia-600'
         }`}
+        style={{ position: 'fixed', top: '50%', right: '16px', transform: 'translateY(-50%)', width: '64px', height: '64px', zIndex: 2147483000 }}
         data-ai-widget="true"
         title="AIに質問"
       >
