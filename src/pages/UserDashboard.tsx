@@ -20,7 +20,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { AccessStatusCard } from '../components/dashboard/AccessStatusCard';
-import QuickChat from '../components/dashboard/QuickChat';
 import { DogManagementSection } from '../components/dashboard/DogManagementSection';
 import { NotificationSection } from '../components/dashboard/NotificationSection';
 import { ParkModal } from '../components/dashboard/ParkModal';
@@ -894,10 +893,7 @@ export function UserDashboard() {
         </Card>
       )}
 
-      {/* Quick Chat (AI Assistant) */}
-      <Card className="p-6">
-        <QuickChat />
-      </Card>
+      {/* AIチャット（ページ内版）はFABに統合したため削除 */}
 
       {/* Quick Actions Section with Modern CSS Grid */}
       <Card className="p-6">
