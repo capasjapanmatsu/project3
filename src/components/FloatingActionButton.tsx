@@ -1,8 +1,9 @@
-import { Gift, Plus, Shield, X } from 'lucide-react';
+import { Gift, MessageCircle, Plus, Shield, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
+import QuickChat from './dashboard/QuickChat';
 
 interface UserCoupon {
   id: string;
@@ -34,6 +35,7 @@ export const FloatingActionButton = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [userCoupons, setUserCoupons] = useState<UserCoupon[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
 
   // データ取得
   useEffect(() => {
@@ -102,6 +104,21 @@ export const FloatingActionButton = () => {
         {/* サブメニュー（下から上へ表示） */}
         {isOpen && (
           <div className="absolute bottom-24 -right-28 flex flex-col space-y-3 animate-in slide-in-from-right duration-300">
+            {/* AIチャット（最上段） */}
+            <button
+              onClick={() => {
+                setShowAIChat(true);
+                setIsOpen(false);
+              }}
+              aria-label="AIチャット"
+              className="flex items-center bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-full px-12 py-4 shadow-xl transform transition-all duration-300 hover:scale-105 hover:-translate-x-2 min-w-[300px] border-2 border-white/20"
+            >
+              <MessageCircle className="w-5 h-5 mr-3 drop-shadow-sm" />
+              <div className="text-left">
+                <span className="text-sm font-bold whitespace-nowrap block">AIチャット</span>
+                <span className="text-xs opacity-90 whitespace-nowrap block">質問にすぐ回答します</span>
+              </div>
+            </button>
             {/* JPパスポート機能ボタン（上位置） */}
             <button
               onClick={() => {
@@ -186,6 +203,24 @@ export const FloatingActionButton = () => {
             setIsOpen(false);
           }}
         />
+      )}
+
+      {/* AIチャット モーダル */}
+      {showAIChat && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowAIChat(false)} />
+          <div className="relative z-10 w-[92vw] max-w-xl max-h-[80vh] overflow-auto bg-white rounded-xl shadow-2xl border">
+            <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-indigo-50 to-purple-50 rounded-t-xl">
+              <div className="font-semibold text-gray-800 flex items-center"><MessageCircle className="w-4 h-4 mr-2 text-indigo-600" />AIチャット</div>
+              <button onClick={() => setShowAIChat(false)} className="p-2 rounded hover:bg-gray-100" aria-label="閉じる">
+                <X className="w-5 h-5 text-gray-700" />
+              </button>
+            </div>
+            <div className="p-4">
+              <QuickChat />
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
