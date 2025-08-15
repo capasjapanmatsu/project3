@@ -120,7 +120,7 @@ export default function AIChatWidget() {
 
   return (
     <>
-      {/* フローティングボタン */}
+      {/* 左エッジに少しだけ見えるスライドタブ */}
       <button
         type="button"
         onClick={() => {
@@ -129,15 +129,16 @@ export default function AIChatWidget() {
         }}
         aria-expanded={isOpen}
         aria-controls="ai-chat-widget-panel"
-        className={`fixed top-40 md:top-48 right-4 md:right-6 z-50 rounded-full w-14 h-14 flex items-center justify-center shadow-2xl border-4 border-white/30 transition-all ${
-          isOpen ? 'bg-purple-600 hover:bg-purple-700 scale-95' : 'bg-indigo-600 hover:bg-indigo-700 hover:scale-110'
+        className={`fixed top-1/2 left-0 z-50 flex items-center justify-center h-14 w-12 sm:w-14 rounded-r-xl shadow-2xl border border-white/40 text-white transition-all ${
+          isOpen ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'
         }`}
+        style={{ transform: 'translate(-35%, -50%)' }}
         title="AIに質問"
       >
-        <MessageCircle className="w-6 h-6 text-white" />
+        <MessageCircle className="w-6 h-6" />
       </button>
 
-      {/* サイドパネル */}
+      {/* サイドパネル（左から展開） */}
       {isOpen && (
         <div className="fixed inset-0 z-50">
           {/* 背景 */}
@@ -151,7 +152,7 @@ export default function AIChatWidget() {
           <section
             id="ai-chat-widget-panel"
             aria-label="AIチャット"
-            className="absolute right-0 bottom-0 top-0 w-full sm:w-96 bg-white shadow-2xl border-l flex flex-col animate-in slide-in-from-right duration-200"
+            className="absolute left-0 bottom-0 top-0 w-full sm:w-96 bg-white shadow-2xl border-r flex flex-col animate-in slide-in-from-left duration-200"
           >
             {/* ヘッダー */}
             <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-indigo-50 to-purple-50">
