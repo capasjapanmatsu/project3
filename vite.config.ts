@@ -152,6 +152,18 @@ export default defineConfig({
       overlay: true,
       port: 3001, // HMR専用ポート
     },
+    // ローカル開発で Netlify Functions を利用するためのプロキシ
+    // 別ターミナルで `netlify dev --port 8888` を起動しておくこと
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+      },
+      '/.netlify': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+      },
+    },
   },
   optimizeDeps: {
     include: [
