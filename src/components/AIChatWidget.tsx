@@ -129,7 +129,7 @@ export default function AIChatWidget() {
         }}
         aria-expanded={isOpen}
         aria-controls="ai-chat-widget-panel"
-        className={`fixed bottom-24 right-4 z-40 rounded-full w-14 h-14 flex items-center justify-center shadow-2xl border-4 border-white/30 transition-all ${
+        className={`fixed bottom-24 right-20 z-50 rounded-full w-14 h-14 flex items-center justify-center shadow-2xl border-4 border-white/30 transition-all ${
           isOpen ? 'bg-purple-600 hover:bg-purple-700 scale-95' : 'bg-indigo-600 hover:bg-indigo-700 hover:scale-110'
         }`}
         title="AIに質問"
