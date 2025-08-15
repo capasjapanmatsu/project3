@@ -158,7 +158,21 @@ export default function FacilityEdit() {
   const [isToggleLoading, setIsToggleLoading] = useState(false);
   
   // タブ管理用のstate
-  const [activeTab, setActiveTab] = useState<'info' | 'images' | 'coupons' | 'schedule' | 'location'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'images' | 'coupons' | 'schedule' | 'location' | 'reservation'>('info');
+  // 予約管理 state（簡易UI用）
+  const [reservationEnabled, setReservationEnabled] = useState(false);
+  const [slotUnit, setSlotUnit] = useState<number>(60);
+  const [daysAhead, setDaysAhead] = useState<number>(90);
+  const [capacity, setCapacity] = useState<number>(10);
+  const [autoConfirm, setAutoConfirm] = useState<boolean>(true);
+  const [seats, setSeats] = useState<string[]>([]);
+  const [newSeat, setNewSeat] = useState('');
+  const addSeat = () => {
+    const code = newSeat.trim();
+    if (!code) return; if (seats.includes(code)) return;
+    setSeats((prev) => [...prev, code]); setNewSeat('');
+  };
+  const removeSeat = (code: string) => setSeats((prev) => prev.filter((s) => s !== code));
 
   // 営業日管理用のstate
   const [weeklyClosedDays, setWeeklyClosedDays] = useState<boolean[]>([false, false, false, false, false, false, false]); // 日月火水木金土
@@ -166,6 +180,72 @@ export default function FacilityEdit() {
   const [closingTime, setClosingTime] = useState('18:00');
   const [specificClosedDates, setSpecificClosedDates] = useState<string[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const saveReservationSettings = async () => {
+    try {
+      if (!facility) return;
+      await supabase.from('facility_reservation_settings').upsert({
+        facility_id: facility.id,
+        enabled: reservationEnabled,
+        slot_unit_minutes: slotUnit,
+        allowed_days_ahead: daysAhead,
+        auto_confirm: autoConfirm,
+        capacity_per_slot: capacity,
+        updated_at: new Date().toISOString(),
+      });
+      await supabase.from('facility_seats').delete().eq('facility_id', facility.id);
+      if (seats.length > 0) {
+        await supabase.from('facility_seats').insert(seats.map((s) => ({ facility_id: facility.id, seat_code: s })));
+      }
+      setSuccess('予約設定を保存しました。');
+    } catch (e) {
+      console.error(e);
+      setError('予約設定の保存に失敗しました。');
+    }
+  };
+
+  // 予約プレビュー用
+  const [previewDate, setPreviewDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [previewReservations, setPreviewReservations] = useState<any[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      if (activeTab !== 'reservation' || !facility) return;
+      try {
+        const { data } = await supabase
+          .from('facility_reservations')
+          .select('seat_code,start_time,end_time,status')
+          .eq('facility_id', facility.id)
+          .eq('reserved_date', previewDate);
+        setPreviewReservations(data || []);
+      } catch (e) {
+        console.warn('failed to load reservations preview', e);
+        setPreviewReservations([]);
+      }
+    };
+    void load();
+  }, [activeTab, facility, previewDate]);
+
+  const generateTimeSlots = (open: string, close: string, unit: number) => {
+    const slots: { start: string; end: string }[] = [];
+    const [oh, om] = open.split(':').map(Number);
+    const [ch, cm] = close.split(':').map(Number);
+    let start = new Date(`1970-01-01T${open}:00`);
+    const end = new Date(`1970-01-01T${close}:00`);
+    // 安全: close が open より前なら何もしない
+    if (end <= start) return slots;
+    while (start < end) {
+      const sH = start.getHours().toString().padStart(2, '0');
+      const sM = start.getMinutes().toString().padStart(2, '0');
+      const next = new Date(start.getTime() + unit * 60 * 1000);
+      if (next > end) break;
+      const eH = next.getHours().toString().padStart(2, '0');
+      const eM = next.getMinutes().toString().padStart(2, '0');
+      slots.push({ start: `${sH}:${sM}`, end: `${eH}:${eM}` });
+      start = next;
+    }
+    return slots;
+  };
 
   useEffect(() => {
     if (!user || !facilityId) {
@@ -219,6 +299,28 @@ export default function FacilityEdit() {
         } catch (e) {
           console.warn('Failed to parse weekly_closed_days:', e);
         }
+      }
+
+      // 予約設定 読み込み
+      try {
+        const { data: setting } = await supabase
+          .from('facility_reservation_settings')
+          .select('*')
+          .eq('facility_id', facilityId)
+          .maybeSingle();
+        if (setting) {
+          setReservationEnabled(Boolean(setting.enabled));
+          setSlotUnit(setting.slot_unit_minutes || 60);
+          setDaysAhead(setting.allowed_days_ahead || 90);
+          setCapacity(setting.capacity_per_slot || 10);
+        }
+        const { data: seatRows } = await supabase
+          .from('facility_seats')
+          .select('seat_code')
+          .eq('facility_id', facilityId);
+        setSeats((seatRows || []).map((r: any) => r.seat_code));
+      } catch (e) {
+        console.warn('Failed to load reservation settings', e);
       }
       if (facilityData.specific_closed_dates) {
         try {
@@ -908,10 +1010,10 @@ export default function FacilityEdit() {
           {/* タブナビゲーション */}
           <div className="bg-white rounded-lg border mb-6">
             <div className="border-b">
-              <nav className="flex space-x-8 px-6">
+              <nav className="flex flex-wrap gap-3 sm:gap-6 px-4">
                 <button
                   onClick={() => setActiveTab('info')}
-                  className={`py-4 px-2 border-b-2 font-medium text-sm ${
+                  className={`py-3 px-3 border-b-2 font-medium text-sm whitespace-nowrap w-1/3 sm:w-auto text-center ${
                     activeTab === 'info'
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -922,7 +1024,7 @@ export default function FacilityEdit() {
                 </button>
                 <button
                   onClick={() => setActiveTab('images')}
-                  className={`py-4 px-2 border-b-2 font-medium text-sm ${
+                  className={`py-3 px-3 border-b-2 font-medium text-sm whitespace-nowrap w-1/3 sm:w-auto text-center ${
                     activeTab === 'images'
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -933,7 +1035,7 @@ export default function FacilityEdit() {
                 </button>
                 <button
                   onClick={() => setActiveTab('coupons')}
-                  className={`py-4 px-2 border-b-2 font-medium text-sm ${
+                  className={`py-3 px-3 border-b-2 font-medium text-sm whitespace-nowrap w-1/3 sm:w-auto text-center ${
                     activeTab === 'coupons'
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -944,7 +1046,7 @@ export default function FacilityEdit() {
                 </button>
                 <button
                   onClick={() => setActiveTab('schedule')}
-                  className={`py-4 px-2 border-b-2 font-medium text-sm ${
+                  className={`py-3 px-3 border-b-2 font-medium text-sm whitespace-nowrap w-1/3 sm:w-auto text-center ${
                     activeTab === 'schedule'
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -955,7 +1057,7 @@ export default function FacilityEdit() {
                 </button>
                 <button
                   onClick={() => setActiveTab('location')}
-                  className={`py-4 px-2 border-b-2 font-medium text-sm ${
+                  className={`py-3 px-3 border-b-2 font-medium text-sm whitespace-nowrap w-1/3 sm:w-auto text-center ${
                     activeTab === 'location'
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -963,6 +1065,17 @@ export default function FacilityEdit() {
                 >
                   <MapPin className="w-4 h-4 inline mr-2" />
                   位置調整
+                </button>
+                <button
+                  onClick={() => setActiveTab('reservation')}
+                  className={`py-3 px-3 border-b-2 font-medium text-sm whitespace-nowrap w-1/3 sm:w-auto text-center ${
+                    activeTab === 'reservation'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Calendar className="w-4 h-4 inline mr-2" />
+                  予約管理
                 </button>
               </nav>
             </div>
@@ -1163,6 +1276,112 @@ export default function FacilityEdit() {
                       </Button>
                     </div>
                   </form>
+                </div>
+              )}
+              {activeTab === 'reservation' && (
+                <div>
+                  <h2 className="text-xl font-semibold mb-6 flex items-center">
+                    <Calendar className="w-6 h-6 text-blue-600 mr-2" />
+                    予約管理
+                  </h2>
+                  <p className="text-sm text-gray-600 mb-4">時間単位の予約、客席コード、受付期間を設定します。公開ページからユーザーが予約できます。</p>
+
+                  {/* 基本設定（1行ずつ） */}
+                  <div className="bg-white rounded-lg border p-4 mb-6 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center space-x-2">
+                        <input type="checkbox" className="h-4 w-4" checked={reservationEnabled} onChange={(e) => setReservationEnabled(e.target.checked)} />
+                        <span>予約を受け付ける</span>
+                      </label>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700">予約単位</span>
+                      <select className="border rounded px-2 py-1" value={slotUnit} onChange={(e) => setSlotUnit(Number(e.target.value))}>
+                        {[15,30,45,60,90,120].map((m) => (
+                          <option key={m} value={m}>{m}分</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700">受付可能日数</span>
+                      <div className="flex items-center space-x-2">
+                        <input type="number" min={1} max={365} className="border rounded px-2 py-1 w-24 text-right" value={daysAhead} onChange={(e) => setDaysAhead(Number(e.target.value))} />
+                        <span className="text-sm text-gray-600">日先</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700">仮予約の自動承認</span>
+                      <label className="flex items-center space-x-2">
+                        <input type="checkbox" className="h-4 w-4" checked={autoConfirm} onChange={(e) => setAutoConfirm(e.target.checked)} />
+                        <span>自動で予約確定にする</span>
+                      </label>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700">同一時間キャパ</span>
+                      <input type="number" min={1} max={1000} className="border rounded px-2 py-1 w-24 text-right" value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} />
+                    </div>
+                    <div className="flex justify-end pt-2">
+                      <Button onClick={saveReservationSettings}>設定を保存</Button>
+                    </div>
+                  </div>
+
+                  {/* 客席管理 */}
+                  <div className="bg-white rounded-lg border p-4 mb-6">
+                    <h3 className="font-semibold mb-3">客席（席コード）</h3>
+                    <div className="flex space-x-2 mb-3">
+                      <input className="border rounded px-2 py-1 flex-1" placeholder="例: A1,B,4人席,個室 など" value={newSeat} onChange={(e) => setNewSeat(e.target.value)} />
+                      <Button onClick={addSeat} variant="secondary">追加</Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {seats.map((s) => (
+                        <div key={s} className="px-3 py-1 bg-gray-100 rounded-full flex items-center space-x-2">
+                          <span>{s}</span>
+                          <button className="text-red-600" onClick={() => removeSeat(s)}>×</button>
+                        </div>
+                      ))}
+                      {seats.length === 0 && <p className="text-sm text-gray-500">まだ客席が登録されていません</p>}
+                    </div>
+                  </div>
+
+                  {/* 一覧プレビュー */}
+                  <div className="bg-white rounded-lg border p-4 mb-6">
+                    <h3 className="font-semibold mb-3">予約一覧（プレビュー）</h3>
+                    <div className="flex items-center space-x-2 mb-3">
+                      <span className="text-sm text-gray-600">対象日</span>
+                      <input type="date" className="border rounded px-2 py-1" value={previewDate} onChange={(e) => setPreviewDate(e.target.value)} />
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-50">
+                            <th className="text-left px-3 py-2 border">席</th>
+                            <th className="text-left px-3 py-2 border">開始</th>
+                            <th className="text-left px-3 py-2 border">終了</th>
+                            <th className="text-left px-3 py-2 border">状態</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {previewReservations.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="px-3 py-4 border text-center text-gray-500">予約はありません</td>
+                            </tr>
+                          ) : (
+                            previewReservations.map((r, idx) => (
+                              <tr key={idx} className="hover:bg-gray-50">
+                                <td className="px-3 py-2 border">{r.seat_code}</td>
+                                <td className="px-3 py-2 border">{r.start_time}</td>
+                                <td className="px-3 py-2 border">{r.end_time}</td>
+                                <td className="px-3 py-2 border">{r.status}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* 注意 */}
+                  <div className="text-xs text-gray-500">営業日カレンダーで「営業日」のみ予約受付します。公開ページの施設詳細に予約ボタンを表示します。</div>
                 </div>
               )}
 

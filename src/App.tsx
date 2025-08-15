@@ -93,6 +93,7 @@ const DogParkRules = React.lazy(() => import('./pages/DogParkRules').then(module
 
 // 施設関連ページ
 const FacilityDetail = React.lazy(() => import('./pages/FacilityDetail').then(module => ({ default: module.FacilityDetail })));
+const FacilityReserve = React.lazy(() => import('./pages/FacilityReserve'));
 
 // ショッピング関連ページ
 const PetShop = React.lazy(() => import('./pages/PetShop').then(module => ({ default: module.PetShop })));
@@ -330,6 +331,11 @@ const App: React.FC = () => {
               <Route path="/facilities/:id" element={
                 <Suspense fallback={<PageSkeleton />}>
                   <FacilityDetail />
+                </Suspense>
+              } />
+              <Route path="/facilities/:id/reserve" element={
+                <Suspense fallback={<PageSkeleton />}>
+                  <FacilityReserve />
                 </Suspense>
               } />
               <Route path="/rules" element={

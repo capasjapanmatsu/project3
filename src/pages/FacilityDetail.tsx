@@ -608,6 +608,10 @@ export function FacilityDetail() {
                   <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
                     {facility.name}
                   </h1>
+                  {/* 予約ボタン（設定が有効な場合） */}
+                  <div>
+                    <ReserveEntryInline facilityId={facilityId!} />
+                  </div>
                   
                   <div className="space-y-3">
                     <div className="flex items-start text-gray-600">
@@ -1394,3 +1398,22 @@ export function FacilityDetail() {
     </>
   );
 } 
+
+function ReserveEntryInline({ facilityId }: { facilityId: string }) {
+  const [enabled, setEnabled] = useState(false);
+  const navigate = useNavigate();
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('facility_reservation_settings')
+        .select('enabled')
+        .eq('facility_id', facilityId)
+        .maybeSingle();
+      setEnabled(Boolean(data?.enabled));
+    })();
+  }, [facilityId]);
+  if (!enabled) return null;
+  return (
+    <Button className="bg-green-600 hover:bg-green-700" onClick={() => navigate(`/facilities/${facilityId}/reserve`)}>予約する</Button>
+  );
+}
