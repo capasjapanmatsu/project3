@@ -18,6 +18,18 @@ export default function AIChatWidget() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const [showDebug, setShowDebug] = useState(true);
+
+  useEffect(() => {
+    // デバッグ: マウント確認
+    try {
+      // eslint-disable-next-line no-console
+      console.log('[AIChatWidget] mounted');
+      (window as any).__AI_CHAT_WIDGET__ = true;
+    } catch {}
+    const t = setTimeout(() => setShowDebug(false), 4000);
+    return () => clearTimeout(t);
+  }, []);
 
   // 初期読み込み（ローカル履歴）
   useEffect(() => {
@@ -120,6 +132,9 @@ export default function AIChatWidget() {
 
   return (
     <>
+      {showDebug && (
+        <div className="fixed top-3 left-3 z-[10000] bg-red-600 text-white text-xs px-2 py-1 rounded shadow">AI Widget Loaded</div>
+      )}
       {/* 極端に目立つフローティングボタン（暫定） */}
       <button
         type="button"
