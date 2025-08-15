@@ -5,6 +5,7 @@ import useAuth from '../context/AuthContext';
 import { useMaintenance } from '../context/MaintenanceContext';
 import { BottomNavigation } from './BottomNavigation';
 import FloatingActionButton from './FloatingActionButton';
+import AIChatWidget from './AIChatWidget';
 import { Footer } from './Footer';
 import MaintenanceScreen from './MaintenanceScreen';
 import { Navbar } from './Navbar';
@@ -81,6 +82,8 @@ const Layout = ({ children }: LayoutProps) => {
         
         {/* フローティングアクションボタン */}
         <FloatingActionButton />
+        {/* どの画面からも使えるAIチャット */}
+        <AIChatWidget />
         
         {/* サイドバナー（固定配置） */}
         
