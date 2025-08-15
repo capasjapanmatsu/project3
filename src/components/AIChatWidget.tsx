@@ -120,7 +120,7 @@ export default function AIChatWidget() {
 
   return (
     <>
-      {/* 左エッジに少しだけ見えるスライドタブ */}
+      {/* 極端に目立つフローティングボタン（暫定） */}
       <button
         type="button"
         onClick={() => {
@@ -129,18 +129,18 @@ export default function AIChatWidget() {
         }}
         aria-expanded={isOpen}
         aria-controls="ai-chat-widget-panel"
-        className={`fixed top-1/2 left-0 -translate-y-1/2 ml-[-8px] z-50 flex items-center justify-center h-14 w-12 sm:w-14 rounded-r-xl shadow-2xl border border-white/40 text-white transition-all ${
-          isOpen ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'
+        className={`fixed top-1/2 right-4 -translate-y-1/2 z-[9999] flex items-center justify-center h-16 w-16 rounded-full shadow-2xl ring-4 ring-white/70 text-white transition-all animate-bounce ${
+          isOpen ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-fuchsia-500 hover:from-indigo-600 hover:to-fuchsia-600'
         }`}
         data-ai-widget="true"
         title="AIに質問"
       >
-        <MessageCircle className="w-6 h-6" />
+        <MessageCircle className="w-8 h-8" />
       </button>
 
-      {/* サイドパネル（左から展開） */}
+      {/* サイドパネル（右から展開） */}
       {isOpen && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-[9998]">
           {/* 背景 */}
           <div
             className="absolute inset-0 bg-black/30"
@@ -152,7 +152,7 @@ export default function AIChatWidget() {
           <section
             id="ai-chat-widget-panel"
             aria-label="AIチャット"
-            className="absolute left-0 bottom-0 top-0 w-full sm:w-96 bg-white shadow-2xl border-r flex flex-col animate-in slide-in-from-left duration-200"
+            className="absolute right-0 bottom-0 top-0 w-full sm:w-96 bg-white shadow-2xl border-l flex flex-col animate-in slide-in-from-right duration-200"
           >
             {/* ヘッダー */}
             <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-indigo-50 to-purple-50">
