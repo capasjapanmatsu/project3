@@ -6,7 +6,7 @@ import {
     Shield,
     ShoppingCart
 } from 'lucide-react';
-import { Suspense, lazy, memo, useCallback, useEffect, useState } from 'react';
+import { Suspense, lazy, memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
@@ -39,6 +39,8 @@ export const Navbar = memo(function Navbar() {
   const [canInstallPWA, setCanInstallPWA] = useState(false);
   const [isPWAMode, setIsPWAMode] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const [showLoginMenu, setShowLoginMenu] = useState(false);
+  const loginMenuRef = useRef<HTMLDivElement | null>(null);
 
   // PWAインストール関数
   const installPWA = useCallback(() => {
@@ -85,6 +87,18 @@ export const Navbar = memo(function Navbar() {
     })();
     return () => { mounted = false; };
   }, []);
+
+  // ログインメニューの外側クリックでクローズ
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!showLoginMenu) return;
+      if (loginMenuRef.current && !loginMenuRef.current.contains(e.target as Node)) {
+        setShowLoginMenu(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showLoginMenu]);
 
   const isLoggedIn = Boolean(user || sessionUser || effectiveUserId);
 
@@ -433,12 +447,50 @@ export const Navbar = memo(function Navbar() {
                 </>
               ) : (
                 <>
-                  <a 
-                    href="/liff/login" 
-                    className="text-gray-600 hover:text-blue-600 transition-colors"
-                  >
-                    ログイン
-                  </a>
+                  <div className="relative" ref={loginMenuRef}>
+                    <button 
+                      type="button"
+                      onClick={() => setShowLoginMenu((v) => !v)}
+                      className="text-gray-600 hover:text-blue-600 transition-colors"
+                      aria-haspopup="menu"
+                      aria-expanded={showLoginMenu}
+                    >
+                      ログイン
+                    </button>
+                    {showLoginMenu && (
+                      <div 
+                        role="menu"
+                        className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
+                      >
+                        <div className="py-2">
+                          <Link 
+                            to="/login?method=password"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            role="menuitem"
+                            onClick={() => setShowLoginMenu(false)}
+                          >
+                            メールアドレス（パスワード）
+                          </Link>
+                          <Link 
+                            to="/login?method=magic"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            role="menuitem"
+                            onClick={() => setShowLoginMenu(false)}
+                          >
+                            メールアドレス（マジックリンク）
+                          </Link>
+                          <a 
+                            href="/liff/login"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            role="menuitem"
+                            onClick={() => setShowLoginMenu(false)}
+                          >
+                            LINEでログイン
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <Link 
                     to="/register" 
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
