@@ -327,7 +327,7 @@ export function PetShop() {
               <div className="text-right">
                 <SubscriptionButton 
                   hasSubscription={hasSubscription}
-                  className="bg-white text-purple-600 hover:bg-gray-100 font-bold px-6 py-3 text-lg"
+                  className="font-bold px-6 py-3 text-lg"
                 />
                 <p className="text-sm opacity-80 mt-2">初月無料キャンペーン中</p>
               </div>

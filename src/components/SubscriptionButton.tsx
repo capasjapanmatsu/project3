@@ -48,7 +48,7 @@ export function SubscriptionButton({
         <Button 
           variant={variant} 
           size={size}
-          className={`flex items-center ${className}`}
+          className={`flex items-center bg-blue-600 hover:bg-blue-700 text-white ${className}`}
         >
           <Crown className={`${size === 'sm' ? 'w-3 h-3' : 'w-4 h-4'} mr-1`} />
           サブスク管理
@@ -64,7 +64,7 @@ export function SubscriptionButton({
         isLoading={loading}
         variant="primary"
         size={size}
-        className={`flex items-center bg-purple-600 hover:bg-purple-700 text-white ${className}`}
+        className={`flex items-center bg-blue-600 hover:bg-blue-700 text-white ${className}`}
       >
         <Crown className={`${size === 'sm' ? 'w-3 h-3' : 'w-4 h-4'} mr-1`} />
         サブスクに加入
