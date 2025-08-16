@@ -89,6 +89,42 @@ export function PetShop() {
     setCartItems(data || []);
   };
 
+  // 追加: カート投入アニメーション（楽天風）
+  const animateAddToCartByProductId = (productId: string) => {
+    const img = document.querySelector(`img[data-product-id="${productId}"]`) as HTMLImageElement | null;
+    if (!img) return;
+    const rect = img.getBoundingClientRect();
+    const clone = img.cloneNode(true) as HTMLImageElement;
+    Object.assign(clone.style, {
+      position: 'fixed',
+      top: `${rect.top}px`,
+      left: `${rect.left}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+      opacity: '0.9',
+      borderRadius: '8px',
+      zIndex: '9999',
+      pointerEvents: 'none',
+      transform: 'translate(0,0) scale(1)'
+    } as CSSStyleDeclaration);
+    document.body.appendChild(clone);
+
+    const finalX = (window.innerWidth * 0.1) - rect.left; // 画面左下寄りへ
+    const finalY = (window.innerHeight - rect.top - 40);   // 画面下方向へ落下
+
+    const anim = (clone as any).animate(
+      [
+        { transform: 'translate(0, 0) scale(1)', opacity: 0.9 },
+        { transform: 'translate(0, -20px) scale(0.92)', opacity: 0.8, offset: 0.3 },
+        { transform: `translate(${finalX}px, ${finalY}px) scale(0.35)`, opacity: 0.0 }
+      ],
+      { duration: 900, easing: 'cubic-bezier(0.2, 0.8, 0.1, 1)', fill: 'forwards' }
+    );
+    anim.addEventListener('finish', () => {
+      clone.remove();
+    });
+  };
+
   const addToCart = async (productId: string, quantity: number = 1) => {
     const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
     if (!uid) {
@@ -529,7 +565,7 @@ export function PetShop() {
                       </div>
                     ) : (
                       <Button
-                        onClick={() => addToCart(product.id)}
+                        onClick={() => { addToCart(product.id); animateAddToCartByProductId(product.id); }}
                         className="w-full bg-green-600 hover:bg-green-700"
                         disabled={product.stock_quantity === 0}
                       >
