@@ -150,7 +150,7 @@ export function PetShop() {
           { transform: `translate3d(${centerX}px, ${centerY}px, 0) scale(${startScale}, ${startScale})`, opacity: 0.98, offset: 0.5 },
           { transform: `translate3d(${rect.left + dx}px, ${rect.top + dy}px, 0) scale(0.2, 0.2)`, opacity: 0 }
         ],
-        { duration: 12000, easing: 'cubic-bezier(0.16, 0.84, 0.3, 1)', fill: 'forwards' }
+        { duration: 4000, easing: 'cubic-bezier(0.16, 0.84, 0.3, 1)', fill: 'forwards' }
       );
       anim.addEventListener('finish', () => {
         overlay.remove();
