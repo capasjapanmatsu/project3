@@ -148,9 +148,16 @@ export function DogParkList() {
 
   // カテゴリフィルター機能
   const filteredFacilities = useMemo(() => {
-    // カテゴリで絞り込み（category_idとcategory_nameの双方に対応）
+    // すべて選択時はフィルタしない（実質全表示）
+    if (selectedCategories.length === Object.keys(CATEGORY_LABELS).length) {
+      return facilities;
+    }
+
+    // カテゴリで絞り込み（category / category_id 双方に対応）
     let filtered = facilities.filter(f => {
       const key = f.category || (f as any).category_id || '';
+      // 未知カテゴリは除外しない（安全側）
+      if (!key) return true;
       return selectedCategories.includes(key);
     });
 
