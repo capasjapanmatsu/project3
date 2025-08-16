@@ -77,8 +77,9 @@
         `;
         // スプラッシュを一度だけスキップするフラグ
         try { localStorage.setItem('skipSplashOnce', '1'); } catch {}
-        // 成功: ダッシュボードへ
-        location.assign('/dashboard');
+        // 成功: リダイレクト先（?redirect=/profile-settings 等）へ
+        const redirect = params.get('redirect') || '/dashboard';
+        location.assign(redirect);
       } catch (err) {
         console.error(err);
         $status.innerHTML = '<span class="err">エラー: ' + err.message + '</span>';
