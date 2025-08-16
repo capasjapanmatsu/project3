@@ -871,6 +871,7 @@ export function ProfileSettings() {
                       });
                       if (!res.ok) throw new Error(await res.text());
                       setLinked(true);
+                      // MEMO: 多対多リンクでも「連携済み」扱い（複数連携を許容）
                       setSuccess('LINE通知連携が完了しました');
                       setTimeout(() => setSuccess(''), 2500);
                     } catch (e) {

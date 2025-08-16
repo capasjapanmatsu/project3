@@ -115,23 +115,41 @@ export const handler: Handler = async (event) => {
       title?: string;
     };
 
-    let recipient = to || process.env.LINE_TEST_USER_ID as string | undefined;
-    // DB解決: userId または lineUserId から users テーブルを参照
-    if (!recipient && (userId || lineUserId)) {
+    let recipients: string[] = [];
+    if (to) recipients = [to];
+    // 受信者解決: app_user_id → 複数の line_user_id を許容
+    if (recipients.length === 0 && (userId || lineUserId)) {
       if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
         const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
         if (userId) {
-          const { data } = await admin.from('users').select('line_user_id').eq('app_user_id', userId).maybeSingle();
-          recipient = data?.line_user_id || recipient;
+          // 多対多テーブル優先
+          const { data: links } = await admin
+            .from('user_line_link')
+            .select('line_user_id')
+            .eq('app_user_id', userId);
+          if (links && links.length) {
+            recipients = links.map((r: any) => r.line_user_id).filter(Boolean);
+          }
+          // 古い users テーブルの単一リンクも補助
+          if (recipients.length === 0) {
+            const { data } = await admin.from('users').select('line_user_id').eq('app_user_id', userId).maybeSingle();
+            if (data?.line_user_id) recipients = [data.line_user_id];
+          }
         } else if (lineUserId) {
-          recipient = lineUserId;
+          recipients = [lineUserId];
         }
       }
     }
-    if (!recipient) return { statusCode: 400, body: 'Missing "to"' };
+    if (recipients.length === 0) return { statusCode: 400, body: 'Missing "to"' };
+
+    const pushAll = async (msg: any) => {
+      for (const id of recipients) {
+        await lineClient.pushMessage(id, msg);
+      }
+    };
 
     if (kind === 'text') {
-      await lineClient.pushMessage(recipient, textMsg(body.message || 'お知らせです') as any);
+      await pushAll(textMsg(body.message || 'お知らせです') as any);
       return { statusCode: 200, body: '{"ok":true}' };
     }
 
@@ -143,13 +161,13 @@ export const handler: Handler = async (event) => {
         mapUrl: body.mapUrl,
         note: body.note
       });
-      await lineClient.pushMessage(recipient, msg as any);
+      await pushAll(msg as any);
       return { statusCode: 200, body: '{"ok":true}' };
     }
 
     if (kind === 'badge_approved') {
       const msg = badgeApprovedFlex(body.dogName ?? 'わんちゃん', body.expires);
-      await lineClient.pushMessage(recipient, msg as any);
+      await pushAll(msg as any);
       return { statusCode: 200, body: '{"ok":true}' };
     }
 
@@ -158,7 +176,9 @@ export const handler: Handler = async (event) => {
       const message = body.message ?? '内容はありません';
       const linkUrl = body.linkUrl ?? body.mapUrl;
       const msgs = alertWithLink(title, message, linkUrl);
-      await lineClient.pushMessage(recipient, msgs as any);
+      for (const id of recipients) {
+        await lineClient.pushMessage(id, msgs as any);
+      }
       return { statusCode: 200, body: '{"ok":true}' };
     }
 
@@ -168,5 +188,6 @@ export const handler: Handler = async (event) => {
     return { statusCode: 500, body: '{"ok":false}' };
   }
 };
+
 
 
