@@ -95,13 +95,14 @@ export function PetShop() {
     if (!img) return;
     const rect = img.getBoundingClientRect();
     const clone = img.cloneNode(true) as HTMLImageElement;
+    const startScale = 0.8;
     Object.assign(clone.style, {
       position: 'fixed',
-      top: `${rect.top}px`,
-      left: `${rect.left}px`,
-      width: `${rect.width}px`,
-      height: `${rect.height}px`,
-      opacity: '0.9',
+      top: `${(window.innerHeight - rect.height * startScale) / 2}px`,
+      left: `${(window.innerWidth - rect.width * startScale) / 2}px`,
+      width: `${rect.width * startScale}px`,
+      height: `${rect.height * startScale}px`,
+      opacity: '0.95',
       borderRadius: '8px',
       zIndex: '9999',
       pointerEvents: 'none',
@@ -109,21 +110,23 @@ export function PetShop() {
     } as CSSStyleDeclaration);
     document.body.appendChild(clone);
 
-    // 画面の下方向に向けて、ゆっくり動かす。スクロールは抑止
-    const finalX = (window.innerWidth * 0.15) - rect.left;
-    const finalY = (window.innerHeight - rect.top - 20);
+    // ヘッダーカートの位置へ移動
+    const cartIcon = document.querySelector('[data-cart-target="true"]') as HTMLElement | null;
+    const cartRect = cartIcon ? cartIcon.getBoundingClientRect() : { left: window.innerWidth - 40, top: 20, width: 20, height: 20 } as DOMRect as any;
+    const centerX = (window.innerWidth - rect.width * startScale) / 2;
+    const centerY = (window.innerHeight - rect.height * startScale) / 2;
+    const dx = cartRect.left + cartRect.width / 2 - (centerX + rect.width * startScale / 2);
+    const dy = cartRect.top + cartRect.height / 2 - (centerY + rect.height * startScale / 2);
 
     const anim = (clone as any).animate(
       [
-        { transform: 'translate(0, 0) scale(1)', opacity: 0.9 },
-        { transform: 'translate(0, -20px) scale(0.92)', opacity: 0.85, offset: 0.4 },
-        { transform: `translate(${finalX}px, ${finalY}px) scale(0.4)`, opacity: 0.0 }
+        { transform: 'translate(0, 0) scale(1)', opacity: 0.95 },
+        { transform: `translate(${dx * 0.6}px, ${dy * 0.6}px) scale(0.6)`, opacity: 0.9, offset: 0.5 },
+        { transform: `translate(${dx}px, ${dy}px) scale(0.2)`, opacity: 0.0 }
       ],
-      { duration: 1800, easing: 'cubic-bezier(0.2, 0.8, 0.1, 1)', fill: 'forwards' }
+      { duration: 1800, easing: 'cubic-bezier(0.16, 0.84, 0.44, 1)', fill: 'forwards' }
     );
-    anim.addEventListener('finish', () => {
-      clone.remove();
-    });
+    anim.addEventListener('finish', () => clone.remove());
   };
 
   const addToCart = async (productId: string, quantity: number = 1) => {
@@ -460,6 +463,7 @@ export function PetShop() {
                 {/* 商品画像 */}
                 <div className="relative h-48 mb-4 -m-6 mb-4">
                   <img
+                    data-product-id={product.id}
                     src={getFirstImageUrl(product.image_url)}
                     alt={product.name}
                     className="w-full h-full object-cover"
