@@ -224,42 +224,50 @@ export function AdminSponsors() {
                       <div className="flex space-x-2">
                         <Button
                           onClick={() => {
-                            const subject = encodeURIComponent(`【ドッグパークJP】スポンサー広告のご案内`);
+                            const subject = encodeURIComponent('【ドッグパークJP】スポンサー広告のご案内');
+                            const nl = '%0D%0A';
                             const body = encodeURIComponent(
-`${inquiry.contact_person}様
-
-お世話になっております。
-ドッグパークJP運営事務局です。
-
-この度は、スポンサー広告にご興味をお持ちいただき、
-誠にありがとうございます。
-
-詳細なご案内をさせていただきたく、
-ご連絡させていただきました。
-
-【スポンサー広告プランのご案内】
-・プラン内容の詳細説明
-・料金体系
-・掲載までの流れ
-・その他ご質問への回答
-
-ご都合の良い日時をお知らせいただければ、
-詳しくご説明させていただきます。
-
-何かご不明な点がございましたら、
-お気軽にお問い合わせください。
-
-よろしくお願いいたします。
-
---
-ドッグパークJP運営事務局
-メール: info@dogparkjp.com
-ウェブサイト: https://dogparkjp.com
-
-※このメールは手動で送信しています。
-※送信元アドレスをinfo@dogparkjp.comに設定してください。`
+                              `${inquiry.contact_person}様${nl}${nl}` +
+                              'お世話になっております。' + nl +
+                              'ドッグパークJP運営事務局です。' + nl + nl +
+                              'この度は、スポンサー広告にご興味をお持ちいただき、誠にありがとうございます。' + nl + nl +
+                              '詳細なご案内をさせていただきたく、ご連絡させていただきました。' + nl + nl +
+                              '【スポンサー広告プランのご案内】' + nl +
+                              '・プラン内容の詳細説明' + nl +
+                              '・料金体系' + nl +
+                              '・掲載までの流れ' + nl +
+                              '・その他ご質問への回答' + nl + nl +
+                              'ご都合の良い日時をお知らせいただければ、詳しくご説明させていただきます。' + nl + nl +
+                              '何かご不明な点がございましたら、お気軽にお問い合わせください。' + nl + nl +
+                              'よろしくお願いいたします。' + nl + nl +
+                              '--' + nl +
+                              'ドッグパークJP運営事務局' + nl +
+                              'メール: info@dogparkjp.com' + nl +
+                              'ウェブサイト: https://dogparkjp.com' + nl + nl +
+                              '※送信元アドレスが info@dogparkjp.com になっていることをご確認ください。'
                             );
-                            window.open(`mailto:${inquiry.email}?subject=${subject}&body=${body}`, '_blank');
+
+                            const to = encodeURIComponent(inquiry.email);
+
+                            // 1) Outlook デスクトップ（インストール時のみ有効）
+                            const outlookUri = `ms-outlook:compose?to=${to}&subject=${subject}&body=${body}`;
+                            let opened = false;
+                            try {
+                              // 一部環境では例外にならず無視されるため、フォールバックを併用
+                              window.location.href = outlookUri;
+                              opened = true;
+                            } catch {}
+
+                            // 2) 少し待ってから Outlook Web でフォールバック
+                            setTimeout(() => {
+                              if (opened) return;
+                              const owa = `https://outlook.office.com/mail/deeplink/compose?to=${to}&subject=${subject}&body=${body}`;
+                              const win = window.open(owa, '_blank');
+                              if (!win) {
+                                // 3) さらにフォールバック: mailto
+                                window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+                              }
+                            }, 200);
                           }}
                           variant="secondary"
                           size="sm"
