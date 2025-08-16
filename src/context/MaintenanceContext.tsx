@@ -1,4 +1,5 @@
 import { ReactNode, createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { supabase } from '../utils/supabase';
 
 interface MaintenanceSchedule {
   id: string;
@@ -53,14 +54,16 @@ export const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
   // メンテナンス状態を確認（DBから取得）
   const checkMaintenanceStatus = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/maintenance_schedules?select=*&is_active=eq.true&order=start_time.desc`, {
-        headers: { 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY as string }
-      });
-      if (!res.ok) throw new Error('fetch_failed');
-      const rows = await res.json() as any[];
-      if (rows && rows.length > 0) {
+      const { data, error } = await supabase
+        .from('maintenance_schedules')
+        .select('*')
+        .eq('is_active', true)
+        .order('start_time', { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      if (data && data.length > 0) {
+        const row = data[0] as any;
         setIsMaintenanceActive(true);
-        const row = rows[0];
         setMaintenanceInfo({
           id: row.id,
           title: row.title,
