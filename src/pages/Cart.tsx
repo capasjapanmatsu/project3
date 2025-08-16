@@ -357,7 +357,7 @@ export function Cart() {
               </div>
               <p className="text-sm mb-3">全商品10%OFF + 送料無料</p>
               <Link to="/subscription-intro">
-                <Button size="sm" className="bg-white text-gray-900 hover:bg-gray-100">
+                <Button size="sm" className="bg-blue-600 text-white hover:bg-blue-700">
                   詳細を見る
                 </Button>
               </Link>
