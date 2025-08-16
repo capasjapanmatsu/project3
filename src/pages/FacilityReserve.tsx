@@ -69,7 +69,7 @@ export default function FacilityReserve() {
         status,
       });
       if (error) throw error;
-      // LINE通知（任意: ユーザー自身に送る）
+      // 通知（アプリ内＋LINE）
       try {
         const { notifyAppAndLine } = await import('../utils/notify');
         const linkUrlUser = `${window.location.origin}/my-reservations`;
@@ -80,6 +80,14 @@ export default function FacilityReserve() {
           const linkUrlOwner = `${window.location.origin}/facilities/${facilityId}/reservations`;
           await notifyAppAndLine({ userId: facility.owner_id, title: '予約が入りました', message: `${facility.name} / ${date} ${start}-${end} / ${guestCount}名 / 席:${seat}`, linkUrl: linkUrlOwner, kind: 'reservation' });
         }
+        // コミュニティ通知（アプリ内の通知リストに残す）
+        await supabase.from('notifications').insert({
+          user_id: user.id,
+          title: isAuto ? '予約確定' : '仮予約',
+          message: `${date} ${start}-${end} / ${guestCount}名 / 席:${seat}`,
+          link_url: linkUrlUser,
+          read: false
+        });
       } catch {}
       alert('予約が完了しました');
       navigate(`/facilities/${facilityId}`);

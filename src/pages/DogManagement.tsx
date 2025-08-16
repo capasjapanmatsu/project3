@@ -161,24 +161,21 @@ export function DogManagement() {
   };
 
   const handleDogImageRemove = async () => {
-    if (!selectedDog || !selectedDog.image_url) return;
+    if (!selectedDog) return;
     
     try {
       setIsUpdatingDog(true);
       setDogUpdateError('');
       
-      // 1. Supabase Storageから画像ファイルを削除
-      if (selectedDog.image_url && selectedDog.image_url.includes('dog-images/')) {
-        const imagePath = selectedDog.image_url.split('dog-images/')[1];
-        if (imagePath) {
-          const { error: storageError } = await supabase
-            .storage
-            .from('dog-images')
-            .remove([imagePath]);
-          
-          // ストレージ削除エラーは警告として扱い、DB更新は続行
+      // 1. Supabase Storageから画像ファイルを削除（存在チェック）
+      try {
+        if (selectedDog.image_url && selectedDog.image_url.includes('dog-images/')) {
+          const imagePath = selectedDog.image_url.split('dog-images/')[1];
+          if (imagePath) {
+            await supabase.storage.from('dog-images').remove([imagePath]);
+          }
         }
-      }
+      } catch (_) { /* ストレージ削除失敗は無視 */ }
       
       // 2. データベースのimage_urlをnullに更新
       const result = await safeSupabaseQuery(() =>
@@ -194,10 +191,10 @@ export function DogManagement() {
         return;
       }
       
-      // 3. UIを更新
+      // 3. UIを更新（プレビューも即時消去）
       setDogImageFile(null);
       setDogImagePreview(null);
-      setSelectedDog({ ...selectedDog, image_url: '' });
+      setSelectedDog({ ...selectedDog, image_url: null as any });
       
       // 4. データを再取得
       await fetchDogs();

@@ -125,7 +125,7 @@ export function PetShop() {
     Object.assign(clone.style, {
       position: 'absolute',
       transformOrigin: 'top left',
-      opacity: '1',
+      opacity: '0.9',
       borderRadius: '8px',
       pointerEvents: 'none',
       willChange: 'transform, opacity',
@@ -146,11 +146,11 @@ export function PetShop() {
     const start = () => {
       const anim = (clone as any).animate(
         [
-          { transform: `translate3d(${rect.left}px, ${rect.top}px, 0) scale(${startScale}, ${startScale})`, opacity: 1 },
-          { transform: `translate3d(${centerX}px, ${centerY}px, 0) scale(${startScale}, ${startScale})`, opacity: 0.98, offset: 0.5 },
+          { transform: `translate3d(${rect.left}px, ${rect.top}px, 0) scale(${startScale}, ${startScale})`, opacity: 0.9 },
+          { transform: `translate3d(${centerX}px, ${centerY}px, 0) scale(${startScale}, ${startScale})`, opacity: 0.85, offset: 0.5 },
           { transform: `translate3d(${rect.left + dx}px, ${rect.top + dy}px, 0) scale(0.2, 0.2)`, opacity: 0 }
         ],
-        { duration: 4000, easing: 'cubic-bezier(0.16, 0.84, 0.3, 1)', fill: 'forwards' }
+        { duration: 3000, easing: 'cubic-bezier(0.16, 0.84, 0.3, 1)', fill: 'forwards' }
       );
       anim.addEventListener('finish', () => {
         overlay.remove();
