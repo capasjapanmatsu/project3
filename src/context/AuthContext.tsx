@@ -89,29 +89,43 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     let isMounted = true;
-    
+
     const initializeAuth = async () => {
       try {
-        // 1. まずLINEセッションを確認
+        // 1) まず Supabase 認証（メール/パスワード・マジックリンク）を優先
+        const { data: { user: sbUser } } = await supabase.auth.getUser();
+        if (sbUser && isMounted) {
+          setUser(sbUser);
+          setIsAuthenticated(true);
+          setUserProfile(null);
+          setIsAdmin(sbUser.email === 'capasjapan@gmail.com');
+          setEffectiveUserId(sbUser.id);
+          setLoading(false);
+
+          // 参考情報としてLINEセッションの有無だけ取得（ログイン切替はしない）
+          try {
+            const lineSessionUser = await fetchSessionUser();
+            if (lineSessionUser && isMounted) {
+              setLineUser(lineSessionUser);
+              setIsLineAuthenticated(true);
+            }
+          } catch {}
+          return;
+        }
+
+        // 2) Supabase未ログイン時のみ、LINEセッションを確認して自動交換
         try {
           const lineSessionUser = await fetchSessionUser();
           if (lineSessionUser && isMounted) {
             setLineUser(lineSessionUser);
             setIsLineAuthenticated(true);
             setEffectiveUserId(lineSessionUser.app_user_id || lineSessionUser.id);
-            // LINEユーザーの場合でも、Supabaseセッションへ自動交換を試みる
             try {
-              const resp = await fetch('/line/exchange-supabase-session', {
-                method: 'POST',
-                credentials: 'include'
-              });
+              const resp = await fetch('/line/exchange-supabase-session', { method: 'POST', credentials: 'include' });
               if (resp.ok) {
                 const { access_token, refresh_token } = await resp.json() as { access_token: string; refresh_token: string };
-                const { data, error } = await supabase.auth.setSession({
-                  access_token,
-                  refresh_token
-                });
-                if (!error && data?.session && isMounted) {
+                const { data } = await supabase.auth.setSession({ access_token, refresh_token });
+                if (data?.session && isMounted) {
                   setSession(data.session);
                   setUser(data.session.user);
                   setIsAuthenticated(true);
@@ -119,62 +133,16 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
                   setIsAdmin(data.session.user.email === 'capasjapan@gmail.com');
                   setEffectiveUserId(data.session.user.id);
                   setLoading(false);
-                  return; // 交換成功時はここで終了
+                  return;
                 }
-              } else if (resp.status === 409) {
-                // app_user_id 未リンク。LINEセッションのみで続行
-                setLoading(false);
-                return;
               }
-            } catch (_) {
-              // 交換失敗時はLINEセッションとして続行
-              setLoading(false);
-              return;
-            }
-          }
-        } catch (lineError) {
-          console.log('LINE session not found, checking Supabase auth...');
-        }
-
-        // 2. LINEセッションがない場合はSupabase認証を確認
-        const { data: { user }, error } = await supabase.auth.getUser();
-        
-        if (error) {
-          if (isMounted) {
-            setSession(null);
-            setUser(null);
-            setIsAuthenticated(false);
-            setUserProfile(null);
-            setIsAdmin(false);
-            setLineUser(null);
-            setIsLineAuthenticated(false);
+            } catch {}
             setLoading(false);
+            return;
           }
-          return;
-        }
+        } catch {}
 
-        if (user && isMounted) {
-          // Supabaseユーザーの初期状態設定
-          setUser(user);
-          setIsAuthenticated(true);
-          setUserProfile(null); // プロフィール取得スキップ
-          setIsAdmin(user.email === 'capasjapan@gmail.com');
-          setLoading(false);
-          setEffectiveUserId(user.id);
-        } else {
-          if (isMounted) {
-            setSession(null);
-            setUser(null);
-            setIsAuthenticated(false);
-            setUserProfile(null);
-            setIsAdmin(false);
-            setLineUser(null);
-            setIsLineAuthenticated(false);
-            setLoading(false);
-            setEffectiveUserId(null);
-          }
-        }
-      } catch (err) {
+        // 3) どちらもなければ未ログイン
         if (isMounted) {
           setSession(null);
           setUser(null);
@@ -183,12 +151,14 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
           setIsAdmin(false);
           setLineUser(null);
           setIsLineAuthenticated(false);
+          setEffectiveUserId(null);
           setLoading(false);
         }
+      } catch {
+        if (isMounted) setLoading(false);
       }
     };
 
-    // 初期化実行
     initializeAuth();
 
     // 認証状態の変更を監視（SIGNED_INイベント処理を復元）
