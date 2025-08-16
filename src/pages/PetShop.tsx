@@ -94,6 +94,14 @@ export function PetShop() {
     const img = document.querySelector(`img[data-product-id="${productId}"]`) as HTMLImageElement | null;
     if (!img) return;
     const rect = img.getBoundingClientRect();
+    // オーバーレイ（最前面・非干渉）
+    const overlay = document.createElement('div');
+    Object.assign(overlay.style, {
+      position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: '9999',
+      contain: 'paint', backfaceVisibility: 'hidden'
+    } as CSSStyleDeclaration);
+    document.body.appendChild(overlay);
+
     const clone = new Image();
     clone.src = (img as HTMLImageElement).src;
     // スクロールを一時的に完全固定（position: fixed + padding-rightでシフト防止）
@@ -115,17 +123,17 @@ export function PetShop() {
     try { (document.activeElement as HTMLElement)?.blur(); } catch {}
     const startScale = 0.8;
     Object.assign(clone.style, {
-      position: 'fixed',
+      position: 'absolute',
       transformOrigin: 'top left',
-      opacity: '0.95',
+      opacity: '1',
       borderRadius: '8px',
-      zIndex: '9999',
       pointerEvents: 'none',
       willChange: 'transform, opacity',
       backfaceVisibility: 'hidden',
+      boxShadow: '0 12px 24px rgba(0,0,0,0.35)',
       transform: `translate3d(${rect.left}px, ${rect.top}px, 0) scale(${startScale}, ${startScale})`
     } as CSSStyleDeclaration);
-    document.body.appendChild(clone);
+    overlay.appendChild(clone);
 
     // ヘッダーカートの位置へ移動
     const cartIcon = document.querySelector('[data-cart-target="true"]') as HTMLElement | null;
@@ -139,13 +147,13 @@ export function PetShop() {
       const anim = (clone as any).animate(
         [
           { transform: `translate3d(${rect.left}px, ${rect.top}px, 0) scale(${startScale}, ${startScale})`, opacity: 1 },
-          { transform: `translate3d(${centerX}px, ${centerY}px, 0) scale(${startScale}, ${startScale})`, opacity: 0.98, offset: 0.4 },
+          { transform: `translate3d(${centerX}px, ${centerY}px, 0) scale(${startScale}, ${startScale})`, opacity: 0.98, offset: 0.5 },
           { transform: `translate3d(${rect.left + dx}px, ${rect.top + dy}px, 0) scale(0.2, 0.2)`, opacity: 0 }
         ],
-        { duration: 8000, easing: 'cubic-bezier(0.16, 0.84, 0.3, 1)', fill: 'forwards' }
+        { duration: 12000, easing: 'cubic-bezier(0.16, 0.84, 0.3, 1)', fill: 'forwards' }
       );
       anim.addEventListener('finish', () => {
-        clone.remove();
+        overlay.remove();
         // スクロール固定を解除
         document.documentElement.style.overflow = prev.htmlOverflow;
         document.body.style.position = prev.bodyPosition;
