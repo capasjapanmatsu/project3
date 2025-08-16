@@ -277,6 +277,29 @@ export function AdminSponsors() {
                           メール送信
                         </Button>
                         <Button
+                          onClick={async () => {
+                            try {
+                              const subject = '【ドッグパークJP】スポンサー広告のご案内';
+                              const body = `${inquiry.contact_person}様\n\nお世話になっております。\nドッグパークJP運営事務局です。\n\nこの度はスポンサー広告にご興味をお持ちいただき、誠にありがとうございます。\n\n資料とご案内をお送りします。ご不明点があればお気軽にご返信ください。\n\n--\nドッグパークJP運営事務局\ninfo@dogparkjp.com`;
+                              const res = await fetch('/.netlify/functions/send-sponsor-email-direct', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ to: inquiry.email, subject, text: body })
+                              });
+                              if (!res.ok) throw new Error(await res.text());
+                              alert('info@dogparkjp.com から送信しました。');
+                            } catch (e: any) {
+                              alert(`送信に失敗しました: ${e.message || e}`);
+                            }
+                          }}
+                          variant="secondary"
+                          size="sm"
+                          className="flex-1"
+                        >
+                          <Mail className="w-4 h-4 mr-1" />
+                          info@から送信
+                        </Button>
+                        <Button
                           onClick={() => navigate(`/sponsor-application?inquiry_id=${inquiry.id}`)}
                           variant="secondary"
                           size="sm"
