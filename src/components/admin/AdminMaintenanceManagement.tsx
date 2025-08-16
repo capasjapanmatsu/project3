@@ -197,6 +197,12 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
 
   return (
     <div className="space-y-6">
+      {/* 説明 */}
+      <Card className="p-4 bg-blue-50 border-blue-200">
+        <p className="text-sm text-blue-800">
+          この画面ではメンテナンス情報を作成・終了できます。メンテナンスを開始すると、管理者とホワイトリストIP以外のユーザーには「メンテナンス中」の画面が表示され、アプリの利用が制限されます。
+        </p>
+      </Card>
       {/* 現在の状態 */}
       <Card className="p-6">
         <div className="flex items-center mb-4">
