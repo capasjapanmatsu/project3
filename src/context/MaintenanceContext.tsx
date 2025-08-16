@@ -50,18 +50,31 @@ export const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // メンテナンス状態を確認
+  // メンテナンス状態を確認（DBから取得）
   const checkMaintenanceStatus = async () => {
-    console.log('🔍 Checking maintenance status...');
-    
     try {
-      // 一時的に無効化 - 常に正常稼働とする
-      console.log('⚠️ メンテナンス機能は一時的に無効化されています');
-      setIsMaintenanceActive(false);
-      setMaintenanceInfo(null);
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/maintenance_schedules?select=*&is_active=eq.true&order=start_time.desc`, {
+        headers: { 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY as string }
+      });
+      if (!res.ok) throw new Error('fetch_failed');
+      const rows = await res.json() as any[];
+      if (rows && rows.length > 0) {
+        setIsMaintenanceActive(true);
+        const row = rows[0];
+        setMaintenanceInfo({
+          id: row.id,
+          title: row.title,
+          message: row.message,
+          start_time: row.start_time,
+          end_time: row.end_time,
+          is_emergency: !!row.is_emergency
+        });
+      } else {
+        setIsMaintenanceActive(false);
+        setMaintenanceInfo(null);
+      }
     } catch (error) {
       console.error('Error checking maintenance status:', error);
-      // エラー時は正常稼働とする（フェールセーフ）
       setIsMaintenanceActive(false);
       setMaintenanceInfo(null);
     }
