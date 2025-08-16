@@ -115,31 +115,30 @@ export function PetShop() {
     const startScale = 0.8;
     Object.assign(clone.style, {
       position: 'fixed',
-      top: `${(window.innerHeight - rect.height * startScale) / 2}px`,
-      left: `${(window.innerWidth - rect.width * startScale) / 2}px`,
-      width: `${rect.width * startScale}px`,
-      height: `${rect.height * startScale}px`,
+      transformOrigin: 'top left',
       opacity: '0.95',
       borderRadius: '8px',
       zIndex: '9999',
       pointerEvents: 'none',
-      transform: 'translate(0,0) scale(1)'
+      willChange: 'transform, opacity',
+      backfaceVisibility: 'hidden',
+      transform: `translate3d(${rect.left}px, ${rect.top}px, 0) scale(${startScale}, ${startScale})`
     } as CSSStyleDeclaration);
     document.body.appendChild(clone);
 
     // ヘッダーカートの位置へ移動
     const cartIcon = document.querySelector('[data-cart-target="true"]') as HTMLElement | null;
     const cartRect = cartIcon ? cartIcon.getBoundingClientRect() : { left: window.innerWidth - 40, top: 20, width: 20, height: 20 } as DOMRect as any;
-    const centerX = (window.innerWidth - rect.width * startScale) / 2;
-    const centerY = (window.innerHeight - rect.height * startScale) / 2;
-    const dx = cartRect.left + cartRect.width / 2 - (centerX + rect.width * startScale / 2);
-    const dy = cartRect.top + cartRect.height / 2 - (centerY + rect.height * startScale / 2);
+    const centerX = window.innerWidth / 2 - rect.width * startScale / 2;
+    const centerY = window.innerHeight / 2 - rect.height * startScale / 2;
+    const dx = cartRect.left + cartRect.width / 2 - (rect.left + rect.width * startScale / 2);
+    const dy = cartRect.top + cartRect.height / 2 - (rect.top + rect.height * startScale / 2);
 
     const anim = (clone as any).animate(
       [
-        { transform: 'translate(0, 0) scale(1)', opacity: 0.95 },
-        { transform: `translate(${dx * 0.6}px, ${dy * 0.6}px) scale(0.6)`, opacity: 0.7, offset: 0.6 },
-        { transform: `translate(${dx}px, ${dy}px) scale(0.2)`, opacity: 0.0 }
+        { transform: `translate3d(${rect.left}px, ${rect.top}px, 0) scale(${startScale}, ${startScale})`, opacity: 0.95 },
+        { transform: `translate3d(${centerX}px, ${centerY}px, 0) scale(${startScale}, ${startScale})`, opacity: 0.9, offset: 0.35 },
+        { transform: `translate3d(${rect.left + dx}px, ${rect.top + dy}px, 0) scale(0.2, 0.2)`, opacity: 0.0 }
       ],
       { duration: 3200, easing: 'cubic-bezier(0.16, 0.84, 0.3, 1)', fill: 'forwards' }
     );
