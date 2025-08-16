@@ -301,7 +301,7 @@ export const Navbar = memo(function Navbar() {
           <div className="flex justify-between items-center h-16">
             <Link 
               to="/" 
-              className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer group"
+              className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer group no-underline hover:no-underline"
               aria-label="ドッグパークJP ホーム"
             >
               <div className="navbar-logo-icon">
@@ -347,19 +347,19 @@ export const Navbar = memo(function Navbar() {
                   </span>
                   <Link 
                     to="/dashboard" 
-                    className="text-gray-600 hover:text-blue-600 transition-colors hidden md:inline-block"
+                    className="text-gray-600 hover:text-blue-600 transition-colors hidden md:inline-block no-underline hover:no-underline"
                   >
                     マイページ
                   </Link>
                   <Link 
                     to="/parks" 
-                    className="text-gray-600 hover:text-blue-600 transition-colors hidden md:inline-block"
+                    className="text-gray-600 hover:text-blue-600 transition-colors hidden md:inline-block no-underline hover:no-underline"
                   >
                     ドッグラン一覧
                   </Link>
                   <Link 
                     to="/petshop" 
-                    className="text-gray-600 hover:text-green-600 transition-colors hidden md:inline-block"
+                    className="text-gray-600 hover:text-green-600 transition-colors hidden md:inline-block no-underline hover:no-underline"
                   >
                     ペットショップ
                   </Link>
@@ -367,7 +367,7 @@ export const Navbar = memo(function Navbar() {
                   {/* 通知アイコン */}
                   <Link 
                     to="/community" 
-                    className="relative text-gray-600 hover:text-blue-600 transition-colors"
+                    className="relative text-gray-600 hover:text-blue-600 transition-colors no-underline hover:no-underline"
                     aria-label={`通知 ${unreadNotifications > 0 ? `${unreadNotifications}件の未読通知があります` : ''}`}
                   >
                     <Bell className="h-5 w-5" aria-hidden="true" />
@@ -381,7 +381,7 @@ export const Navbar = memo(function Navbar() {
                   {/* カートアイコン */}
                   <Link 
                     to="/cart" 
-                    className="relative text-gray-600 hover:text-green-600 transition-colors"
+                    className="relative text-gray-600 hover:text-green-600 transition-colors no-underline hover:no-underline"
                     aria-label={`カート ${cartItemCount > 0 ? `${cartItemCount}点の商品があります` : ''}`}
                   >
                     <ShoppingCart className="h-5 w-5" aria-hidden="true" />
@@ -428,7 +428,7 @@ export const Navbar = memo(function Navbar() {
                   {isAdmin && (
                     <Link 
                       to="/admin" 
-                      className="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors"
+                      className="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors no-underline hover:no-underline"
                       aria-label="管理者ページ"
                     >
                       <Shield className="h-4 w-4" aria-hidden="true" />
@@ -452,13 +452,13 @@ export const Navbar = memo(function Navbar() {
                 <>
                   <Link 
                     to="/login?method=password"
-                    className="text-gray-600 hover:text-blue-600 transition-colors"
+                    className="text-gray-600 hover:text-blue-600 transition-colors no-underline hover:no-underline"
                   >
                     ログイン
                   </Link>
                   <Link 
                     to="/register" 
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors no-underline hover:no-underline"
                   >
                     新規登録
                   </Link>
