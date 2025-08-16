@@ -447,50 +447,12 @@ export const Navbar = memo(function Navbar() {
                 </>
               ) : (
                 <>
-                  <div className="relative" ref={loginMenuRef}>
-                    <button 
-                      type="button"
-                      onClick={() => setShowLoginMenu((v) => !v)}
-                      className="text-gray-600 hover:text-blue-600 transition-colors"
-                      aria-haspopup="menu"
-                      aria-expanded={showLoginMenu}
-                    >
-                      ログイン
-                    </button>
-                    {showLoginMenu && (
-                      <div 
-                        role="menu"
-                        className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
-                      >
-                        <div className="py-2">
-                          <Link 
-                            to="/login?method=password"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                            role="menuitem"
-                            onClick={() => setShowLoginMenu(false)}
-                          >
-                            メールアドレス（パスワード）
-                          </Link>
-                          <Link 
-                            to="/login?method=magic"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                            role="menuitem"
-                            onClick={() => setShowLoginMenu(false)}
-                          >
-                            メールアドレス（マジックリンク）
-                          </Link>
-                          <a 
-                            href="/liff/login"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                            role="menuitem"
-                            onClick={() => setShowLoginMenu(false)}
-                          >
-                            LINEでログイン
-                          </a>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <Link 
+                    to="/login?method=password"
+                    className="text-gray-600 hover:text-blue-600 transition-colors"
+                  >
+                    ログイン
+                  </Link>
                   <Link 
                     to="/register" 
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
