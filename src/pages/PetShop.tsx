@@ -130,11 +130,11 @@ export function PetShop() {
 
     const anim = (clone as any).animate(
       [
-        { transform: 'translate(0, 0) scale(1)', opacity: 0.8 },
-        { transform: `translate(${dx * 0.6}px, ${dy * 0.6}px) scale(0.6)`, opacity: 0.6, offset: 0.55 },
+        { transform: 'translate(0, 0) scale(1)', opacity: 0.95 },
+        { transform: `translate(${dx * 0.6}px, ${dy * 0.6}px) scale(0.6)`, opacity: 0.7, offset: 0.6 },
         { transform: `translate(${dx}px, ${dy}px) scale(0.2)`, opacity: 0.0 }
       ],
-      { duration: 2600, easing: 'cubic-bezier(0.16, 0.84, 0.3, 1)', fill: 'forwards' }
+      { duration: 3200, easing: 'cubic-bezier(0.16, 0.84, 0.3, 1)', fill: 'forwards' }
     );
     anim.addEventListener('finish', () => {
       clone.remove();
