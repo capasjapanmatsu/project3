@@ -179,6 +179,7 @@ export default function FacilityEdit() {
   const [openingTime, setOpeningTime] = useState('09:00');
   const [closingTime, setClosingTime] = useState('18:00');
   const [specificClosedDates, setSpecificClosedDates] = useState<string[]>([]);
+  const [specificOpenDates, setSpecificOpenDates] = useState<string[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const saveReservationSettings = async () => {
@@ -330,6 +331,16 @@ export default function FacilityEdit() {
           }
         } catch (e) {
           console.warn('Failed to parse specific_closed_dates:', e);
+        }
+      }
+      if ((facilityData as any).specific_open_dates) {
+        try {
+          const openDates = JSON.parse((facilityData as any).specific_open_dates);
+          if (Array.isArray(openDates)) {
+            setSpecificOpenDates(openDates);
+          }
+        } catch (e) {
+          console.warn('Failed to parse specific_open_dates:', e);
         }
       }
       
@@ -842,6 +853,7 @@ export default function FacilityEdit() {
                       const dayOfWeek = date.getDay();
                       const isWeeklyClosedDay = weeklyClosedDays[dayOfWeek];
                       const isSpecificClosedDay = specificClosedDates.includes(dateString);
+                      const isOverrideOpen = specificOpenDates.includes(dateString);
                       const isToday = new Date().toDateString() === date.toDateString();
                       const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
                       
@@ -849,7 +861,14 @@ export default function FacilityEdit() {
                         <button
                           key={dateString}
                           onClick={() => {
-                            if (!isPast) {
+                            if (isPast) return;
+                            if (isWeeklyClosedDay) {
+                              if (isOverrideOpen) {
+                                setSpecificOpenDates(prev => prev.filter(d => d !== dateString));
+                              } else {
+                                setSpecificOpenDates(prev => [...prev, dateString]);
+                              }
+                            } else {
                               if (isSpecificClosedDay) {
                                 setSpecificClosedDates(prev => prev.filter(d => d !== dateString));
                               } else {
@@ -861,9 +880,7 @@ export default function FacilityEdit() {
                           className={`h-8 text-xs rounded transition-colors ${
                             isPast
                               ? 'text-gray-300 cursor-not-allowed'
-                              : isWeeklyClosedDay && isSpecificClosedDay
-                              ? 'bg-purple-100 border-purple-300 text-purple-700 border' // 定休日かつ特定休業日
-                              : isWeeklyClosedDay
+                              : isWeeklyClosedDay && !isOverrideOpen
                               ? 'bg-red-100 border-red-300 text-red-700 border' // 定休日
                               : isSpecificClosedDay
                               ? 'bg-orange-100 border-orange-300 text-orange-700 border' // 特定休業日
@@ -893,10 +910,7 @@ export default function FacilityEdit() {
             <div className="w-4 h-4 bg-orange-100 border border-orange-300 rounded"></div>
             <span>特定休業日</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-purple-100 border border-purple-300 rounded"></div>
-            <span>定休日+特定休業日</span>
-          </div>
+          
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
             <span>今日</span>
@@ -933,6 +947,7 @@ export default function FacilityEdit() {
         .update({
           weekly_closed_days: JSON.stringify(weeklyClosedDays),
           specific_closed_dates: JSON.stringify(specificClosedDates),
+          specific_open_dates: JSON.stringify(specificOpenDates),
           updated_at: new Date().toISOString()
         })
         .eq('id', facility.id);
