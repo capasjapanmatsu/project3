@@ -95,14 +95,16 @@ export function PetShop() {
     if (!img) return;
     const rect = img.getBoundingClientRect();
     const clone = img.cloneNode(true) as HTMLImageElement;
-    // スクロールを一時的に固定
-    const scrollY = window.scrollY || window.pageYOffset;
-    const prevPos = document.body.style.position;
-    const prevTop = document.body.style.top;
-    const prevWidth = document.body.style.width;
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
+    // スクロールを一時的に固定（レイアウトシフト対策込み）
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevBodyPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
     const startScale = 0.8;
     Object.assign(clone.style, {
       position: 'fixed',
@@ -137,10 +139,9 @@ export function PetShop() {
     anim.addEventListener('finish', () => {
       clone.remove();
       // スクロール固定を解除
-      document.body.style.position = prevPos;
-      document.body.style.top = prevTop;
-      document.body.style.width = prevWidth;
-      window.scrollTo(0, scrollY);
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      document.body.style.paddingRight = prevBodyPaddingRight;
     });
   };
 
