@@ -95,16 +95,23 @@ export function PetShop() {
     if (!img) return;
     const rect = img.getBoundingClientRect();
     const clone = img.cloneNode(true) as HTMLImageElement;
-    // スクロールを一時的に固定（レイアウトシフト対策込み）
-    const prevHtmlOverflow = document.documentElement.style.overflow;
-    const prevBodyOverflow = document.body.style.overflow;
-    const prevBodyPaddingRight = document.body.style.paddingRight;
+    // スクロールを一時的に完全固定（position: fixed + padding-rightでシフト防止）
+    const scrollY = window.scrollY || window.pageYOffset;
+    const prev = {
+      htmlOverflow: document.documentElement.style.overflow,
+      bodyPosition: document.body.style.position,
+      bodyTop: document.body.style.top,
+      bodyWidth: document.body.style.width,
+      bodyPaddingRight: document.body.style.paddingRight,
+    };
     const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
     document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden';
-    if (scrollbarWidth > 0) {
-      document.body.style.paddingRight = `${scrollbarWidth}px`;
-    }
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`;
+    // フォーカスによるスクロールを防止
+    try { (document.activeElement as HTMLElement)?.blur(); } catch {}
     const startScale = 0.8;
     Object.assign(clone.style, {
       position: 'fixed',
@@ -139,9 +146,12 @@ export function PetShop() {
     anim.addEventListener('finish', () => {
       clone.remove();
       // スクロール固定を解除
-      document.documentElement.style.overflow = prevHtmlOverflow;
-      document.body.style.overflow = prevBodyOverflow;
-      document.body.style.paddingRight = prevBodyPaddingRight;
+      document.documentElement.style.overflow = prev.htmlOverflow;
+      document.body.style.position = prev.bodyPosition;
+      document.body.style.top = prev.bodyTop;
+      document.body.style.width = prev.bodyWidth;
+      document.body.style.paddingRight = prev.bodyPaddingRight;
+      window.scrollTo(0, scrollY);
     });
   };
 
