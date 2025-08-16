@@ -880,7 +880,8 @@ export function ProfileSettings() {
                       setLinked(true);
                       // MEMO: 多対多リンクでも「連携済み」扱い（複数連携を許容）
                       setSuccess('LINE通知連携が完了しました');
-                      setTimeout(() => setSuccess(''), 2500);
+                      try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
+                      setTimeout(() => setSuccess(''), 3500);
                     } catch (e) {
                       setError(e instanceof Error ? e.message : '連携に失敗しました');
                     } finally { setLinking(false); }
