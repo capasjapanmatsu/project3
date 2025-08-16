@@ -94,7 +94,8 @@ export function PetShop() {
     const img = document.querySelector(`img[data-product-id="${productId}"]`) as HTMLImageElement | null;
     if (!img) return;
     const rect = img.getBoundingClientRect();
-    const clone = img.cloneNode(true) as HTMLImageElement;
+    const clone = new Image();
+    clone.src = (img as HTMLImageElement).src;
     // スクロールを一時的に完全固定（position: fixed + padding-rightでシフト防止）
     const scrollY = window.scrollY || window.pageYOffset;
     const prev = {
@@ -134,24 +135,31 @@ export function PetShop() {
     const dx = cartRect.left + cartRect.width / 2 - (rect.left + rect.width * startScale / 2);
     const dy = cartRect.top + cartRect.height / 2 - (rect.top + rect.height * startScale / 2);
 
-    const anim = (clone as any).animate(
-      [
-        { transform: `translate3d(${rect.left}px, ${rect.top}px, 0) scale(${startScale}, ${startScale})`, opacity: 1 },
-        { transform: `translate3d(${centerX}px, ${centerY}px, 0) scale(${startScale}, ${startScale})`, opacity: 0.98, offset: 0.4 },
-        { transform: `translate3d(${rect.left + dx}px, ${rect.top + dy}px, 0) scale(0.2, 0.2)`, opacity: 0 }
-      ],
-      { duration: 8000, easing: 'cubic-bezier(0.16, 0.84, 0.3, 1)', fill: 'forwards' }
-    );
-    anim.addEventListener('finish', () => {
-      clone.remove();
-      // スクロール固定を解除
-      document.documentElement.style.overflow = prev.htmlOverflow;
-      document.body.style.position = prev.bodyPosition;
-      document.body.style.top = prev.bodyTop;
-      document.body.style.width = prev.bodyWidth;
-      document.body.style.paddingRight = prev.bodyPaddingRight;
-      window.scrollTo(0, scrollY);
-    });
+    const start = () => {
+      const anim = (clone as any).animate(
+        [
+          { transform: `translate3d(${rect.left}px, ${rect.top}px, 0) scale(${startScale}, ${startScale})`, opacity: 1 },
+          { transform: `translate3d(${centerX}px, ${centerY}px, 0) scale(${startScale}, ${startScale})`, opacity: 0.98, offset: 0.4 },
+          { transform: `translate3d(${rect.left + dx}px, ${rect.top + dy}px, 0) scale(0.2, 0.2)`, opacity: 0 }
+        ],
+        { duration: 8000, easing: 'cubic-bezier(0.16, 0.84, 0.3, 1)', fill: 'forwards' }
+      );
+      anim.addEventListener('finish', () => {
+        clone.remove();
+        // スクロール固定を解除
+        document.documentElement.style.overflow = prev.htmlOverflow;
+        document.body.style.position = prev.bodyPosition;
+        document.body.style.top = prev.bodyTop;
+        document.body.style.width = prev.bodyWidth;
+        document.body.style.paddingRight = prev.bodyPaddingRight;
+        window.scrollTo(0, scrollY);
+      });
+    };
+    if (clone.complete) {
+      start();
+    } else {
+      clone.onload = () => start();
+    }
   };
 
   const addToCart = async (productId: string, quantity: number = 1) => {
