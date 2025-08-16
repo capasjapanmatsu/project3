@@ -28,14 +28,24 @@ interface FacilityCardProps {
   distance?: number;
 }
 
-// 施設カテゴリのアイコンマッピング
+// 施設カテゴリのアイコンマッピング（登録時のIDに対応）
 const FACILITY_ICONS = {
+  // 既存キー
   veterinary_clinic: { icon: Stethoscope, label: '動物病院', color: 'text-red-600' },
   pet_friendly_restaurant: { icon: UtensilsCrossed, label: 'ペット同伴レストラン', color: 'text-orange-600' },
   pet_shop: { icon: ShoppingBag, label: 'ペットショップ', color: 'text-blue-600' },
   pet_friendly_hotel: { icon: Home, label: 'ペット同伴宿泊', color: 'text-green-600' },
   pet_salon: { icon: Building2, label: 'ペットサロン', color: 'text-purple-600' },
   pet_hotel: { icon: Coffee, label: 'ペットホテル', color: 'text-indigo-600' },
+
+  // 登録フォームのIDに合わせたエイリアス/追加
+  pet_cafe: { icon: Coffee, label: 'ペットカフェ', color: 'text-orange-600' },
+  pet_restaurant: { icon: UtensilsCrossed, label: 'ペット同伴レストラン', color: 'text-orange-600' },
+  veterinary: { icon: Stethoscope, label: '動物病院', color: 'text-red-600' },
+  pet_accommodation: { icon: Home, label: 'ペット同伴宿泊', color: 'text-green-600' },
+  dog_training: { icon: Building2, label: 'しつけ教室', color: 'text-yellow-600' },
+  pet_friendly_other: { icon: Building2, label: 'その他ワンちゃん同伴可能施設', color: 'text-gray-600' },
+
   other: { icon: Building2, label: 'その他', color: 'text-gray-600' },
 } as const;
 
@@ -158,8 +168,8 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
 
   // カテゴリアイコンとラベルを取得
   const getCategoryInfo = () => {
-    const categoryName = facility.category_id || facility.category || 'other';
-    return FACILITY_ICONS[categoryName as keyof typeof FACILITY_ICONS] || FACILITY_ICONS.other;
+    const categoryName = (facility.category_id || facility.category || 'other') as keyof typeof FACILITY_ICONS;
+    return FACILITY_ICONS[categoryName] || FACILITY_ICONS.other;
   };
 
   const categoryInfo = getCategoryInfo();
