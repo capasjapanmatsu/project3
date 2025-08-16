@@ -252,7 +252,7 @@ export function News() {
               // ニュース・お知らせの表示
               const newsItem = item as NewsAnnouncement;
               return (
-                <Link key={`news-${newsItem.id}`} to={`/news/${newsItem.id}`}>
+                <Link key={`news-${newsItem.id}`} to={`/news/${newsItem.id}`} className="no-underline hover:no-underline">
                   <Card className="p-6 hover:shadow-lg transition-shadow">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
@@ -285,7 +285,7 @@ export function News() {
               // 新規オープンの表示
               const parkItem = item as NewParkOpening;
               return (
-                <Link key={`park-${parkItem.id}`} to={`/news/park/${parkItem.id}`}>
+                <Link key={`park-${parkItem.id}`} to={`/news/park/${parkItem.id}`} className="no-underline hover:no-underline">
                   <Card className="p-6 hover:shadow-lg transition-shadow">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">

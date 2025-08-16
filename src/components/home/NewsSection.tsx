@@ -118,7 +118,7 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
     }
     
     return news.slice(0, 2).map((item) => (
-      <Link key={item.id} to={`/news/${item.id}`}>
+      <Link key={item.id} to={`/news/${item.id}`} className="no-underline hover:no-underline">
         <Card className="p-3 hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start">
             <div className="flex-1">
@@ -153,7 +153,7 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
           <Bell className="w-5 h-5 text-blue-600 mr-2" />
           新着情報
         </h2>
-        <Link to="/news" className="text-blue-600 hover:text-blue-800 flex items-center text-sm">
+        <Link to="/news" className="text-blue-600 hover:text-blue-800 flex items-center text-sm no-underline hover:no-underline">
           すべて見る
           <ArrowRight className="w-4 h-4 ml-1" />
         </Link>
@@ -164,7 +164,7 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
       </div>
       
       <div className="mt-4 text-center">
-        <Link to="/news">
+        <Link to="/news" className="no-underline hover:no-underline">
           <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
             すべての新着情報を見る
             <ArrowRight className="w-4 h-4 ml-2" />

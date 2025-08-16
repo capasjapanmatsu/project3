@@ -44,7 +44,7 @@ export const FeaturesSection: React.FC<FeaturesSectionProps> = ({ isLoggedIn }) 
         <Link 
           key={index}
           to={feature.linkTo} 
-          className="text-center p-6 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer group"
+          className="text-center p-6 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer group no-underline hover:no-underline"
         >
           {feature.icon}
           <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
