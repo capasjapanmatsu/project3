@@ -211,7 +211,9 @@ export function useFacilityData() {
             display_order
           )
         `)
-        .eq('status', 'approved')
+        // 公開中の施設を表示（承認待ちも公開されていれば表示）
+        .eq('is_public', true)
+        .in('status', ['approved', 'pending'])
         .order('name');
 
       if (queryError) {
