@@ -46,6 +46,7 @@ export function PetShop() {
     { value: 'accessories', label: 'アクセサリー', icon: Crown },
     { value: 'health', label: 'ヘルスケア', icon: Plus },
     { value: 'sheets', label: 'ペットシーツ', icon: Package },
+    { value: 'pro', label: '業務用', icon: Package },
   ];
 
   useEffect(() => {
@@ -375,26 +376,31 @@ export function PetShop() {
         </div>
       </div>
 
-      {/* カテゴリータブ */}
-      <div className="flex space-x-2 overflow-x-auto pb-2">
-        {categories.map(category => {
-          const Icon = category.icon;
-          return (
-            <button
-              key={category.value}
-              onClick={() => handleCategoryChange(category.value)}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
-                selectedCategory === category.value
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              <span>{category.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* カテゴリ（アコーディオン・2段表示） */}
+      <details className="bg-gray-50 rounded-lg p-3">
+        <summary className="cursor-pointer select-none text-gray-800 font-semibold">
+          カテゴリを表示
+        </summary>
+        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {categories.map(category => {
+            const Icon = category.icon;
+            return (
+              <button
+                key={category.value}
+                onClick={() => handleCategoryChange(category.value)}
+                className={`flex items-center justify-start space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                  selectedCategory === category.value
+                    ? 'bg-green-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-100 border'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="text-sm">{category.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </details>
 
       {/* 商品一覧 */}
       {filteredProducts.length === 0 ? (
