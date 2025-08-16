@@ -46,6 +46,7 @@ const Button = ({
   hapticType = 'light',
   onClick,
   disabled,
+  type = 'button',
   ...props
 }: ButtonProps) => {
   // ベーススタイル
@@ -172,6 +173,7 @@ const Button = ({
       className={buttonClasses}
       onClick={handleClick}
       disabled={disabled || isLoading}
+      type={type}
       variants={buttonVariants}
       initial="initial"
       whileHover={!disabled && !isLoading ? "hover" : "initial"}
