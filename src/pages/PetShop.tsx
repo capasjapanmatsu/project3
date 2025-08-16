@@ -109,16 +109,17 @@ export function PetShop() {
     } as CSSStyleDeclaration);
     document.body.appendChild(clone);
 
-    const finalX = (window.innerWidth * 0.1) - rect.left; // 画面左下寄りへ
-    const finalY = (window.innerHeight - rect.top - 40);   // 画面下方向へ落下
+    // 画面の下方向に向けて、ゆっくり動かす。スクロールは抑止
+    const finalX = (window.innerWidth * 0.15) - rect.left;
+    const finalY = (window.innerHeight - rect.top - 20);
 
     const anim = (clone as any).animate(
       [
         { transform: 'translate(0, 0) scale(1)', opacity: 0.9 },
-        { transform: 'translate(0, -20px) scale(0.92)', opacity: 0.8, offset: 0.3 },
-        { transform: `translate(${finalX}px, ${finalY}px) scale(0.35)`, opacity: 0.0 }
+        { transform: 'translate(0, -20px) scale(0.92)', opacity: 0.85, offset: 0.4 },
+        { transform: `translate(${finalX}px, ${finalY}px) scale(0.4)`, opacity: 0.0 }
       ],
-      { duration: 900, easing: 'cubic-bezier(0.2, 0.8, 0.1, 1)', fill: 'forwards' }
+      { duration: 1800, easing: 'cubic-bezier(0.2, 0.8, 0.1, 1)', fill: 'forwards' }
     );
     anim.addEventListener('finish', () => {
       clone.remove();
