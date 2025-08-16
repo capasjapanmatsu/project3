@@ -156,21 +156,23 @@ export const Navbar = memo(function Navbar() {
   }, [user]);
 
   const fetchCartItemCount = useCallback(async () => {
-    if (!user) return;
-    
     try {
+      const uid = user?.id || effectiveUserId;
+      if (!uid) {
+        setCartItemCount(0);
+        return;
+      }
       const result = await safeSupabaseQuery(() =>
         supabase
           .from('cart_items')
           .select('*', { count: 'exact', head: true })
-          .eq('user_id', user?.id || effectiveUserId)
+          .eq('user_id', uid)
       );
-      
       setCartItemCount(result.data || 0);
     } catch (error) {
-      log('error', 'Error fetching cart items', { error, userId: user.id });
+      log('error', 'Error fetching cart items', { error, userId: user?.id || effectiveUserId });
     }
-  }, [user]);
+  }, [user, effectiveUserId]);
 
   useEffect(() => {
     if (user) {
@@ -181,7 +183,8 @@ export const Navbar = memo(function Navbar() {
       // LIFFセッションのみ：名前だけ反映し、その他は0に
       setUserName(sessionUser.display_name || '');
       setUnreadNotifications(0);
-      setCartItemCount(0);
+      // カート数は effectiveUserId ベースで取得
+      void fetchCartItemCount();
     } else {
       setUserName('');
       setUnreadNotifications(0);
@@ -382,9 +385,11 @@ export const Navbar = memo(function Navbar() {
                     aria-label={`カート ${cartItemCount > 0 ? `${cartItemCount}点の商品があります` : ''}`}
                   >
                     <ShoppingCart className="h-5 w-5" aria-hidden="true" />
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center" aria-hidden="true">
-                      {cartItemCount > 9 ? '9+' : cartItemCount}
-                    </span>
+                    {cartItemCount > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center" aria-hidden="true">
+                        {cartItemCount > 9 ? '9+' : cartItemCount}
+                      </span>
+                    )}
                   </Link>
                   
                   {/* PWAインストールボタン */}
