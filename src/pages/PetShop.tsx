@@ -46,7 +46,7 @@ export function PetShop() {
     { value: 'accessories', label: 'アクセサリー', icon: Crown },
     { value: 'health', label: 'ヘルスケア', icon: Plus },
     { value: 'sheets', label: 'ペットシーツ', icon: Package },
-    { value: 'pro', label: '業務用', icon: Package },
+    { value: 'business', label: '業務用品', icon: Package },
   ];
 
   useEffect(() => {
@@ -402,7 +402,7 @@ export function PetShop() {
         </div>
       </details>
 
-      {/* 商品一覧 */}
+      {/* 商品一覧（カテゴリフィルタ対応） */}
       {filteredProducts.length === 0 ? (
         <Card className="text-center py-12">
           <ShoppingBag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -410,7 +410,9 @@ export function PetShop() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredProducts.map((product) => {
+          {filteredProducts
+            .filter(p => deferredCategory === 'all' ? true : p.category === deferredCategory)
+            .map((product) => {
             const cartQuantity = getCartItemQuantity(product.id);
             const originalPrice = product.price;
             const discountedPrice = getDiscountedPrice(originalPrice);
