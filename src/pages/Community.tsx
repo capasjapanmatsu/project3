@@ -300,12 +300,14 @@ export function Community() {
     setIsSendingMessage(true);
     
     try {
+      const content = messageText.trim();
+      const receiverId = selectedFriend.friend_id;
       const { error } = await supabase
         .from('messages')
         .insert({
           sender_id: user?.id,
-          receiver_id: selectedFriend.friend_id,
-          content: messageText.trim(),
+          receiver_id: receiverId,
+          content,
           read: false
         });
       
@@ -316,6 +318,20 @@ export function Community() {
       
       // 入力フィールドをクリア
       setMessageText('');
+
+      // 受信者へ通知（アプリ内＋LINE）※本文は送らない
+      try {
+        const { notifyAppAndLine } = await import('../utils/notify');
+        const senderName = userDogs.length > 0 ? (userDogs[0]?.name ?? '友達') : '友達';
+        const linkUrl = `${window.location.origin}/community/messages`;
+        await notifyAppAndLine({
+          userId: receiverId,
+          title: 'メッセージ',
+          message: `${senderName}さんからメッセージが届きました`,
+          linkUrl,
+          kind: 'alert'
+        });
+      } catch {}
     } catch (error) {
       console.error('Error sending message:', error);
       setError('メッセージの送信に失敗しました');
