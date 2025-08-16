@@ -25,13 +25,18 @@ export async function verifySessionToken(token: string): Promise<JWTPayload & { 
 
 export function buildSessionCookie(token: string, maxAgeSec = 60 * 60 * 12): string {
   // Domain は apex とサブドメイン双方で使えるように親ドメインを指定
-  const domain = process.env.COOKIE_DOMAIN || '.dogparkjp.com';
-  return `${COOKIE_NAME}=${token}; Path=/; Domain=${domain}; HttpOnly; Secure; SameSite=None; Max-Age=${maxAgeSec}`;
+  const domain = process.env.COOKIE_DOMAIN || 'dogparkjp.com';
+  // 2枚設定: ドメイン指定 と ドメイン未指定（サブドメインによりCookie制約が異なる対策）
+  const base = `${COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=${maxAgeSec}`;
+  const withDomain = `${COOKIE_NAME}=${token}; Path=/; Domain=.${domain}; HttpOnly; Secure; SameSite=None; Max-Age=${maxAgeSec}`;
+  // Netlify Functions は単一のヘッダー値しか返せないため、呼び出し側が必要に応じて2枚返す設計に切替えるのが理想だが、
+  // ここでは後方互換のためドメイン指定側を返す
+  return withDomain;
 }
 
 export function buildClearCookie(): string {
-  const domain = process.env.COOKIE_DOMAIN || '.dogparkjp.com';
-  return `${COOKIE_NAME}=; Path=/; Domain=${domain}; HttpOnly; Secure; SameSite=None; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  const domain = process.env.COOKIE_DOMAIN || 'dogparkjp.com';
+  return `${COOKIE_NAME}=; Path=/; Domain=.${domain}; HttpOnly; Secure; SameSite=None; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 }
 
 export function readCookie(headers: Record<string, string | undefined>): string | undefined {

@@ -869,6 +869,13 @@ export function ProfileSettings() {
                         credentials: 'include',
                         body: JSON.stringify({ appUserId: uid })
                       });
+                      if (res.status === 401) {
+                        // LINEセッションが無い場合は LIFF ログインへ誘導し、戻ってきたら再実行してもらう
+                        setLinking(false);
+                        setError('LINEログインの同意が必要です。画面の案内に従って再度お試しください。');
+                        window.location.assign('/liff/login?redirect=/profile-settings');
+                        return;
+                      }
                       if (!res.ok) throw new Error(await res.text());
                       setLinked(true);
                       // MEMO: 多対多リンクでも「連携済み」扱い（複数連携を許容）

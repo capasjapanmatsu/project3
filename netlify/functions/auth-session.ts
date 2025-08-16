@@ -71,6 +71,7 @@ export const handler: Handler = async (event) => {
       statusCode: 200,
       headers: {
         'Content-Type': 'application/json',
+        // iOS/LINE WebView などでのクッキー互換性を高めるため SameSite=None;Secure を使用
         'Set-Cookie': cookie
       },
       body: JSON.stringify({ ok: true }),
