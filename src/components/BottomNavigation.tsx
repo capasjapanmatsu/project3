@@ -38,7 +38,7 @@ export function BottomNavigation() {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center justify-center w-full h-full ${
+              className={`flex flex-col items-center justify-center w-full h-full no-underline hover:no-underline ${
                 active ? 'text-blue-600' : 'text-gray-500'
               }`}
             >
