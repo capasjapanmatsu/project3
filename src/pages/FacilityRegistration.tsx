@@ -301,6 +301,17 @@ export default function FacilityRegistration() {
         : '施設の申請が正常に送信されました。（位置情報は後ほど設定されます）承認をお待ちください。';
       
       setSuccessMessage(successMsg);
+      try {
+        const linkUrl = `${window.location.origin}/my-facilities-management`;
+        const { notifyAppAndLine } = await import('../utils/notify');
+        await notifyAppAndLine({
+          userId: user.id,
+          title: '施設申請を受け付けました',
+          message: '審査結果はアプリ内で通知します。',
+          linkUrl,
+          kind: 'alert'
+        });
+      } catch {}
       
       // フォームをリセット
       setFormData({

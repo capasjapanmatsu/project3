@@ -55,8 +55,26 @@ function flexReservation(params: {
   } as const;
 }
 
-function textMsg(text: string) {
-  return { type: 'text', text } as const;
+function textMsg(text: string) { return { type: 'text', text } as const; }
+
+function alertWithLink(title: string, message: string, linkUrl?: string) {
+  if (!linkUrl) return [textMsg(`【${title}】`), textMsg(message)] as const;
+  return [
+    textMsg(`【${title}】`),
+    {
+      type: 'flex',
+      altText: title,
+      contents: {
+        type: 'bubble',
+        body: { type: 'box', layout: 'vertical', spacing: 'sm', contents: [
+          { type: 'text', text: message, wrap: true }
+        ]},
+        footer: { type: 'box', layout: 'vertical', contents: [
+          { type: 'button', style: 'primary', action: { type: 'uri', label: 'アプリで開く', uri: linkUrl } }
+        ]}
+      }
+    } as any
+  ] as const;
 }
 
 function badgeApprovedFlex(dogName: string, expires?: string) {
@@ -138,10 +156,9 @@ export const handler: Handler = async (event) => {
     if (kind === 'alert') {
       const title = body.title ?? '通知';
       const message = body.message ?? '内容はありません';
-      await lineClient.pushMessage(recipient, [
-        textMsg(`【${title}】`),
-        textMsg(message)
-      ] as any);
+      const linkUrl = body.linkUrl ?? body.mapUrl;
+      const msgs = alertWithLink(title, message, linkUrl);
+      await lineClient.pushMessage(recipient, msgs as any);
       return { statusCode: 200, body: '{"ok":true}' };
     }
 

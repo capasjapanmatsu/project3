@@ -272,6 +272,28 @@ export default function AdminFacilityApproval() {
       // データを再取得
       await fetchApplications();
 
+      // 通知（承認時のみ）
+      if (approved) {
+        try {
+          const { data: facility } = await supabase
+            .from('pet_facilities')
+            .select('id, owner_id, name')
+            .eq('id', applicationId)
+            .maybeSingle();
+          if (facility?.owner_id) {
+            const linkUrl = `${window.location.origin}/facilities/${facility.id}/edit`;
+            const { notifyAppAndLine } = await import('../utils/notify');
+            await notifyAppAndLine({
+              userId: facility.owner_id,
+              title: '施設が承認されました',
+              message: '画像を登録し、公開設定を公開にしてください。',
+              linkUrl,
+              kind: 'alert'
+            });
+          }
+        } catch {}
+      }
+
     } catch (err) {
       console.error('Error updating application:', err);
       showError(err instanceof Error ? err.message : '申請の処理に失敗しました');

@@ -49,6 +49,15 @@ export default function FacilityReserve() {
     if (!seat || !slot) return;
     try {
       const [start, end] = slot.split('-');
+      // 予約の確定/仮予約判定（設定のauto_confirmを参照）
+      const { data: setting } = await supabase
+        .from('facility_reservation_settings')
+        .select('auto_confirm')
+        .eq('facility_id', facilityId)
+        .maybeSingle();
+      const isAuto = Boolean(setting?.auto_confirm ?? true);
+      const status = isAuto ? 'confirmed' : 'pending';
+
       const { error } = await supabase.from('facility_reservations').insert({
         facility_id: facilityId,
         user_id: user.id,
@@ -57,9 +66,21 @@ export default function FacilityReserve() {
         start_time: start,
         end_time: end,
         guest_count: guestCount,
-        status: 'confirmed',
+        status,
       });
       if (error) throw error;
+      // LINE通知（任意: ユーザー自身に送る）
+      try {
+        const { notifyAppAndLine } = await import('../utils/notify');
+        const linkUrlUser = `${window.location.origin}/my-reservations`;
+        await notifyAppAndLine({ userId: user.id!, title: isAuto ? '予約確定' : '仮予約', message: `${date} ${start}-${end} / ${guestCount}名 / 席:${seat}`, linkUrl: linkUrlUser, kind: 'reservation' });
+        // オーナーにも通知
+        const { data: facility } = await supabase.from('pet_facilities').select('id, owner_id, name').eq('id', facilityId).maybeSingle();
+        if (facility?.owner_id) {
+          const linkUrlOwner = `${window.location.origin}/facilities/${facilityId}/reservations`;
+          await notifyAppAndLine({ userId: facility.owner_id, title: '予約が入りました', message: `${facility.name} / ${date} ${start}-${end} / ${guestCount}名 / 席:${seat}`, linkUrl: linkUrlOwner, kind: 'reservation' });
+        }
+      } catch {}
       alert('予約が完了しました');
       navigate(`/facilities/${facilityId}`);
     } catch (e: any) {
