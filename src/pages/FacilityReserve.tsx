@@ -18,6 +18,9 @@ export default function FacilityReserve() {
   const [seat, setSeat] = useState('');
   const [slot, setSlot] = useState('');
   const [guestCount, setGuestCount] = useState<number>(1);
+  const [openTime, setOpenTime] = useState<string>('09:00');
+  const [closeTime, setCloseTime] = useState<string>('18:00');
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
     (async () => {
@@ -36,18 +39,29 @@ export default function FacilityReserve() {
           .select('seat_code')
           .eq('facility_id', facilityId);
         setSeats((seatRows || []).map((r: any) => r.seat_code));
+
+        // 営業時間
+        const { data: facility } = await supabase
+          .from('pet_facilities')
+          .select('opening_time, closing_time')
+          .eq('id', facilityId)
+          .maybeSingle();
+        if (facility?.opening_time) setOpenTime(String(facility.opening_time).slice(0,5));
+        if (facility?.closing_time) setCloseTime(String(facility.closing_time).slice(0,5));
       } finally {
         setLoading(false);
       }
     })();
   }, [facilityId]);
 
-  const slots = useMemo(() => generateTimeSlots('09:00', '18:00', unit), [unit]);
+  const slots = useMemo(() => generateTimeSlots(openTime, closeTime, unit), [openTime, closeTime, unit]);
 
   const handleReserve = async () => {
     if (!user) { navigate('/liff/login'); return; }
-    if (!seat || !slot) return;
+    if (!slot) { alert('時間を選択してください'); return; }
+    if (seats.length > 0 && !seat) { alert('座席を選択してください'); return; }
     try {
+      setSubmitting(true);
       const [start, end] = slot.split('-');
       // 予約の確定/仮予約判定（設定のauto_confirmを参照）
       const { data: setting } = await supabase
@@ -61,7 +75,7 @@ export default function FacilityReserve() {
       const { error } = await supabase.from('facility_reservations').insert({
         facility_id: facilityId,
         user_id: user.id,
-        seat_code: seat,
+        seat_code: seat || null,
         reserved_date: date,
         start_time: start,
         end_time: end,
@@ -95,6 +109,8 @@ export default function FacilityReserve() {
       console.error('Reserve error:', e);
       const msg = typeof e?.message === 'string' ? e.message : JSON.stringify(e);
       alert(`予約に失敗しました\n${msg}`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -128,7 +144,7 @@ export default function FacilityReserve() {
             <span className="text-sm text-gray-600">人数</span>
             <input type="number" min={1} max={20} className="border rounded px-2 py-1 w-24" value={guestCount} onChange={(e) => setGuestCount(Number(e.target.value))} />
           </div>
-          <Button onClick={handleReserve} className="w-full">予約を確定</Button>
+          <Button onClick={handleReserve} className="w-full" disabled={submitting}>{submitting ? '処理中...' : '予約を確定'}</Button>
         </div>
       </Card>
     </div>
