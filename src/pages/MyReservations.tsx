@@ -113,7 +113,7 @@ export default function MyReservations() {
                     <div className="text-gray-600">{start} / {r.guest_count}名 / {r.seat_code || '座席:指定なし'} / 状態: {r.status}</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" disabled={!canCancel(r) || submitting} onClick={() => handleCancel(r)}>
+                    <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" disabled={submitting} onClick={() => handleCancel(r)}>
                       キャンセル
                     </Button>
                     <Link to={`/facilities/${r.facility_id}`}><Button size="sm">店舗ページ</Button></Link>
