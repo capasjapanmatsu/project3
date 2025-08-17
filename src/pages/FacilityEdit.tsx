@@ -930,22 +930,12 @@ export default function FacilityEdit() {
       setError('');
       setSuccess('');
 
-      // 営業時間を保存
-      const { error: openingHoursError } = await supabase
+      // 営業時間・休業日をまとめて保存（分割更新でのエラー表示を回避）
+      const { error: mergedError } = await supabase
         .from('pet_facilities')
         .update({
           opening_time: openingTime,
           closing_time: closingTime,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', facility.id);
-
-      if (openingHoursError) throw openingHoursError;
-
-      // 定休日を保存
-      const { error: closedDaysError } = await supabase
-        .from('pet_facilities')
-        .update({
           weekly_closed_days: JSON.stringify(weeklyClosedDays),
           specific_closed_dates: JSON.stringify(specificClosedDates),
           specific_open_dates: JSON.stringify(specificOpenDates),
@@ -953,7 +943,7 @@ export default function FacilityEdit() {
         })
         .eq('id', facility.id);
 
-      if (closedDaysError) throw closedDaysError;
+      if (mergedError) throw mergedError;
 
       setSuccess('営業日設定が保存されました。');
       setTimeout(() => setSuccess(''), 3000);
