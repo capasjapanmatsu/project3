@@ -294,10 +294,17 @@ export default function FacilityEdit() {
     try {
       setIsConfirming(true);
       // 1. 予約を確定に更新
-      await supabase
+      const upd = await supabase
         .from('facility_reservations')
         .update({ status: 'confirmed' })
-        .eq('id', confirmTarget.id);
+        .eq('id', confirmTarget.id)
+        .select('id,status')
+        .maybeSingle();
+      if (upd.error) {
+        throw upd.error;
+      }
+      // 先にローカル表示を更新（即時反映）
+      setPreviewReservations(prev => prev.map(r => r.id === confirmTarget.id ? { ...r, status: 'confirmed' } : r));
 
       // 2. メッセージがあれば送信（オーナー→予約者）
       const messageToSend = (confirmMessage && confirmMessage.trim().length > 0)
