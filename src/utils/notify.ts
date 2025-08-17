@@ -17,7 +17,9 @@ export async function notifyAppAndLine(params: NotifyParams) {
       title,
       message,
       link_url: linkUrl || null,
-      read: false
+      read: false,
+      type: 'reservation_reminder',
+      data: {}
     });
     if (ins.error) {
       await fetch('/.netlify/functions/app-notify', {

@@ -319,6 +319,8 @@ export default function FacilityEdit() {
             message: `${facility?.name || '店舗'}: ${messageToSend}`,
             link_url: `${window.location.origin}/my-reservations`,
             read: false,
+            type: 'reservation_reminder',
+            data: {}
           });
           if (ins.error) {
             await fetch('/.netlify/functions/app-notify', {

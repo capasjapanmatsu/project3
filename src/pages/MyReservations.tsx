@@ -76,7 +76,7 @@ export default function MyReservations() {
         if (fac?.owner_id) {
           const linkOwner = `${window.location.origin}/facilities/${r.facility_id}/reservations`;
           await notifyAppAndLine({ userId: fac.owner_id, title: '予約がキャンセルされました', message: `${fac.name} / ${r.reserved_date} ${r.start_time}-${r.end_time}`, linkUrl: linkOwner, kind: 'reservation' });
-          await supabase.from('notifications').insert({ user_id: fac.owner_id, title: '予約がキャンセルされました', message: `${fac.name} / ${r.reserved_date} ${r.start_time}-${r.end_time}`, link_url: linkOwner, read: false });
+          await supabase.from('notifications').insert({ user_id: fac.owner_id, title: '予約がキャンセルされました', message: `${fac.name} / ${r.reserved_date} ${r.start_time}-${r.end_time}`, link_url: linkOwner, read: false, type: 'reservation_reminder', data: {} });
           // コミュニティのメッセージにも自動投稿（店舗向け）
           await supabase.from('community_messages').insert({ user_id: user!.id, facility_id: r.facility_id, content: `予約をキャンセルしました。(${r.reserved_date} ${r.start_time}-${r.end_time})`, context: 'reservation' });
         }
