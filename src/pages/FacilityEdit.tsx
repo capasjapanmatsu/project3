@@ -239,15 +239,27 @@ export default function FacilityEdit() {
     const load = async () => {
       if (activeTab !== 'reservation' || !facility) return;
       try {
-        let query = supabase
-          .from('facility_reservations')
-          .select('id,user_id,customer_name,seat_code,reserved_date,start_time,end_time,status')
-          .eq('facility_id', facility.id)
-          .order('reserved_date', { ascending: true })
-          .order('start_time', { ascending: true });
-        if (filterDate) query = query.eq('reserved_date', filterDate);
-        if (statusFilter !== 'all') query = query.eq('status', statusFilter);
-        const { data } = await query;
+        const buildQuery = (withName: boolean) => {
+          let q = supabase
+            .from('facility_reservations')
+            .select(withName
+              ? 'id,user_id,customer_name,seat_code,reserved_date,start_time,end_time,status'
+              : 'id,user_id,seat_code,reserved_date,start_time,end_time,status'
+            )
+            .eq('facility_id', facility.id)
+            .order('reserved_date', { ascending: true })
+            .order('start_time', { ascending: true });
+          if (filterDate) q = q.eq('reserved_date', filterDate);
+          if (statusFilter !== 'all') q = q.eq('status', statusFilter);
+          return q;
+        };
+
+        let { data, error } = await buildQuery(true);
+        if (error && /customer_name/i.test(String(error.message))) {
+          const fallback = await buildQuery(false);
+          const res = await fallback;
+          data = res.data as any[];
+        }
         setPreviewReservations(data || []);
       } catch (e) {
         console.warn('failed to load reservations preview', e);
@@ -323,15 +335,26 @@ export default function FacilityEdit() {
       }
 
       // 3. 一覧を再読込（現在の絞り込み条件を反映）
-      let reloadQuery = supabase
-        .from('facility_reservations')
-        .select('id,user_id,seat_code,reserved_date,start_time,end_time,status')
-        .eq('facility_id', facility.id)
-        .order('reserved_date', { ascending: true })
-        .order('start_time', { ascending: true });
-      if (filterDate) reloadQuery = reloadQuery.eq('reserved_date', filterDate);
-      if (statusFilter !== 'all') reloadQuery = reloadQuery.eq('status', statusFilter);
-      const { data } = await reloadQuery;
+      const buildReload = (withName: boolean) => {
+        let q = supabase
+          .from('facility_reservations')
+          .select(withName
+            ? 'id,user_id,customer_name,seat_code,reserved_date,start_time,end_time,status'
+            : 'id,user_id,seat_code,reserved_date,start_time,end_time,status'
+          )
+          .eq('facility_id', facility.id)
+          .order('reserved_date', { ascending: true })
+          .order('start_time', { ascending: true });
+        if (filterDate) q = q.eq('reserved_date', filterDate);
+        if (statusFilter !== 'all') q = q.eq('status', statusFilter);
+        return q;
+      };
+      let reload = await buildReload(true);
+      let data = reload.data as any[] | null;
+      if (reload.error && /customer_name/i.test(String(reload.error.message))) {
+        const fallback = await buildReload(false);
+        data = fallback.data as any[] | null;
+      }
       setPreviewReservations(data || []);
 
       setConfirmModalOpen(false);
