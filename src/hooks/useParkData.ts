@@ -200,16 +200,11 @@ export function useFacilityData() {
 
       console.log('🏢 [useFacilityData] Fetching facilities from database...');
 
-      // 施設データと画像データを取得（カテゴリ名はクライアント側で付与）
+      // 施設データと画像データを取得（カテゴリ名は後で別クエリで解決）
       const { data, error: queryError } = await supabase
         .from('pet_facilities')
         .select(`
           *,
-          facility_categories (
-            id,
-            name,
-            name_ja
-          ),
           pet_facility_images (
             id,
             image_url,
@@ -228,6 +223,15 @@ export function useFacilityData() {
       }
 
       console.log('🏢 [useFacilityData] Database response:', data);
+
+      // カテゴリマスタを取得（id -> 日本語名）
+      const { data: categoryRows } = await supabase
+        .from('facility_categories')
+        .select('id, name, name_ja');
+      const categoryIdToJa: Record<string, string> = {};
+      ;(categoryRows || []).forEach((r: any) => {
+        categoryIdToJa[String(r.id)] = r.name_ja || r.name || '';
+      });
       console.log('🏢 [useFacilityData] Retrieved facilities count:', data?.length || 0);
 
       // カテゴリID正規化ヘルパー
@@ -263,9 +267,9 @@ export function useFacilityData() {
           main_image_url: mainImageUrl
         });
         
-        const rawCode = facility.facility_categories?.name || facility.category_id;
+        const rawCode = facility.category_id;
         const normalizedCategory = normalizeCategoryId(rawCode);
-        const categoryLabel = facility.facility_categories?.name_ja || (FACILITY_CATEGORY_LABELS as any)[normalizedCategory] || 'その他';
+        const categoryLabel = categoryIdToJa[normalizedCategory] || (FACILITY_CATEGORY_LABELS as any)[normalizedCategory] || 'その他';
 
         return {
           id: facility.id || '',
