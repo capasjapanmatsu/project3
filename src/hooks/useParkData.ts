@@ -205,6 +205,11 @@ export function useFacilityData() {
         .from('pet_facilities')
         .select(`
           *,
+          facility_categories (
+            id,
+            name,
+            name_ja
+          ),
           pet_facility_images (
             id,
             image_url,
@@ -258,8 +263,9 @@ export function useFacilityData() {
           main_image_url: mainImageUrl
         });
         
-        const normalizedCategory = normalizeCategoryId(facility.category_id);
-        const categoryLabel = (FACILITY_CATEGORY_LABELS as any)[normalizedCategory] || 'その他';
+        const rawCode = facility.facility_categories?.name || facility.category_id;
+        const normalizedCategory = normalizeCategoryId(rawCode);
+        const categoryLabel = facility.facility_categories?.name_ja || (FACILITY_CATEGORY_LABELS as any)[normalizedCategory] || 'その他';
 
         return {
           id: facility.id || '',

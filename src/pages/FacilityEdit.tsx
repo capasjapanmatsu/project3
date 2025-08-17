@@ -617,7 +617,7 @@ export default function FacilityEdit() {
 
       setSuccess('施設情報を更新しました。');
       
-      // データを再取得
+      // データを再取得（カテゴリ反映のため）
       await fetchData();
       
       // 3秒後に成功メッセージを消す
