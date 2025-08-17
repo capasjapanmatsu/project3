@@ -33,6 +33,7 @@ export default function MyReservations() {
           .from('facility_reservations')
           .select('*, facility:pet_facilities(name, owner_id)')
           .eq('user_id', user?.id)
+          .neq('status', 'cancelled')
           .order('reserved_date', { ascending: false });
         if (error) throw error;
         setRows(data as any[]);
@@ -85,8 +86,8 @@ export default function MyReservations() {
         }
       } catch {}
 
-      // ローカル更新
-      setRows(prev => prev.map(x => x.id === r.id ? { ...x, status: 'cancelled' } : x));
+      // ローカル更新（一覧から除外）
+      setRows(prev => prev.filter(x => x.id !== r.id));
       alert('キャンセルしました');
     } catch (e: any) {
       alert(`キャンセルに失敗しました\n${e?.message || ''}`);
