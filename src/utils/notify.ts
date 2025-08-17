@@ -11,14 +11,21 @@ type NotifyParams = {
 export async function notifyAppAndLine(params: NotifyParams) {
   const { userId, title, message, linkUrl, kind = 'alert' } = params;
   try {
-    // 1) アプリ内通知
-    await supabase.from('notifications').insert({
+    // 1) アプリ内通知（クライアントRLSで失敗する環境に備え、Functionsにフォールバック）
+    const ins = await supabase.from('notifications').insert({
       user_id: userId,
       title,
       message,
       link_url: linkUrl || null,
       read: false
     });
+    if (ins.error) {
+      await fetch('/.netlify/functions/app-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, title, message, linkUrl, kind })
+      });
+    }
 
     // 2) LINE転送（連携済みのみ）
     const { data: profile } = await supabase
