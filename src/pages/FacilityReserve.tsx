@@ -93,6 +93,17 @@ export default function FacilityReserve() {
         status,
       });
       if (error) throw error;
+
+      // 予約チャット用の初回メッセージを作成（簡易）
+      try {
+        const initialMessage = 'ご予約を受け付けました。お気をつけてお越しください。';
+        await supabase.from('community_messages').insert({
+          user_id: user.id,
+          facility_id: facilityId,
+          content: initialMessage,
+          context: 'reservation',
+        });
+      } catch {}
       // 通知（アプリ内＋LINE）
       try {
         const { notifyAppAndLine } = await import('../utils/notify');

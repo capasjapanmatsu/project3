@@ -22,11 +22,13 @@ export const handler: Handler = async () => {
         const { data: profOwner } = facility?.owner_id ? await admin.from('profiles').select('line_user_id, notify_opt_in').eq('id', facility.owner_id).maybeSingle() : { data: null } as any;
 
         const timeLabel = `${row.reserved_date} ${row.start_time}`;
+        const { data: fac } = await admin.from('pet_facilities').select('name').eq('id', row.facility_id).maybeSingle();
+        const userMsg = `本日は${fac?.name || '施設'}の予約が設定されています。`;
 
         if (profUser?.notify_opt_in && profUser?.line_user_id) {
           await fetch('https://dogparkjp.com/.netlify/functions/line-notify', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ kind: 'alert', lineUserId: profUser.line_user_id, title: '本日のご予約', message: timeLabel, linkUrl: linkUser })
+            body: JSON.stringify({ kind: 'alert', lineUserId: profUser.line_user_id, title: '本日のご予約', message: `${userMsg} ${timeLabel}`, linkUrl: linkUser })
           });
         }
         if (profOwner?.notify_opt_in && profOwner?.line_user_id) {
