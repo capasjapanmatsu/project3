@@ -153,15 +153,24 @@ export default function FacilityReserve() {
         const { data: facility } = await supabase.from('pet_facilities').select('id, owner_id, name').eq('id', facilityId).maybeSingle();
         if (facility?.owner_id) {
           const linkUrlOwner = `${window.location.origin}/facilities/${facilityId}/reservations`;
-          await notifyAppAndLine({ userId: facility.owner_id, title: '予約が入りました', message: `${customerName} 様 / ${facility.name} / ${date} ${start}-${end} / ${guestCount}名 / ${seatText}`, linkUrl: linkUrlOwner, kind: 'reservation' });
+          await notifyAppAndLine({ userId: facility.owner_id, title: '新規予約が入りました', message: `${customerName} 様 / ${facility.name} / ${date} ${start}-${end} / ${guestCount}名 / ${seatText}`, linkUrl: linkUrlOwner, kind: 'reservation' });
           // オーナーにもアプリ内通知（コミュニティ通知）
-          await supabase.from('notifications').insert({
+          const ins = await supabase.from('notifications').insert({
             user_id: facility.owner_id,
-            title: '予約が入りました',
+            title: '新規予約が入りました',
             message: `${customerName} 様 / ${facility.name} / ${date} ${start}-${end} / ${guestCount}名 / ${seatText}`,
             link_url: linkUrlOwner,
-            read: false
+            read: false,
+            type: 'reservation_reminder',
+            data: {}
           });
+          if (ins.error) {
+            await fetch('/.netlify/functions/app-notify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: facility.owner_id, title: '新規予約が入りました', message: `${customerName} 様 / ${facility.name} / ${date} ${start}-${end} / ${guestCount}名 / ${seatText}`, linkUrl: linkUrlOwner, kind: 'reservation' })
+            });
+          }
         }
         // コミュニティ通知（アプリ内の通知リストに残す）
         await supabase.from('notifications').insert({
