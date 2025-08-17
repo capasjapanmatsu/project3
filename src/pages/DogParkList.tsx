@@ -153,12 +153,18 @@ export function DogParkList() {
       return facilities;
     }
 
-    // カテゴリで絞り込み（category / category_id 双方に対応）
+    // 表示と同じ日本語カテゴリ名でフィルタ（サムネイルの表記に合わせる）
+    const selectedNameSet = new Set(
+      selectedCategories.map((code) => CATEGORY_LABELS[code] || code)
+    );
+
+    // f.category_name（日本語）を優先。なければ code でも判定
     let filtered = facilities.filter(f => {
-      const key = f.category || (f as any).category_id || '';
-      // 未知カテゴリは除外しない（安全側）
-      if (!key) return true;
-      return selectedCategories.includes(key);
+      const nameJa = (f as any).category_name as string | undefined;
+      const code = (f as any).category as string | undefined;
+      if (nameJa && selectedNameSet.has(nameJa)) return true;
+      if (code && selectedCategories.includes(code)) return true;
+      return false;
     });
 
     // 距離順でソート（位置情報がある場合）
