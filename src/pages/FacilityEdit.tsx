@@ -260,21 +260,7 @@ export default function FacilityEdit() {
           const res = await fallback;
           data = res.data as any[];
         }
-        let rows = (data || []) as any[];
-        // 予約者名が欠けている場合はprofilesから補完
-        try {
-          const needIds = Array.from(new Set(rows.filter(r => !r.customer_name && r.user_id).map(r => r.user_id)));
-          if (needIds.length > 0) {
-            const { data: profs } = await supabase
-              .from('profiles')
-              .select('id, nickname, full_name')
-              .in('id', needIds);
-            const map: Record<string, string> = {};
-            (profs || []).forEach((p: any) => { map[p.id] = p.nickname || p.full_name || ''; });
-            rows = rows.map(r => (!r.customer_name && map[r.user_id]) ? { ...r, customer_name: map[r.user_id] } : r);
-          }
-        } catch {}
-        setPreviewReservations(rows);
+        setPreviewReservations((data || []) as any[]);
       } catch (e) {
         console.warn('failed to load reservations preview', e);
         setPreviewReservations([]);
@@ -369,20 +355,7 @@ export default function FacilityEdit() {
         const fallback = await buildReload(false);
         data = fallback.data as any[] | null;
       }
-      let rows = (data || []) as any[];
-      try {
-        const needIds = Array.from(new Set(rows.filter(r => !r.customer_name && r.user_id).map(r => r.user_id)));
-        if (needIds.length > 0) {
-          const { data: profs } = await supabase
-            .from('profiles')
-            .select('id, nickname, full_name')
-            .in('id', needIds);
-          const map: Record<string, string> = {};
-          (profs || []).forEach((p: any) => { map[p.id] = p.nickname || p.full_name || ''; });
-          rows = rows.map(r => (!r.customer_name && map[r.user_id]) ? { ...r, customer_name: map[r.user_id] } : r);
-        }
-      } catch {}
-      setPreviewReservations(rows);
+      setPreviewReservations((data || []) as any[]);
 
       setConfirmModalOpen(false);
       setConfirmTarget(null);
