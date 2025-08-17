@@ -209,8 +209,9 @@ export default function FacilityEdit() {
     }
   };
 
-  // 予約プレビュー用
-  const [previewDate, setPreviewDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  // 予約一覧・絞り込み
+  const [filterDate, setFilterDate] = useState<string>(''); // 空=全て
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'confirmed'>('all');
   const [previewReservations, setPreviewReservations] = useState<any[]>([]);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<any | null>(null);
@@ -221,11 +222,15 @@ export default function FacilityEdit() {
     const load = async () => {
       if (activeTab !== 'reservation' || !facility) return;
       try {
-        const { data } = await supabase
+        let query = supabase
           .from('facility_reservations')
-          .select('id,user_id,seat_code,start_time,end_time,status')
+          .select('id,user_id,seat_code,reserved_date,start_time,end_time,status')
           .eq('facility_id', facility.id)
-          .eq('reserved_date', previewDate);
+          .order('reserved_date', { ascending: true })
+          .order('start_time', { ascending: true });
+        if (filterDate) query = query.eq('reserved_date', filterDate);
+        if (statusFilter !== 'all') query = query.eq('status', statusFilter);
+        const { data } = await query;
         setPreviewReservations(data || []);
       } catch (e) {
         console.warn('failed to load reservations preview', e);
@@ -233,7 +238,7 @@ export default function FacilityEdit() {
       }
     };
     void load();
-  }, [activeTab, facility, previewDate]);
+  }, [activeTab, facility, filterDate, statusFilter]);
 
   const openConfirmModal = (r: any) => {
     setConfirmTarget(r);
@@ -1432,15 +1437,29 @@ export default function FacilityEdit() {
 
                   {/* 一覧プレビュー */}
                   <div className="bg-white rounded-lg border p-4 mb-6">
-                    <h3 className="font-semibold mb-3">予約一覧（プレビュー）</h3>
-                    <div className="flex items-center space-x-2 mb-3">
-                      <span className="text-sm text-gray-600">対象日</span>
-                      <input type="date" className="border rounded px-2 py-1" value={previewDate} onChange={(e) => setPreviewDate(e.target.value)} />
+                    <h3 className="font-semibold mb-3">予約一覧</h3>
+                    <div className="flex flex-wrap items-center gap-3 mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">対象日</span>
+                        <input type="date" className="border rounded px-2 py-1" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
+                        {filterDate && (
+                          <button className="text-xs text-blue-600 underline" onClick={()=>setFilterDate('')}>クリア</button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">状態</span>
+                        <select className="border rounded px-2 py-1" value={statusFilter} onChange={(e)=>setStatusFilter(e.target.value as any)}>
+                          <option value="all">すべて</option>
+                          <option value="pending">未確定</option>
+                          <option value="confirmed">確定済み</option>
+                        </select>
+                      </div>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="min-w-full text-sm">
                         <thead>
                           <tr className="bg-gray-50">
+                            <th className="text-left px-3 py-2 border">日付</th>
                             <th className="text-left px-3 py-2 border">席</th>
                             <th className="text-left px-3 py-2 border">開始</th>
                             <th className="text-left px-3 py-2 border">終了</th>
@@ -1456,6 +1475,7 @@ export default function FacilityEdit() {
                           ) : (
                             previewReservations.map((r, idx) => (
                               <tr key={idx} className="hover:bg-gray-50">
+                                <td className="px-3 py-2 border">{r.reserved_date}</td>
                                 <td className="px-3 py-2 border">{r.seat_code}</td>
                                 <td className="px-3 py-2 border">{r.start_time}</td>
                                 <td className="px-3 py-2 border">{r.end_time}</td>
