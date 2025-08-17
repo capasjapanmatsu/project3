@@ -311,22 +311,35 @@ export default function FacilityEdit() {
           content: messageToSend,
           context: 'reservation',
         });
-        // アプリ内通知（コミュニティ通知）
+        // アプリ内通知（コミュニティ通知）: 失敗時は Functions 経由でフォールバック
         try {
-          await supabase.from('notifications').insert({
+          const ins = await supabase.from('notifications').insert({
             user_id: confirmTarget.user_id,
-            title: '店舗からメッセージ',
+            title: '予約受付が完了しました',
             message: `${facility?.name || '店舗'}: ${messageToSend}`,
-            link_url: `${window.location.origin}/community`,
+            link_url: `${window.location.origin}/my-reservations`,
             read: false,
           });
+          if (ins.error) {
+            await fetch('/.netlify/functions/app-notify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: confirmTarget.user_id,
+                title: '予約受付が完了しました',
+                message: `${facility?.name || '店舗'}: ${messageToSend}`,
+                linkUrl: `${window.location.origin}/my-reservations`,
+                kind: 'reservation',
+              })
+            });
+          }
         } catch {}
         // LINE等の外部通知
         try {
           const { notifyAppAndLine } = await import('../utils/notify');
           await notifyAppAndLine({
             userId: confirmTarget.user_id,
-            title: '予約が確定しました',
+            title: '予約受付が完了しました',
             message: `${facility?.name || '店舗'}: ${messageToSend}`,
             linkUrl: `${window.location.origin}/my-reservations`,
             kind: 'reservation',
