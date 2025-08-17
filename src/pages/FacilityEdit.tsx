@@ -294,15 +294,27 @@ export default function FacilityEdit() {
     try {
       setIsConfirming(true);
       // 1. 予約を確定に更新
+      let ok = false;
       const upd = await supabase
         .from('facility_reservations')
         .update({ status: 'confirmed' })
         .eq('id', confirmTarget.id)
         .select('id,status')
         .maybeSingle();
-      if (upd.error) {
-        throw upd.error;
+      if (!upd.error && upd.data) {
+        ok = true;
+      } else {
+        // RLS等で失敗時はNetlify Functionsでフォールバック
+        try {
+          const res = await fetch('/.netlify/functions/owner-confirm-reservation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reservationId: confirmTarget.id })
+          });
+          ok = res.ok;
+        } catch {}
       }
+      if (!ok) throw new Error('Failed to confirm reservation');
       // 先にローカル表示を更新（即時反映）
       setPreviewReservations(prev => prev.map(r => r.id === confirmTarget.id ? { ...r, status: 'confirmed' } : r));
 
