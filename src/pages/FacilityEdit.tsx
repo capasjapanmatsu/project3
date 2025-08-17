@@ -214,6 +214,10 @@ export default function FacilityEdit() {
   // 予約プレビュー用
   const [previewDate, setPreviewDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [previewReservations, setPreviewReservations] = useState<any[]>([]);
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<any | null>(null);
+  const [confirmMessage, setConfirmMessage] = useState<string>('');
+  const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -221,7 +225,7 @@ export default function FacilityEdit() {
       try {
         const { data } = await supabase
           .from('facility_reservations')
-          .select('seat_code,start_time,end_time,status')
+          .select('id,user_id,seat_code,start_time,end_time,status')
           .eq('facility_id', facility.id)
           .eq('reserved_date', previewDate);
         setPreviewReservations(data || []);
@@ -232,6 +236,66 @@ export default function FacilityEdit() {
     };
     void load();
   }, [activeTab, facility, previewDate]);
+
+  const openConfirmModal = (r: any) => {
+    setConfirmTarget(r);
+    setConfirmMessage(autoMsgEnabled ? (autoMsgText || 'ご予約を受け付けました。お気をつけてお越しください。') : '');
+    setConfirmModalOpen(true);
+  };
+
+  const handleConfirmReservation = async () => {
+    if (!facility || !confirmTarget) return;
+    try {
+      setIsConfirming(true);
+      // 1. 予約を確定に更新
+      await supabase
+        .from('facility_reservations')
+        .update({ status: 'confirmed' })
+        .eq('id', confirmTarget.id);
+
+      // 2. メッセージがあれば送信（オーナー→予約者）
+      const messageToSend = (confirmMessage && confirmMessage.trim().length > 0)
+        ? confirmMessage.trim()
+        : (autoMsgEnabled ? (autoMsgText || 'ご予約を受け付けました。お気をつけてお越しください。') : '');
+      if (messageToSend) {
+        await supabase.from('community_messages').insert({
+          user_id: user?.id,
+          facility_id: facility.id,
+          content: messageToSend,
+          context: 'reservation',
+        });
+        // 通知（予約者へ）
+        try {
+          const { notifyAppAndLine } = await import('../utils/notify');
+          await notifyAppAndLine({
+            userId: confirmTarget.user_id,
+            title: '予約が確定しました',
+            message: messageToSend,
+            linkUrl: `${window.location.origin}/my-reservations`,
+            kind: 'reservation',
+          });
+        } catch {}
+      }
+
+      // 3. 一覧を再読込
+      const { data } = await supabase
+        .from('facility_reservations')
+        .select('id,user_id,seat_code,start_time,end_time,status')
+        .eq('facility_id', facility.id)
+        .eq('reserved_date', previewDate);
+      setPreviewReservations(data || []);
+
+      setConfirmModalOpen(false);
+      setConfirmTarget(null);
+      setConfirmMessage('');
+      setSuccess('予約を確定し、メッセージを送信しました。');
+    } catch (e) {
+      console.error(e);
+      setError('予約確定に失敗しました。');
+    } finally {
+      setIsConfirming(false);
+    }
+  };
 
   const generateTimeSlots = (open: string, close: string, unit: number) => {
     const slots: { start: string; end: string }[] = [];
@@ -1383,6 +1447,7 @@ export default function FacilityEdit() {
                             <th className="text-left px-3 py-2 border">開始</th>
                             <th className="text-left px-3 py-2 border">終了</th>
                             <th className="text-left px-3 py-2 border">状態</th>
+                            <th className="text-left px-3 py-2 border">操作</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1397,6 +1462,13 @@ export default function FacilityEdit() {
                                 <td className="px-3 py-2 border">{r.start_time}</td>
                                 <td className="px-3 py-2 border">{r.end_time}</td>
                                 <td className="px-3 py-2 border">{r.status}</td>
+                                <td className="px-3 py-2 border">
+                                  {r.status === 'pending' ? (
+                                    <Button size="sm" onClick={() => openConfirmModal(r)}>予約確定</Button>
+                                  ) : (
+                                    <span className="text-gray-400">—</span>
+                                  )}
+                                </td>
                               </tr>
                             ))
                           )}
@@ -1407,6 +1479,27 @@ export default function FacilityEdit() {
 
                   {/* 注意 */}
                   <div className="text-xs text-gray-500">営業日カレンダーで「営業日」のみ予約受付します。公開ページの施設詳細に予約ボタンを表示します。</div>
+                </div>
+              )}
+
+              {/* 予約確定モーダル */}
+              {confirmModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                  <div className="bg-white rounded-lg w-full max-w-md p-4">
+                    <h4 className="font-semibold mb-3">予約を確定してメッセージ送信</h4>
+                    <div className="text-sm text-gray-600 mb-2">予約者へ以下のメッセージを送信します。</div>
+                    <textarea
+                      className="w-full border rounded px-2 py-1 text-sm"
+                      rows={4}
+                      value={confirmMessage}
+                      onChange={(e)=>setConfirmMessage(e.target.value)}
+                      placeholder="例: ご予約を受け付けました。お気をつけてお越しください。"
+                    />
+                    <div className="flex justify-end gap-2 mt-4">
+                      <Button variant="secondary" onClick={()=>{setConfirmModalOpen(false); setConfirmMessage('');}}>キャンセル</Button>
+                      <Button onClick={handleConfirmReservation} isLoading={isConfirming}>予約確定して送信</Button>
+                    </div>
+                  </div>
                 </div>
               )}
 
