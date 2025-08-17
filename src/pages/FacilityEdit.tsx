@@ -187,7 +187,8 @@ export default function FacilityEdit() {
   const saveReservationSettings = async () => {
     try {
       if (!facility) return;
-      await supabase.from('facility_reservation_settings').upsert({
+      // 1st try: すべての項目を保存
+      const upsertAll = await supabase.from('facility_reservation_settings').upsert({
         facility_id: facility.id,
         enabled: reservationEnabled,
         slot_unit_minutes: slotUnit,
@@ -198,11 +199,27 @@ export default function FacilityEdit() {
         capacity_per_slot: capacity,
         updated_at: new Date().toISOString(),
       });
+      if (upsertAll.error && /auto_message_(enabled|text)/i.test(String(upsertAll.error.message))) {
+        // フォールバック: 自動メッセージ列が未導入の環境では、該当列を除いて保存
+        const upsertFallback = await supabase.from('facility_reservation_settings').upsert({
+          facility_id: facility.id,
+          enabled: reservationEnabled,
+          slot_unit_minutes: slotUnit,
+          allowed_days_ahead: daysAhead,
+          auto_confirm: autoConfirm,
+          capacity_per_slot: capacity,
+          updated_at: new Date().toISOString(),
+        });
+        if (upsertFallback.error) throw upsertFallback.error;
+        setSuccess('予約設定を保存しました（自動メッセージ列が未適用のため一部設定は保留されました）。管理DBで列を追加後に再保存してください。');
+      }
       await supabase.from('facility_seats').delete().eq('facility_id', facility.id);
       if (seats.length > 0) {
         await supabase.from('facility_seats').insert(seats.map((s) => ({ facility_id: facility.id, seat_code: s })));
       }
-      setSuccess('予約設定を保存しました。');
+      if (!/自動メッセージ列が未適用/.test(success)) {
+        setSuccess('予約設定を保存しました。');
+      }
     } catch (e) {
       console.error(e);
       setError('予約設定の保存に失敗しました。');
