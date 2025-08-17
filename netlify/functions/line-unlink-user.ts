@@ -7,6 +7,7 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY as strin
 
 // POST {} → セッションのLINE users.id に紐づくリンクを解除（多対多/旧単一どちらも）
 export const handler: Handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' }, body: '' };
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return { statusCode: 500, body: 'Not configured' };
 
@@ -24,7 +25,7 @@ export const handler: Handler = async (event) => {
     // 旧単一リンクも解除（存在すれば）
     await admin.from('users').update({ app_user_id: null }).eq('id', uid);
 
-    return { statusCode: 200, body: JSON.stringify({ ok: true }) };
+    return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ ok: true }) };
   } catch (e: any) {
     return { statusCode: 500, body: e.message };
   }
