@@ -49,6 +49,23 @@ const FACILITY_ICONS = {
   other: { icon: Building2, label: 'その他', color: 'text-gray-600' },
 } as const;
 
+// 入力されたカテゴリIDを正規化（別名・表記揺れに強くする）
+function normalizeCategoryId(raw?: string | null): keyof typeof FACILITY_ICONS {
+  if (!raw) return 'other';
+  const id = String(raw).toLowerCase();
+  if (id in FACILITY_ICONS) return id as keyof typeof FACILITY_ICONS;
+  if (id.includes('veterinary') || id.includes('clinic')) return 'veterinary';
+  if (id.includes('restaurant')) return 'pet_restaurant';
+  if (id.includes('cafe')) return 'pet_cafe';
+  if (id.includes('shop')) return 'pet_shop';
+  if (id.includes('salon')) return 'pet_salon';
+  if (id.includes('hotel')) return 'pet_hotel';
+  if (id.includes('accommodation')) return 'pet_accommodation';
+  if (id.includes('training')) return 'dog_training';
+  if (id.includes('other')) return 'pet_friendly_other';
+  return 'other';
+}
+
 export function FacilityCard({ facility, showDistance, distance }: FacilityCardProps) {
   const { user } = useAuth();
   const [availableCoupons, setAvailableCoupons] = useState<FacilityCoupon[]>([]);
@@ -168,8 +185,8 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
 
   // カテゴリアイコンとラベルを取得
   const getCategoryInfo = () => {
-    const categoryName = (facility.category_id || facility.category || 'other') as keyof typeof FACILITY_ICONS;
-    return FACILITY_ICONS[categoryName] || FACILITY_ICONS.other;
+    const normalized = normalizeCategoryId((facility as any).category_id ?? facility.category ?? 'other');
+    return FACILITY_ICONS[normalized] || FACILITY_ICONS.other;
   };
 
   const categoryInfo = getCategoryInfo();
@@ -228,7 +245,7 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
             <Icon className={`w-5 h-5 ${categoryInfo.color}`} />
-            <span className="text-sm text-gray-600">{categoryInfo.label}</span>
+            <span className="text-sm text-gray-600">{facility.category_name || categoryInfo.label}</span>
           </div>
           
           {isCurrentlyOpen() ? (
