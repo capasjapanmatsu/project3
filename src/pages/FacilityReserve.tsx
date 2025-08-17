@@ -96,13 +96,28 @@ export default function FacilityReserve() {
 
       // 予約チャット用の初回メッセージを作成（簡易）
       try {
-        const initialMessage = 'ご予約を受け付けました。お気をつけてお越しください。';
+        // 施設設定のデフォルトメッセージがオンなら送信
+        const { data: settingMsg } = await supabase
+          .from('facility_reservation_settings')
+          .select('auto_message_enabled, auto_message_text')
+          .eq('facility_id', facilityId)
+          .maybeSingle();
+        const enabledMsg = Boolean(settingMsg?.auto_message_enabled);
+        const initialMessage = (settingMsg?.auto_message_text as string) || 'ご予約を受け付けました。お気をつけてお越しください。';
         await supabase.from('community_messages').insert({
           user_id: user.id,
           facility_id: facilityId,
           content: initialMessage,
           context: 'reservation',
-        });
+        }).select().maybeSingle();
+        // オーナーにも通知
+        if (enabledMsg) {
+          const { data: facOwner } = await supabase.from('pet_facilities').select('owner_id').eq('id', facilityId).maybeSingle();
+          if (facOwner?.owner_id) {
+            const { notifyAppAndLine } = await import('../utils/notify');
+            await notifyAppAndLine({ userId: facOwner.owner_id, title: '予約チャットにメッセージ', message: initialMessage.slice(0,50), linkUrl: `${window.location.origin}/community`, kind: 'alert' });
+          }
+        }
       } catch {}
       // 通知（アプリ内＋LINE）
       try {

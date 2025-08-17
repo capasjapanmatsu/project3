@@ -165,6 +165,10 @@ export default function FacilityEdit() {
   const [daysAhead, setDaysAhead] = useState<number>(90);
   const [capacity, setCapacity] = useState<number>(10);
   const [autoConfirm, setAutoConfirm] = useState<boolean>(true);
+  const [autoMsgEnabled, setAutoMsgEnabled] = useState<boolean>(false);
+  const [autoMsgText, setAutoMsgText] = useState<string>('ご予約を受け付けました。お気をつけてお越しください。');
+  const [autoMsgEnabled, setAutoMsgEnabled] = useState<boolean>(false);
+  const [autoMsgText, setAutoMsgText] = useState<string>('ご予約を受け付けました。お気をつけてお越しください。');
   const [seats, setSeats] = useState<string[]>([]);
   const [newSeat, setNewSeat] = useState('');
   const addSeat = () => {
@@ -191,6 +195,8 @@ export default function FacilityEdit() {
         slot_unit_minutes: slotUnit,
         allowed_days_ahead: daysAhead,
         auto_confirm: autoConfirm,
+        auto_message_enabled: autoMsgEnabled,
+        auto_message_text: autoMsgText,
         capacity_per_slot: capacity,
         updated_at: new Date().toISOString(),
       });
@@ -315,6 +321,8 @@ export default function FacilityEdit() {
           setDaysAhead(setting.allowed_days_ahead || 90);
           setCapacity(setting.capacity_per_slot || 10);
           setAutoConfirm(Boolean(setting.auto_confirm));
+          setAutoMsgEnabled(Boolean((setting as any).auto_message_enabled));
+          if ((setting as any).auto_message_text) setAutoMsgText((setting as any).auto_message_text);
         }
         const { data: seatRows } = await supabase
           .from('facility_seats')
@@ -1322,6 +1330,13 @@ export default function FacilityEdit() {
                         <input type="checkbox" className="h-4 w-4" checked={autoConfirm} onChange={(e) => setAutoConfirm(e.target.checked)} />
                         <span>自動で予約確定にする</span>
                       </label>
+                    </div>
+                    <div className="mt-2">
+                      <label className="flex items-center space-x-2 mb-2">
+                        <input type="checkbox" className="h-4 w-4" checked={autoMsgEnabled} onChange={(e)=>setAutoMsgEnabled(e.target.checked)} />
+                        <span className="text-sm text-gray-700">予約確定時にデフォルトメッセージを自動送信</span>
+                      </label>
+                      <textarea className="w-full border rounded px-2 py-1 text-sm" rows={3} value={autoMsgText} onChange={(e)=>setAutoMsgText(e.target.value)} />
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-700">同一時間キャパ</span>
