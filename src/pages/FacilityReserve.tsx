@@ -18,6 +18,7 @@ export default function FacilityReserve() {
   const [seat, setSeat] = useState('');
   const [slot, setSlot] = useState('');
   const [guestCount, setGuestCount] = useState<number>(1);
+  const [customerName, setCustomerName] = useState<string>('');
   const [openTime, setOpenTime] = useState<string>('09:00');
   const [closeTime, setCloseTime] = useState<string>('18:00');
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -69,6 +70,7 @@ export default function FacilityReserve() {
   const handleReserve = async () => {
     if (!user) { navigate('/liff/login'); return; }
     if (!slot) { alert('時間を選択してください'); return; }
+    if (!customerName.trim()) { alert('予約者名を入力してください'); return; }
     if (seats.length > 0 && !seat) { alert('座席を選択してください'); return; }
     try {
       setSubmitting(true);
@@ -85,6 +87,7 @@ export default function FacilityReserve() {
       const { error } = await supabase.from('facility_reservations').insert({
         facility_id: facilityId,
         user_id: user.id,
+        customer_name: customerName.trim(),
         seat_code: seat || '未指定',
         reserved_date: date,
         start_time: start,
@@ -124,17 +127,17 @@ export default function FacilityReserve() {
         const { notifyAppAndLine } = await import('../utils/notify');
         const linkUrlUser = `${window.location.origin}/my-reservations`;
         const seatText = seat ? `席:${seat}` : '座席:指定なし';
-        await notifyAppAndLine({ userId: user.id!, title: isAuto ? '予約確定' : '仮予約', message: `${date} ${start}-${end} / ${guestCount}名 / ${seatText}`, linkUrl: linkUrlUser, kind: 'reservation' });
+        await notifyAppAndLine({ userId: user.id!, title: isAuto ? '予約確定' : '仮予約', message: `${customerName} 様 / ${date} ${start}-${end} / ${guestCount}名 / ${seatText}`, linkUrl: linkUrlUser, kind: 'reservation' });
         // オーナーにも通知
         const { data: facility } = await supabase.from('pet_facilities').select('id, owner_id, name').eq('id', facilityId).maybeSingle();
         if (facility?.owner_id) {
           const linkUrlOwner = `${window.location.origin}/facilities/${facilityId}/reservations`;
-          await notifyAppAndLine({ userId: facility.owner_id, title: '予約が入りました', message: `${facility.name} / ${date} ${start}-${end} / ${guestCount}名 / ${seatText}`, linkUrl: linkUrlOwner, kind: 'reservation' });
+          await notifyAppAndLine({ userId: facility.owner_id, title: '予約が入りました', message: `${customerName} 様 / ${facility.name} / ${date} ${start}-${end} / ${guestCount}名 / ${seatText}`, linkUrl: linkUrlOwner, kind: 'reservation' });
           // オーナーにもアプリ内通知（コミュニティ通知）
           await supabase.from('notifications').insert({
             user_id: facility.owner_id,
             title: '予約が入りました',
-            message: `${facility.name} / ${date} ${start}-${end} / ${guestCount}名 / ${seatText}`,
+            message: `${customerName} 様 / ${facility.name} / ${date} ${start}-${end} / ${guestCount}名 / ${seatText}`,
             link_url: linkUrlOwner,
             read: false
           });
@@ -143,7 +146,7 @@ export default function FacilityReserve() {
         await supabase.from('notifications').insert({
           user_id: user.id,
           title: isAuto ? '予約確定' : '仮予約',
-          message: `${date} ${start}-${end} / ${guestCount}名 / ${seatText}`,
+          message: `${customerName} 様 / ${date} ${start}-${end} / ${guestCount}名 / ${seatText}`,
           link_url: linkUrlUser,
           read: false
         });
@@ -167,6 +170,10 @@ export default function FacilityReserve() {
       <Card className="p-6">
         <h1 className="text-xl font-semibold mb-4">予約</h1>
         <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">予約者名</span>
+            <input type="text" className="border rounded px-2 py-1 flex-1" placeholder="予約者名" value={customerName} onChange={(e)=>setCustomerName(e.target.value)} />
+          </div>
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">日付</span>
             <input type="date" className="border rounded px-2 py-1" value={date} onChange={(e) => setDate(e.target.value)} />
