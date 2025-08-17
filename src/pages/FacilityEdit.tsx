@@ -314,6 +314,7 @@ export default function FacilityEdit() {
           setSlotUnit(setting.slot_unit_minutes || 60);
           setDaysAhead(setting.allowed_days_ahead || 90);
           setCapacity(setting.capacity_per_slot || 10);
+          setAutoConfirm(Boolean(setting.auto_confirm));
         }
         const { data: seatRows } = await supabase
           .from('facility_seats')
