@@ -167,8 +167,6 @@ export default function FacilityEdit() {
   const [autoConfirm, setAutoConfirm] = useState<boolean>(true);
   const [autoMsgEnabled, setAutoMsgEnabled] = useState<boolean>(false);
   const [autoMsgText, setAutoMsgText] = useState<string>('ご予約を受け付けました。お気をつけてお越しください。');
-  const [autoMsgEnabled, setAutoMsgEnabled] = useState<boolean>(false);
-  const [autoMsgText, setAutoMsgText] = useState<string>('ご予約を受け付けました。お気をつけてお越しください。');
   const [seats, setSeats] = useState<string[]>([]);
   const [newSeat, setNewSeat] = useState('');
   const addSeat = () => {
