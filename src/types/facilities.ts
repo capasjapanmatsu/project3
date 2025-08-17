@@ -24,6 +24,12 @@ export interface PetFacility {
   status: 'pending' | 'approved' | 'rejected' | 'suspended';
   created_at: string;
   category_name?: string; // JOINしたカテゴリーの日本語名
+  // 営業時間/休業日（施設編集画面のカレンダー設定と連動）
+  opening_time?: string | null; // 'HH:MM:SS' 形式（DB TIME）
+  closing_time?: string | null; // 'HH:MM:SS' 形式（DB TIME）
+  weekly_closed_days?: string | null; // JSON配列文字列 '[true,false,...]'
+  specific_closed_dates?: string | null; // JSON配列文字列 'YYYY-MM-DD'[]
+  specific_open_dates?: string | null; // JSON配列文字列 'YYYY-MM-DD'[]
   // 画像関連フィールド（MapViewで使用）
   main_image_url?: string;
   image_url?: string;

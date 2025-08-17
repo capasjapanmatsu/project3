@@ -274,6 +274,11 @@ export function useFacilityData() {
           status: facility.status as 'pending' | 'approved' | 'rejected' | 'suspended' || 'pending',
           created_at: facility.created_at || '',
           category_name: categoryLabel,
+          opening_time: facility.opening_time || null,
+          closing_time: facility.closing_time || null,
+          weekly_closed_days: facility.weekly_closed_days || null,
+          specific_closed_dates: facility.specific_closed_dates || null,
+          specific_open_dates: facility.specific_open_dates || null,
           // MapViewで期待される画像フィールドを追加
           main_image_url: mainImageUrl,
           image_url: mainImageUrl,

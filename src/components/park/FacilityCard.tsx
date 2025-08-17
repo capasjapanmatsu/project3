@@ -192,14 +192,42 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
   const categoryInfo = getCategoryInfo();
   const Icon = categoryInfo.icon;
 
-  // 営業時間の判定
+  // 営業時間の判定（施設編集の設定に準拠）
   const isCurrentlyOpen = () => {
-    if (!facility.opening_hours || !facility.closing_hours) return false;
-    
+    const opening = facility.opening_time || undefined;
+    const closing = facility.closing_time || undefined;
+    if (!opening || !closing) return false;
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    // 休業日の判定
+    try {
+      if (facility.specific_closed_dates) {
+        const closedDates: string[] = JSON.parse(facility.specific_closed_dates);
+        if (Array.isArray(closedDates) && closedDates.includes(todayStr)) return false;
+      }
+      if (facility.weekly_closed_days) {
+        const weekly: boolean[] = JSON.parse(facility.weekly_closed_days);
+        const dow = new Date().getDay();
+        // 臨時営業日は定休日を上書き
+        if (weekly?.[dow]) {
+          if (facility.specific_open_dates) {
+            const opens: string[] = JSON.parse(facility.specific_open_dates);
+            if (Array.isArray(opens) && opens.includes(todayStr)) {
+              // continue
+            } else {
+              return false;
+            }
+          } else {
+            return false;
+          }
+        }
+      }
+    } catch {}
+
     const now = new Date();
-    const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
-    
-    return currentTime >= facility.opening_hours && currentTime <= facility.closing_hours;
+    const hhmm = now.toTimeString().slice(0,5);
+    const inRange = (hhmm >= opening.slice(0,5)) && (hhmm <= closing.slice(0,5));
+    return inRange;
   };
 
   // 評価の星を表示
