@@ -109,6 +109,10 @@ export default function FacilityReserve() {
           status,
         });
         insertError = retry.error;
+      } else if (insertRes.error && /uq_facility_resv_slot/i.test(String(insertRes.error.message))) {
+        // 重複時はキャンセル済み重複か、未指定座席の多重を許容するためのメッセージ
+        alert('選択した時間帯は満席の可能性があります。別の時間または座席を選択してください。');
+        throw insertRes.error;
       } else {
         insertError = insertRes.error;
       }
