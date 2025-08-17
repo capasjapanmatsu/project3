@@ -45,9 +45,12 @@ export default function MyReservations() {
   }, [user?.id]);
 
   const canCancel = (r: FacilityReservationRow) => {
-    const start = new Date(`${r.reserved_date}T${r.start_time}:00`);
-    const threshold = new Date(start.getTime() - 60 * 60 * 1000); // 開始1時間前
-    return new Date() < threshold && r.status !== 'cancelled';
+    // 日付と時刻を安全に合成（タイムゾーンのパース差異を排除）
+    const [hh, mm] = String(r.start_time).split(':').map((v) => parseInt(v, 10));
+    const base = new Date(`${r.reserved_date}T00:00:00`);
+    base.setHours(isNaN(hh) ? 0 : hh, isNaN(mm) ? 0 : mm, 0, 0);
+    const threshold = new Date(base.getTime() - 60 * 60 * 1000); // 開始1時間前
+    return new Date().getTime() <= threshold.getTime() && r.status !== 'cancelled';
   };
 
   const handleCancel = async (r: FacilityReservationRow) => {
