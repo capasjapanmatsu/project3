@@ -126,13 +126,15 @@ export default function FacilityReserve() {
             <span className="text-sm text-gray-600">日付</span>
             <input type="date" className="border rounded px-2 py-1" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-600">座席</span>
-            <select className="border rounded px-2 py-1" value={seat} onChange={(e) => setSeat(e.target.value)}>
-              <option value="">選択</option>
-              {seats.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
+          {seats.length > 0 && (
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">座席</span>
+              <select className="border rounded px-2 py-1" value={seat} onChange={(e) => setSeat(e.target.value)}>
+                <option value="">選択</option>
+                {seats.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          )}
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">時間</span>
             <select className="border rounded px-2 py-1" value={slot} onChange={(e) => setSlot(e.target.value)}>
