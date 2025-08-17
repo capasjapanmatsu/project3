@@ -55,6 +55,16 @@ export default function FacilityReserve() {
   }, [facilityId]);
 
   const slots = useMemo(() => generateTimeSlots(openTime, closeTime, unit), [openTime, closeTime, unit]);
+  // 現在時刻より1時間以降のみ（本日選択時）
+  const availableSlots = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (date !== todayStr) return slots;
+    const threshold = new Date(Date.now() + 60 * 60 * 1000); // 現在+1時間
+    return slots.filter(({ start }) => {
+      const startDt = new Date(`${date}T${start}:00`);
+      return startDt >= threshold;
+    });
+  }, [slots, date]);
 
   const handleReserve = async () => {
     if (!user) { navigate('/liff/login'); return; }
@@ -139,7 +149,7 @@ export default function FacilityReserve() {
             <span className="text-sm text-gray-600">時間</span>
             <select className="border rounded px-2 py-1" value={slot} onChange={(e) => setSlot(e.target.value)}>
               <option value="">選択</option>
-              {slots.map((t) => <option key={`${t.start}-${t.end}`} value={`${t.start}-${t.end}`}>{t.start} - {t.end}</option>)}
+              {availableSlots.map((t) => <option key={`${t.start}-${t.end}`} value={`${t.start}-${t.end}`}>{t.start} - {t.end}</option>)}
             </select>
           </div>
           <div className="flex items-center space-x-2">

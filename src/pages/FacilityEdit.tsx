@@ -1344,6 +1344,9 @@ export default function FacilityEdit() {
                   {/* 客席管理 */}
                   <div className="bg-white rounded-lg border p-4 mb-6">
                     <h3 className="font-semibold mb-3">客席（席コード）</h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                      任意です。登録すると予約時にお客さまが座席を選択して予約できます。未登録の場合は公開ページの座席指定欄は非表示になります。
+                    </p>
                     <div className="flex space-x-2 mb-3">
                       <input className="border rounded px-2 py-1 flex-1" placeholder="例: A1,B,4人席,個室 など" value={newSeat} onChange={(e) => setNewSeat(e.target.value)} />
                       <Button onClick={addSeat} variant="secondary">追加</Button>
