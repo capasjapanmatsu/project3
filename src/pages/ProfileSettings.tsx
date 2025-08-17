@@ -41,6 +41,7 @@ export function ProfileSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [linking, setLinking] = useState(false);
   const [linked, setLinked] = useState<boolean | null>(null);
+  const [hasLineSession, setHasLineSession] = useState<boolean>(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [formData, setFormData] = useState({
@@ -153,16 +154,26 @@ export function ProfileSettings() {
         setOriginalData(profileData);
       }
 
-      // 連携状態を取得
+      // 連携状態: DBのリンクテーブルで判定（ログアウトしても持続）
       try {
-        const res = await fetch('/auth/me', { credentials: 'include' });
-        if (res.ok) {
-          const me = await res.json();
-          setLinked(!!me.app_user_id);
+        const appUid = user?.id || effectiveUserId;
+        if (appUid) {
+          const { data: links } = await supabase
+            .from('user_line_link')
+            .select('line_user_id')
+            .eq('app_user_id', appUid)
+            .limit(1);
+          setLinked((links?.length ?? 0) > 0);
         } else {
           setLinked(null);
         }
       } catch { setLinked(null); }
+
+      // LINEセッションの有無: /auth/me で確認（解除操作の可否に使用）
+      try {
+        const res = await fetch('/auth/me', { credentials: 'include' });
+        setHasLineSession(res.ok);
+      } catch { setHasLineSession(false); }
     } catch (err) {
       console.error('Error fetching profile:', err);
       setError('プロフィールの取得に失敗しました。');
@@ -837,6 +848,11 @@ export function ProfileSettings() {
                   onClick={async () => {
                     setError(''); setSuccess(''); setLinking(true);
                     try {
+                      if (!hasLineSession) {
+                        setLinking(false);
+                        window.location.assign('/liff/login?redirect=/profile-settings');
+                        return;
+                      }
                       const res = await fetch('/line/unlink-user', {
                         method: 'POST',
                         credentials: 'include'
