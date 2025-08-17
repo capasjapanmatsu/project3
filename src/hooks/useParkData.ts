@@ -39,6 +39,7 @@ interface PetFacilityResponse {
 import { useCallback, useState } from 'react';
 import { type DogPark } from '../types';
 import { type PetFacility } from '../types/facilities';
+import { FACILITY_CATEGORY_LABELS } from '../types/facilities';
 import { supabase } from '../utils/supabase';
 import { PARK_PLACEHOLDER_SVG } from '../utils/placeholders';
 
@@ -199,7 +200,7 @@ export function useFacilityData() {
 
       console.log('🏢 [useFacilityData] Fetching facilities from database...');
 
-      // 施設データと画像データをJOINで取得
+      // 施設データと画像データを取得（カテゴリ名はクライアント側で付与）
       const { data, error: queryError } = await supabase
         .from('pet_facilities')
         .select(`
@@ -223,6 +224,14 @@ export function useFacilityData() {
 
       console.log('🏢 [useFacilityData] Database response:', data);
       console.log('🏢 [useFacilityData] Retrieved facilities count:', data?.length || 0);
+
+      // カテゴリID正規化ヘルパー
+      const normalizeCategoryId = (raw?: string | null): string => {
+        if (!raw) return 'other';
+        const id = String(raw).trim().toLowerCase();
+        if (id) return id;
+        return 'other';
+      };
 
       // データの型安全性を確保
       const facilitiesData: PetFacility[] = (data as any[] || []).map((facility, index) => {
@@ -249,11 +258,14 @@ export function useFacilityData() {
           main_image_url: mainImageUrl
         });
         
+        const normalizedCategory = normalizeCategoryId(facility.category_id);
+        const categoryLabel = (FACILITY_CATEGORY_LABELS as any)[normalizedCategory] || 'その他';
+
         return {
           id: facility.id || '',
           name: facility.name || '',
           description: facility.description || '',
-          category: facility.category_id || 'other',
+          category: normalizedCategory,
           address: facility.address || '',
           latitude: hasValidCoordinates ? Number(facility.latitude) : null,
           longitude: hasValidCoordinates ? Number(facility.longitude) : null,
@@ -261,7 +273,7 @@ export function useFacilityData() {
           website: facility.website || '',
           status: facility.status as 'pending' | 'approved' | 'rejected' | 'suspended' || 'pending',
           created_at: facility.created_at || '',
-          category_name: facility.facility_categories?.name_ja || facility.facility_categories?.name || '',
+          category_name: categoryLabel,
           // MapViewで期待される画像フィールドを追加
           main_image_url: mainImageUrl,
           image_url: mainImageUrl,
