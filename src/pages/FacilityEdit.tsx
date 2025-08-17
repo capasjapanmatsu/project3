@@ -241,7 +241,7 @@ export default function FacilityEdit() {
       try {
         let query = supabase
           .from('facility_reservations')
-          .select('id,user_id,seat_code,reserved_date,start_time,end_time,status')
+          .select('id,user_id,customer_name,seat_code,reserved_date,start_time,end_time,status')
           .eq('facility_id', facility.id)
           .order('reserved_date', { ascending: true })
           .order('start_time', { ascending: true });
@@ -1506,6 +1506,7 @@ export default function FacilityEdit() {
                         <thead>
                           <tr className="bg-gray-50">
                             <th className="text-left px-3 py-2 border">日付</th>
+                            <th className="text-left px-3 py-2 border">予約者</th>
                             <th className="text-left px-3 py-2 border">席</th>
                             <th className="text-left px-3 py-2 border">開始</th>
                             <th className="text-left px-3 py-2 border">終了</th>
@@ -1522,6 +1523,7 @@ export default function FacilityEdit() {
                             previewReservations.map((r, idx) => (
                               <tr key={idx} className="hover:bg-gray-50">
                                 <td className="px-3 py-2 border">{r.reserved_date}</td>
+                                <td className="px-3 py-2 border">{r.customer_name || '—'}</td>
                                 <td className="px-3 py-2 border">{r.seat_code}</td>
                                 <td className="px-3 py-2 border">{formatTime(r.start_time)}</td>
                                 <td className="px-3 py-2 border">{formatTime(r.end_time)}</td>
