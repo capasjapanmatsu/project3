@@ -246,6 +246,20 @@ export default function FacilityEdit() {
     setConfirmModalOpen(true);
   };
 
+  const formatTime = (t: any) => {
+    if (!t) return '';
+    return String(t).slice(0, 5); // HH:MM まで
+  };
+
+  const formatStatusJa = (s: string) => {
+    switch (s) {
+      case 'pending': return '予約申請';
+      case 'confirmed': return '予約完了';
+      case 'cancelled': return 'キャンセル';
+      default: return s;
+    }
+  };
+
   const handleConfirmReservation = async () => {
     if (!facility || !confirmTarget) return;
     try {
@@ -1477,9 +1491,9 @@ export default function FacilityEdit() {
                               <tr key={idx} className="hover:bg-gray-50">
                                 <td className="px-3 py-2 border">{r.reserved_date}</td>
                                 <td className="px-3 py-2 border">{r.seat_code}</td>
-                                <td className="px-3 py-2 border">{r.start_time}</td>
-                                <td className="px-3 py-2 border">{r.end_time}</td>
-                                <td className="px-3 py-2 border">{r.status}</td>
+                                <td className="px-3 py-2 border">{formatTime(r.start_time)}</td>
+                                <td className="px-3 py-2 border">{formatTime(r.end_time)}</td>
+                                <td className="px-3 py-2 border">{formatStatusJa(r.status)}</td>
                                 <td className="px-3 py-2 border">
                                   {r.status === 'pending' ? (
                                     <Button size="sm" onClick={() => openConfirmModal(r)}>予約確定</Button>
