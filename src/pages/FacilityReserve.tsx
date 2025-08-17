@@ -85,7 +85,7 @@ export default function FacilityReserve() {
       const { error } = await supabase.from('facility_reservations').insert({
         facility_id: facilityId,
         user_id: user.id,
-        seat_code: seat || null,
+        seat_code: seat || '未指定',
         reserved_date: date,
         start_time: start,
         end_time: end,
@@ -97,18 +97,19 @@ export default function FacilityReserve() {
       try {
         const { notifyAppAndLine } = await import('../utils/notify');
         const linkUrlUser = `${window.location.origin}/my-reservations`;
-        await notifyAppAndLine({ userId: user.id!, title: isAuto ? '予約確定' : '仮予約', message: `${date} ${start}-${end} / ${guestCount}名 / 席:${seat}`, linkUrl: linkUrlUser, kind: 'reservation' });
+        const seatText = seat ? `席:${seat}` : '座席:指定なし';
+        await notifyAppAndLine({ userId: user.id!, title: isAuto ? '予約確定' : '仮予約', message: `${date} ${start}-${end} / ${guestCount}名 / ${seatText}`, linkUrl: linkUrlUser, kind: 'reservation' });
         // オーナーにも通知
         const { data: facility } = await supabase.from('pet_facilities').select('id, owner_id, name').eq('id', facilityId).maybeSingle();
         if (facility?.owner_id) {
           const linkUrlOwner = `${window.location.origin}/facilities/${facilityId}/reservations`;
-          await notifyAppAndLine({ userId: facility.owner_id, title: '予約が入りました', message: `${facility.name} / ${date} ${start}-${end} / ${guestCount}名 / 席:${seat}`, linkUrl: linkUrlOwner, kind: 'reservation' });
+          await notifyAppAndLine({ userId: facility.owner_id, title: '予約が入りました', message: `${facility.name} / ${date} ${start}-${end} / ${guestCount}名 / ${seatText}`, linkUrl: linkUrlOwner, kind: 'reservation' });
         }
         // コミュニティ通知（アプリ内の通知リストに残す）
         await supabase.from('notifications').insert({
           user_id: user.id,
           title: isAuto ? '予約確定' : '仮予約',
-          message: `${date} ${start}-${end} / ${guestCount}名 / 席:${seat}`,
+          message: `${date} ${start}-${end} / ${guestCount}名 / ${seatText}`,
           link_url: linkUrlUser,
           read: false
         });
