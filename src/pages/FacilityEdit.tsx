@@ -292,31 +292,46 @@ export default function FacilityEdit() {
         ? confirmMessage.trim()
         : (autoMsgEnabled ? (autoMsgText || 'ご予約を受け付けました。お気をつけてお越しください。') : '');
       if (messageToSend) {
+        // チャットに投稿（店舗=オーナーとして）
         await supabase.from('community_messages').insert({
           user_id: user?.id,
           facility_id: facility.id,
           content: messageToSend,
           context: 'reservation',
         });
-        // 通知（予約者へ）
+        // アプリ内通知（コミュニティ通知）
+        try {
+          await supabase.from('notifications').insert({
+            user_id: confirmTarget.user_id,
+            title: '店舗からメッセージ',
+            message: `${facility?.name || '店舗'}: ${messageToSend}`,
+            link_url: `${window.location.origin}/community`,
+            read: false,
+          });
+        } catch {}
+        // LINE等の外部通知
         try {
           const { notifyAppAndLine } = await import('../utils/notify');
           await notifyAppAndLine({
             userId: confirmTarget.user_id,
             title: '予約が確定しました',
-            message: messageToSend,
+            message: `${facility?.name || '店舗'}: ${messageToSend}`,
             linkUrl: `${window.location.origin}/my-reservations`,
             kind: 'reservation',
           });
         } catch {}
       }
 
-      // 3. 一覧を再読込
-      const { data } = await supabase
+      // 3. 一覧を再読込（現在の絞り込み条件を反映）
+      let reloadQuery = supabase
         .from('facility_reservations')
-        .select('id,user_id,seat_code,start_time,end_time,status')
+        .select('id,user_id,seat_code,reserved_date,start_time,end_time,status')
         .eq('facility_id', facility.id)
-        .eq('reserved_date', previewDate);
+        .order('reserved_date', { ascending: true })
+        .order('start_time', { ascending: true });
+      if (filterDate) reloadQuery = reloadQuery.eq('reserved_date', filterDate);
+      if (statusFilter !== 'all') reloadQuery = reloadQuery.eq('status', statusFilter);
+      const { data } = await reloadQuery;
       setPreviewReservations(data || []);
 
       setConfirmModalOpen(false);
