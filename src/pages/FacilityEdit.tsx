@@ -936,9 +936,10 @@ export default function FacilityEdit() {
         .update({
           opening_time: openingTime,
           closing_time: closingTime,
-          weekly_closed_days: JSON.stringify(weeklyClosedDays),
-          specific_closed_dates: JSON.stringify(specificClosedDates),
-          specific_open_dates: JSON.stringify(specificOpenDates),
+          // JSONB カラムにはそのまま配列を渡す
+          weekly_closed_days: weeklyClosedDays,
+          specific_closed_dates: specificClosedDates,
+          specific_open_dates: specificOpenDates,
           updated_at: new Date().toISOString()
         })
         .eq('id', facility.id);

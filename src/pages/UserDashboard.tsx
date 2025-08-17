@@ -60,6 +60,7 @@ export function UserDashboard() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [news, setNews] = useState<NewsAnnouncement[]>([]);
   const [likedDogs, setLikedDogs] = useState<Dog[]>([]);
+  const [facilityReservations, setFacilityReservations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [error, setError] = useState('');
@@ -158,7 +159,8 @@ export function UserDashboard() {
       const [
         parksResponse,
         reservationsResponse,
-        notificationsResponse
+        notificationsResponse,
+        facilityReservationsResponse
       ] = await Promise.all([
         supabase
           .from('dog_parks')
@@ -179,6 +181,13 @@ export function UserDashboard() {
           .eq('user_id', uid)
           .eq('read', false)
           .order('created_at', { ascending: false })
+          .limit(5),
+
+        supabase
+          .from('facility_reservations')
+          .select(`*, facility:pet_facilities(name)`)        
+          .eq('user_id', uid)
+          .order('reserved_date', { ascending: false })
           .limit(5)
       ]);
 
@@ -186,6 +195,7 @@ export function UserDashboard() {
       setOwnedParks(parksResponse.data || []);
       setRecentReservations(reservationsResponse.data || []);
       setNotifications(notificationsResponse.data || []);
+      setFacilityReservations(facilityReservationsResponse.data || []);
 
       // フェーズ3: 追加データ（ニュース・施設・いいね）をバックグラウンドで取得
       void Promise.allSettled([
@@ -599,6 +609,38 @@ export function UserDashboard() {
         onRabiesExpiryDateChange={setRabiesExpiryDate}
         onComboExpiryDateChange={setComboExpiryDate}
       />
+
+      {/* Facility Reservations Section */}
+      <Card className="p-6 bg-gradient-to-br from-sky-50 to-blue-50 border-sky-200">
+        <div className="mb-4 flex justify-between items-center">
+          <h2 className="text-xl font-semibold flex items-center">
+            <Clock className="w-6 h-6 text-blue-600 mr-2" />
+            店舗予約管理
+          </h2>
+          <Link to="/my-reservations">
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+              一覧表示
+            </Button>
+          </Link>
+        </div>
+        {facilityReservations.length === 0 ? (
+          <div className="text-center py-8 text-blue-700">店舗の予約はまだありません</div>
+        ) : (
+          <div className="space-y-3">
+            {facilityReservations.map((r) => (
+              <div key={r.id} className="p-4 bg-white rounded-lg border border-blue-100 flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  <div className="font-semibold">{r.facility?.name || '施設'}</div>
+                  <div className="text-gray-600">{r.reserved_date} {r.start_time}-{r.end_time} / {r.guest_count}名 / {r.seat_code || '座席:指定なし'}</div>
+                </div>
+                <Link to={`/facilities/${r.facility_id}`}>
+                  <Button size="sm" variant="secondary">詳細</Button>
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       {/* User Coupons Section */}
       <Card className="p-6 bg-gradient-to-br from-pink-50 to-purple-50 border-pink-200">
