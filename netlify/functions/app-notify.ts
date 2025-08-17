@@ -39,7 +39,8 @@ export const handler: Handler = async (event) => {
 
     // Optional: also forward to LINE if linked
     try {
-      await fetch(`${process.env.URL || ''}/.netlify/functions/line-notify`, {
+      const base = process.env.URL || process.env.DEPLOY_PRIME_URL || '';
+      await fetch(`${base}/.netlify/functions/line-notify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kind: kind || 'alert', title, message, linkUrl })
