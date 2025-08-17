@@ -1565,8 +1565,7 @@ export default function FacilityEdit() {
                             <th className="text-left px-3 py-2 border">日付</th>
                             <th className="text-left px-3 py-2 border">予約者</th>
                             <th className="text-left px-3 py-2 border">席</th>
-                            <th className="text-left px-3 py-2 border">開始</th>
-                            <th className="text-left px-3 py-2 border">終了</th>
+                            <th className="text-left px-3 py-2 border">予約時間</th>
                             <th className="text-left px-3 py-2 border">状態</th>
                             <th className="text-left px-3 py-2 border">操作</th>
                           </tr>
@@ -1583,7 +1582,6 @@ export default function FacilityEdit() {
                                 <td className="px-3 py-2 border">{r.customer_name || '—'}</td>
                                 <td className="px-3 py-2 border">{r.seat_code}</td>
                                 <td className="px-3 py-2 border">{formatTime(r.start_time)}</td>
-                                <td className="px-3 py-2 border">{formatTime(r.end_time)}</td>
                                 <td className="px-3 py-2 border">{formatStatusJa(r.status)}</td>
                                 <td className="px-3 py-2 border">
                                   {r.status === 'pending' ? (
