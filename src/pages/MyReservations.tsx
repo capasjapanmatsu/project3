@@ -23,8 +23,6 @@ export default function MyReservations() {
   const [rows, setRows] = useState<FacilityReservationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [messageTarget, setMessageTarget] = useState<FacilityReservationRow | null>(null);
-  const [messageContent, setMessageContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -79,9 +77,9 @@ export default function MyReservations() {
           const linkOwner = `${window.location.origin}/facilities/${r.facility_id}/reservations`;
           await notifyAppAndLine({ userId: fac.owner_id, title: '予約がキャンセルされました', message: `${fac.name} / ${r.reserved_date} ${r.start_time}-${r.end_time}`, linkUrl: linkOwner, kind: 'reservation' });
           await supabase.from('notifications').insert({ user_id: fac.owner_id, title: '予約がキャンセルされました', message: `${fac.name} / ${r.reserved_date} ${r.start_time}-${r.end_time}`, link_url: linkOwner, read: false });
+          // コミュニティのメッセージにも自動投稿（店舗向け）
+          await supabase.from('community_messages').insert({ user_id: user!.id, facility_id: r.facility_id, content: `予約をキャンセルしました。(${r.reserved_date} ${r.start_time}-${r.end_time})`, context: 'reservation' });
         }
-        // チャットにも自動投稿
-        await supabase.from('community_messages').insert({ user_id: user!.id, facility_id: r.facility_id, content: '予約をキャンセルしました。', context: 'reservation' });
       } catch {}
 
       // ローカル更新
@@ -94,34 +92,7 @@ export default function MyReservations() {
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!messageTarget || !messageContent.trim()) return;
-    try {
-      setSubmitting(true);
-      await supabase.from('community_messages').insert({
-        user_id: user!.id,
-        facility_id: messageTarget.facility_id,
-        content: messageContent.trim(),
-        context: 'reservation'
-      });
-      // オーナーに通知
-      try {
-        const { notifyAppAndLine } = await import('../utils/notify');
-        const { data: fac } = await supabase.from('pet_facilities').select('owner_id, name').eq('id', messageTarget.facility_id).maybeSingle();
-        if (fac?.owner_id) {
-          const linkOwner = `${window.location.origin}/community`;
-          await notifyAppAndLine({ userId: fac.owner_id, title: '予約チャットに新着メッセージ', message: messageContent.slice(0, 50), linkUrl: linkOwner, kind: 'alert' });
-        }
-      } catch {}
-      setMessageContent('');
-      setMessageTarget(null);
-      alert('メッセージを送信しました');
-    } catch (e: any) {
-      alert(`送信に失敗しました\n${e?.message || ''}`);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // 予約者からの任意メッセージ送信は廃止（キャンセル時のみ自動メッセージを送る）
 
   if (loading) return <div className="p-6">読み込み中...</div>;
   return (
@@ -142,7 +113,6 @@ export default function MyReservations() {
                     <div className="text-gray-600">{start} / {r.guest_count}名 / {r.seat_code || '座席:指定なし'} / 状態: {r.status}</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="secondary" onClick={() => setMessageTarget(r)}>メッセージ</Button>
                     <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" disabled={!canCancel(r) || submitting} onClick={() => handleCancel(r)}>
                       キャンセル
                     </Button>
@@ -155,18 +125,7 @@ export default function MyReservations() {
         )}
       </Card>
 
-      {messageTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-md p-4">
-            <h3 className="font-semibold mb-2">{messageTarget.facility?.name || '施設'} へのメッセージ</h3>
-            <textarea className="w-full border rounded p-2" rows={4} value={messageContent} onChange={(e) => setMessageContent(e.target.value)} placeholder="メッセージを入力" />
-            <div className="mt-3 flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setMessageTarget(null)}>閉じる</Button>
-              <Button onClick={handleSendMessage} disabled={submitting || !messageContent.trim()} className="bg-blue-600 hover:bg-blue-700 text-white">送信</Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 予約者からの任意メッセージUIは非表示 */}
     </div>
   );
 }
