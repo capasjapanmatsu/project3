@@ -608,10 +608,7 @@ export function FacilityDetail() {
                   <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
                     {facility.name}
                   </h1>
-                  {/* 予約ボタン（設定が有効な場合） */}
-                  <div>
-                    <ReserveEntryInline facilityId={facilityId!} />
-                  </div>
+                  {/* 予約ボタンは営業時間の下に移動 */}
                   
                   <div className="space-y-3">
                     <div className="flex items-start text-gray-600">
@@ -702,6 +699,11 @@ export function FacilityDetail() {
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* 営業時間の直下に予約ボタン */}
+                <div className="mt-4">
+                  <ReserveEntryInline facilityId={facilityId!} />
                 </div>
 
                 {/* アクセス */}
