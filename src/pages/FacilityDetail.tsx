@@ -1414,6 +1414,8 @@ function ReserveEntryInline({ facilityId }: { facilityId: string }) {
   }, [facilityId]);
   if (!enabled) return null;
   return (
-    <Button className="bg-green-600 hover:bg-green-700" onClick={() => navigate(`/facilities/${facilityId}/reserve`)}>予約する</Button>
+    <div className="mt-3">
+      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white" onClick={() => navigate(`/facilities/${facilityId}/reserve`)}>予約する</Button>
+    </div>
   );
 }
