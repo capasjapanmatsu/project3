@@ -84,7 +84,9 @@ export default function FacilityReserve() {
       const isAuto = Boolean(setting?.auto_confirm ?? true);
       const status = isAuto ? 'confirmed' : 'pending';
 
-      const { error } = await supabase.from('facility_reservations').insert({
+      // 挿入（schema cache が更新前の環境でも失敗しないようフォールバック）
+      let insertError: any = null;
+      const insertRes = await supabase.from('facility_reservations').insert({
         facility_id: facilityId,
         user_id: user.id,
         customer_name: customerName.trim(),
@@ -95,7 +97,22 @@ export default function FacilityReserve() {
         guest_count: guestCount,
         status,
       });
-      if (error) throw error;
+      if (insertRes.error && String(insertRes.error.message || '').includes('customer_name')) {
+        const retry = await supabase.from('facility_reservations').insert({
+          facility_id: facilityId,
+          user_id: user.id,
+          seat_code: seat || '未指定',
+          reserved_date: date,
+          start_time: start,
+          end_time: end,
+          guest_count: guestCount,
+          status,
+        });
+        insertError = retry.error;
+      } else {
+        insertError = insertRes.error;
+      }
+      if (insertError) throw insertError;
 
       // 予約チャット用の初回メッセージを作成（簡易）
       try {
