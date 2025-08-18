@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
 import { Send } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -96,18 +96,23 @@ export default function Inquiry() {
       }
 
       // 2) 管理者に通知（Netlify Functions: app-notify）
-      const notifyRes = await fetch('/.netlify/functions/app-notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: adminId,
-          title: '新規お問い合わせ',
-          message: `${form.category} の問い合わせ`,
-          linkUrl: `${window.location.origin}/community`,
-          kind: 'inquiry',
-        }),
-      });
-      if (!notifyRes.ok) throw new Error('通知の送信に失敗しました');
+      try {
+        const notifyRes = await fetch('/.netlify/functions/app-notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: adminId,
+            title: '新規お問い合わせ',
+            message: `${form.category} の問い合わせ`,
+            linkUrl: `${window.location.origin}/community`,
+            kind: 'inquiry',
+          }),
+        });
+        // ローカルでFunctions未起動などに備え、失敗してもメッセージ送信は成功扱いにする
+        if (!notifyRes.ok) console.warn('app-notify failed');
+      } catch (e) {
+        console.warn('app-notify error (ignored in UI):', e);
+      }
 
       // コミュニティのメッセージタブを開く指示を保存
       sessionStorage.setItem('communityActiveTab', 'messages');
