@@ -82,7 +82,7 @@ export default function AdminInquiries() {
     if (!files || !me || !activeUserId) return;
     try {
       setUploading(true);
-      // 1) 先に空メッセージを作って message_id を得る
+      // 1) Create a message container first to obtain message_id
       const { data: msgData, error: msgErr } = await supabase
         .from('messages')
         .insert({ sender_id: me.id, receiver_id: activeUserId, content: text || '(添付あり)' })
@@ -90,36 +90,45 @@ export default function AdminInquiries() {
         .single();
       if (msgErr || !msgData) throw msgErr;
 
-      // 2) 各ファイルをアップロード
+      const failures: string[] = [];
       for (const file of Array.from(files)) {
-        const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
-        const key = `${msgData.id}/${Date.now()}_${encodeURIComponent(file.name)}`;
-        const { error: upErr } = await supabase.storage
-          .from('message-attachments')
-          .upload(key, file, { upsert: true, contentType: file.type });
-        if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from('message-attachments').getPublicUrl(key);
-        const type = file.type.startsWith('image/') ? 'image' : (ext === 'pdf' ? 'pdf' : 'other');
-        await supabase.from('message_attachments').insert({
-          message_id: msgData.id,
-          file_url: pub.publicUrl,
-          file_type: type,
-          file_name: file.name
-        });
+        try {
+          const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
+          const key = `${msgData.id}/${Date.now()}_${encodeURIComponent(file.name)}`;
+          const { error: upErr } = await supabase.storage
+            .from('message-attachments')
+            .upload(key, file, { upsert: true, contentType: file.type, cacheControl: '3600' });
+          if (upErr) throw upErr;
+          const { data: pub } = supabase.storage.from('message-attachments').getPublicUrl(key);
+          const type = file.type.startsWith('image/') ? 'image' : (ext === 'pdf' ? 'pdf' : 'other');
+          const { error: insErr } = await supabase.from('message_attachments').insert({
+            message_id: msgData.id,
+            file_url: pub.publicUrl,
+            file_type: type,
+            file_name: file.name
+          });
+          if (insErr) throw insErr;
+        } catch (fe: any) {
+          console.error('Attachment upload failed:', fe);
+          failures.push(`${file.name}: ${fe?.message || fe}`);
+        }
       }
 
-      // 3) 再読込
+      // 3) Reload messages
       const { data } = await supabase
         .from('messages')
         .select('id, sender_id, receiver_id, content, created_at')
-        .in('sender_id',[me.id, activeUserId])
-        .in('receiver_id',[me.id, activeUserId])
+        .in('sender_id', [me.id, activeUserId])
+        .in('receiver_id', [me.id, activeUserId])
         .order('created_at', { ascending: true });
-      setMessages(data||[]);
+      setMessages(data || []);
       setText('');
-    } catch (e) {
+      if (failures.length > 0) {
+        alert('一部の添付に失敗しました:\n' + failures.join('\n'));
+      }
+    } catch (e: any) {
       console.error(e);
-      alert('添付のアップロードに失敗しました');
+      alert('添付のアップロードに失敗しました: ' + (e?.message || e));
     } finally {
       setUploading(false);
     }
