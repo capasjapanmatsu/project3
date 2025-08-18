@@ -10,7 +10,6 @@ import {
     MapPin,
     Phone,
     Star,
-    Ticket,
     Users,
     X
 } from 'lucide-react';
@@ -154,13 +153,15 @@ export function FacilityDetail() {
         .then(result => result)
         .catch(() => ({ data: [], error: null }));
 
-      // アクティブなクーポン（エラーを無視）
+      // アクティブなクーポン（開始済みかつ期限内）
+      const nowIso = new Date().toISOString();
       const couponsResult = await supabase
         .from('facility_coupons')
         .select('*')
         .eq('facility_id', facilityId)
         .eq('is_active', true)
-        .gte('validity_end', new Date().toISOString())
+        .lte('start_date', nowIso)
+        .gte('end_date', nowIso)
         .order('created_at', { ascending: false })
         .then(result => result)
         .catch(() => ({ data: [], error: null }));
@@ -269,11 +270,24 @@ export function FacilityDetail() {
     console.log('🎫 Fetching user coupons for user:', user.id, 'facility:', facilityId);
     
     try {
+      // 対象施設のクーポンIDを先に取得
+      const nowIso = new Date().toISOString();
+      const { data: couponsForFacility } = await supabase
+        .from('facility_coupons')
+        .select('id')
+        .eq('facility_id', facilityId)
+        .eq('is_active', true)
+        .lte('start_date', nowIso)
+        .gte('end_date', nowIso);
+
+      const couponIds = (couponsForFacility || []).map((c: any) => c.id);
+      if (couponIds.length === 0) { setUserCoupons([]); return; }
+
       const { data, error } = await supabase
         .from('user_coupons')
         .select('*')
-          .eq('user_id', user?.id)
-        .eq('facility_id', facilityId);
+        .eq('user_id', user?.id)
+        .in('coupon_id', couponIds);
 
       if (error) {
         console.error('❌ User coupons fetch error:', error);
@@ -899,15 +913,11 @@ export function FacilityDetail() {
                                   </Button>
                                 </Link>
                               ) : userCoupon ? (
-                                <div className="space-y-3">
-                                  <Button
-                                    onClick={() => handleShowCoupon(userCoupon)}
-                                    className="w-full py-3 text-base bg-green-600 hover:bg-green-700"
-                                    disabled={userCoupon.is_used}
-                                  >
-                                    <Ticket className="w-5 h-5 mr-2" />
-                                    {userCoupon.is_used ? 'クーポン使用済み' : 'クーポンを表示'}
-                                  </Button>
+                                <div className="space-y-2">
+                                  {/* 取得後は誤操作防止のため詳細では表示ボタンを出さない */}
+                                  <div className="w-full py-3 text-base text-center bg-gray-50 border rounded-lg">
+                                    取得済みのクーポンです。表示はマイページの「マイクーポン」から行えます。
+                                  </div>
                                   {userCoupon.is_used && (
                                     <p className="text-sm text-gray-500 text-center">
                                       {new Date(userCoupon.used_at!).toLocaleDateString('ja-JP')} に使用

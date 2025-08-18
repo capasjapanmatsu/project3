@@ -117,9 +117,10 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
         throw new Error(`${formData.discount_type === 'amount' ? '割引金額' : '割引率'}を入力してください。`);
       }
       
-      const startDate = new Date(formData.start_date);
-      const endDate = new Date(formData.end_date);
-      if (endDate <= startDate) throw new Error('終了日は開始日より後である必要があります。');
+      // 入力は日付のみ（ローカル）。保存時は開始: 00:00:00、終了: 23:59:59 のISO(UTC)に正規化
+      const startLocal = new Date(`${formData.start_date}T00:00:00`);
+      const endLocal = new Date(`${formData.end_date}T23:59:59`);
+      if (endLocal <= startLocal) throw new Error('終了日は開始日より後である必要があります。');
 
       let couponImageUrl = editingCoupon?.coupon_image_url || '';
 
@@ -153,8 +154,8 @@ export function CouponManager({ facilityId, facilityName }: CouponManagerProps) 
         coupon_image_url: couponImageUrl || null,
         discount_value: formData.discount_value || null,
         discount_type: formData.discount_type,
-        start_date: formData.start_date,
-        end_date: formData.end_date,
+        start_date: startLocal.toISOString(),
+        end_date: endLocal.toISOString(),
         usage_limit_type: formData.usage_limit_type,
         max_uses: formData.usage_limit_type === 'once' ? 1 : null,
         updated_at: new Date().toISOString()

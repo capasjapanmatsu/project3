@@ -77,9 +77,8 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
 
   useEffect(() => {
     void fetchFacilityImages();
-    if (user) {
-      void fetchCoupons();
-    }
+    // 一覧段階でもクーポン有無の表示が必要なため、ユーザー未ログインでも取得する
+    void fetchCoupons();
   }, [user, facility.id]);
 
   const fetchFacilityImages = async () => {
@@ -355,42 +354,11 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
 
         {/* アクションボタン */}
         <div className="space-y-2">
-          {/* クーポン関連ボタン */}
+          {/* 一覧では「クーポンあり」バッジのみ表示（取得・表示は不可） */}
           {availableCoupons.length > 0 && (
-            <div className="space-y-2">
-              {availableCoupons.map((coupon) => {
-                const userCoupon = userCoupons.find(uc => uc.coupon_id === coupon.id);
-                
-                if (userCoupon) {
-                  // 既に取得済みのクーポン
-                  return (
-                    <Button
-                      key={coupon.id}
-                      onClick={() => handleShowCoupon(userCoupon)}
-                      className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700"
-                      disabled={userCoupon.is_used && coupon.usage_limit_type === 'once'}
-                    >
-                      <Gift className="w-4 h-4 mr-2" />
-                      {userCoupon.is_used && coupon.usage_limit_type === 'once' 
-                        ? 'クーポン使用済み' 
-                        : 'クーポンを表示'
-                      }
-                    </Button>
-                  );
-                } else {
-                  // 未取得のクーポン
-                  return (
-                    <Button
-                      key={coupon.id}
-                      onClick={() => handleObtainCoupon(coupon)}
-                      className="w-full flex items-center justify-center bg-pink-600 hover:bg-pink-700"
-                    >
-                      <Gift className="w-4 h-4 mr-2" />
-                      クーポンを取得
-                    </Button>
-                  );
-                }
-              })}
+            <div className="inline-flex items-center text-sm text-pink-700 bg-pink-50 border border-pink-200 rounded-full px-2 py-1">
+              <Gift className="w-4 h-4 mr-1" />
+              <span>クーポンあり</span>
             </div>
           )}
 

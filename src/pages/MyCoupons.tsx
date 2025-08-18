@@ -73,6 +73,10 @@ export function MyCoupons() {
   };
 
   const handleShowCoupon = (coupon: CouponWithFacility) => {
+    if (coupon.coupon.usage_limit_type === 'once') {
+      const ok = window.confirm('このクーポンは一度開くと二度と表示できません。今すぐ表示しますか？');
+      if (!ok) return;
+    }
     setDisplayingCoupon(coupon);
     setShowCouponDisplay(true);
   };
