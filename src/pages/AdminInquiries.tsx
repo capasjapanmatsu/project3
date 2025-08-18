@@ -1,3 +1,4 @@
+import { MessageSquare, Send, User as UserIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Button from '../components/Button';
@@ -5,7 +6,6 @@ import Card from '../components/Card';
 import { SEO } from '../components/SEO';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
-import { MessageSquare, Send, User as UserIcon } from 'lucide-react';
 
 interface ProfileLite { id: string; name: string | null }
 interface Msg { id: string; sender_id: string; receiver_id: string; content: string; created_at: string }
@@ -18,6 +18,7 @@ export default function AdminInquiries() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [me, setMe] = useState<ProfileLite | null>(null);
   const [text, setText] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -75,6 +76,53 @@ export default function AdminInquiries() {
     }
   };
 
+  const onSelectFiles = async (files: FileList | null) => {
+    if (!files || !me || !activeUserId) return;
+    try {
+      setUploading(true);
+      // 1) 先に空メッセージを作って message_id を得る
+      const { data: msgData, error: msgErr } = await supabase
+        .from('messages')
+        .insert({ sender_id: me.id, receiver_id: activeUserId, content: text || '(添付あり)' })
+        .select('id')
+        .single();
+      if (msgErr || !msgData) throw msgErr;
+
+      // 2) 各ファイルをアップロード
+      for (const file of Array.from(files)) {
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
+        const key = `${msgData.id}/${Date.now()}_${encodeURIComponent(file.name)}`;
+        const { error: upErr } = await supabase.storage
+          .from('message-attachments')
+          .upload(key, file, { upsert: true, contentType: file.type });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from('message-attachments').getPublicUrl(key);
+        const type = file.type.startsWith('image/') ? 'image' : (ext === 'pdf' ? 'pdf' : 'other');
+        await supabase.from('message_attachments').insert({
+          message_id: msgData.id,
+          file_url: pub.publicUrl,
+          file_type: type,
+          file_name: file.name
+        });
+      }
+
+      // 3) 再読込
+      const { data } = await supabase
+        .from('messages')
+        .select('id, sender_id, receiver_id, content, created_at')
+        .in('sender_id',[me.id, activeUserId])
+        .in('receiver_id',[me.id, activeUserId])
+        .order('created_at', { ascending: true });
+      setMessages(data||[]);
+      setText('');
+    } catch (e) {
+      console.error(e);
+      alert('添付のアップロードに失敗しました');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <SEO title="お問い合わせ管理" />
@@ -109,20 +157,61 @@ export default function AdminInquiries() {
               </div>
               <div className="flex-1 overflow-auto space-y-3">
                 {messages.map(m => (
-                  <div key={m.id} className={`flex ${m.sender_id===me?.id?'justify-end':'justify-start'}`}>
-                    <div className={`max-w-[80%] px-3 py-2 rounded-lg text-sm ${m.sender_id===me?.id?'bg-blue-600 text-white':'bg-gray-100 text-gray-900'}`}>{m.content}</div>
-                  </div>
+                  <MessageBubble key={m.id} message={m} myId={me!.id} />
                 ))}
               </div>
               <div className="pt-3 mt-2 border-t flex gap-2">
                 <input value={text} onChange={(e)=>setText(e.target.value)} className="flex-1 border rounded px-3 py-2" placeholder="メッセージを入力"/>
                 <Button onClick={send}><Send className="w-4 h-4 mr-1"/>送信</Button>
+                <label className="inline-flex items-center px-3 py-2 border rounded cursor-pointer bg-white">
+                  <input type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={(e)=>onSelectFiles(e.target.files)} />
+                  添付
+                </label>
               </div>
+              {uploading && <div className="text-xs text-gray-500 mt-1">アップロード中...</div>}
             </div>
           ) : (
             <div className="text-sm text-gray-500">左のスレッドを選択してください</div>
           )}
         </Card>
+      </div>
+    </div>
+  );
+}
+
+
+function MessageBubble({ message, myId }: { message: Msg; myId: string }) {
+  const [attachments, setAttachments] = useState<Array<{file_url:string;file_type:string;file_name:string}>>([]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('message_attachments')
+        .select('file_url, file_type, file_name')
+        .eq('message_id', message.id);
+      setAttachments(data || []);
+    })();
+  }, [message.id]);
+
+  const isMine = message.sender_id === myId;
+  return (
+    <div className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+      <div className={`max-w-[80%] space-y-2 ${isMine ? '' : ''}`}>
+        <div className={`px-3 py-2 rounded-lg text-sm ${isMine ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'}`}>{message.content}</div>
+        {attachments.length > 0 && (
+          <div className="grid grid-cols-2 gap-2">
+            {attachments.map((a, i) => (
+              a.file_type === 'image' ? (
+                <a key={i} href={a.file_url} target="_blank" rel="noreferrer" className="block">
+                  <img src={a.file_url} alt={a.file_name} className="rounded border object-cover h-32 w-full" />
+                </a>
+              ) : (
+                <a key={i} href={a.file_url} target="_blank" rel="noreferrer" className="block text-xs text-blue-700 underline">
+                  {a.file_name || '添付ファイル'}
+                </a>
+              )
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

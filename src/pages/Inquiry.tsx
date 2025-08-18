@@ -24,6 +24,7 @@ export default function Inquiry() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!user && !lineUser && !effectiveUserId) {
@@ -53,12 +54,12 @@ export default function Inquiry() {
 
       // 1) メッセージを保存（ユーザー→管理者）
       const content = `[${form.category}] ${form.subject}\n\n${form.message}`;
-      const { error: msgErr } = await supabase.from('messages').insert({
-        sender_id: uid,
-        receiver_id: adminId,
-        content,
-      });
-      if (msgErr) throw msgErr;
+      const { data: msgRow, error: msgErr } = await supabase
+        .from('messages')
+        .insert({ sender_id: uid, receiver_id: adminId, content })
+        .select('id')
+        .single();
+      if (msgErr || !msgRow) throw msgErr;
 
       // 2) 管理者に通知（Netlify Functions: app-notify）
       const notifyRes = await fetch('/.netlify/functions/app-notify', {
@@ -85,6 +86,59 @@ export default function Inquiry() {
       setError(err instanceof Error ? err.message : '送信に失敗しました');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // 添付アップロード（画像/カメラ/PDF）
+  const handleFiles = async (files: FileList | null) => {
+    if (!files) return;
+    try {
+      setUploading(true);
+      const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
+      if (!uid) throw new Error('ログインが必要です');
+
+      // 管理者取得
+      const { data: adminProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_type', 'admin')
+        .limit(1)
+        .maybeSingle();
+      const adminId = adminProfile?.id as string | undefined;
+      if (!adminId) throw new Error('管理者ユーザーが見つかりません');
+
+      // メッセージ行を用意
+      const { data: msgRow, error: msgErr } = await supabase
+        .from('messages')
+        .insert({ sender_id: uid, receiver_id: adminId, content: form.subject ? `[${form.category}] ${form.subject}` : '(添付あり)' })
+        .select('id')
+        .single();
+      if (msgErr || !msgRow) throw msgErr;
+
+      for (const file of Array.from(files)) {
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
+        const key = `${msgRow.id}/${Date.now()}_${encodeURIComponent(file.name)}`;
+        const { error: upErr } = await supabase.storage
+          .from('message-attachments')
+          .upload(key, file, { upsert: true, contentType: file.type });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from('message-attachments').getPublicUrl(key);
+        const type = file.type.startsWith('image/') ? 'image' : (ext === 'pdf' ? 'pdf' : 'other');
+        await supabase.from('message_attachments').insert({
+          message_id: msgRow.id,
+          file_url: pub.publicUrl,
+          file_type: type,
+          file_name: file.name
+        });
+      }
+
+      setSuccess('添付を送信しました。');
+      navigate('/community');
+    } catch (e) {
+      console.error(e);
+      setError('添付の送信に失敗しました');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -139,6 +193,20 @@ export default function Inquiry() {
               <Button type="submit" disabled={submitting}>
                 {submitting ? '送信中...' : '送信する'}
               </Button>
+            </div>
+            <div className="pt-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">画像/PDFを添付（任意）</label>
+              <div className="flex gap-2">
+                <label className="inline-flex items-center px-3 py-2 border rounded cursor-pointer bg-white">
+                  <input type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={(e)=>handleFiles(e.target.files)} />
+                  ファイルを選択
+                </label>
+                <label className="inline-flex items-center px-3 py-2 border rounded cursor-pointer bg-white">
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e)=>handleFiles(e.target.files)} />
+                  カメラで撮影
+                </label>
+              </div>
+              {uploading && <div className="text-xs text-gray-500 mt-1">アップロード中...</div>}
             </div>
           </form>
         </Card>
