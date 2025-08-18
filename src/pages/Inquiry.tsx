@@ -30,6 +30,20 @@ export default function Inquiry() {
     }
   }, [user, lineUser, effectiveUserId, navigate]);
 
+  // 送信処理中は離脱防止
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    if (submitting || uploading) {
+      window.addEventListener('beforeunload', handler);
+    }
+    return () => {
+      window.removeEventListener('beforeunload', handler);
+    };
+  }, [submitting, uploading]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -89,7 +103,7 @@ export default function Inquiry() {
 
   // 添付アップロード（画像/カメラ/PDF）
   const handleFiles = async (files: FileList | null) => {
-    if (!files) return;
+    if (!files || files.length === 0) return;
     try {
       setUploading(true);
       const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
@@ -131,6 +145,8 @@ export default function Inquiry() {
       }
 
       setSuccess('添付を送信しました。');
+      // 誤離脱対策: 送信完了後に遷移する
+      sessionStorage.setItem('communityActiveTab', 'messages');
       navigate('/community');
     } catch (e) {
       console.error(e);
@@ -142,6 +158,14 @@ export default function Inquiry() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {(submitting || uploading) && (
+        <div className="fixed inset-0 z-50 bg-white/70 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white border rounded-xl px-6 py-4 shadow-sm text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
+            <div className="text-sm text-gray-700">送信処理中です。画面を離れないでください。</div>
+          </div>
+        </div>
+      )}
       <SEO title="要望・お問い合わせ" description="アプリへのご要望やお問い合わせはこちらから" />
       <div className="max-w-2xl mx-auto px-4 py-8">
         <Card className="p-6">
