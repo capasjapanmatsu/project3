@@ -40,23 +40,47 @@ export default function Inquiry() {
       const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
       if (!uid) throw new Error('ログインが必要です');
 
-      // まだテーブルが無い想定なので、暫定で Netlify Functions の通知に送る
-      // 将来は supabase に inbox テーブルを作成して保存 + リアルタイム通知に切替
-      const res = await fetch('/.netlify/functions/app-notify', {
+      // 管理者ユーザーを取得（profiles.user_type='admin'）
+      const { data: adminProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_type', 'admin')
+        .limit(1)
+        .maybeSingle();
+
+      const adminId = adminProfile?.id as string | undefined;
+      if (!adminId) throw new Error('管理者ユーザーが見つかりません');
+
+      // 1) メッセージを保存（ユーザー→管理者）
+      const content = `[${form.category}] ${form.subject}\n\n${form.message}`;
+      const { error: msgErr } = await supabase.from('messages').insert({
+        sender_id: uid,
+        receiver_id: adminId,
+        content,
+      });
+      if (msgErr) throw msgErr;
+
+      // 2) 管理者に通知（Netlify Functions: app-notify）
+      const notifyRes = await fetch('/.netlify/functions/app-notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'inquiry',
-          user_id: uid,
-          subject: form.subject,
-          category: form.category,
-          message: form.message,
+          userId: adminId,
+          title: '新規お問い合わせ',
+          message: `${form.category}：${form.subject}`,
+          linkUrl: `${window.location.origin}/community`,
+          kind: 'inquiry',
         }),
       });
+      if (!notifyRes.ok) throw new Error('通知の送信に失敗しました');
 
-      if (!res.ok) throw new Error('送信に失敗しました');
-      setSuccess('送信しました。返信までお待ちください。');
+      // コミュニティのメッセージタブを開く指示を保存
+      sessionStorage.setItem('communityActiveTab', 'messages');
+
+      setSuccess('送信しました。コミュニティのメッセージに履歴を作成しました。');
       setForm({ category: 'ご要望', subject: '', message: '' });
+      // メッセージ画面へ遷移
+      navigate('/community');
     } catch (err) {
       setError(err instanceof Error ? err.message : '送信に失敗しました');
     } finally {

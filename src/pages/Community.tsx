@@ -30,7 +30,11 @@ export function Community() {
   const { user, effectiveUserId, lineUser, isLineAuthenticated } = useAuth();
   const uid = user?.id || lineUser?.id || effectiveUserId;
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'notifications' | 'messages' | 'blacklist' | 'nearby'>('friends');
+  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'notifications' | 'messages' | 'blacklist' | 'nearby'>(() => {
+    const preset = sessionStorage.getItem('communityActiveTab') as any;
+    sessionStorage.removeItem('communityActiveTab');
+    return preset === 'messages' ? 'messages' : 'friends';
+  });
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [friends, setFriends] = useState<Friendship[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
