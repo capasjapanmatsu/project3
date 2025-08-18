@@ -16,7 +16,7 @@ export function Footer() {
               to="/inquiry"
               className="block w-full text-center bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-bold py-3 rounded-xl shadow-lg"
             >
-              要望・お問い合わせはこちら（ログイン中）
+              要望・お問い合わせはこちら
             </Link>
           </div>
         )}
