@@ -18,6 +18,7 @@ import ScrollToTop from './components/ScrollToTop';
 import SplashScreen from './components/SplashScreen';
 // 新規ページ（問い合わせ）
 const Inquiry = React.lazy(() => import('./pages/Inquiry'));
+const AdminInquiries = React.lazy(() => import('./pages/AdminInquiries'));
 
 // 保護されたルートコンポーネント（Supabase または LIFF セッションどちらでもOK）
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -674,6 +675,13 @@ const App: React.FC = () => {
                 <AdminRoute>
                   <Suspense fallback={<DashboardSkeleton />}>
                     <AdminDashboard />
+                  </Suspense>
+                </AdminRoute>
+              } />
+              <Route path="/admin/inquiries" element={
+                <AdminRoute>
+                  <Suspense fallback={<DashboardSkeleton />}>
+                    <AdminInquiries />
                   </Suspense>
                 </AdminRoute>
               } />

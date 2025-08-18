@@ -742,13 +742,14 @@ export function AdminDashboard() {
         {/* お問い合わせタブ */}
         {activeTab === 'inquiries' && (
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">スポンサー広告お問い合わせ</h3>
-            <p className="text-gray-600 mb-4">
-              スポンサー広告に関するお問い合わせを管理できます。
-            </p>
-            <div className="text-sm text-gray-500">
-              お問い合わせ管理機能は準備中です。
-            </div>
+            <h3 className="text-lg font-semibold mb-4">お問い合わせ（ユーザー⇄管理者）</h3>
+            <p className="text-gray-600 mb-4">ユーザーからの問い合わせ・DMを一覧管理します。</p>
+            <Link to="/admin/inquiries" className="inline-block">
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Mail className="w-4 h-4 mr-2" />
+                お問い合わせ一覧へ
+              </Button>
+            </Link>
           </Card>
         )}
       </div>
