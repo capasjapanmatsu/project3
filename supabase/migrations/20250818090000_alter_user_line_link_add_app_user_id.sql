@@ -3,12 +3,27 @@
 alter table if exists public.user_line_link
   add column if not exists app_user_id uuid;
 
+-- Backfill from legacy column if present
+do $$ begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'user_line_link' and column_name = 'user_id'
+  ) then
+    update public.user_line_link set app_user_id = coalesce(app_user_id, user_id)
+    where app_user_id is null;
+  end if;
+end $$;
+
 -- 2) Ensure there is a stable primary key column `id`
 --    (existing tables created earlier may not have it)
 alter table if exists public.user_line_link
   add column if not exists id uuid;
 
-update public.user_line_link set id = gen_random_uuid() where id is null;
+-- Ensure default and not-null
+alter table if exists public.user_line_link
+  alter column id set default gen_random_uuid();
+
+update public.user_line_link set id = coalesce(id, gen_random_uuid());
 
 alter table if exists public.user_line_link
   alter column id set not null;
@@ -28,9 +43,15 @@ do $$ begin
   end if;
 end $$;
 
--- Set primary key to `id`
-alter table if exists public.user_line_link
-  add primary key (id);
+do $$ begin
+  -- Add primary key on id if not already
+  if not exists (
+    select 1 from information_schema.table_constraints
+    where table_schema = 'public' and table_name = 'user_line_link' and constraint_type = 'PRIMARY KEY'
+  ) then
+    alter table public.user_line_link add primary key (id);
+  end if;
+end $$;
 
 -- 3) Create unique pair for mapping (line_user_id, app_user_id)
 do $$ begin
