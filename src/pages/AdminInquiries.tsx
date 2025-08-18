@@ -11,7 +11,7 @@ interface ProfileLite { id: string; name: string | null }
 interface Msg { id: string; sender_id: string; receiver_id: string; content: string; created_at: string }
 
 export default function AdminInquiries() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [threads, setThreads] = useState<Array<Msg & { partner: ProfileLite }>>([]);
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
@@ -23,30 +23,30 @@ export default function AdminInquiries() {
   const cameraInputId = 'admin-inquiry-camera';
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdmin || !user?.id) return;
     (async () => {
-      // 自分(管理者)ID
-      const { data: admin } = await supabase.from('profiles').select('id, name').eq('user_type','admin').limit(1).maybeSingle();
-      if (!admin) return;
-      setMe(admin as any);
+      // 自分(管理者)のプロフィール（ログイン中のユーザー）
+      const { data: meProfile } = await supabase.from('profiles').select('id, name').eq('id', user.id).maybeSingle();
+      if (!meProfile) return;
+      setMe(meProfile as any);
 
       // 最新メッセージ一覧（管理者が関わるスレッド）
       const { data } = await supabase
         .from('latest_messages')
         .select('id, sender_id, receiver_id, content, created_at')
-        .or(`sender_id.eq.${admin.id},receiver_id.eq.${admin.id}`)
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
-      const partnerIds = Array.from(new Set((data||[]).map(m => m.sender_id === admin.id ? m.receiver_id : m.sender_id)));
+      const partnerIds = Array.from(new Set((data||[]).map(m => m.sender_id === user.id ? m.receiver_id : m.sender_id)));
       const { data: partners } = await supabase.from('profiles').select('id, name').in('id', partnerIds);
       const partnerMap = new Map<string, ProfileLite>((partners||[]).map(p => [p.id, p as ProfileLite]));
-      setThreads((data||[]).map(m => ({ ...m, partner: partnerMap.get(m.sender_id === admin.id ? m.receiver_id : m.sender_id)! })).filter(t => !!t.partner));
+      setThreads((data||[]).map(m => ({ ...m, partner: partnerMap.get(m.sender_id === user.id ? m.receiver_id : m.sender_id)! })).filter(t => !!t.partner));
 
       // URLクエリ partner= を優先
       const partnerQ = searchParams.get('partner');
       if (partnerQ) setActiveUserId(partnerQ);
     })();
-  }, [isAdmin]);
+  }, [isAdmin, user?.id]);
 
   useEffect(() => {
     (async () => {
