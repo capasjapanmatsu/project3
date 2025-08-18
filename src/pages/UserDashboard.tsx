@@ -187,6 +187,8 @@ export function UserDashboard() {
           .from('facility_reservations')
           .select(`*, facility:pet_facilities(name)`)        
           .eq('user_id', uid)
+          .neq('status', 'cancelled')
+          .gte('reserved_date', new Date(Date.now() - 24*60*60*1000).toISOString().split('T')[0])
           .order('reserved_date', { ascending: false })
           .limit(5)
       ]);

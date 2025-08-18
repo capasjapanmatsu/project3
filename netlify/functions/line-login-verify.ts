@@ -71,23 +71,8 @@ export const handler: Handler = async (event) => {
       amr: verify.amr,
     });
 
-    // --- DB UPSERT（任意: SUPABASE_SERVICE_ROLE_KEY がある場合のみ） ---
-    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
-      try {
-        const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-        // user_line_link テーブル: line_user_id(PK), name, email, updated_at
-        const { error: upsertError } = await admin
-          .from('user_line_link')
-          .upsert({ line_user_id: lineUserId, name: verify.name ?? null, email: verify.email ?? null }, { onConflict: 'line_user_id' });
-        if (upsertError) {
-          console.warn('[line-login] upsert warning', upsertError.message);
-        }
-      } catch (e) {
-        console.warn('[line-login] upsert skipped', e);
-      }
-    } else {
-      console.warn('[line-login] SUPABASE_URL or SERVICE_ROLE_KEY not set; skipping DB upsert');
-    }
+    // --- DB UPSERTはここでは行わない ---
+    // 連携は /line/link-user で行うため、ログイン検証ではセッションCookieの設定のみを行う。
 
     // --- 自前JWT発行＆Cookie設定（7日有効） ---
     let setCookieHeader: string | undefined;
