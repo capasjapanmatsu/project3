@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -23,6 +24,7 @@ export default function Inquiry() {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   useEffect(() => {
     if (!user && !lineUser && !effectiveUserId) {
@@ -73,6 +75,26 @@ export default function Inquiry() {
         .single();
       if (msgErr || !msgRow) throw msgErr;
 
+      // 添付があればここでアップロード
+      if (pendingFiles.length > 0) {
+        for (const file of pendingFiles) {
+          const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
+          const key = `${msgRow.id}/${Date.now()}_${encodeURIComponent(file.name)}`;
+          const { error: upErr } = await supabase.storage
+            .from('message-attachments')
+            .upload(key, file, { upsert: true, contentType: file.type });
+          if (upErr) throw upErr;
+          const { data: pub } = supabase.storage.from('message-attachments').getPublicUrl(key);
+          const type = file.type.startsWith('image/') ? 'image' : (ext === 'pdf' ? 'pdf' : 'other');
+          await supabase.from('message_attachments').insert({
+            message_id: msgRow.id,
+            file_url: pub.publicUrl,
+            file_type: type,
+            file_name: file.name
+          });
+        }
+      }
+
       // 2) 管理者に通知（Netlify Functions: app-notify）
       const notifyRes = await fetch('/.netlify/functions/app-notify', {
         method: 'POST',
@@ -92,6 +114,7 @@ export default function Inquiry() {
 
       setSuccess('送信しました。コミュニティのメッセージに履歴を作成しました。');
       setForm({ category: 'ご要望', message: '' });
+      setPendingFiles([]);
       // メッセージ画面へ遷移
       navigate('/community');
     } catch (err) {
@@ -101,59 +124,10 @@ export default function Inquiry() {
     }
   };
 
-  // 添付アップロード（画像/カメラ/PDF）
+  // 添付選択（送信時にまとめてアップロード）
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    try {
-      setUploading(true);
-      const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
-      if (!uid) throw new Error('ログインが必要です');
-
-      // 管理者取得
-      const { data: adminProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_type', 'admin')
-        .limit(1)
-        .maybeSingle();
-      const adminId = adminProfile?.id as string | undefined;
-      if (!adminId) throw new Error('管理者ユーザーが見つかりません');
-
-      // メッセージ行を用意
-      const { data: msgRow, error: msgErr } = await supabase
-        .from('messages')
-        .insert({ sender_id: uid, receiver_id: adminId, content: '(添付あり)' })
-        .select('id')
-        .single();
-      if (msgErr || !msgRow) throw msgErr;
-
-      for (const file of Array.from(files)) {
-        const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
-        const key = `${msgRow.id}/${Date.now()}_${encodeURIComponent(file.name)}`;
-        const { error: upErr } = await supabase.storage
-          .from('message-attachments')
-          .upload(key, file, { upsert: true, contentType: file.type });
-        if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from('message-attachments').getPublicUrl(key);
-        const type = file.type.startsWith('image/') ? 'image' : (ext === 'pdf' ? 'pdf' : 'other');
-        await supabase.from('message_attachments').insert({
-          message_id: msgRow.id,
-          file_url: pub.publicUrl,
-          file_type: type,
-          file_name: file.name
-        });
-      }
-
-      setSuccess('添付を送信しました。');
-      // 誤離脱対策: 送信完了後に遷移する
-      sessionStorage.setItem('communityActiveTab', 'messages');
-      navigate('/community');
-    } catch (e) {
-      console.error(e);
-      setError('添付の送信に失敗しました');
-    } finally {
-      setUploading(false);
-    }
+    setPendingFiles((prev) => [...prev, ...Array.from(files)]);
   };
 
   return (
@@ -202,8 +176,12 @@ export default function Inquiry() {
               />
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-gray-500">
+                {pendingFiles.length > 0 ? `添付: ${pendingFiles.length}件` : ''}
+              </div>
               <Button type="submit" disabled={submitting}>
+                <Send className="w-4 h-4 mr-1" />
                 {submitting ? '送信中...' : '送信する'}
               </Button>
             </div>
