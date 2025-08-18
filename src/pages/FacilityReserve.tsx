@@ -22,6 +22,10 @@ export default function FacilityReserve() {
   const [openTime, setOpenTime] = useState<string>('09:00');
   const [closeTime, setCloseTime] = useState<string>('18:00');
   const [submitting, setSubmitting] = useState<boolean>(false);
+  // 営業日・定休日情報
+  const [weeklyClosed, setWeeklyClosed] = useState<boolean[]>([false,false,false,false,false,false,false]);
+  const [specificClosed, setSpecificClosed] = useState<Set<string>>(new Set());
+  const [specificOpen, setSpecificOpen] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     (async () => {
@@ -44,11 +48,30 @@ export default function FacilityReserve() {
         // 営業時間
         const { data: facility } = await supabase
           .from('pet_facilities')
-          .select('opening_time, closing_time')
+          .select('opening_time, closing_time, weekly_closed_days, specific_closed_dates, specific_open_dates')
           .eq('id', facilityId)
           .maybeSingle();
         if (facility?.opening_time) setOpenTime(String(facility.opening_time).slice(0,5));
         if (facility?.closing_time) setCloseTime(String(facility.closing_time).slice(0,5));
+        // 定休日情報
+        try {
+          if (facility?.weekly_closed_days) {
+            const parsed = JSON.parse(String(facility.weekly_closed_days));
+            if (Array.isArray(parsed) && parsed.length === 7) setWeeklyClosed(parsed.map(Boolean));
+          }
+        } catch {}
+        try {
+          if (facility?.specific_closed_dates) {
+            const arr = JSON.parse(String(facility.specific_closed_dates));
+            if (Array.isArray(arr)) setSpecificClosed(new Set(arr as string[]));
+          }
+        } catch {}
+        try {
+          if (facility?.specific_open_dates) {
+            const arr = JSON.parse(String(facility.specific_open_dates));
+            if (Array.isArray(arr)) setSpecificOpen(new Set(arr as string[]));
+          }
+        } catch {}
       } finally {
         setLoading(false);
       }
@@ -56,8 +79,19 @@ export default function FacilityReserve() {
   }, [facilityId]);
 
   const slots = useMemo(() => generateTimeSlots(openTime, closeTime, unit), [openTime, closeTime, unit]);
+
+  const isClosedDay = useMemo(() => {
+    // specific_open が優先で営業、次に specific_closed で休業、それ以外は weeklyClosed
+    const d = date;
+    if (!d) return false;
+    if (specificOpen.has(d)) return false;
+    if (specificClosed.has(d)) return true;
+    const dow = new Date(`${d}T00:00:00`).getDay(); // 0=Sun
+    return Boolean(weeklyClosed[dow]);
+  }, [date, weeklyClosed, specificClosed, specificOpen]);
   // 現在時刻より1時間以降のみ（本日選択時）
   const availableSlots = useMemo(() => {
+    if (isClosedDay) return [];
     const todayStr = new Date().toISOString().split('T')[0];
     if (date !== todayStr) return slots;
     const threshold = new Date(Date.now() + 60 * 60 * 1000); // 現在+1時間
@@ -65,10 +99,11 @@ export default function FacilityReserve() {
       const startDt = new Date(`${date}T${start}:00`);
       return startDt >= threshold;
     });
-  }, [slots, date]);
+  }, [slots, date, isClosedDay]);
 
   const handleReserve = async () => {
     if (!user) { navigate('/liff/login'); return; }
+    if (isClosedDay) { alert('本日は定休日のため予約できません'); return; }
     if (!slot) { alert('時間を選択してください'); return; }
     if (!customerName.trim()) { alert('予約者名を入力してください'); return; }
     if (seats.length > 0 && !seat) { alert('座席を選択してください'); return; }
@@ -195,6 +230,12 @@ export default function FacilityReserve() {
   if (loading) return <div className="p-6">読み込み中...</div>;
   if (!enabled) return <div className="p-6">この施設では現在予約を受け付けていません。</div>;
 
+  // 予約可能な日付の範囲
+  const minDate = new Date();
+  const maxDate = new Date();
+  maxDate.setDate(minDate.getDate() + daysAhead);
+  const fmt = (dt: Date) => dt.toISOString().split('T')[0];
+
   return (
     <div className="max-w-2xl mx-auto p-6">
       <Card className="p-6">
@@ -206,7 +247,10 @@ export default function FacilityReserve() {
           </div>
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">日付</span>
-            <input type="date" className="border rounded px-2 py-1" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input type="date" className="border rounded px-2 py-1" value={date} onChange={(e) => setDate(e.target.value)} min={fmt(minDate)} max={fmt(maxDate)} />
+            {isClosedDay && (
+              <span className="ml-2 text-xs text-red-600">定休日のため予約不可</span>
+            )}
           </div>
           {seats.length > 0 && (
             <div className="flex items-center space-x-2">
@@ -219,7 +263,7 @@ export default function FacilityReserve() {
           )}
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">時間</span>
-            <select className="border rounded px-2 py-1" value={slot} onChange={(e) => setSlot(e.target.value)}>
+            <select className="border rounded px-2 py-1" value={slot} onChange={(e) => setSlot(e.target.value)} disabled={isClosedDay}>
               <option value="">選択</option>
               {availableSlots.map((t) => <option key={`${t.start}-${t.end}`} value={`${t.start}-${t.end}`}>{t.start} - {t.end}</option>)}
             </select>
@@ -228,7 +272,7 @@ export default function FacilityReserve() {
             <span className="text-sm text-gray-600">人数</span>
             <input type="number" min={1} max={20} className="border rounded px-2 py-1 w-24" value={guestCount} onChange={(e) => setGuestCount(Number(e.target.value))} />
           </div>
-          <Button onClick={handleReserve} className="w-full" disabled={submitting}>{submitting ? '処理中...' : '予約を確定'}</Button>
+          <Button onClick={handleReserve} className="w-full" disabled={submitting || isClosedDay}>{submitting ? '処理中...' : '予約を確定'}</Button>
         </div>
       </Card>
     </div>
