@@ -1,4 +1,4 @@
-import { MessageSquare, Send, User as UserIcon } from 'lucide-react';
+import { MessageSquare, Send, User as UserIcon, Paperclip, Camera } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Button from '../components/Button';
@@ -19,6 +19,8 @@ export default function AdminInquiries() {
   const [me, setMe] = useState<ProfileLite | null>(null);
   const [text, setText] = useState('');
   const [uploading, setUploading] = useState(false);
+  const fileInputId = 'admin-inquiry-file';
+  const cameraInputId = 'admin-inquiry-camera';
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -160,13 +162,19 @@ export default function AdminInquiries() {
                   <MessageBubble key={m.id} message={m} myId={me!.id} />
                 ))}
               </div>
-              <div className="pt-3 mt-2 border-t flex gap-2">
+              <div className="pt-3 mt-2 border-t flex items-center gap-2">
                 <input value={text} onChange={(e)=>setText(e.target.value)} className="flex-1 border rounded px-3 py-2" placeholder="メッセージを入力"/>
-                <Button onClick={send}><Send className="w-4 h-4 mr-1"/>送信</Button>
-                <label className="inline-flex items-center px-3 py-2 border rounded cursor-pointer bg-white">
-                  <input type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={(e)=>onSelectFiles(e.target.files)} />
-                  添付
-                </label>
+                <input id={fileInputId} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={(e)=>onSelectFiles(e.target.files)} />
+                <button type="button" onClick={() => document.getElementById(fileInputId)?.click()} className="w-10 h-10 flex items-center justify-center rounded-full border bg-white hover:bg-gray-50" title="ファイル添付">
+                  <Paperclip className="w-5 h-5 text-gray-700" />
+                </button>
+                <input id={cameraInputId} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e)=>onSelectFiles(e.target.files)} />
+                <button type="button" onClick={() => document.getElementById(cameraInputId)?.click()} className="w-10 h-10 flex items-center justify-center rounded-full border bg-white hover:bg-gray-50" title="カメラ">
+                  <Camera className="w-5 h-5 text-gray-700" />
+                </button>
+                <button type="button" onClick={send} className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-600 hover:bg-blue-700 text-white" title="送信">
+                  <Send className="w-5 h-5" />
+                </button>
               </div>
               {uploading && <div className="text-xs text-gray-500 mt-1">アップロード中...</div>}
             </div>
