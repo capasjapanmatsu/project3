@@ -9,6 +9,18 @@ export function Footer() {
   return (
     <footer className="bg-gray-900 text-white py-16 pb-28 md:pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* 目立つお問い合わせリンク（フッター上部） */}
+        {isAuthenticated && (
+          <div className="mb-8">
+            <Link
+              to="/inquiry"
+              className="block w-full text-center bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-bold py-3 rounded-xl shadow-lg"
+            >
+              要望・お問い合わせはこちら（ログイン中）
+            </Link>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           {/* Logo & Description */}
           <div className="md:col-span-2 lg:col-span-1">

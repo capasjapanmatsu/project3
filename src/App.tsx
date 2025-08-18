@@ -16,6 +16,8 @@ import { Navbar } from './components/Navbar';
 import { SEO } from './components/SEO';
 import ScrollToTop from './components/ScrollToTop';
 import SplashScreen from './components/SplashScreen';
+// 新規ページ（問い合わせ）
+const Inquiry = React.lazy(() => import('./pages/Inquiry'));
 
 // 保護されたルートコンポーネント（Supabase または LIFF セッションどちらでもOK）
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -421,6 +423,14 @@ const App: React.FC = () => {
                 <Suspense fallback={<PageSkeleton />}>
                   <Community />
                 </Suspense>
+              } />
+              {/* お問い合わせ（ログイン限定） */}
+              <Route path="/inquiry" element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <Inquiry />
+                  </Suspense>
+                </ProtectedRoute>
               } />
               <Route path="/contact" element={
                 <Suspense fallback={<PageSkeleton />}>
