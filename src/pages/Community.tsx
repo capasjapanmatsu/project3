@@ -39,6 +39,7 @@ export function Community() {
   const [friends, setFriends] = useState<Friendship[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [unreadFrom, setUnreadFrom] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFriend, setSelectedFriend] = useState<any>(null);
   const [messageText, setMessageText] = useState('');
@@ -212,6 +213,7 @@ export function Community() {
   };
 
   const fetchMessages = async (uid: string) => {
+    // 最新メッセージ（相手ごとに1件）
     const { data, error } = await supabase
       .from('latest_messages')
       .select(`
@@ -220,9 +222,31 @@ export function Community() {
       `)
       .or(`sender_id.eq.${uid},receiver_id.eq.${uid}`)
       .order('created_at', { ascending: false });
-    
     if (error) throw error;
-    setMessages(data || []);
+    const rows = data || [];
+    // 相手ごとに1件に確実に絞る（念のためクライアント側でも重複排除）
+    const dedup: Message[] = [] as any;
+    const seen: Record<string, boolean> = {};
+    for (const m of rows as any[]) {
+      const otherId = m.sender_id === uid ? m.receiver_id : m.sender_id;
+      if (!seen[otherId]) {
+        seen[otherId] = true;
+        dedup.push(m);
+      }
+    }
+    setMessages(dedup);
+
+    // 未読件数（自分宛てで未読のものを送信者ごとに集計）
+    const { data: unread } = await supabase
+      .from('messages')
+      .select('sender_id, read')
+      .eq('receiver_id', uid)
+      .eq('read', false);
+    const counts: Record<string, number> = {};
+    (unread || []).forEach((r: any) => {
+      counts[r.sender_id] = (counts[r.sender_id] || 0) + 1;
+    });
+    setUnreadFrom(counts);
   };
 
   const fetchDogEncounters = async (uid: string) => {
@@ -318,7 +342,7 @@ export function Community() {
       if (error) throw error;
       
       // メッセージ一覧を更新
-      await fetchMessages();
+      await fetchMessages(uid!);
       
       // 入力フィールドをクリア
       setMessageText('');
@@ -901,11 +925,15 @@ export function Community() {
                             </div>
                             <p className="text-sm text-gray-700 mt-1">{message.content}</p>
                           </div>
-                          {!message.read && isReceived && (
-                            <div className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                              未読
-                            </div>
-                          )}
+                          {(() => {
+                            const otherId = (message.receiver_id === uid ? message.sender_id : message.receiver_id);
+                            const c = unreadFrom[otherId] || 0;
+                            return c > 0 ? (
+                              <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                                未読 {c}
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                       </Card>
                     );
@@ -930,12 +958,7 @@ export function Community() {
                     </button>
                   </div>
                   
-                  <div className="h-64 overflow-y-auto mb-4 p-3 bg-gray-50 rounded-lg">
-                    {/* ここにメッセージ履歴を表示 */}
-                    <div className="text-center text-gray-500 text-sm py-4">
-                      メッセージ履歴はまだありません
-                    </div>
-                  </div>
+                  <MessageThread viewerId={uid!} partnerId={selectedFriend.friend_id} onMarkedRead={() => fetchMessages(uid!)} />
 
                   {/* PIN共有機能 */}
                   <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -1155,6 +1178,41 @@ export function Community() {
           </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+function MessageThread({ viewerId, partnerId, onMarkedRead }: { viewerId: string; partnerId: string; onMarkedRead: () => void }) {
+  const [items, setItems] = useState<Array<{id:string; sender_id:string; receiver_id:string; content:string; read:boolean; created_at:string}>>([]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('messages')
+        .select('id, sender_id, receiver_id, content, read, created_at')
+        .in('sender_id', [viewerId, partnerId])
+        .in('receiver_id', [viewerId, partnerId])
+        .order('created_at', { ascending: true });
+      setItems(data || []);
+      // 未読の自分宛てを既読化
+      const unreadIds = (data || []).filter(m => m.receiver_id === viewerId && m.read === false).map(m => m.id);
+      if (unreadIds.length > 0) {
+        await supabase.from('messages').update({ read: true }).in('id', unreadIds);
+        onMarkedRead();
+      }
+    })();
+  }, [viewerId, partnerId]);
+
+  return (
+    <div className="h-64 overflow-y-auto mb-4 p-3 bg-gray-50 rounded-lg space-y-2">
+      {items.length === 0 ? (
+        <div className="text-center text-gray-500 text-sm py-4">メッセージ履歴はまだありません</div>
+      ) : (
+        items.map(m => (
+          <div key={m.id} className={`flex ${m.sender_id===viewerId?'justify-end':'justify-start'}`}>
+            <div className={`px-3 py-2 rounded-lg text-sm ${m.sender_id===viewerId?'bg-blue-600 text-white':'bg-white border'}`}>{m.content}</div>
+          </div>
+        ))
+      )}
     </div>
   );
 }
