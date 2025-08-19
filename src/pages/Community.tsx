@@ -41,6 +41,7 @@ export function Community() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [unreadFrom, setUnreadFrom] = useState<Record<string, number>>({});
   const [profileMap, setProfileMap] = useState<Record<string, { name: string | null; user_type: string | null }>>({});
+  const [dogNameMap, setDogNameMap] = useState<Record<string, { name: string; gender?: string | null }>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFriend, setSelectedFriend] = useState<any>(null);
   const [messageText, setMessageText] = useState('');
@@ -261,8 +262,23 @@ export function Community() {
         map[p.id] = { name: p.name || null, user_type: p.user_type || null };
       });
       setProfileMap(map);
+
+      // 相手ユーザーのワンちゃん（最初の1匹）を取得
+      const { data: dogs } = await supabase
+        .from('dogs')
+        .select('owner_id, name, gender, created_at')
+        .in('owner_id', partnerIds)
+        .order('created_at', { ascending: true });
+      const dogMap: Record<string, { name: string; gender?: string | null }> = {};
+      (dogs || []).forEach((d: any) => {
+        if (!dogMap[d.owner_id]) {
+          dogMap[d.owner_id] = { name: d.name, gender: d.gender };
+        }
+      });
+      setDogNameMap(dogMap);
     } else {
       setProfileMap({});
+      setDogNameMap({});
     }
   };
 
@@ -915,7 +931,16 @@ export function Community() {
                     const isReceived = message.receiver_id === user?.id;
                     const otherId = message.sender_id === uid ? message.receiver_id : message.sender_id;
                     const partnerProfile = profileMap[otherId];
-                    const partnerName = partnerProfile?.user_type === 'admin' ? 'ドッグパークJP管理者' : (partnerProfile?.name || 'ワンちゃんの飼い主さん');
+                    let partnerName = 'ワンちゃんの飼い主さん';
+                    if (partnerProfile?.user_type === 'admin') {
+                      partnerName = 'ドッグパークJP管理者';
+                    } else {
+                      const dog = dogNameMap[otherId];
+                      if (dog && dog.name) {
+                        const suffix = dog.gender === 'male' || dog.gender === 'オス' ? 'くん' : dog.gender === 'female' || dog.gender === 'メス' ? 'ちゃん' : '';
+                        partnerName = `${dog.name}${suffix}の飼い主さん`;
+                      }
+                    }
                     
                     return (
                       <Card 
