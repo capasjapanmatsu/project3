@@ -266,13 +266,13 @@ export function Community() {
       // 相手ユーザーのワンちゃん（最初の1匹）を取得
       const { data: dogs } = await supabase
         .from('dogs')
-        .select('owner_id, name, gender, created_at')
+        .select('owner_id, name, gender, created_at, image_url')
         .in('owner_id', partnerIds)
         .order('created_at', { ascending: true });
-      const dogMap: Record<string, { name: string; gender?: string | null }> = {};
+      const dogMap: Record<string, { name: string; gender?: string | null; image_url?: string | null }> = {};
       (dogs || []).forEach((d: any) => {
         if (!dogMap[d.owner_id]) {
-          dogMap[d.owner_id] = { name: d.name, gender: d.gender };
+          dogMap[d.owner_id] = { name: d.name, gender: d.gender, image_url: d.image_url };
         }
       });
       setDogNameMap(dogMap);
@@ -955,8 +955,14 @@ export function Community() {
                         })}
                       >
                         <div className="flex items-start space-x-3">
-                          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                            <Users className="w-5 h-5 text-gray-500" />
+                          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+                            {partnerProfile?.user_type === 'admin' ? (
+                              <img src="/icons/icon.svg" alt="管理者" className="w-full h-full object-cover" />
+                            ) : dogNameMap[otherId]?.image_url ? (
+                              <img src={dogNameMap[otherId]?.image_url!} alt="犬" className="w-full h-full object-cover" />
+                            ) : (
+                              <Users className="w-5 h-5 text-gray-500" />
+                            )}
                           </div>
                           <div className="flex-1">
                             <div className="flex justify-between">
