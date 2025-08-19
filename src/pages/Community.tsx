@@ -40,6 +40,7 @@ export function Community() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [unreadFrom, setUnreadFrom] = useState<Record<string, number>>({});
+  const [profileMap, setProfileMap] = useState<Record<string, { name: string | null; user_type: string | null }>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFriend, setSelectedFriend] = useState<any>(null);
   const [messageText, setMessageText] = useState('');
@@ -247,6 +248,22 @@ export function Community() {
       counts[r.sender_id] = (counts[r.sender_id] || 0) + 1;
     });
     setUnreadFrom(counts);
+
+    // 相手プロフィール（名前・ユーザー種別）を取得
+    const partnerIds = dedup.map((m: any) => (m.sender_id === uid ? m.receiver_id : m.sender_id));
+    if (partnerIds.length > 0) {
+      const { data: partners } = await supabase
+        .from('profiles')
+        .select('id, name, user_type')
+        .in('id', partnerIds);
+      const map: Record<string, { name: string | null; user_type: string | null }> = {};
+      (partners || []).forEach((p: any) => {
+        map[p.id] = { name: p.name || null, user_type: p.user_type || null };
+      });
+      setProfileMap(map);
+    } else {
+      setProfileMap({});
+    }
   };
 
   const fetchDogEncounters = async (uid: string) => {
@@ -896,7 +913,9 @@ export function Community() {
                 <div className="space-y-4">
                   {messages.map((message) => {
                     const isReceived = message.receiver_id === user?.id;
-                    const otherUser = isReceived ? message.sender : null;
+                    const otherId = message.sender_id === uid ? message.receiver_id : message.sender_id;
+                    const partnerProfile = profileMap[otherId];
+                    const partnerName = partnerProfile?.user_type === 'admin' ? 'ドッグパークJP管理者' : (partnerProfile?.name || 'ワンちゃんの飼い主さん');
                     
                     return (
                       <Card 
@@ -916,9 +935,7 @@ export function Community() {
                           </div>
                           <div className="flex-1">
                             <div className="flex justify-between">
-                              <h3 className="font-semibold">
-                                {isReceived ? 'ワンちゃんの飼い主さん' : '自分'} {isReceived ? 'から' : 'から'}
-                              </h3>
+                              <h3 className="font-semibold">{partnerName}</h3>
                               <p className="text-xs text-gray-500">
                                 {new Date(message.created_at).toLocaleDateString('ja-JP')}
                               </p>
@@ -926,7 +943,6 @@ export function Community() {
                             <p className="text-sm text-gray-700 mt-1">{message.content}</p>
                           </div>
                           {(() => {
-                            const otherId = (message.receiver_id === uid ? message.sender_id : message.receiver_id);
                             const c = unreadFrom[otherId] || 0;
                             return c > 0 ? (
                               <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">

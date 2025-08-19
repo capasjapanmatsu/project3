@@ -1,7 +1,6 @@
-import { MessageSquare, Send, User as UserIcon, Paperclip, Camera } from 'lucide-react';
+import { Camera, MessageSquare, Paperclip, Send, User as UserIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import Button from '../components/Button';
 import Card from '../components/Card';
 import { SEO } from '../components/SEO';
 import useAuth from '../context/AuthContext';
