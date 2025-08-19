@@ -45,12 +45,13 @@ export function Community() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [unreadFrom, setUnreadFrom] = useState<Record<string, number>>({});
-  const [profileMap, setProfileMap] = useState<Record<string, { name: string | null; user_type: string | null }>>({});
+  const [profileMap, setProfileMap] = useState<Record<string, { name: string | null; nickname: string | null; user_type: string | null }>>({});
   const [dogNameMap, setDogNameMap] = useState<Record<string, { name: string; gender?: string | null }>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFriend, setSelectedFriend] = useState<any>(null);
   const [messageText, setMessageText] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [messageRefreshKey, setMessageRefreshKey] = useState(0);
   const [dogEncounters, setDogEncounters] = useState<DogEncounter[]>([]);
   const [userDogs, setUserDogs] = useState<Dog[]>([]);
   const [error, setError] = useState('');
@@ -255,16 +256,16 @@ export function Community() {
     });
     setUnreadFrom(counts);
 
-    // 相手プロフィール（名前・ユーザー種別）を取得
+    // 相手プロフィール（名前・ニックネーム・ユーザー種別）を取得
     const partnerIds = dedup.map((m: any) => (m.sender_id === uid ? m.receiver_id : m.sender_id));
     if (partnerIds.length > 0) {
       const { data: partners } = await supabase
         .from('profiles')
-        .select('id, name, user_type')
+        .select('id, name, nickname, user_type')
         .in('id', partnerIds);
-      const map: Record<string, { name: string | null; user_type: string | null }> = {};
+      const map: Record<string, { name: string | null; nickname: string | null; user_type: string | null }> = {};
       (partners || []).forEach((p: any) => {
-        map[p.id] = { name: p.name || null, user_type: p.user_type || null };
+        map[p.id] = { name: p.name || null, nickname: p.nickname || null, user_type: p.user_type || null };
       });
       setProfileMap(map);
 
@@ -290,7 +291,7 @@ export function Community() {
       const target = dedup.find((m: any) => (m.sender_id === uid ? m.receiver_id : m.sender_id) === openPartnerPreset);
       if (target) {
         const otherId = target.sender_id === uid ? target.receiver_id : target.sender_id;
-        const partnerProfile = map[otherId] || { name: '', user_type: 'user' } as any;
+        const partnerProfile = map[otherId] || { name: '', nickname: '', user_type: 'user' } as any;
         setSelectedFriend({
           id: target.id,
           friend_id: otherId,
@@ -399,6 +400,9 @@ export function Community() {
       
       // 入力フィールドをクリア
       setMessageText('');
+
+      // スレッドの再読み込み（モーダル内の履歴を即時反映）
+      setMessageRefreshKey((k) => k + 1);
 
       // 受信者へ通知（アプリ内＋LINE）※本文は送らない
       try {
@@ -959,6 +963,9 @@ export function Community() {
                       if (dog && dog.name) {
                         const suffix = dog.gender === 'male' || dog.gender === 'オス' ? 'くん' : dog.gender === 'female' || dog.gender === 'メス' ? 'ちゃん' : '';
                         partnerName = `${dog.name}${suffix}の飼い主さん`;
+                      } else if (partnerProfile?.user_type === 'owner') {
+                        // オーナーでワンちゃん未登録の場合はニックネームを表示
+                        partnerName = partnerProfile.nickname || partnerProfile.name || 'オーナー';
                       }
                     }
                     
@@ -1016,7 +1023,17 @@ export function Community() {
               <div className="bg-white rounded-lg max-w-lg w-full">
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">ワンちゃんの飼い主さんとのメッセージ</h2>
+                    <h2 className="text-xl font-semibold">{(() => {
+                      const partner = profileMap[selectedFriend.friend_id];
+                      const dog = dogNameMap[selectedFriend.friend_id];
+                      if (partner?.user_type === 'admin') return 'ドッグパークJP管理者とのメッセージ';
+                      if (dog?.name) {
+                        const suffix = dog.gender === 'male' || dog.gender === 'オス' ? 'くん' : dog.gender === 'female' || dog.gender === 'メス' ? 'ちゃん' : '';
+                        return `${dog.name}${suffix}の飼い主さんとのメッセージ`;
+                      }
+                      if (partner?.user_type === 'owner') return `${partner.nickname || partner.name || 'オーナー'}さんとのメッセージ`;
+                      return 'ワンちゃんの飼い主さんとのメッセージ';
+                    })()}</h2>
                     <button
                       onClick={() => setSelectedFriend(null)}
                       className="text-gray-500 hover:text-gray-700"
@@ -1025,7 +1042,7 @@ export function Community() {
                     </button>
                   </div>
                   
-                  <MessageThread viewerId={uid!} partnerId={selectedFriend.friend_id} onMarkedRead={() => fetchMessages(uid!)} />
+                  <MessageThread viewerId={uid!} partnerId={selectedFriend.friend_id} refreshKey={messageRefreshKey} onMarkedRead={() => fetchMessages(uid!)} />
 
                   {/* PIN共有機能 */}
                   <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -1249,7 +1266,7 @@ export function Community() {
   );
 }
 
-function MessageThread({ viewerId, partnerId, onMarkedRead }: { viewerId: string; partnerId: string; onMarkedRead: () => void }) {
+function MessageThread({ viewerId, partnerId, refreshKey, onMarkedRead }: { viewerId: string; partnerId: string; refreshKey?: number; onMarkedRead: () => void }) {
   const [items, setItems] = useState<Array<{id:string; sender_id:string; receiver_id:string; content:string; read:boolean; created_at:string}>>([]);
   useEffect(() => {
     (async () => {
@@ -1267,7 +1284,7 @@ function MessageThread({ viewerId, partnerId, onMarkedRead }: { viewerId: string
         onMarkedRead();
       }
     })();
-  }, [viewerId, partnerId]);
+  }, [viewerId, partnerId, refreshKey]);
 
   return (
     <div className="h-64 overflow-y-auto mb-4 p-3 bg-gray-50 rounded-lg space-y-2">
