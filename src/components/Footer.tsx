@@ -24,15 +24,15 @@ export function Footer() {
           
           {/* Navigation Links */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">サービス</h3>
             {isAuthenticated && (
               <Link
                 to="/inquiry"
-                className="block w-full text-center bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-bold py-2 rounded-lg shadow mb-4"
+                className="block w-full text-center bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-bold py-2 rounded-lg shadow mb-3"
               >
                 要望・お問い合わせはこちら
               </Link>
             )}
+            <h3 className="text-lg font-semibold mb-4">サービス</h3>
             <ul className="space-y-2">
               <li>
                 <Link to="/" className="text-gray-400 hover:text-white transition-colors">
