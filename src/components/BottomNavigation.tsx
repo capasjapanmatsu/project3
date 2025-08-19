@@ -86,11 +86,11 @@ export function BottomNavigation() {
   };
   
   const navItems = [
-    { path: '/', label: 'ホーム', icon: Home },
-    { path: '/parks', label: 'ドッグラン', icon: MapPin },
-    { path: '/access-control', label: '入退場', icon: Key },
-    { path: '/community', label: 'コミュニティ', icon: Users },
-    { path: '/dashboard', label: 'マイページ', icon: User },
+    { path: '/', label: 'ホーム', icon: Home, badge: 0 },
+    { path: '/parks', label: 'ドッグラン', icon: MapPin, badge: 0 },
+    { path: '/access-control', label: '入退場', icon: Key, badge: 0 },
+    { path: '/community', label: 'コミュニティ', icon: Users, badge: unreadNotifications + unreadMessages },
+    { path: '/dashboard', label: 'マイページ', icon: User, badge: 0 },
   ];
 
   return (
@@ -108,13 +108,15 @@ export function BottomNavigation() {
                 active ? 'text-blue-600' : 'text-gray-500'
               }`}
             >
-              <Icon className={`w-6 h-6 ${active ? 'text-blue-600' : 'text-gray-500'}`} />
+              <div className="relative">
+                <Icon className={`w-6 h-6 ${active ? 'text-blue-600' : 'text-gray-500'}`} />
+                {item.badge > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center">
+                    {item.badge > 9 ? '9+' : item.badge}
+                  </span>
+                )}
+              </div>
               <span className="text-xs mt-1">{item.label}</span>
-              {item.path === '/community' && (unreadNotifications + unreadMessages) > 0 && (
-                <span className="absolute top-1 right-4 bg-red-500 text-white text-[10px] rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center">
-                  {(unreadNotifications + unreadMessages) > 9 ? '9+' : (unreadNotifications + unreadMessages)}
-                </span>
-              )}
             </Link>
           );
         })}
