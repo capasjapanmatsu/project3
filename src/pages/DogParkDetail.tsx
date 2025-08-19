@@ -9,11 +9,11 @@ import {
     Heart,
     Key,
     MapPin,
+    MessageSquare,
     RefreshCw,
     Shield,
     Star,
     Users,
-    MessageSquare,
     X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -28,8 +28,8 @@ import { ParkRentalInfo } from '../components/park/ParkRentalInfo';
 import { ParkReviewSection } from '../components/park/ParkReviewSection';
 import useAuth from '../context/AuthContext';
 import type { Dog, DogPark, DogParkReview, Profile, Reservation, UserParkReview } from '../types';
-import { supabase } from '../utils/supabase';
 import { PARK_PLACEHOLDER_SVG } from '../utils/placeholders';
+import { supabase } from '../utils/supabase';
 
 interface ParkImage {
   id: string;
@@ -125,42 +125,25 @@ export function DogParkDetail() {
       setPark(parkData);
 
       // 画像の優先処理（メイン画像を最優先）
-      if (!imageResult.error && imageResult.data) {
-        const priorityImages: ParkImage[] = [];
-        
-        // メイン画像を最優先で追加
-        if (parkData.image_url) {
-          priorityImages.push({
-            id: 'main',
-            url: parkData.image_url,
-            caption: `${parkData.name} - メイン画像`
-          });
-        }
-        
-        // カバー画像を追加
-        if (parkData.cover_image_url) {
-          priorityImages.push({
-            id: 'cover',
-            url: parkData.cover_image_url,
-            caption: `${parkData.name} - カバー画像`
-          });
-        }
-        
-        // 追加の画像を追加
-        imageResult.data.forEach(img => {
-          priorityImages.push({
-            id: img.id,
-            url: img.image_url,
-            caption: img.caption || `${parkData.name} - 施設画像`
-          });
-        });
-        
-        // 画像が1枚も取得できなかった場合はローカルのプレースホルダーを使用
-        if (priorityImages.length === 0) {
-          priorityImages.push({ id: 'placeholder', url: PARK_PLACEHOLDER_SVG, caption: '画像未設定' });
-        }
-        setParkImages(priorityImages);
+      const priorityImages: ParkImage[] = [];
+      // メイン画像（dog_parks.image_url）
+      if (parkData.image_url) {
+        priorityImages.push({ id: 'main', url: parkData.image_url, caption: `${parkData.name} - メイン画像` });
       }
+      // カバー画像
+      if ((parkData as any).cover_image_url) {
+        priorityImages.push({ id: 'cover', url: (parkData as any).cover_image_url, caption: `${parkData.name} - カバー画像` });
+      }
+      // サブ画像（dog_park_images）
+      if (!imageResult.error && Array.isArray(imageResult.data)) {
+        imageResult.data.forEach((img: any) => {
+          priorityImages.push({ id: img.id, url: img.image_url, caption: img.caption || `${parkData.name} - 施設画像` });
+        });
+      }
+      if (priorityImages.length === 0) {
+        priorityImages.push({ id: 'placeholder', url: PARK_PLACEHOLDER_SVG, caption: '画像未設定' });
+      }
+      setParkImages(priorityImages);
 
       // 最低限の情報で画面を表示可能にする
       setIsLoading(false);
