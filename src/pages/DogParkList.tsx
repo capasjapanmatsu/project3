@@ -486,7 +486,8 @@ export function DogParkList() {
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
                 }`}
               >
-                🐕 ドッグラン
+                <span className="inline-block w-4 h-4 mr-2 align-middle rounded-full bg-current" style={{ mask: 'url(/icons/dog-run.svg) no-repeat center / contain', WebkitMask: 'url(/icons/dog-run.svg) no-repeat center / contain' }} />
+                ドッグラン
               </button>
               <button
                 onClick={() => setActiveView('facilities')}
@@ -496,7 +497,8 @@ export function DogParkList() {
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
                 }`}
               >
-                🏢 ワンちゃんと行ける施設
+                <span className="inline-block w-4 h-4 mr-2 align-middle rounded-sm bg-current" style={{ mask: 'url(/icons/building-simple.svg) no-repeat center / contain', WebkitMask: 'url(/icons/building-simple.svg) no-repeat center / contain' }} />
+                ワンちゃんと行ける施設
               </button>
             </div>
           </div>

@@ -104,7 +104,8 @@ export function DogParkCard({ park, userLocation, distance }: DogParkCardProps) 
         {/* パーク名と営業状況 */}
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1">
-            <h3 className="font-semibold text-lg text-gray-900">
+            <h3 className="font-semibold text-lg text-gray-900 flex items-center">
+              <span className="inline-block w-4 h-4 mr-2 align-middle bg-gray-700" style={{ mask: 'url(/icons/dog-run.svg) no-repeat center / contain', WebkitMask: 'url(/icons/dog-run.svg) no-repeat center / contain' }} />
               {park.name}
             </h3>
             {/* メンテナンス情報 */}
