@@ -365,8 +365,8 @@ export function DogParkList() {
     return (
       <div className="min-h-screen bg-gray-50">
         <EmptyState
-          title="ドッグランが見つかりません"
-          description="まだドッグランのデータが登録されていません。"
+          title="スマートドッグランが見つかりません"
+          description="まだスマートドッグランのデータが登録されていません。"
         />
       </div>
     );
@@ -389,8 +389,8 @@ export function DogParkList() {
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900">ドッグラン一覧</h1>
-            <p className="mt-2 text-gray-600">お近くのドッグランを見つけましょう</p>
+            <h1 className="text-3xl font-bold text-gray-900">スマートドッグラン一覧</h1>
+            <p className="mt-2 text-gray-600">お近くのスマートドッグランを見つけましょう</p>
           </div>
         </div>
       </div>
@@ -488,7 +488,7 @@ export function DogParkList() {
                 }`}
               >
                 <MapPin className="w-4 h-4 mr-2 inline text-current" />
-                ドッグラン
+                スマートドッグラン
               </button>
               <button
                 onClick={() => setActiveView('facilities')}
@@ -588,7 +588,7 @@ export function DogParkList() {
         {/* リスト表示 */}
         {activeView === 'dogparks' && (
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">ドッグラン一覧</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">スマートドッグラン一覧</h2>
             {parks.length === 0 ? (
               <EmptyState
                 title="ドッグランが見つかりません"
