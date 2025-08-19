@@ -955,9 +955,9 @@ export function Community() {
                         })}
                       >
                         <div className="flex items-start space-x-3">
-                          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+                          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden">
                             {partnerProfile?.user_type === 'admin' ? (
-                              <img src="/icons/icon.svg" alt="管理者" className="w-full h-full object-cover" />
+                              <img src="/icons/icon_android_96x96.png" alt="管理者" className="w-full h-full object-contain p-1" />
                             ) : dogNameMap[otherId]?.image_url ? (
                               <img src={dogNameMap[otherId]?.image_url!} alt="犬" className="w-full h-full object-cover" />
                             ) : (
