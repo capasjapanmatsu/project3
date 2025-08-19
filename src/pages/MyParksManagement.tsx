@@ -254,6 +254,22 @@ export function MyParksManagement() {
               <Building className="w-8 h-8 text-green-600 mr-3" />
               管理中ドッグラン一覧
             </h1>
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+              <p className="text-sm text-blue-800">
+                不明な点がありましたらお気軽にお問合せください。
+              </p>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => {
+                  sessionStorage.setItem('communityActiveTab', 'messages');
+                  // 管理者とのスレッドを開くため、partnerIdは空。コミュニティ画面で管理者スレッドを選択してもらう
+                  // 将来的に管理者ユーザーIDが分かる場合は communityOpenPartnerId を設定
+                  navigate('/community');
+                }}
+              >
+                管理者に問い合わせ
+              </Button>
+            </div>
           </div>
 
           {/* 新規ドッグラン募集バナー */}

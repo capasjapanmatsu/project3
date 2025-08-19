@@ -167,6 +167,18 @@ export function MyFacilitiesManagement() {
               <p className="text-gray-600 mt-2">
                 あなたが管理するペット関連施設 ({facilities.length}施設) の詳細管理
               </p>
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+                <p className="text-sm text-blue-800">不明な点がありましたらお気軽にお問合せください。</p>
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={() => {
+                    sessionStorage.setItem('communityActiveTab', 'messages');
+                    navigate('/community');
+                  }}
+                >
+                  管理者に問い合わせ
+                </Button>
+              </div>
             </div>
             
             <Link to="/facility-registration">
