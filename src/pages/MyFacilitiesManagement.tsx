@@ -40,6 +40,9 @@ export function MyFacilitiesManagement() {
   const navigate = useNavigate();
   const [facilities, setFacilities] = useState<PetFacility[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showInquiry, setShowInquiry] = useState(false);
+  const [inquiryText, setInquiryText] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     const fetchFacilities = async () => {
@@ -169,15 +172,7 @@ export function MyFacilitiesManagement() {
               </p>
               <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
                 <p className="text-sm text-blue-800">不明な点がありましたらお気軽にお問合せください。</p>
-                <Button
-                  className="bg-blue-600 hover:bg-blue-700"
-                  onClick={() => {
-                    sessionStorage.setItem('communityActiveTab', 'messages');
-                    navigate('/community');
-                  }}
-                >
-                  管理者に問い合わせ
-                </Button>
+                <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => setShowInquiry(true)}>管理者に問い合わせ</Button>
               </div>
             </div>
             
@@ -306,6 +301,58 @@ export function MyFacilitiesManagement() {
           </div>
         )}
       </div>
+      {showInquiry && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg p-6">
+            <h2 className="text-lg font-semibold mb-3">管理者に問い合わせ</h2>
+            <p className="text-sm text-gray-600 mb-3">お問い合わせ内容をご記入ください。送信すると同時にメッセージスレッドが作成されます。</p>
+            <textarea
+              className="w-full border rounded-md p-3 h-32 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="お問い合わせ内容"
+              value={inquiryText}
+              onChange={(e) => setInquiryText(e.target.value)}
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setShowInquiry(false)}>キャンセル</Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700"
+                disabled={sending || !inquiryText.trim()}
+                onClick={async () => {
+                  if (!user) { navigate('/liff/login'); return; }
+                  setSending(true);
+                  try {
+                    const { data: admin } = await supabase
+                      .from('profiles')
+                      .select('id')
+                      .eq('user_type', 'admin')
+                      .limit(1)
+                      .single();
+                    const adminId = admin?.id;
+                    if (!adminId) { alert('管理者に送信できませんでした'); setSending(false); return; }
+                    await supabase.from('messages').insert({
+                      sender_id: user.id,
+                      receiver_id: adminId,
+                      content: `（管理中施設一覧からの問い合わせ）\n${inquiryText.trim()}`
+                    });
+                    sessionStorage.setItem('communityActiveTab', 'messages');
+                    sessionStorage.setItem('communityOpenPartnerId', adminId);
+                    navigate('/community');
+                  } catch (e) {
+                    console.error(e);
+                    alert('送信に失敗しました');
+                  } finally {
+                    setSending(false);
+                    setShowInquiry(false);
+                    setInquiryText('');
+                  }
+                }}
+              >
+                {sending ? '送信中...' : '送信してメッセージを開く'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 } 

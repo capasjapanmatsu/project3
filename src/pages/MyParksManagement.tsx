@@ -33,6 +33,9 @@ export function MyParksManagement() {
   const [ownedParks, setOwnedParks] = useState<DogPark[]>([]);
   const [parkStats, setParkStats] = useState<Record<string, ParkStats>>({});
   const [loading, setLoading] = useState(true);
+  const [showInquiry, setShowInquiry] = useState(false);
+  const [inquiryText, setInquiryText] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -260,12 +263,7 @@ export function MyParksManagement() {
               </p>
               <Button
                 className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => {
-                  sessionStorage.setItem('communityActiveTab', 'messages');
-                  // 管理者とのスレッドを開くため、partnerIdは空。コミュニティ画面で管理者スレッドを選択してもらう
-                  // 将来的に管理者ユーザーIDが分かる場合は communityOpenPartnerId を設定
-                  navigate('/community');
-                }}
+                onClick={() => setShowInquiry(true)}
               >
                 管理者に問い合わせ
               </Button>
@@ -434,6 +432,58 @@ export function MyParksManagement() {
           </div>
         )}
       </div>
+      {showInquiry && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg p-6">
+            <h2 className="text-lg font-semibold mb-3">管理者に問い合わせ</h2>
+            <p className="text-sm text-gray-600 mb-3">お問い合わせ内容をご記入ください。送信すると同時にメッセージスレッドが作成されます。</p>
+            <textarea
+              className="w-full border rounded-md p-3 h-32 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="お問い合わせ内容"
+              value={inquiryText}
+              onChange={(e) => setInquiryText(e.target.value)}
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setShowInquiry(false)}>キャンセル</Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700"
+                disabled={sending || !inquiryText.trim()}
+                onClick={async () => {
+                  if (!user) { navigate('/liff/login'); return; }
+                  setSending(true);
+                  try {
+                    const { data: admin } = await supabase
+                      .from('profiles')
+                      .select('id')
+                      .eq('user_type', 'admin')
+                      .limit(1)
+                      .single();
+                    const adminId = admin?.id;
+                    if (!adminId) { alert('管理者に送信できませんでした'); setSending(false); return; }
+                    await supabase.from('messages').insert({
+                      sender_id: user.id,
+                      receiver_id: adminId,
+                      content: `（管理中ドッグラン一覧からの問い合わせ）\n${inquiryText.trim()}`
+                    });
+                    sessionStorage.setItem('communityActiveTab', 'messages');
+                    sessionStorage.setItem('communityOpenPartnerId', adminId);
+                    navigate('/community');
+                  } catch (e) {
+                    console.error(e);
+                    alert('送信に失敗しました');
+                  } finally {
+                    setSending(false);
+                    setShowInquiry(false);
+                    setInquiryText('');
+                  }
+                }}
+              >
+                {sending ? '送信中...' : '送信してメッセージを開く'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 } 
