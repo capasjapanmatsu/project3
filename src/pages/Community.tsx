@@ -948,8 +948,8 @@ export function Community() {
                         className={`p-4 ${!message.read && isReceived ? 'border-l-4 border-blue-500' : ''}`}
                         onClick={() => setSelectedFriend({
                           id: message.id,
-                          friend_id: isReceived ? message.sender_id : message.receiver_id,
-                          friend: otherUser || { id: '', name: '', user_type: 'user', created_at: new Date().toISOString() },
+                          friend_id: otherId,
+                          friend: { id: otherId, name: partnerName, user_type: partnerProfile?.user_type || 'user', created_at: new Date().toISOString() },
                           dog_count: 0,
                           created_at: new Date().toISOString()
                         })}
