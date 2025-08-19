@@ -5,6 +5,7 @@ import {
     GraduationCap,
     Heart,
     Home,
+    MapPin,
     Scissors,
     ShoppingBag,
     Star,
@@ -486,7 +487,7 @@ export function DogParkList() {
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
                 }`}
               >
-                <span className="inline-block w-4 h-4 mr-2 align-middle rounded-full bg-current" style={{ mask: 'url(/icons/dog-run.svg) no-repeat center / contain', WebkitMask: 'url(/icons/dog-run.svg) no-repeat center / contain' }} />
+                <MapPin className="w-4 h-4 mr-2 inline text-current" />
                 ドッグラン
               </button>
               <button
@@ -497,7 +498,7 @@ export function DogParkList() {
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
                 }`}
               >
-                <span className="inline-block w-4 h-4 mr-2 align-middle rounded-sm bg-current" style={{ mask: 'url(/icons/building-simple.svg) no-repeat center / contain', WebkitMask: 'url(/icons/building-simple.svg) no-repeat center / contain' }} />
+                <MapPin className="w-4 h-4 mr-2 inline text-current" />
                 ワンちゃんと行ける施設
               </button>
             </div>

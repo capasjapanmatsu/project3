@@ -271,7 +271,7 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
         {/* カテゴリとステータス */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
-            <Icon className={`w-5 h-5 text-gray-700`} />
+            <MapPin className="w-5 h-5 text-gray-700" />
             <span className="text-sm text-gray-600">{facility.category_name || categoryInfo.label}</span>
           </div>
           
