@@ -13,6 +13,7 @@ import {
     Shield,
     Star,
     Users,
+    MessageSquare,
     X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -498,6 +499,35 @@ export function DogParkDetail() {
   // 手動更新ボタン
   const handleManualUpdate = () => {
     updateParkData();
+  };
+
+  // オーナー問い合わせ
+  const handleContactOwner = async () => {
+    if (!user) {
+      navigate('/liff/login');
+      return;
+    }
+    if (!park?.owner_id) {
+      alert('このドッグランのオーナー情報が見つかりません。');
+      return;
+    }
+    if (park.owner_id === user.id) {
+      sessionStorage.setItem('communityActiveTab', 'messages');
+      navigate('/community');
+      return;
+    }
+    try {
+      // スレッド作成用に空メッセージを送っておく（相手側に通知が行く）
+      await supabase.from('messages').insert({
+        sender_id: user.id,
+        receiver_id: park.owner_id,
+        content: '（ドッグラン詳細ページからの問い合わせ）'
+      });
+    } catch {}
+    sessionStorage.setItem('communityActiveTab', 'messages');
+    // 可能なら相手IDを指定して自動で開く（Community側で対応）
+    sessionStorage.setItem('communityOpenPartnerId', park.owner_id);
+    navigate('/community');
   };
 
   if (isLoading) {
@@ -1135,6 +1165,14 @@ export function DogParkDetail() {
                     </Button>
                   </div>
                 </div>
+              </Card>
+
+              {/* オーナーに問い合わせ */}
+              <Card className="p-4">
+                <Button onClick={handleContactOwner} className="w-full bg-green-600 hover:bg-green-700 text-lg py-3 flex items-center justify-center">
+                  <MessageSquare className="w-5 h-5 mr-2" />
+                  ドッグランオーナーに問い合わせる
+                </Button>
               </Card>
             </div>
           </div>

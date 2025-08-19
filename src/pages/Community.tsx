@@ -35,6 +35,11 @@ export function Community() {
     sessionStorage.removeItem('communityActiveTab');
     return preset === 'messages' ? 'messages' : 'friends';
   });
+  const openPartnerPreset = sessionStorage.getItem('communityOpenPartnerId');
+  if (openPartnerPreset) {
+    // 後段のレンダリングで初期選択に使う。読み終わったら消しておく
+    sessionStorage.removeItem('communityOpenPartnerId');
+  }
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [friends, setFriends] = useState<Friendship[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -279,6 +284,21 @@ export function Community() {
     } else {
       setProfileMap({});
       setDogNameMap({});
+    }
+    // もし事前指定の相手があれば、そのスレッドを開く
+    if (openPartnerPreset) {
+      const target = dedup.find((m: any) => (m.sender_id === uid ? m.receiver_id : m.sender_id) === openPartnerPreset);
+      if (target) {
+        const otherId = target.sender_id === uid ? target.receiver_id : target.sender_id;
+        const partnerProfile = map[otherId] || { name: '', user_type: 'user' } as any;
+        setSelectedFriend({
+          id: target.id,
+          friend_id: otherId,
+          friend: { id: otherId, name: partnerProfile.name || '', user_type: partnerProfile.user_type || 'user', created_at: new Date().toISOString() },
+          dog_count: 0,
+          created_at: new Date().toISOString()
+        });
+      }
     }
   };
 
