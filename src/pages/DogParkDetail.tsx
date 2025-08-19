@@ -504,7 +504,7 @@ export function DogParkDetail() {
       await supabase.from('messages').insert({
         sender_id: user.id,
         receiver_id: park.owner_id,
-        content: '（ドッグラン詳細ページからの問い合わせ）'
+        content: `（ドッグラン『${park.name}』の詳細ページからの問い合わせ）`
       });
     } catch {}
     sessionStorage.setItem('communityActiveTab', 'messages');
