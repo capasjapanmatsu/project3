@@ -87,6 +87,9 @@ export function DogParkDetail() {
   const [error, setError] = useState<string | null>(null);
   const [maintenanceInfo, setMaintenanceInfo] = useState<MaintenanceInfo[]>([]);
   const [currentMaintenance, setCurrentMaintenance] = useState<MaintenanceInfo | null>(null);
+  const [showInquiry, setShowInquiry] = useState(false);
+  const [inquiryText, setInquiryText] = useState('');
+  const [sendingInquiry, setSendingInquiry] = useState(false);
 
   useEffect(() => {
     if (parkId) {
@@ -486,31 +489,7 @@ export function DogParkDetail() {
 
   // オーナー問い合わせ
   const handleContactOwner = async () => {
-    if (!user) {
-      navigate('/liff/login');
-      return;
-    }
-    if (!park?.owner_id) {
-      alert('このドッグランのオーナー情報が見つかりません。');
-      return;
-    }
-    if (park.owner_id === user.id) {
-      sessionStorage.setItem('communityActiveTab', 'messages');
-      navigate('/community');
-      return;
-    }
-    try {
-      // スレッド作成用に空メッセージを送っておく（相手側に通知が行く）
-      await supabase.from('messages').insert({
-        sender_id: user.id,
-        receiver_id: park.owner_id,
-        content: `（ドッグラン『${park.name}』の詳細ページからの問い合わせ）`
-      });
-    } catch {}
-    sessionStorage.setItem('communityActiveTab', 'messages');
-    // 可能なら相手IDを指定して自動で開く（Community側で対応）
-    sessionStorage.setItem('communityOpenPartnerId', park.owner_id);
-    navigate('/community');
+    setShowInquiry(true);
   };
 
   if (isLoading) {

@@ -114,6 +114,41 @@ BEGIN
   RETURN result;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+-- Safety: auto checkout users who stayed inside over 24 hours
+CREATE OR REPLACE FUNCTION auto_checkout_stale_users()
+RETURNS VOID AS $$
+BEGIN
+  -- 24時間以上入場中のユーザーを検出し、自動退場扱いにする
+  UPDATE user_entry_status
+  SET
+    is_inside = FALSE,
+    exit_time = now()
+  WHERE is_inside = TRUE
+    AND entry_time < (now() - interval '24 hours');
+
+  -- 併せて、ログを追加（簡易）。最新のpark_idが分からない場合はスキップ
+  INSERT INTO user_entry_exit_logs (user_id, park_id, dog_ids, action, pin_code, lock_id)
+  SELECT ues.user_id,
+         ues.park_id,
+         NULL::uuid[],
+         'exit',
+         NULL,
+         NULL
+  FROM user_entry_status ues
+  WHERE ues.is_inside = FALSE
+    AND ues.exit_time >= (now() - interval '1 minute');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Run the safety function every hour via pg_cron if available; otherwise callable manually
+DO $$
+BEGIN
+  PERFORM 1 FROM pg_extension WHERE extname = 'pg_cron';
+  IF FOUND THEN
+    PERFORM cron.schedule('auto_checkout_stale_users_hourly', '0 * * * *', 'SELECT auto_checkout_stale_users();');
+  END IF;
+END;$$;
+
 
 -- Function to create a new PIN for a user and lock
 CREATE OR REPLACE FUNCTION create_pin_for_lock(

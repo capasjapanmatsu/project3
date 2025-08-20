@@ -70,18 +70,18 @@ export function SubscriptionIntro() {
 
     const checkSubscriptionStatus = async () => {
       try {
+        // ビュー stripe_user_subscriptions は auth.uid() でフィルタされる想定
         const { data: subscription, error } = await supabase
           .from('stripe_user_subscriptions')
-          .select('id, stripe_subscription_id')
-           .eq('user_id', uid)
-          .eq('status', 'active')
+          .select('status')
           .maybeSingle();
 
         if (error) {
           console.error('Error checking subscription:', error);
         }
 
-        setHasSubscription(!!subscription);
+        const active = subscription?.status === 'active' || subscription?.status === 'trialing';
+        setHasSubscription(!!active);
       } catch (error) {
         console.error('Error in checkSubscriptionStatus:', error);
       } finally {

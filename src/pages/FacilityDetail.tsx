@@ -1,7 +1,6 @@
 import {
     ArrowLeft,
     Building,
-    MessageSquare,
     Calendar,
     ChevronLeft,
     ChevronRight,
@@ -9,6 +8,7 @@ import {
     ExternalLink,
     Gift,
     MapPin,
+    MessageSquare,
     Phone,
     Star,
     Users,

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { Home, Key, MapPin, User, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, MapPin, Key, User, Users } from 'lucide-react';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.39.7";
+import md5 from "npm:blueimp-md5@2.19.0";
 
 // CORS headers
 const corsHeaders = {
@@ -18,7 +19,8 @@ class TTLockClient {
   private accessToken?: string;
 
   constructor() {
-    this.baseUrl = "https://euopen.sciener.com";
+    // Cloud API v3 は euapi.sciener.com
+    this.baseUrl = "https://euapi.sciener.com";
     this.clientId = Deno.env.get("TTLOCK_CLIENT_ID") || "";
     this.clientSecret = Deno.env.get("TTLOCK_CLIENT_SECRET") || "";
     this.username = Deno.env.get("TTLOCK_USERNAME") || "";
@@ -30,22 +32,24 @@ class TTLockClient {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
+        clientId: this.clientId,
+        clientSecret: this.clientSecret,
         username: this.username,
-        password: this.password,
+        password: md5(this.password).toLowerCase(),
         grant_type: 'password',
-        redirect_uri: 'https://dogparkjp.com/callback'
+        
       })
     });
 
     const data = await response.json();
-    if (data.errcode === 0) {
+    if (data.access_token) {
       this.accessToken = data.access_token;
       return data.access_token;
-    } else {
-      throw new Error(`TTLock認証失敗: ${data.errmsg || 'Unknown error'}`);
     }
+    if (typeof data.errcode !== 'undefined' && data.errcode !== 0) {
+      throw new Error(`TTLock認証失敗: ${data.errmsg || 'Unknown error'} (code: ${data.errcode})`);
+    }
+    throw new Error('TTLock認証応答が不正です');
   }
 
   async addKeyboardPassword(options: {
@@ -60,28 +64,28 @@ class TTLockClient {
     }
 
     const timestamp = Date.now();
-    const response = await fetch(`${this.baseUrl}/keyboardPwd/add`, {
+    const response = await fetch(`${this.baseUrl}/v3/keyboardPwd/add`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         clientId: this.clientId,
         accessToken: this.accessToken!,
         lockId: options.lockId.toString(),
-        password: options.password,
+        keyboardPwd: options.password,
+        keyboardPwdName: options.name || 'ドッグラン入場PIN',
+        keyboardPwdType: '3',
         startDate: options.startDate.toString(),
         endDate: options.endDate.toString(),
-        date: timestamp.toString(),
-        name: options.name || 'ドッグラン入場PIN',
-        type: '1' // 一回限り使用
+        addType: '2',
+        date: timestamp.toString()
       })
     });
 
     const data = await response.json();
     if (data.errcode === 0) {
       return { keyboardPwdId: data.keyboardPwdId };
-    } else {
-      throw new Error(`PIN発行失敗: ${data.errmsg || 'Unknown error'} (code: ${data.errcode})`);
     }
+    throw new Error(`PIN発行失敗: ${data.errmsg || 'Unknown error'} (code: ${data.errcode})`);
   }
 }
 
@@ -89,6 +93,14 @@ class TTLockClient {
 function generatePinCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
+
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  const bytes = new Uint8Array(hash);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 
 serve(async (req) => {
   // CORS preflight
@@ -141,6 +153,7 @@ serve(async (req) => {
       console.log('TTLock ID not configured, generating demo PIN');
       
       const pinCode = generatePinCode();
+      const pinHash = await sha256Hex(pinCode);
       const startDate = new Date();
       const endDate = new Date(startDate.getTime() + (expiryMinutes * 60 * 1000));
 
@@ -151,6 +164,7 @@ serve(async (req) => {
           lock_id: lockId,
           user_id: userId,
           pin_code: pinCode,
+          pin_hash: pinHash,
           purpose: purpose,
           created_at: startDate.toISOString(),
           expires_at: endDate.toISOString(),
@@ -191,8 +205,18 @@ serve(async (req) => {
     // 実際のTTLock API使用（将来の実装）
     const ttlockClient = new TTLockClient();
     const pinCode = generatePinCode();
-    const startDate = Date.now();
-    const endDate = startDate + (expiryMinutes * 60 * 1000);
+    const pinHash = await sha256Hex(pinCode);
+    // TTLock推奨に合わせ、UTCの現在時刻の時間境界〜+1時間で登録
+    const now = new Date();
+    const startOfHourUtc = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      now.getUTCHours(),
+      0, 0, 0
+    );
+    const startDate = startOfHourUtc;
+    const endDate = startOfHourUtc + 60 * 60 * 1000;
 
     try {
       const result = await ttlockClient.addKeyboardPassword({
@@ -210,6 +234,7 @@ serve(async (req) => {
           lock_id: lockId,
           user_id: userId,
           pin_code: pinCode,
+          pin_hash: pinHash,
           purpose: purpose,
           created_at: new Date().toISOString(),
           expires_at: new Date(endDate).toISOString(),
@@ -253,6 +278,7 @@ serve(async (req) => {
       
       // TTLock API エラー時はデモモードで動作
       const pinCode = generatePinCode();
+      const pinHash = await sha256Hex(pinCode);
       const startDate = new Date();
       const endDate = new Date(startDate.getTime() + (expiryMinutes * 60 * 1000));
 
@@ -262,6 +288,7 @@ serve(async (req) => {
           lock_id: lockId,
           user_id: userId,
           pin_code: pinCode,
+          pin_hash: pinHash,
           purpose: purpose,
           created_at: startDate.toISOString(),
           expires_at: endDate.toISOString(),

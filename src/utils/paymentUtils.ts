@@ -39,19 +39,37 @@ export interface AccessCheckResult {
  */
 export const checkPaymentStatus = async (userId: string): Promise<PaymentStatus> => {
   try {
-    // サブスクリプション状況確認
-    const { data: subscriptionData, error: subscriptionError } = await supabase
-      .from('stripe_subscriptions')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .single();
+    // 1) ビューから確認（auth.uid() フィルタで自身のみ取得）
+    let hasSubscription = false;
+    try {
+      const { data: view } = await supabase
+        .from('stripe_user_subscriptions')
+        .select('status')
+        .maybeSingle();
+      if (view && (view.status === 'active' || view.status === 'trialing')) {
+        hasSubscription = true;
+      }
+    } catch {}
 
-    if (subscriptionError && subscriptionError.code !== 'PGRST116') {
-      console.warn('Subscription check error:', subscriptionError);
+    // 2) ビューで取得できない場合は customers→subscriptions を直接参照
+    if (!hasSubscription) {
+      const { data: customer } = await supabase
+        .from('stripe_customers')
+        .select('customer_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (customer?.customer_id) {
+        const { data: sub } = await supabase
+          .from('stripe_subscriptions')
+          .select('status')
+          .eq('customer_id', customer.customer_id)
+          .in('status', ['active', 'trialing'] as any)
+          .maybeSingle();
+        if (sub) {
+          hasSubscription = true;
+        }
+      }
     }
-
-    const hasSubscription = !!subscriptionData;
 
     if (hasSubscription) {
       return {

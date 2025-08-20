@@ -3,6 +3,8 @@
  * TTLock社のスマートロックAPIとの統合クライアント
  */
 
+import md5 from "npm:blueimp-md5@2.19.0";
+
 export interface TTLockConfig {
   baseUrl?: string;
   clientId: string;
@@ -52,7 +54,8 @@ export class TTLockClient {
   private tokenExpiresAt?: number;
 
   constructor(config: TTLockConfig) {
-    this.baseUrl = config.baseUrl || "https://euopen.sciener.com";
+    // Cloud API v3 ベースURLは euapi.sciener.com
+    this.baseUrl = config.baseUrl || "https://euapi.sciener.com";
     this.clientId = config.clientId;
     this.clientSecret = config.clientSecret;
     this.username = config.username;
@@ -64,31 +67,42 @@ export class TTLockClient {
    */
   async authenticate(): Promise<string> {
     try {
-      const response = await fetch(`${this.baseUrl}/oauth2/token`, {
+      const url = `${this.baseUrl}/oauth2/token`;
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/x-www-form-urlencoded' 
         },
         body: new URLSearchParams({
-          client_id: this.clientId,
-          client_secret: this.clientSecret,
+          // ドキュメントは clientId/clientSecret を使用
+          clientId: this.clientId,
+          clientSecret: this.clientSecret,
           username: this.username,
-          password: this.password,
-          grant_type: 'password',
-          redirect_uri: 'https://your-app.com/callback' // 必須だが使用されない
+          // パスワードはlowercase md5が必要
+          password: await md5LowerCase(this.password),
+          grant_type: 'password'
         })
       });
 
-      const data = await response.json();
-      
-      if (data.errcode === 0) {
+      const raw = await response.text();
+      let data: any;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        console.error(`TTLock OAuth raw response (status ${response.status}) from ${url}:`, raw.slice(0, 200));
+        throw new Error(`OAuth response not JSON (status ${response.status})`);
+      }
+      // OAuth応答は errcode が無く、access_token を直接返す
+      if (data.access_token) {
         this.accessToken = data.access_token;
         this.refreshToken = data.refresh_token;
-        this.tokenExpiresAt = Date.now() + (data.expires_in * 1000);
+        this.tokenExpiresAt = Date.now() + ((data.expires_in ?? 0) * 1000);
         return data.access_token;
-      } else {
-        throw new Error(`TTLock認証失敗: ${data.errmsg || 'Unknown error'}`);
       }
+      if (typeof data.errcode !== 'undefined' && data.errcode !== 0) {
+        throw new Error(`TTLock認証失敗: ${data.errmsg || 'Unknown error'} (code: ${data.errcode})`);
+      }
+      throw new Error('TTLock認証応答が不正です');
     } catch (error) {
       console.error('TTLock authentication error:', error);
       throw error;
@@ -111,7 +125,7 @@ export class TTLockClient {
     await this.ensureValidToken();
     
     const timestamp = Date.now();
-    const url = `${this.baseUrl}/lock/list?clientId=${this.clientId}&accessToken=${this.accessToken}&pageNo=${pageNo}&pageSize=${pageSize}&date=${timestamp}`;
+    const url = `${this.baseUrl}/v3/lock/list?clientId=${this.clientId}&accessToken=${this.accessToken}&pageNo=${pageNo}&pageSize=${pageSize}&date=${timestamp}`;
 
     try {
       const response = await fetch(url, {
@@ -140,14 +154,14 @@ export class TTLockClient {
     startDate: number;
     endDate: number;
     name?: string;
-    type?: number; // 1: 一回限り, 2: 有効期限内繰り返し
+    type?: number; // keyboardPwdType: 2=permanent, 3=period(default). One-timeはrandom API。
   }): Promise<TTLockPinResponse> {
     await this.ensureValidToken();
     
     const timestamp = Date.now();
     
     try {
-      const response = await fetch(`${this.baseUrl}/keyboardPwd/add`, {
+      const response = await fetch(`${this.baseUrl}/v3/keyboardPwd/add`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/x-www-form-urlencoded' 
@@ -156,28 +170,76 @@ export class TTLockClient {
           clientId: this.clientId,
           accessToken: this.accessToken!,
           lockId: options.lockId.toString(),
-          password: options.password,
+          // フィールド名は keyboardPwd
+          keyboardPwd: options.password,
+          keyboardPwdName: options.name || 'ドッグラン入場PIN',
+          keyboardPwdType: (options.type || 3).toString(), // 3=period をデフォルト
           startDate: options.startDate.toString(),
           endDate: options.endDate.toString(),
-          date: timestamp.toString(),
-          name: options.name || 'ドッグラン入場PIN',
-          type: (options.type || 1).toString() // デフォルト：一回限り
+          // ゲートウェイ経由で登録: 2
+          addType: '2',
+          date: timestamp.toString()
         })
       });
 
-      const data = await response.json();
-      
-      if (data.errcode === 0) {
-        return {
-          keyboardPwdId: data.keyboardPwdId,
-          keyboardPwd: options.password
-        };
-      } else {
+      const raw = await response.text();
+      try {
+        const data = JSON.parse(raw);
+        if (data.errcode === 0) {
+          return { keyboardPwdId: data.keyboardPwdId, keyboardPwd: options.password };
+        }
         throw new Error(`PIN発行失敗: ${data.errmsg || 'Unknown error'} (code: ${data.errcode})`);
+      } catch (e) {
+        throw new Error(`TTLock response not JSON: ${raw.slice(0, 120)}...`);
       }
     } catch (error) {
       console.error('Add keyboard password error:', error);
       throw error;
+    }
+  }
+
+  /**
+   * 作成済みパスコード一覧を取得
+   */
+  async listKeyboardPasswords(lockId: number, pageNo: number = 1, pageSize: number = 50): Promise<any[]> {
+    await this.ensureValidToken();
+    const timestamp = Date.now();
+    const url = `${this.baseUrl}/v3/lock/listKeyboardPwd?clientId=${this.clientId}&accessToken=${this.accessToken}&lockId=${lockId}&pageNo=${pageNo}&pageSize=${pageSize}&date=${timestamp}`;
+    const response = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' }});
+    const data = await response.json();
+    if (data.errcode === 0) return data.list || [];
+    throw new Error(`listKeyboardPwd 失敗: ${data.errmsg || 'Unknown error'} (code: ${data.errcode})`);
+  }
+
+  /**
+   * リモート解錠（Wi-Fiゲートウェイ経由）
+   */
+  async unlockLock(lockId: number): Promise<{ ok: boolean; errcode: number; errmsg?: string }> {
+    await this.ensureValidToken();
+    const timestamp = Date.now();
+    try {
+      const response = await fetch(`${this.baseUrl}/v3/lock/unlock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+        body: new URLSearchParams({
+          clientId: this.clientId,
+          accessToken: this.accessToken!,
+          lockId: lockId.toString(),
+          date: timestamp.toString(),
+        }),
+      });
+
+      const raw = await response.text();
+      try {
+        const data = JSON.parse(raw);
+        if (data.errcode === 0) return { ok: true, errcode: 0 };
+        return { ok: false, errcode: data.errcode, errmsg: data.errmsg };
+      } catch {
+        return { ok: false, errcode: -2, errmsg: `status ${response.status}; TTLock response not JSON: ${raw.slice(0, 120)}...` };
+      }
+    } catch (error) {
+      console.error('Unlock error:', error);
+      return { ok: false, errcode: -1, errmsg: String(error) };
     }
   }
 
@@ -190,7 +252,7 @@ export class TTLockClient {
     const timestamp = Date.now();
     
     try {
-      const response = await fetch(`${this.baseUrl}/keyboardPwd/delete`, {
+      const response = await fetch(`${this.baseUrl}/v3/keyboardPwd/delete`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/x-www-form-urlencoded' 
@@ -228,7 +290,7 @@ export class TTLockClient {
     const pageNo = options.pageNo || 1;
     const pageSize = options.pageSize || 100;
     
-    const url = `${this.baseUrl}/lockRecord/list?clientId=${this.clientId}&accessToken=${this.accessToken}&lockId=${options.lockId}&startDate=${options.startDate}&endDate=${options.endDate}&pageNo=${pageNo}&pageSize=${pageSize}&date=${timestamp}`;
+    const url = `${this.baseUrl}/v3/lockRecord/list?clientId=${this.clientId}&accessToken=${this.accessToken}&lockId=${options.lockId}&startDate=${options.startDate}&endDate=${options.endDate}&pageNo=${pageNo}&pageSize=${pageSize}&date=${timestamp}`;
 
     try {
       const response = await fetch(url, {
@@ -267,3 +329,8 @@ export function generatePinCode(length: number = 6): string {
 export function formatTTLockTimestamp(timestamp: number): string {
   return new Date(timestamp).toISOString();
 } 
+
+// 小文字md5を生成（OAuth用）
+async function md5LowerCase(input: string): Promise<string> {
+  return md5(input).toLowerCase();
+}

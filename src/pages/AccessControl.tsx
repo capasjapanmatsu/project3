@@ -4,13 +4,13 @@ import {
     CheckCircle,
     ChevronDown,
     ChevronUp,
-    Clock,
     CreditCard,
     Key,
+    Loader2,
     MapPin,
     Navigation,
     PawPrint,
-    Shield
+    Unlock
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -43,19 +43,82 @@ export function AccessControl() {
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [pinCode, setPinCode] = useState<string | null>(null);
-  const [pinExpiresAt, setPinExpiresAt] = useState<string | null>(null);
   const [isGeneratingPin, setIsGeneratingPin] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | null>(null);
   const [showOtherParks, setShowOtherParks] = useState(false);
   const [otherParksPage, setOtherParksPage] = useState(1);
+  const [lastUnlockAt, setLastUnlockAt] = useState<number | null>(null);
+  const [cooldownRemain, setCooldownRemain] = useState(0);
+  const [userInside, setUserInside] = useState<boolean | null>(null);
+  const [currentAction, setCurrentAction] = useState<'entry' | 'exit'>('entry');
+  const [occupancy, setOccupancy] = useState<{ current?: number; max?: number } | null>(null);
 
   const MAX_DOGS = 3; // 最大3頭まで選択可能
   const NEARBY_PARKS_LIMIT = 3; // 近い順に表示する施設数
   const OTHERS_PARKS_PER_PAGE = 10; // その他施設の1ページあたり表示件数
 
-  // PIN生成機能（簡略化版）
-  const generatePin = () => {
+  // リモート解錠（ゲートウェイがある場合はこちらを優先）
+  const remoteUnlock = async () => {
+    if (!selectedPark || selectedDogs.length === 0) {
+      setError('犬と施設を選択してください');
+      return;
+    }
+
+    if (!paymentStatus || paymentStatus.needsPayment) {
+      navigate(`/parks/${selectedPark.id}/reserve`);
+      return;
+    }
+
+    setIsGeneratingPin(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const { data: locks } = await supabase
+        .from('smart_locks')
+        .select('*')
+        .eq('park_id', selectedPark.id as any)
+        .eq('pin_enabled', true);
+
+      // 目的に応じてロックを選択（entry/exit）。無ければフォールバック
+      const desired = currentAction === 'entry' ? 'entry' : 'exit';
+      const lock = (locks || []).find((l: any) => l.purpose === desired) 
+        || (locks || []).find((l: any) => l.purpose === 'entry')
+        || (locks || [])[0];
+      if (!lock) {
+        setError('この施設にはスマートロックが未登録です。管理者側で設定が必要です。');
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('認証が必要です');
+
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ttlock-unlock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ lockId: lock.lock_id, userId: (user?.id || effectiveUserId), purpose: currentAction })
+      });
+
+      const body = await resp.json();
+      if (!resp.ok || !body?.success) throw new Error(body?.error || '解錠に失敗しました');
+
+      setSuccess(currentAction === 'entry' ? '入場が完了しました。ドアをお開けください。' : '退場が完了しました。ドアをお開けください。');
+      // 即時UI反映（サーバー反映待ちの間もデフォルト切替）
+      setUserInside(currentAction === 'entry');
+      setCurrentAction(prev => (prev === 'entry' ? 'exit' : 'entry'));
+      // 状態更新
+      await refreshUserStatus();
+      await refreshOccupancy();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setIsGeneratingPin(false);
+      setLastUnlockAt(Date.now());
+    }
+  };
+
+  // PIN生成（Edge Function を利用して実際のロックに登録）
+  const generatePin = async () => {
     if (!selectedPark || selectedDogs.length === 0) {
       setError('犬と施設を選択してください');
       return;
@@ -63,22 +126,64 @@ export function AccessControl() {
 
     // 決済状況確認
     if (!paymentStatus || paymentStatus.needsPayment) {
-      // 予約ページにリダイレクト
       navigate(`/parks/${selectedPark.id}/reserve`);
       return;
     }
 
     setIsGeneratingPin(true);
     setError('');
+    setSuccess('');
 
     try {
-      // デモ用のPIN生成（実際のTTLock APIが利用可能になるまで）
-      const demoPin = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5分後
-      
-      setPinCode(demoPin);
-      setPinExpiresAt(expiresAt);
-      setSuccess('PINコードが生成されました（デモ版）');
+      // 施設に紐づくスマートロック一覧を取得（入場用を優先）
+      const { data: locks, error: lockErr } = await supabase
+        .from('smart_locks')
+        .select('*')
+        .eq('park_id', selectedPark.id as any)
+        .eq('pin_enabled', true);
+
+      if (lockErr) {
+        setError('スマートロック情報の取得に失敗しました');
+        return;
+      }
+
+      const lock = (locks || []).find((l: any) => l.purpose === 'entry') || (locks || [])[0];
+
+      if (!lock) {
+        setError('この施設にはスマートロックが未登録です。管理者側で設定が必要です。');
+        return;
+      }
+
+      // 認証トークン取得
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.access_token) {
+        throw new Error('認証が必要です');
+      }
+
+      // Edge Function を呼び出し
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ttlock-generate-pin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          userId: user?.id || effectiveUserId,
+          lockId: lock.lock_id,
+          purpose: 'entry',
+          expiryMinutes: 5,
+        }),
+      });
+
+      if (!resp.ok) {
+        const e = await resp.json();
+        throw new Error(e?.error || 'PINコードの生成に失敗しました');
+      }
+
+      const result = await resp.json() as { pin_code: string; expires_at: string };
+      setPinCode(result.pin_code);
+      setPinExpiresAt(result.expires_at);
+      setSuccess('PINコードが生成されました');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'PIN生成中にエラーが発生しました';
       setError(errorMessage);
@@ -122,7 +227,7 @@ export function AccessControl() {
     }
   };
 
-  // 施設選択処理（簡略化版）
+  // 施設選択処理
   const handleParkSelection = (park: ParkWithDistance) => {
     setSelectedPark(park);
     setError('');
@@ -131,19 +236,8 @@ export function AccessControl() {
     setShowOtherParks(false);
     setOtherParksPage(1);
     
-    // デモ用のスマートロック情報を設定
-    const demoLock: SmartLock = {
-      id: `lock_${park.id}`,
-      lock_id: `LOCK_${park.name}`,
-      park_id: park.id,
-      lock_name: `${park.name} - 入場ゲート`,
-      lock_type: 'ttlock_smart_lock',
-      purpose: 'entry_exit',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    setSelectedLock(demoLock);
+    // 実ロックは generatePin 内で取得するため、ここでは選択だけ
+    setSelectedLock(null);
   };
 
   useEffect(() => {
@@ -291,6 +385,55 @@ export function AccessControl() {
       void sortParksAsync();
     }
   }, [userLocation, parks]);
+
+  // ユーザーの入退場ステータス取得
+  const refreshUserStatus = useCallback(async () => {
+    try {
+      const uid = user?.id || effectiveUserId;
+      if (!uid) return;
+      const { data } = await supabase
+        .from('user_entry_status')
+        .select('is_inside, park_id')
+        .eq('user_id', uid as any)
+        .maybeSingle();
+      if (data) {
+        setUserInside(!!data.is_inside);
+        setCurrentAction(data.is_inside ? 'exit' : 'entry');
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [user, effectiveUserId]);
+
+  // 施設の混雑状況取得
+  const refreshOccupancy = useCallback(async () => {
+    try {
+      if (!selectedPark) return;
+      const { data } = await supabase
+        .from('dog_parks')
+        .select('current_occupancy, max_capacity')
+        .eq('id', selectedPark.id as any)
+        .maybeSingle();
+      if (data) setOccupancy({ current: data.current_occupancy as any, max: data.max_capacity as any });
+    } catch (e) {
+      // ignore
+    }
+  }, [selectedPark]);
+
+  useEffect(() => { void refreshUserStatus(); }, [refreshUserStatus]);
+  useEffect(() => { void refreshOccupancy(); }, [refreshOccupancy]);
+
+  // クールダウン残り秒の更新
+  useEffect(() => {
+    if (!lastUnlockAt) return;
+    const COOLDOWN_MS = 3000;
+    const timer = setInterval(() => {
+      const remain = Math.max(0, Math.ceil((COOLDOWN_MS - (Date.now() - lastUnlockAt)) / 1000));
+      setCooldownRemain(remain);
+      if (remain === 0) clearInterval(timer);
+    }, 250);
+    return () => clearInterval(timer);
+  }, [lastUnlockAt]);
 
   // 犬の選択処理
   const handleDogSelection = useCallback((dogId: string) => {
@@ -624,140 +767,92 @@ export function AccessControl() {
           </Card>
         </div>
 
-        {/* 右側: PIN生成 */}
+        {/* 右側: 入退場操作（PINは非表示） */}
         <div className="space-y-6">
-          {/* PIN生成セクション */}
           <Card className="p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center">
-              <Key className="w-5 h-5 text-blue-600 mr-2" />
-              PINコード生成
+              <Unlock className="w-5 h-5 text-blue-600 mr-2" />
+              入退場操作
             </h2>
-            
-            {selectedPark && selectedDogs.length > 0 ? (
-              <div className="space-y-4">
-                {pinCode ? (
-                  <div className="space-y-4">
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <div className="flex items-center mb-2">
-                        <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-                        <span className="text-green-800 font-medium">PIN生成完了</span>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-green-800 mb-2 tracking-wider">
-                          {pinCode}
-                        </div>
-                        <div className="flex items-center justify-center text-sm text-green-700">
-                          <Clock className="w-4 h-4 mr-1" />
-                          <span>有効期限: {pinExpiresAt && formatExpiryTime(pinExpiresAt)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-start">
-                        <Shield className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
-                        <div className="text-sm text-blue-800">
-                          <p className="font-medium mb-1">ご利用方法</p>
-                          <p>ドッグランの入り口でこのPINコードを入力してください。</p>
-                          <p>このPINは一度のみ使用可能で、{pinExpiresAt && formatExpiryTime(pinExpiresAt)}に期限切れとなります。</p>
-                        </div>
-                      </div>
-                    </div>
 
-                    <Button
-                      onClick={() => {
-                        setPinCode(null);
-                        setPinExpiresAt(null);
-                        setSuccess('');
-                      }}
-                      className="w-full"
-                      variant="secondary"
-                    >
-                      新しいPINを生成
-                    </Button>
+            {selectedPark && selectedDogs.length > 0 ? (
+              <div className="space-y-5">
+                {/* 混雑状況 */}
+                <div className="flex items-center justify-between text-sm bg-gray-50 border border-gray-200 rounded-md p-3">
+                  <span className="text-gray-700">現在の入場者数</span>
+                  <span className="font-semibold text-gray-900">{occupancy?.current ?? '-'}{occupancy?.max ? ` / ${occupancy.max}` : ''}</span>
+                </div>
+
+                {/* 入場/退場切替 */}
+                <div className="flex justify-center gap-2">
+                  <Button
+                    variant={currentAction === 'entry' ? 'primary' : 'secondary'}
+                    size="sm"
+                    onClick={() => setCurrentAction('entry')}
+                  >
+                    入場
+                  </Button>
+                  <Button
+                    variant={currentAction === 'exit' ? 'primary' : 'secondary'}
+                    size="sm"
+                    onClick={() => setCurrentAction('exit')}
+                  >
+                    退場
+                  </Button>
+                </div>
+
+                {/* 大ボタン */}
+                <div className="flex flex-col items-center">
+                  <button
+                    type="button"
+                    aria-label={currentAction === 'entry' ? '入場する' : '退場する'}
+                    onClick={() => !isGeneratingPin && cooldownRemain === 0 && remoteUnlock()}
+                    disabled={isGeneratingPin || cooldownRemain > 0}
+                    className={`relative w-40 h-40 rounded-full text-white shadow-lg select-none outline-none focus:ring-4 transition active:scale-95 ${
+                      (isGeneratingPin || cooldownRemain > 0)
+                        ? (currentAction === 'entry' ? 'bg-blue-400' : 'bg-red-400') + ' cursor-not-allowed'
+                        : currentAction === 'entry'
+                          ? 'from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 bg-gradient-to-b focus:ring-blue-300'
+                          : 'from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 bg-gradient-to-b focus:ring-red-300'
+                    }`}
+                  >
+                    {isGeneratingPin ? (
+                      <Loader2 className="w-10 h-10 animate-spin mx-auto" />
+                    ) : (
+                      <Unlock className="w-12 h-12 mx-auto" />
+                    )}
+                    {isGeneratingPin && (
+                      <span className={`absolute inset-0 rounded-full ring-4 animate-ping ${currentAction === 'entry' ? 'ring-blue-300' : 'ring-red-300'}`} />
+                    )}
+                  </button>
+                  <div className="mt-3 text-sm text-gray-700">
+                    {isGeneratingPin
+                      ? `${currentAction === 'entry' ? '入場' : '退場'}処理中...`
+                      : cooldownRemain > 0
+                      ? `再試行まで ${cooldownRemain}秒`
+                      : `${currentAction === 'entry' ? '入場' : '退場'}（タップで解錠）`}
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                      <h3 className="font-medium mb-2">利用予定</h3>
-                      <p className="text-sm text-gray-600 mb-1">
-                        <strong>施設:</strong> {selectedPark.name}
-                      </p>
-                      <p className="text-sm text-gray-600 mb-1">
-                        <strong>ワンちゃん:</strong> {getSelectedDogNames}
-                      </p>
-                      {userLocation && (
-                        <p className="text-sm text-gray-600">
-                          <strong>距離:</strong> 約 {formatDistance(selectedPark.distance)}
-                        </p>
+                  {/* 入場中のステータスと再入場リンク */}
+                  {userInside && (
+                    <div className="mt-2 text-xs text-red-600">
+                      入場中
+                      {currentAction === 'exit' && (
+                        <button className="ml-2 underline" onClick={() => setCurrentAction('entry')}>入場を再試行</button>
                       )}
                     </div>
-
-                    {paymentStatus?.needsPayment ? (
-                      <div className="space-y-3">
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                          <div className="flex items-start">
-                            <CreditCard className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" />
-                            <div className="text-sm text-yellow-800">
-                              <p className="font-medium mb-1">決済が必要です</p>
-                              <p>この施設を利用するには、サブスクリプションまたは1Dayパスの購入が必要です。</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-3">
-                          <Button
-                            onClick={() => navigate('/subscription-intro')}
-                            className="w-full bg-purple-600 hover:bg-purple-700"
-                          >
-                            <CreditCard className="w-4 h-4 mr-2" />
-                            サブスクリプション加入（¥3,800/月）
-                          </Button>
-                          
-                          <Button
-                            onClick={generatePin}
-                            className="w-full"
-                          >
-                            <Key className="w-4 h-4 mr-2" />
-                            1Dayパス購入（¥800〜）
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <Button
-                        onClick={generatePin}
-                        isLoading={isGeneratingPin}
-                        className="w-full"
-                        disabled={isGeneratingPin}
-                      >
-                        <Key className="w-4 h-4 mr-2" />
-                        PINコードを生成
-                      </Button>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             ) : (
               <div className="text-center py-8">
                 <Key className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-2">PINコードを生成するには：</p>
+                <p className="text-gray-600 mb-2">利用するには：</p>
                 <ul className="text-sm text-gray-500 space-y-1">
                   <li>• ワンちゃんを1頭以上選択</li>
                   <li>• 施設を選択</li>
                 </ul>
               </div>
             )}
-          </Card>
-
-          {/* PINコードの使い方説明 */}
-          <Card className="p-6 bg-blue-50 border-blue-200">
-            <h3 className="font-medium text-blue-900 mb-3">PINコードの使い方</h3>
-            <div className="space-y-2 text-sm text-blue-800">
-              <p>1. 犬とドッグランを選択してPINを生成</p>
-              <p>2. 現地でスマートロックにPINを入力</p>
-              <p>3. ロックが解除されて入場完了</p>
-              <p>4. 退場時も同様にPINを生成して解錠</p>
-            </div>
           </Card>
         </div>
       </div>

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase';
+import { useEffect, useState } from 'react';
 import useAuth from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
 
 interface Subscription {
   customer_id: string;
@@ -38,23 +38,35 @@ export function useSubscription() {
       setLoading(true);
       setError(null);
 
-      // Query the stripe_user_subscriptions view
-      const { data, error } = await supabase
+      // ビュー stripe_user_subscriptions は auth.uid() でフィルタされる
+      // 取得できない環境でも落ちないよう最小列で取得
+      let { data, error } = await supabase
         .from('stripe_user_subscriptions')
-        .select('*')
+        .select('customer_id, subscription_id, status, price_id, current_period_start, current_period_end, cancel_at_period_end, payment_method_brand, payment_method_last4')
         .maybeSingle();
-
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        setSubscription(data);
-        setIsPaused(data.status === 'paused');
-
-      } else {
+      if (error || !data) {
+        // フォールバック: customers→subscriptions 直接参照
+        const { data: customer } = await supabase
+          .from('stripe_customers')
+          .select('customer_id')
+          .maybeSingle();
+        if (customer?.customer_id) {
+          const { data: sub } = await supabase
+            .from('stripe_subscriptions')
+            .select('customer_id, subscription_id, status, price_id, current_period_start, current_period_end, cancel_at_period_end, payment_method_brand, payment_method_last4')
+            .eq('customer_id', customer.customer_id)
+            .maybeSingle();
+          if (sub) {
+            setSubscription(sub as any);
+            setIsPaused(sub.status === 'paused');
+            return;
+          }
+        }
         setSubscription(null);
         setIsPaused(false);
+      } else {
+        setSubscription(data);
+        setIsPaused(data.status === 'paused');
       }
     } catch (err) {
       console.error('Error fetching subscription:', err);
