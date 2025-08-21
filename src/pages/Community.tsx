@@ -10,6 +10,7 @@ import {
     MapPin,
     MessageSquare,
     PawPrint,
+    Paperclip,
     Send,
     Share,
     UserCheck,
