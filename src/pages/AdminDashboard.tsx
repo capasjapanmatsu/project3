@@ -274,7 +274,7 @@ export function AdminDashboard() {
               <AlertTriangle className="w-6 h-6 text-red-600 mr-2" />
               緊急対応が必要な項目
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               {stats.pendingParks > 0 && (
                 <Link to="/admin/parks" className="block">
                   <div className="bg-white rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -334,6 +334,19 @@ export function AdminDashboard() {
                   </div>
                 </Link>
               )}
+
+              {/* 新着メッセージ */}
+              <Link to="/admin/inquiries" className="block">
+                <div className="bg-white rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">新着メッセージ</p>
+                      <p className="text-2xl font-bold text-blue-600">{stats.unreadMessages || 0}</p>
+                    </div>
+                    <Mail className="w-8 h-8 text-blue-500" />
+                  </div>
+                </div>
+              </Link>
             </div>
 
             {/* 高リスクユーザーの詳細 */}
