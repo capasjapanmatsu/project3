@@ -53,6 +53,8 @@ export function Community() {
   const [messageText, setMessageText] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [messageRefreshKey, setMessageRefreshKey] = useState(0);
+  const [queuedFiles, setQueuedFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [dogEncounters, setDogEncounters] = useState<DogEncounter[]>([]);
   const [userDogs, setUserDogs] = useState<Dog[]>([]);
   const [error, setError] = useState('');
@@ -385,16 +387,40 @@ export function Community() {
     try {
       const content = messageText.trim();
       const receiverId = selectedFriend.friend_id;
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from('messages')
         .insert({
           sender_id: user?.id,
           receiver_id: receiverId,
           content,
           read: false
-        });
+        })
+        .select('id')
+        .single();
       
       if (error) throw error;
+      const messageId = inserted?.id as string | undefined;
+
+      // 画像添付がある場合はアップロード
+      if (messageId && queuedFiles.length > 0) {
+        setUploading(true);
+        for (const file of queuedFiles) {
+          try {
+            const key = `public/${user?.id}/${Date.now()}_${file.name}`;
+            const up = await supabase.storage.from('message-attachments').upload(key, file, { contentType: file.type });
+            if (up.error) continue;
+            const { data: pub } = supabase.storage.from('message-attachments').getPublicUrl(up.data.path);
+            await supabase.from('message_attachments').insert({
+              message_id: messageId,
+              file_url: pub.publicUrl,
+              file_type: 'image',
+              file_name: file.name,
+            });
+          } catch {}
+        }
+        setQueuedFiles([]);
+        setUploading(false);
+      }
       
       // メッセージ一覧を更新
       await fetchMessages(uid!);
@@ -1070,9 +1096,11 @@ export function Community() {
                         <Share className="w-4 h-4" /> 予約を共有
                       </button>
                       <label className="flex items-center gap-1 text-gray-600 hover:text-gray-800 cursor-pointer">
-                        <input type="file" accept="image/*" className="hidden" onChange={() => alert('画像添付は準備中です')} />
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = (e.target.files?.[0]); if (f) setQueuedFiles(prev => [...prev, f]); }} />
                         <Paperclip className="w-4 h-4" /> 画像添付
                       </label>
+                      {queuedFiles.length > 0 && <span className="text-xs text-gray-500">{queuedFiles.length}件の画像を添付予定</span>}
+                      {uploading && <span className="text-xs text-gray-500">アップロード中...</span>}
                     </div>
                   </form>
                   
@@ -1277,7 +1305,7 @@ function MessageThread({ viewerId, partnerId, refreshKey, onMarkedRead }: { view
   }, [viewerId, partnerId, refreshKey]);
 
   return (
-    <div className="h-64 overflow-y-auto mb-4 p-3 bg-gray-50 rounded-lg space-y-2">
+    <div className="h-96 overflow-y-auto mb-4 p-3 bg-gray-50 rounded-lg space-y-2">
       {items.length === 0 ? (
         <div className="text-center text-gray-500 text-sm py-4">メッセージ履歴はまだありません</div>
       ) : (
