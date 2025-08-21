@@ -1044,29 +1044,7 @@ export function Community() {
                   
                   <MessageThread viewerId={uid!} partnerId={selectedFriend.friend_id} refreshKey={messageRefreshKey} onMarkedRead={() => fetchMessages(uid!)} />
 
-                  {/* PIN共有機能 */}
-                  <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className="font-medium text-blue-900 mb-2 flex items-center">
-                      <Key className="w-4 h-4 mr-1" />
-                      施設貸し切り予約の共有
-                    </h4>
-                    <p className="text-sm text-blue-800 mb-2">
-                      施設貸し切り予約がある場合、友達にリモート解錠リンクを共有できます
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="w-full"
-                      onClick={() => {
-                        // TODO: 予約一覧から選択してPIN共有する機能
-                        alert('この機能は準備中です。施設貸し切り予約がある場合に利用できます。');
-                      }}
-                    >
-                      <Share className="w-3 h-3 mr-1" />
-                      予約を共有
-                    </Button>
-                  </div>
-                  
+                  {/* アクションバー（メッセージ入力の直下に簡潔表示） */}
                   <form onSubmit={handleSendMessage}>
                     <div className="flex space-x-2">
                       <input
@@ -1086,7 +1064,18 @@ export function Community() {
                         送信
                       </Button>
                     </div>
+                    <div className="mt-2 flex items-center gap-3 text-sm">
+                      <button type="button" className="flex items-center gap-1 text-blue-600 hover:text-blue-800" onClick={() => alert('この機能は準備中です。施設貸し切り予約がある場合に利用できます。')}>
+                        <Share className="w-4 h-4" /> 予約を共有
+                      </button>
+                      <label className="flex items-center gap-1 text-gray-600 hover:text-gray-800 cursor-pointer">
+                        <input type="file" accept="image/*" className="hidden" onChange={() => alert('画像添付は準備中です')} />
+                        <Paperclip className="w-4 h-4" /> 画像添付
+                      </label>
+                    </div>
                   </form>
+                  
+                  {/* 上に移動したので削除 */}
                 </div>
               </div>
             </div>
