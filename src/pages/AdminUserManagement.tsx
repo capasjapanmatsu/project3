@@ -498,6 +498,32 @@ export function AdminUserManagement() {
               </select>
             </div>
           </div>
+          {/* 一斉送信ボタン */}
+          <div className="mt-4 flex justify-end">
+            <Button
+              onClick={async () => {
+                const text = window.prompt('全員に送るメッセージを入力してください');
+                if (!text) return;
+                try {
+                  const { data: me } = await supabase.auth.getUser();
+                  if (!me?.user) return;
+                  for (const u of filteredUsers) {
+                    if (u.id === me.user.id) continue;
+                    await supabase.from('messages').insert({ sender_id: me.user.id, receiver_id: u.id, content: text });
+                  }
+                  alert('送信しました');
+                } catch (e) {
+                  console.error(e);
+                  alert('送信に失敗しました');
+                }
+                sessionStorage.setItem('communityActiveTab', 'messages');
+                navigate('/community');
+              }}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              全員に一斉送信
+            </Button>
+          </div>
         </Card>
 
         {/* ユーザー一覧 */}
@@ -605,6 +631,26 @@ export function AdminUserManagement() {
                               不正検知
                             </Button>
                           )}
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const { data: me } = await supabase.auth.getUser();
+                                if (!me?.user) return;
+                                await supabase.from('messages').insert({
+                                  sender_id: me.user.id,
+                                  receiver_id: user.id,
+                                  content: '管理者からの一斉メッセージ',
+                                });
+                              } catch {}
+                              sessionStorage.setItem('communityActiveTab', 'messages');
+                              sessionStorage.setItem('communityOpenPartnerId', user.id);
+                              navigate('/community');
+                            }}
+                          >
+                            メッセージ
+                          </Button>
                           {user.fraud_risk_level === 'high' && (
                             <Button
                               size="sm"
