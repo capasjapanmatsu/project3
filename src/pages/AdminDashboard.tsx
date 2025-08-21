@@ -568,14 +568,10 @@ export function AdminDashboard() {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">ページ管理</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 bg-white rounded-lg border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">ランディングページ</h4>
-                      <p className="text-sm text-gray-600">広告・SEO用の公開ページ</p>
-                    </div>
-                    <Link to="/landing" target="_blank">
-                      <Button className="bg-blue-600 hover:bg-blue-700">開く</Button>
-                    </Link>
+                  <div>
+                    <h4 className="font-medium text-gray-900">ランディングページ</h4>
+                    <p className="text-sm text-gray-600">広告・SEO用の公開ページ</p>
+                    <Link to="/landing" target="_blank" className="text-blue-600 hover:text-blue-800 underline">開く</Link>
                   </div>
                 </div>
                 <div className="p-4 bg-white rounded-lg border">
@@ -704,22 +700,13 @@ export function AdminDashboard() {
 
             {/* ランディングページ管理 */}
             <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">ランディングページ管理</h3>
-              <div className="flex justify-between items-center p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
-                <div>
-                  <h4 className="font-medium text-gray-900">ランディングページ</h4>
-                  <p className="text-sm text-gray-600">
-                    広告やSEO用のランディングページを確認・編集できます。
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Link to="/landing" target="_blank">
-                    <Button className="bg-blue-600 hover:bg-blue-700">
-                      <Eye className="w-4 h-4 mr-2" />
-                      プレビュー
-                    </Button>
-                  </Link>
-                </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">ランディングページ管理</h3>
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+                <h4 className="font-medium text-gray-900">ランディングページ</h4>
+                <p className="text-sm text-gray-600 mb-2">広告やSEO用のランディングページを確認・編集できます。</p>
+                <Link to="/landing" target="_blank" className="text-blue-600 hover:text-blue-800 underline inline-flex items-center">
+                  <Eye className="w-4 h-4 mr-1" />プレビュー
+                </Link>
               </div>
             </Card>
           </div>
