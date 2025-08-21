@@ -679,7 +679,10 @@ export function ProfileSettings() {
         <div className="flex items-center justify-between">
           <div>
             <div className="font-medium">LINEで通知を受け取る</div>
-            <div className="text-sm text-gray-500">連携状態: {lineLinked ? '連携済み' : '未連携'}</div>
+            {(() => {
+              const isLinked = lineLinked || linked === true || hasLineSession;
+              return <div className="text-sm text-gray-500">連携状態: {isLinked ? '連携済み' : '未連携'}</div>;
+            })()}
           </div>
           <label className="inline-flex items-center cursor-pointer">
             <input
@@ -687,14 +690,14 @@ export function ProfileSettings() {
               className="sr-only"
               checked={notifyOptIn}
               onChange={(e) => setNotifyOptIn(e.target.checked)}
-              disabled={!lineLinked}
+              disabled={!(lineLinked || linked === true || hasLineSession)}
             />
-            <span className={`w-12 h-6 flex items-center bg-${notifyOptIn && lineLinked ? 'green' : 'gray'}-300 rounded-full p-1 transition-colors`}>
-              <span className={`bg-white w-5 h-5 rounded-full shadow transform transition-transform ${notifyOptIn && lineLinked ? 'translate-x-6' : ''}`}></span>
+            <span className={`${(notifyOptIn && (lineLinked || linked === true || hasLineSession)) ? 'bg-green-400' : 'bg-gray-300'} w-12 h-6 flex items-center rounded-full p-1 transition-colors`}>
+              <span className={`bg-white w-5 h-5 rounded-full shadow transform transition-transform ${(notifyOptIn && (lineLinked || linked === true || hasLineSession)) ? 'translate-x-6' : ''}`}></span>
             </span>
           </label>
         </div>
-        {!lineLinked && (
+        {!(lineLinked || linked === true || hasLineSession) && (
           <div className="mt-3 text-sm text-orange-600">LINEと連携すると有効化できます。上部のLINE連携セクションから連携してください。</div>
         )}
         <div className="mt-4 text-right">
