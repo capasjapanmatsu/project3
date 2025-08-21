@@ -1286,6 +1286,7 @@ export function Community() {
 
 function MessageThread({ viewerId, partnerId, refreshKey, onMarkedRead }: { viewerId: string; partnerId: string; refreshKey?: number; onMarkedRead: () => void }) {
   const [items, setItems] = useState<Array<{id:string; sender_id:string; receiver_id:string; content:string; read:boolean; created_at:string}>>([]);
+  const [attachmentsMap, setAttachmentsMap] = useState<Record<string, Array<{file_url:string; file_type:string; file_name:string}>>>({});
   useEffect(() => {
     (async () => {
       const { data } = await supabase
@@ -1301,6 +1302,22 @@ function MessageThread({ viewerId, partnerId, refreshKey, onMarkedRead }: { view
         await supabase.from('messages').update({ read: true }).in('id', unreadIds);
         onMarkedRead();
       }
+      // 添付の一括取得
+      const ids = (data || []).map(m => m.id);
+      if (ids.length > 0) {
+        const { data: atts } = await supabase
+          .from('message_attachments')
+          .select('message_id, file_url, file_type, file_name')
+          .in('message_id', ids);
+        const map: Record<string, Array<{file_url:string; file_type:string; file_name:string}>> = {};
+        (atts || []).forEach(a => {
+          if (!map[a.message_id as any]) map[a.message_id as any] = [];
+          map[a.message_id as any].push({ file_url: a.file_url as any, file_type: a.file_type as any, file_name: a.file_name as any });
+        });
+        setAttachmentsMap(map);
+      } else {
+        setAttachmentsMap({});
+      }
     })();
   }, [viewerId, partnerId, refreshKey]);
 
@@ -1311,7 +1328,24 @@ function MessageThread({ viewerId, partnerId, refreshKey, onMarkedRead }: { view
       ) : (
         items.map(m => (
           <div key={m.id} className={`flex ${m.sender_id===viewerId?'justify-end':'justify-start'}`}>
-            <div className={`px-3 py-2 rounded-lg text-sm ${m.sender_id===viewerId?'bg-blue-600 text-white':'bg-white border'}`}>{m.content}</div>
+            <div className={`max-w-[80%] space-y-2`}>
+              <div className={`px-3 py-2 rounded-lg text-sm ${m.sender_id===viewerId?'bg-blue-600 text-white':'bg-white border'}`}>{m.content}</div>
+              {attachmentsMap[m.id]?.length ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {attachmentsMap[m.id].map((a, i) => (
+                    a.file_type === 'image' ? (
+                      <a key={i} href={a.file_url} target="_blank" rel="noreferrer" className="block">
+                        <img src={a.file_url} alt={a.file_name} className="rounded border object-cover h-24 w-full" />
+                      </a>
+                    ) : (
+                      <a key={i} href={a.file_url} target="_blank" rel="noreferrer" className="block text-xs text-blue-700 underline">
+                        {a.file_name || '添付ファイル'}
+                      </a>
+                    )
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </div>
         ))
       )}
