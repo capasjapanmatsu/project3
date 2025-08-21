@@ -1051,7 +1051,7 @@ export function Community() {
                       施設貸し切り予約の共有
                     </h4>
                     <p className="text-sm text-blue-800 mb-2">
-                      施設貸し切り予約がある場合、友達にPINコードを共有できます
+                      施設貸し切り予約がある場合、友達にリモート解錠リンクを共有できます
                     </p>
                     <Button
                       size="sm"
@@ -1256,7 +1256,7 @@ export function Community() {
               </p>
               <p>
                 <span className="font-medium">施設共有機能:</span><br />
-                施設貸し切り予約をした場合、友達を誘ってPINコードを共有することができます。
+                施設貸し切り予約をした場合、友達を誘ってリモート解錠リンクを共有することができます。
               </p>
             </div>
           </Card>

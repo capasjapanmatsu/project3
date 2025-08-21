@@ -52,6 +52,7 @@ export function AccessControl() {
   const [userInside, setUserInside] = useState<boolean | null>(null);
   const [currentAction, setCurrentAction] = useState<'entry' | 'exit'>('entry');
   const [occupancy, setOccupancy] = useState<{ current?: number; max?: number } | null>(null);
+  const [parkIdFromStatus, setParkIdFromStatus] = useState<string | null>(null);
 
   const MAX_DOGS = 3; // 最大3頭まで選択可能
   const NEARBY_PARKS_LIMIT = 3; // 近い順に表示する施設数
@@ -64,7 +65,7 @@ export function AccessControl() {
       return;
     }
 
-    if (!paymentStatus || paymentStatus.needsPayment) {
+    if (currentAction === 'entry' && (!paymentStatus || paymentStatus.needsPayment)) {
       navigate(`/parks/${selectedPark.id}/reserve`);
       return;
     }
@@ -177,13 +178,13 @@ export function AccessControl() {
 
       if (!resp.ok) {
         const e = await resp.json();
-        throw new Error(e?.error || 'PINコードの生成に失敗しました');
+        throw new Error(e?.error || 'リモート解錠に失敗しました');
       }
 
       const result = await resp.json() as { pin_code: string; expires_at: string };
       setPinCode(result.pin_code);
       setPinExpiresAt(result.expires_at);
-      setSuccess('PINコードが生成されました');
+      setSuccess('リモート解錠の準備ができました');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'PIN生成中にエラーが発生しました';
       setError(errorMessage);
@@ -344,6 +345,13 @@ export function AccessControl() {
             const withDistance = { ...(found as DogPark), distance: 0 } as ParkWithDistance;
             handleParkSelection(withDistance);
           }
+        } else if (parkIdFromStatus) {
+          const found = loadedParks.find((p: any) => p.id === parkIdFromStatus);
+          if (found) {
+            setCurrentAction('exit');
+            const withDistance = { ...(found as DogPark), distance: 0 } as ParkWithDistance;
+            handleParkSelection(withDistance);
+          }
         }
       } catch (error) {
         console.error('Error fetching parks:', error);
@@ -399,6 +407,7 @@ export function AccessControl() {
       if (data) {
         setUserInside(!!data.is_inside);
         setCurrentAction(data.is_inside ? 'exit' : 'entry');
+        if ((data as any).park_id) setParkIdFromStatus((data as any).park_id);
       }
     } catch (e) {
       // ignore

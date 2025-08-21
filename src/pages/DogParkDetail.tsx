@@ -445,12 +445,12 @@ export function DogParkDetail() {
   // スマートロックの開錠成功時の処理
   const handleLockSuccess = () => {
     // 成功メッセージを表示
-    alert('PINコードを生成しました！');
+    alert('リモート解錠の準備ができました！');
   };
 
   // スマートロックの開錠失敗時の処理
   const handleLockError = (errorMessage: string) => {
-    alert(`PINコードの生成に失敗しました: ${errorMessage}`);
+    alert(`リモート解錠の準備に失敗しました: ${errorMessage}`);
   };
 
   // リアルタイム更新関数
@@ -865,7 +865,7 @@ export function DogParkDetail() {
                     <div>
                       <h2 className="text-xl font-semibold text-blue-900 mb-2">入口ドアの開錠</h2>
                       <p className="text-sm text-blue-800 mb-4">
-                        PINコードを生成して入口のスマートロックを開錠できます。
+                        リモート解錠で入口のスマートロックを開錠できます。
                       </p>
                     </div>
                   </div>
@@ -875,7 +875,7 @@ export function DogParkDetail() {
                       <DoorLockButton
                         key={lock.id}
                         lockId={lock.lock_id}
-                        label={`${lock.lock_name}のPINコードを生成`}
+                        label={`${lock.lock_name}をリモート解錠`}
                         className="w-full"
                         onSuccess={handleLockSuccess}
                         onError={handleLockError}
@@ -976,7 +976,7 @@ export function DogParkDetail() {
                       <DoorLockButton
                         key={lock.id}
                         lockId={lock.lock_id}
-                        label={`${lock.lock_name}のPINコードを生成`}
+                        label={`${lock.lock_name}をリモート解錠`}
                         className="w-full"
                         onSuccess={handleLockSuccess}
                         onError={handleLockError}
