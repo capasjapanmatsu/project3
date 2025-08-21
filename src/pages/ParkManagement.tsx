@@ -986,34 +986,12 @@ export function ParkManagement() {
                     <Star className="w-4 h-4 mr-1.5" />
                     <span className="whitespace-nowrap">統計</span>
                   </button>
-                  <button
-                    className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      activeTab === 'pins'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                    onClick={() => setActiveTab('pins')}
-                    data-walkthrough="pins-tab"
-                  >
-                    <Key className="w-4 h-4 mr-1.5" />
-                    <span className="whitespace-nowrap">PIN</span>
-                  </button>
+                  {/* PINタブはリモート解錠移行のため非表示 */}
                 </div>
                 
                 {/* 2段目のタブ */}
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      activeTab === 'locks'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                    onClick={() => setActiveTab('locks')}
-                    data-walkthrough="locks-tab"
-                  >
-                    <Shield className="w-4 h-4 mr-1.5" />
-                    <span className="whitespace-nowrap">ロック</span>
-                  </button>
+                  {/* ロックタブは管理者設定へ移行のため非表示 */}
                   <button
                     className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       activeTab === 'settings'

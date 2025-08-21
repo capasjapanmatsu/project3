@@ -800,6 +800,26 @@ export default function FirstStageForm({
             </div>
           </div>
 
+          {/* スマートロック購入の同意 */}
+          <div className="mb-6">
+            <label className="block text-lg font-bold text-gray-800 mb-3">
+              スマートロックシステムの購入について *
+            </label>
+            <p className="text-sm text-gray-600 mb-2">
+              当アプリ内ショップにてスマートロックシステムを購入し、設置いただく必要があります。
+            </p>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={(formData as any).agreeSmartLockPurchase === true}
+                onChange={(e) => updateFormData({ ...(formData as any), agreeSmartLockPurchase: e.target.checked } as any)}
+                className="rounded text-blue-600"
+                required
+              />
+              <span>はい（理解しました）</span>
+            </label>
+          </div>
+
           <Card className="bg-yellow-50 border-yellow-200">
             <div className="flex items-start space-x-2">
               <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />

@@ -22,6 +22,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
 import Select from '../components/Select';
+import AdminSmartLockSetup from '../components/admin/AdminSmartLockSetup';
 import useAuth from '../context/AuthContext';
 import { useAdminData } from '../hooks/useAdminData';
 import { supabase } from '../utils/supabase';
@@ -1035,6 +1036,11 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
                         </Button>
                       </div>
                     </div>
+
+                    {/* スマートロック設定 */}
+                    <div className="mt-4">
+                      <AdminSmartLockSetup parkId={park.id} parkName={park.name} />
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -1350,6 +1356,11 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
                             </div>
                           </div>
                         )}
+
+                        {/* スマートロック設定（審査中でも入力可能） */}
+                        <div className="mt-4">
+                          <AdminSmartLockSetup parkId={park.id} parkName={park.name} />
+                        </div>
                       </div>
                     </div>
 

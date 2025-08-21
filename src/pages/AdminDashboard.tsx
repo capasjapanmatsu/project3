@@ -67,7 +67,7 @@ interface FraudStats {
 export function AdminDashboard() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'parks' | 'facilities' | 'users' | 'maintenance' | 'fraud' | 'sponsors' | 'vaccine-approval' | 'inquiries'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'pages' | 'parks' | 'facilities' | 'users' | 'maintenance' | 'fraud' | 'sponsors' | 'vaccine-approval' | 'inquiries'>('overview');
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalParks: 0,

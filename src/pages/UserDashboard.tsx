@@ -19,7 +19,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { AccessStatusCard } from '../components/dashboard/AccessStatusCard';
 import { DogManagementSection } from '../components/dashboard/DogManagementSection';
 import { NotificationSection } from '../components/dashboard/NotificationSection';
 import { ParkModal } from '../components/dashboard/ParkModal';
@@ -1016,8 +1015,7 @@ export function UserDashboard() {
         </div>
       </Card>
 
-      {/* Access Status Section */}
-      <AccessStatusCard />
+      {/* Access Status Section - リモート解錠移行のため非表示 */}
 
       {/* Notifications Section */}
       {notifications.length > 0 && (

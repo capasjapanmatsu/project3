@@ -21,10 +21,11 @@ serve(async (req) => {
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      // サーバー側でRLSを回避し、確実に設定を参照するためにService Roleを使用
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
-    const { lockId, userId, purpose = "entry" } = await req.json();
+    const { lockId, userId, purpose = "entry", ttlockLockId } = await req.json();
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("認証が必要です");
@@ -46,12 +47,20 @@ serve(async (req) => {
     // day pass 等の追加チェックは省略（既存ロジックで実装済みのため）
 
     // smart_locks から TTLock 数値ID を取得
-    const { data: lock, error: lockErr } = await supabase
-      .from("smart_locks")
-      .select("ttlock_lock_id, park_id")
-      .eq("lock_id", lockId)
-      .maybeSingle();
-    if (lockErr || !lock?.ttlock_lock_id) throw new Error("スマートロック情報が見つかりません");
+    let resolvedTtlockId: string | null = null;
+    let parkId: string | null = null;
+    if (ttlockLockId) {
+      resolvedTtlockId = String(ttlockLockId);
+    } else {
+      const { data: lock, error: lockErr } = await supabase
+        .from("smart_locks")
+        .select("ttlock_lock_id, park_id")
+        .eq("lock_id", lockId)
+        .maybeSingle();
+      if (lockErr || !lock?.ttlock_lock_id) throw new Error("スマートロック情報が見つかりません");
+      resolvedTtlockId = String(lock.ttlock_lock_id);
+      parkId = lock.park_id as any;
+    }
 
     const client = new TTLockClient({
       baseUrl: Deno.env.get("TTLOCK_BASE_URL") || "https://euapi.sciener.com",
@@ -69,7 +78,7 @@ serve(async (req) => {
       console.log('listKeyboardPwd error:', e);
     }
 
-    const result = await client.unlockLock(parseInt(lock.ttlock_lock_id, 10));
+    const result = await client.unlockLock(parseInt(resolvedTtlockId, 10));
     if (!result.ok) {
       return ok({ success: false, error: `TTLock error code ${result.errcode}${result.errmsg ? `: ${result.errmsg}` : ''}` }, 502);
     }
@@ -77,7 +86,7 @@ serve(async (req) => {
     // 入退場ログを記録
     await supabase.from("user_entry_exit_logs").insert({
       user_id: user.id,
-      park_id: lock.park_id,
+      park_id: parkId,
       action: purpose,
       lock_id: lockId,
       pin_issued_at: new Date().toISOString(),
