@@ -161,6 +161,7 @@ const OwnerPaymentSystem = React.lazy(() => import('./pages/OwnerPaymentSystem')
 // 管理者ページ
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 const AdminUserManagement = React.lazy(() => import('./pages/AdminUserManagement').then(module => ({ default: module.AdminUserManagement })));
+const AdminUserDetail = React.lazy(() => import('./pages/AdminUserDetail').then(module => ({ default: module.AdminUserDetail })));
 const AdminParkManagement = React.lazy(() => import('./pages/AdminParkManagement').then(module => ({ default: module.AdminParkManagement })));
 const AdminReservationManagement = React.lazy(() => import('./pages/AdminReservationManagement').then(module => ({ default: module.AdminReservationManagement })));
 const AdminSalesManagement = React.lazy(() => import('./pages/AdminSalesManagement').then(module => ({ default: module.AdminSalesManagement })));
@@ -689,6 +690,13 @@ const App: React.FC = () => {
                 <AdminRoute>
                   <Suspense fallback={<DashboardSkeleton />}>
                     <AdminUserManagement />
+                  </Suspense>
+                </AdminRoute>
+              } />
+              <Route path="/admin/users/:userId" element={
+                <AdminRoute>
+                  <Suspense fallback={<DashboardSkeleton />}>
+                    <AdminUserDetail />
                   </Suspense>
                 </AdminRoute>
               } />
