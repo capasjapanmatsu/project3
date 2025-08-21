@@ -701,7 +701,7 @@ export function ProfileSettings() {
           <div className="mt-3 text-sm text-orange-600">LINEと連携すると有効化できます。上部のLINE連携セクションから連携してください。</div>
         )}
         <div className="mt-4 text-right">
-          <Button onClick={() => void handleSubmit(new React.FormEvent(null))} isLoading={isSaving}>
+          <Button onClick={() => void handleSubmit({} as any)} isLoading={isSaving}>
             <Save className="w-4 h-4 mr-1" /> 保存
           </Button>
         </div>
