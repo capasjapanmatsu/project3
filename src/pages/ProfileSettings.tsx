@@ -75,6 +75,9 @@ export function ProfileSettings() {
   const [deleteError, setDeleteError] = useState('');
   const [isLookingUpPostalCode, setIsLookingUpPostalCode] = useState(false);
   const [postalCodeError, setPostalCodeError] = useState('');
+  // 追加: 通知とLINE連携の状態
+  const [notifyOptIn, setNotifyOptIn] = useState<boolean>(false);
+  const [lineLinked, setLineLinked] = useState<boolean>(false);
   
   // サブスクリプション管理関連のstate
   const [subscriptionAction, setSubscriptionAction] = useState<'pause' | 'resume' | 'cancel' | null>(null);
@@ -152,6 +155,9 @@ export function ProfileSettings() {
         
         setFormData(profileData);
         setOriginalData(profileData);
+        // 追加: 通知/連携の初期状態
+        setNotifyOptIn(!!data.notify_opt_in);
+        setLineLinked(!!data.line_user_id);
       }
 
       // 連携状態: DBのリンクテーブルで判定（ログアウトしても持続）
@@ -323,6 +329,7 @@ export function ProfileSettings() {
         address: formData.address,
         phone_number: formData.phone_number,
         email: formData.email,
+        notify_opt_in: notifyOptIn,
       };
 
       // LINEユーザーの場合、line_user_idも設定
@@ -396,6 +403,10 @@ export function ProfileSettings() {
       }
 
       setSuccess(successMessage);
+      // 追加: 保存後にプロフィールの通知設定を確定
+      try {
+        await supabase.from('profiles').update({ notify_opt_in: notifyOptIn }).eq('id', uid);
+      } catch {}
       
       // 3秒後に成功メッセージを消す
       setTimeout(() => {
@@ -652,49 +663,46 @@ export function ProfileSettings() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* ヘッダー */}
-      <div className="flex items-center space-x-4 mb-6">
-        <Link
-          to="/dashboard"
-          className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
+    <div className="max-w-4xl mx-auto p-4">
+      {/* 戻るボタンなど */}
+      <div className="flex items-center mb-4">
+        <Button variant="secondary" size="sm" onClick={() => navigate('/dashboard')} className="mr-4">
+          <ArrowLeft className="w-4 h-4 mr-1" />
           マイページに戻る
-        </Link>
+        </Button>
       </div>
 
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4 flex items-center justify-center">
-          <User className="w-8 h-8 text-blue-600 mr-3" />
-          プロフィール設定
-        </h1>
-        <p className="text-lg text-gray-600">
-          アカウント情報を管理します
-        </p>
-      </div>
-
-      {/* クイックリンク */}
-      <div className="flex flex-wrap justify-center gap-4 mb-6">
-        <Link to="/payment-method-settings">
-          <Button variant="secondary" size="sm">
-            <CreditCard className="w-4 h-4 mr-2" />
-            支払い方法
+      {/* 通知設定カード */}
+      <Card className="p-6 mb-6">
+        <h2 className="text-lg font-semibold mb-2">通知設定</h2>
+        <p className="text-sm text-gray-600 mb-4">コミュニティのメッセージやお知らせをLINEに転送します（連携が必要）。</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-medium">LINEで通知を受け取る</div>
+            <div className="text-sm text-gray-500">連携状態: {lineLinked ? '連携済み' : '未連携'}</div>
+          </div>
+          <label className="inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={notifyOptIn}
+              onChange={(e) => setNotifyOptIn(e.target.checked)}
+              disabled={!lineLinked}
+            />
+            <span className={`w-12 h-6 flex items-center bg-${notifyOptIn && lineLinked ? 'green' : 'gray'}-300 rounded-full p-1 transition-colors`}>
+              <span className={`bg-white w-5 h-5 rounded-full shadow transform transition-transform ${notifyOptIn && lineLinked ? 'translate-x-6' : ''}`}></span>
+            </span>
+          </label>
+        </div>
+        {!lineLinked && (
+          <div className="mt-3 text-sm text-orange-600">LINEと連携すると有効化できます。上部のLINE連携セクションから連携してください。</div>
+        )}
+        <div className="mt-4 text-right">
+          <Button onClick={() => void handleSubmit(new React.FormEvent(null))} isLoading={isSaving}>
+            <Save className="w-4 h-4 mr-1" /> 保存
           </Button>
-        </Link>
-        <Link to="/dogpark-history">
-          <Button variant="secondary" size="sm">
-            <History className="w-4 h-4 mr-2" />
-            利用履歴
-          </Button>
-        </Link>
-        <Link to="/order-history">
-          <Button variant="secondary" size="sm">
-            <Package className="w-4 h-4 mr-2" />
-            注文履歴
-          </Button>
-        </Link>
-      </div>
+        </div>
+      </Card>
 
       <Card className="p-6">
         <form onSubmit={handleSubmit}>

@@ -242,10 +242,7 @@ export function AdminDashboard() {
               </h1>
               <p className="text-gray-600">システム全体の監視と管理</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <Link to="/landing" target="_blank" className="text-blue-600 hover:text-blue-800 underline">
-                ランディングページを開く
-              </Link>
+            <div className="flex items-center">
               <span className="text-sm text-gray-600">
                 管理者: {user?.email}
               </span>
@@ -568,9 +565,8 @@ export function AdminDashboard() {
                   <div>
                     <h4 className="font-medium text-gray-900">ランディングページ</h4>
                     <p className="text-sm text-gray-600">
-                      広告・SEO用の公開ページ（右上メニューやフッターからもアクセス可能）
+                      広告・SEO用の公開ページ（右上メニューやフッターからアクセス）
                     </p>
-                    <Link to="/landing" target="_blank" className="text-blue-600 hover:text-blue-800 underline">開く</Link>
                   </div>
                 </div>
                 <div className="p-4 bg-white rounded-lg border">
@@ -697,15 +693,12 @@ export function AdminDashboard() {
               </div>
             </Card>
 
-            {/* ランディングページ管理（青ボタン削除済み・テキストリンクのみ） */}
+            {/* ランディングページ管理（リンクは説明のみ） */}
             <Card className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">ランディングページ管理</h3>
               <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
                 <h4 className="font-medium text-gray-900">ランディングページ</h4>
-                <p className="text-sm text-gray-600 mb-2">広告やSEO用のランディングページを確認・編集できます。</p>
-                <Link to="/landing" target="_blank" className="text-blue-600 hover:text-blue-800 underline inline-flex items-center">
-                  プレビューを開く →
-                </Link>
+                <p className="text-sm text-gray-600">広告やSEO用のランディングページを確認・編集できます。</p>
               </div>
             </Card>
           </div>
