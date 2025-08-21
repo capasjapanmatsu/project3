@@ -124,8 +124,17 @@ export function AdminUserDetail() {
         (sum, reservation) => sum + (reservation.total_amount || 0), 0
       );
 
-      // フォールバックメールアドレス
-      const actualEmail = `user_${id.slice(0, 8)}@unknown.com`;
+      // メールアドレス（LINEログイン等で未設定ならフォールバック表示）
+      const actualEmail = profile.email
+        || profile.line_email
+        || profile.contact_email
+        || `未設定（ID: ${id.slice(0, 8)}）`;
+
+      // 管理しているドッグラン・施設
+      const [{ data: parks }, { data: facilities }] = await Promise.all([
+        supabase.from('dog_parks').select('id, name, status').eq('owner_id', id),
+        supabase.from('pet_facilities').select('id, name, status').eq('owner_id', id),
+      ]);
 
       const userDetail: UserDetailData = {
         id: profile.id,
@@ -148,8 +157,12 @@ export function AdminUserDetail() {
         })),
         subscription_status: 'inactive', // Stripe関連を無効化
         total_spent: totalSpent,
-        last_activity: reservations?.[0]?.date || ''
+        last_activity: reservations?.[0]?.date || '',
       };
+
+      // 管理対象の追加情報を一時的にフィールドへ付与（表示時に使用）
+      (userDetail as any).managedParks = parks || [];
+      (userDetail as any).managedFacilities = facilities || [];
 
       setUser(userDetail);
     } catch (error) {
@@ -279,6 +292,43 @@ export function AdminUserDetail() {
               <CreditCard className="w-5 h-5 mr-3 text-gray-400" />
               <span>総支払額: ¥{user.total_spent.toLocaleString()}</span>
             </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* 管理しているドッグラン/その他施設 */}
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">管理中のコンテンツ</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h3 className="font-medium text-gray-700 mb-2">ドッグラン</h3>
+            {((user as any).managedParks || []).length === 0 ? (
+              <p className="text-gray-500 text-sm">管理中のドッグランはありません</p>
+            ) : (
+              <ul className="space-y-2">
+                {(user as any).managedParks.map((p: any) => (
+                  <li key={p.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <span className="text-sm text-gray-800">{p.name}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${p.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{p.status}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <h3 className="font-medium text-gray-700 mb-2">その他施設</h3>
+            {((user as any).managedFacilities || []).length === 0 ? (
+              <p className="text-gray-500 text-sm">管理中の施設はありません</p>
+            ) : (
+              <ul className="space-y-2">
+                {(user as any).managedFacilities.map((f: any) => (
+                  <li key={f.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <span className="text-sm text-gray-800">{f.name}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${f.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{f.status}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       </Card>
