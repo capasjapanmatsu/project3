@@ -6,6 +6,7 @@ import {
     CheckCircle,
     DollarSign,
     Eye,
+    FileText,
     Mail,
     Monitor,
     Settings,
