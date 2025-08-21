@@ -170,23 +170,9 @@ export function MyFacilitiesManagement() {
               <p className="text-gray-600 mt-2">
                 あなたが管理するペット関連施設 ({facilities.length}施設) の詳細管理
               </p>
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">不明な点がありましたらお気軽にお問合せください。</p>
-                <Button 
-                  className="mt-3 w-full bg-blue-600 hover:bg-blue-700"
-                  onClick={() => setShowInquiry(true)}
-                >
-                  管理者に問い合わせ
-                </Button>
-              </div>
+              
             </div>
             
-            <Link to="/facility-registration">
-              <Button className="bg-teal-600 hover:bg-teal-700">
-                <Plus className="w-4 h-4 mr-2" />
-                新規施設登録
-              </Button>
-            </Link>
           </div>
         </div>
 
@@ -305,6 +291,25 @@ export function MyFacilitiesManagement() {
             ))}
           </div>
         )}
+
+        {/* 下部に横長ボタン群 */}
+        <div className="mt-8 space-y-6">
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">不明な点がありましたらお気軽にお問合せください。</p>
+            <Button 
+              className="mt-3 w-full bg-blue-600 hover:bg-blue-700"
+              onClick={() => setShowInquiry(true)}
+            >
+              管理者に問い合わせ
+            </Button>
+          </div>
+          <Link to="/facility-registration" className="block">
+            <Button className="w-full bg-teal-600 hover:bg-teal-700">
+              <Plus className="w-4 h-4 mr-2" />
+              新規施設登録
+            </Button>
+          </Link>
+        </div>
       </div>
       {showInquiry && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
