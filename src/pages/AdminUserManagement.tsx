@@ -6,7 +6,6 @@ import {
     CreditCard,
     Crown,
     DogIcon as Dog,
-    Eye,
     Monitor,
     Phone,
     Search,
@@ -540,7 +539,9 @@ export function AdminUserManagement() {
                             </div>
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                            <Link to={`/admin/users/${user.id}`} className="text-sm font-medium text-blue-600 hover:text-blue-800 underline">
+                              {user.name}
+                            </Link>
                             <div className="text-sm text-gray-500">{user.email}</div>
                           </div>
                         </div>
@@ -593,12 +594,6 @@ export function AdminUserManagement() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center space-x-2">
-                          <Link to={`/admin/users/${user.id}`}>
-                            <Button variant="secondary" size="sm">
-                              <Eye className="w-4 h-4 mr-1" />
-                              詳細
-                            </Button>
-                          </Link>
                           {(user.fraud_detection_count || 0) > 0 && (
                             <Button
                               variant="secondary"

@@ -408,6 +408,7 @@ export function AdminDashboard() {
           <div className="flex flex-wrap gap-2">
             {[
               { id: 'overview', label: '概要', icon: BarChart4 },
+              { id: 'pages', label: 'ページ管理', icon: FileText },
               { id: 'parks', label: 'ドッグラン', icon: Building, badge: stats.pendingParks },
               { id: 'facilities', label: 'その他施設', icon: Building, badge: stats.pendingFacilities },
               { id: 'users', label: 'ユーザー', icon: Users },
@@ -554,6 +555,39 @@ export function AdminDashboard() {
                     ショップ管理
                   </Button>
                 </Link>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* ページ管理タブ */}
+        {activeTab === 'pages' && (
+          <div className="space-y-6">
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">ページ管理</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-white rounded-lg border">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">ランディングページ</h4>
+                      <p className="text-sm text-gray-600">広告・SEO用の公開ページ</p>
+                    </div>
+                    <Link to="/landing" target="_blank">
+                      <Button className="bg-blue-600 hover:bg-blue-700">開く</Button>
+                    </Link>
+                  </div>
+                </div>
+                <div className="p-4 bg-white rounded-lg border">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">スポンサー向け案内</h4>
+                      <p className="text-sm text-gray-600">金額・プラン記載の説明ページ</p>
+                    </div>
+                    <Link to="/sponsor-application" target="_blank">
+                      <Button className="bg-blue-600 hover:bg-blue-700">開く</Button>
+                    </Link>
+                  </div>
+                </div>
               </div>
             </Card>
           </div>

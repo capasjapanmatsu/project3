@@ -54,23 +54,44 @@ export const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
   // メンテナンス状態を確認（DBから取得）
   const checkMaintenanceStatus = async () => {
     try {
-      const { data, error } = await supabase
+      // 1) まず is_active/start_time スキーマを試す
+      let query = supabase
         .from('maintenance_schedules')
         .select('*')
         .eq('is_active', true)
         .order('start_time', { ascending: false })
         .limit(1);
+
+      let { data, error } = await query;
+
+      // 2) 列が存在しない場合は status/start_date スキーマにフォールバック
+      if (error && typeof error === 'object' && (error as any).code === '42703') {
+        const alt = await supabase
+          .from('maintenance_schedules')
+          .select('*')
+          .eq('status', 'active')
+          .order('start_date', { ascending: false })
+          .limit(1);
+        data = alt.data as any[] | null;
+        error = alt.error as any;
+      }
+
       if (error) throw error;
+
       if (data && data.length > 0) {
         const row = data[0] as any;
+        // 列名差異を吸収
+        const start = row.start_time ?? row.start_date ?? null;
+        const end = row.end_time ?? row.end_date ?? null;
+        const emergency = row.is_emergency ?? false;
         setIsMaintenanceActive(true);
         setMaintenanceInfo({
           id: row.id,
-          title: row.title,
-          message: row.message,
-          start_time: row.start_time,
-          end_time: row.end_time,
-          is_emergency: !!row.is_emergency
+          title: row.title ?? row.name ?? 'メンテナンス',
+          message: row.message ?? row.description ?? '',
+          start_time: start,
+          end_time: end,
+          is_emergency: !!emergency,
         });
       } else {
         setIsMaintenanceActive(false);

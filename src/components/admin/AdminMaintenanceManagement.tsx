@@ -73,10 +73,20 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
       setLoading(true);
       
       // メンテナンススケジュール取得
-      const { data: scheduleData, error: scheduleError } = await supabase
+      // created_at が存在しないスキーマに備え、開始時刻で降順ソートへフォールバック
+      let { data: scheduleData, error: scheduleError } = await supabase
         .from('maintenance_schedules')
         .select('*')
         .order('created_at', { ascending: false });
+
+      if (scheduleError && scheduleError.code === '42703') {
+        const alt = await supabase
+          .from('maintenance_schedules')
+          .select('*')
+          .order('start_time', { ascending: false });
+        scheduleData = alt.data || [];
+        scheduleError = alt.error as any;
+      }
 
       if (scheduleError && scheduleError.code !== 'PGRST116') {
         console.error('Error fetching schedules:', scheduleError);
@@ -116,14 +126,23 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
         return;
       }
 
+      // 列差異を吸収して挿入
+      const payload: any = {
+        title: newSchedule.title,
+        message: newSchedule.message,
+        is_emergency: newSchedule.is_emergency,
+      };
+      // どちらのスキーマでも働くよう2系統の列名をセット
+      payload.start_time = newSchedule.start_time || new Date().toISOString();
+      payload.end_time = newSchedule.end_time || null;
+      payload.is_active = true;
+      payload.start_date = payload.start_time;
+      payload.end_date = payload.end_time;
+      payload.status = 'active';
+
       const { error } = await supabase
         .from('maintenance_schedules')
-        .insert([{
-          ...newSchedule,
-          start_time: newSchedule.start_time || new Date().toISOString(),
-          end_time: newSchedule.end_time || null,
-          is_active: true
-        }]);
+        .insert([payload]);
 
       if (error) throw error;
 
@@ -165,11 +184,15 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
   // メンテナンスを終了
   const endMaintenance = async (id: string) => {
     try {
+      // 列差異を吸収して終了更新
+      const endIso = new Date().toISOString();
       const { error } = await supabase
         .from('maintenance_schedules')
         .update({ 
           is_active: false,
-          end_time: new Date().toISOString()
+          end_time: endIso,
+          status: 'completed',
+          end_date: endIso,
         })
         .eq('id', id);
 
