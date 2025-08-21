@@ -289,14 +289,24 @@ export function Community() {
       setProfileMap({});
       setDogNameMap({});
     }
-    // もし事前指定の相手があれば、そのスレッドを開く
+    // もし事前指定の相手があれば、そのスレッドを開く or 新規開始
     if (openPartnerPreset) {
       const target = dedup.find((m: any) => (m.sender_id === uid ? m.receiver_id : m.sender_id) === openPartnerPreset);
+      const otherId = openPartnerPreset;
+      // プロフィールを探す（ない場合もある）
+      const partnerProfile = (map && (map as any)[otherId]) || { name: '', nickname: '', user_type: 'user' } as any;
       if (target) {
-        const otherId = target.sender_id === uid ? target.receiver_id : target.sender_id;
-        const partnerProfile = map[otherId] || { name: '', nickname: '', user_type: 'user' } as any;
         setSelectedFriend({
           id: target.id,
+          friend_id: otherId,
+          friend: { id: otherId, name: partnerProfile.name || '', user_type: partnerProfile.user_type || 'user', created_at: new Date().toISOString() },
+          dog_count: 0,
+          created_at: new Date().toISOString()
+        });
+      } else {
+        // スレッドが無ければ新規スレッド開始用に仮のオブジェクトを設定（送信で自動作成）
+        setSelectedFriend({
+          id: 'new',
           friend_id: otherId,
           friend: { id: otherId, name: partnerProfile.name || '', user_type: partnerProfile.user_type || 'user', created_at: new Date().toISOString() },
           dog_count: 0,

@@ -273,19 +273,7 @@ export function AdminUserDetail() {
             <div>
               <button
                 className="text-blue-600 hover:text-blue-800 underline text-sm"
-                onClick={async () => {
-                  try {
-                    const { data: me } = await supabase.auth.getUser();
-                    if (!me?.user) {
-                      navigate('/login');
-                      return;
-                    }
-                    await supabase.from('messages').insert({
-                      sender_id: me.user.id,
-                      receiver_id: user.id,
-                      content: '管理者がチャットを開始しました。',
-                    });
-                  } catch {}
+                onClick={() => {
                   sessionStorage.setItem('communityActiveTab', 'messages');
                   sessionStorage.setItem('communityOpenPartnerId', user.id);
                   navigate('/community');
