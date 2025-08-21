@@ -61,6 +61,21 @@ export function Community() {
   const [success, setSuccess] = useState('');
   const [blacklistedDogs, setBlacklistedDogs] = useState<any[]>([]);
 
+  // 管理画面から遷移したときに即座にスレッドを開く（データ取得前でも仮スレッドを作ってモーダルを開く）
+  useEffect(() => {
+    const partnerId = openPartnerPreset;
+    if (uid && partnerId && !selectedFriend) {
+      setSelectedFriend({
+        id: 'new',
+        friend_id: partnerId,
+        friend: { id: partnerId, name: '', user_type: 'user', created_at: new Date().toISOString() },
+        dog_count: 0,
+        created_at: new Date().toISOString()
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid]);
+
   // 未ログイン時はログイン画面にリダイレクト（メールログイン優先）
   useEffect(() => {
     if (!user && !lineUser && !effectiveUserId) {
