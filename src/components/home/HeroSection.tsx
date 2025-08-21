@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { MapPin, User } from 'lucide-react';
 import { SponsorBanner } from './SponsorBanner';
 
 interface HeroSectionProps {
@@ -14,17 +15,19 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ isLoggedIn }) => {
       
       {isLoggedIn ? (
         /* ログイン済みユーザー向けアクションボタン */
-        <div className="flex justify-center space-x-4 mt-6">
+        <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mt-6">
           <Link
             to="/parks"
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            className="flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
+            <MapPin className="w-5 h-5" />
             ドッグランを探す
           </Link>
           <Link
             to="/dashboard"
-            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
+            className="flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
           >
+            <User className="w-5 h-5" />
             マイページ
           </Link>
         </div>
@@ -37,16 +40,16 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ isLoggedIn }) => {
           <p className="text-xl text-gray-600 mb-8">
             近くのドッグランを見つけて、新しい出会いを見つけましょう
           </p>
-          <div className="flex justify-center space-x-4">
+          <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
             <Link
               to="/register"
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="text-center bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
               無料で始める
             </Link>
             <Link
               to="/login?method=magic"
-              className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium"
+              className="text-center bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium"
             >
               Magic Linkで簡単ログイン
             </Link>
