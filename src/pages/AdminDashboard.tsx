@@ -570,7 +570,9 @@ export function AdminDashboard() {
                 <div className="p-4 bg-white rounded-lg border">
                   <div>
                     <h4 className="font-medium text-gray-900">ランディングページ</h4>
-                    <p className="text-sm text-gray-600">広告・SEO用の公開ページ</p>
+                    <p className="text-sm text-gray-600">
+                      広告・SEO用の公開ページ（右上メニューやフッターからもアクセス可能）
+                    </p>
                     <Link to="/landing" target="_blank" className="text-blue-600 hover:text-blue-800 underline">開く</Link>
                   </div>
                 </div>
@@ -698,14 +700,14 @@ export function AdminDashboard() {
               </div>
             </Card>
 
-            {/* ランディングページ管理 */}
+            {/* ランディングページ管理（青ボタン削除済み・テキストリンクのみ） */}
             <Card className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">ランディングページ管理</h3>
               <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
                 <h4 className="font-medium text-gray-900">ランディングページ</h4>
                 <p className="text-sm text-gray-600 mb-2">広告やSEO用のランディングページを確認・編集できます。</p>
                 <Link to="/landing" target="_blank" className="text-blue-600 hover:text-blue-800 underline inline-flex items-center">
-                  <Eye className="w-4 h-4 mr-1" />プレビュー
+                  プレビューを開く →
                 </Link>
               </div>
             </Card>
