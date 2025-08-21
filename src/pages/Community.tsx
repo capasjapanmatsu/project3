@@ -18,7 +18,7 @@ import {
     Users,
     X
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -1290,7 +1290,7 @@ export function Community() {
 function MessageThread({ viewerId, partnerId, refreshKey, onMarkedRead }: { viewerId: string; partnerId: string; refreshKey?: number; onMarkedRead: () => void }) {
   const [items, setItems] = useState<Array<{id:string; sender_id:string; receiver_id:string; content:string; read:boolean; created_at:string}>>([]);
   const [attachmentsMap, setAttachmentsMap] = useState<Record<string, Array<{file_url:string; file_type:string; file_name:string}>>>({});
-  const listRef = React.useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     (async () => {
       const { data } = await supabase
