@@ -243,11 +243,8 @@ export function AdminDashboard() {
               <p className="text-gray-600">システム全体の監視と管理</p>
             </div>
             <div className="flex items-center space-x-4">
-              <Link to="/landing" target="_blank">
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                  <Eye className="w-4 h-4 mr-2" />
-                  ランディングページ
-                </Button>
+              <Link to="/landing" target="_blank" className="text-blue-600 hover:text-blue-800 underline">
+                ランディングページを開く
               </Link>
               <span className="text-sm text-gray-600">
                 管理者: {user?.email}
