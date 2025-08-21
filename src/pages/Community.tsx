@@ -983,7 +983,10 @@ export function Community() {
                     const otherId = message.sender_id === uid ? message.receiver_id : message.sender_id;
                     const partnerProfile = profileMap[otherId];
                     let partnerName = 'ワンちゃんの飼い主さん';
-                    if (partnerProfile?.user_type === 'admin') {
+                    // 管理者メール固定表示
+                    const ADMIN_EMAIL = 'capasjapan@gmail.com';
+                    const isAdminFixed = partnerProfile?.user_type === 'admin' || partnerProfile?.name === ADMIN_EMAIL || partnerProfile?.nickname === ADMIN_EMAIL;
+                    if (isAdminFixed) {
                       partnerName = 'ドッグパークJP管理者';
                     } else {
                       const dog = dogNameMap[otherId];
