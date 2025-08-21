@@ -1287,6 +1287,7 @@ export function Community() {
 function MessageThread({ viewerId, partnerId, refreshKey, onMarkedRead }: { viewerId: string; partnerId: string; refreshKey?: number; onMarkedRead: () => void }) {
   const [items, setItems] = useState<Array<{id:string; sender_id:string; receiver_id:string; content:string; read:boolean; created_at:string}>>([]);
   const [attachmentsMap, setAttachmentsMap] = useState<Record<string, Array<{file_url:string; file_type:string; file_name:string}>>>({});
+  const listRef = React.useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     (async () => {
       const { data } = await supabase
@@ -1318,11 +1319,17 @@ function MessageThread({ viewerId, partnerId, refreshKey, onMarkedRead }: { view
       } else {
         setAttachmentsMap({});
       }
+      // スクロールを最下部へ
+      setTimeout(() => {
+        if (listRef.current) {
+          listRef.current.scrollTop = listRef.current.scrollHeight;
+        }
+      }, 0);
     })();
   }, [viewerId, partnerId, refreshKey]);
 
   return (
-    <div className="h-96 overflow-y-auto mb-4 p-3 bg-gray-50 rounded-lg space-y-2">
+    <div ref={listRef} className="h-96 overflow-y-auto mb-4 p-3 bg-gray-50 rounded-lg space-y-2">
       {items.length === 0 ? (
         <div className="text-center text-gray-500 text-sm py-4">メッセージ履歴はまだありません</div>
       ) : (
