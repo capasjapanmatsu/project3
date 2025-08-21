@@ -403,12 +403,12 @@ export function MyParksManagement() {
 
         {/* 画面下部にボタン群を移動 */}
         <div className="mt-8 space-y-6">
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800">
               不明な点がありましたらお気軽にお問合せください。
             </p>
             <Button
-              className="bg-blue-600 hover:bg-blue-700"
+              className="mt-3 w-full bg-blue-600 hover:bg-blue-700"
               onClick={() => setShowInquiry(true)}
             >
               管理者に問い合わせ
@@ -416,18 +416,14 @@ export function MyParksManagement() {
           </div>
           <div>
             <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h2 className="text-lg font-semibold text-green-800 mb-2">🌟 新規ドッグラン募集中！</h2>
-                  <p className="text-green-700 text-sm">あなたの土地を活用してドッグラン事業を始めませんか？初期費用・運営サポート充実！</p>
-                </div>
-                <Link to="/park-registration" className="ml-6 flex-shrink-0">
-                  <Button className="bg-green-600 hover:bg-green-700 px-6 py-3 font-semibold">
-                    <Building className="w-5 h-5 mr-2" />
-                    新規ドッグラン募集詳細
-                  </Button>
-                </Link>
-              </div>
+              <h2 className="text-lg font-semibold text-green-800 mb-2">🌟 新規ドッグラン募集中！</h2>
+              <p className="text-green-700 text-sm">あなたの土地を活用してドッグラン事業を始めませんか？初期費用・運営サポート充実！</p>
+              <Link to="/park-registration" className="block mt-3">
+                <Button className="w-full bg-green-600 hover:bg-green-700 py-3 font-semibold">
+                  <Building className="w-5 h-5 mr-2" />
+                  新規ドッグラン募集詳細
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
