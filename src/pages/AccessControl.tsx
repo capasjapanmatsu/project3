@@ -19,10 +19,12 @@ import Card from '../components/Card';
 import LazyImage from '../components/LazyImage';
 import VaccineBadge, { getVaccineStatusFromDog } from '../components/VaccineBadge';
 import useAuth from '../context/AuthContext';
+import { retryConfigs, useRetryWithRecovery } from '../hooks/useRetryWithRecovery';
 import { useSubscription } from '../hooks/useSubscription';
 import type { Dog, DogPark, SmartLock } from '../types';
 import { DEFAULT_LOCATION, LocationError, formatDistance, getCurrentLocation, sortByDistance, type Location } from '../utils/location';
 import { checkPaymentStatus, type PaymentStatus } from '../utils/paymentUtils';
+import { safeGetItem, safeSetItem } from '../utils/safeStorage';
 import { supabase } from '../utils/supabase';
 
 type ParkWithDistance = DogPark & { distance: number };
@@ -53,6 +55,8 @@ export function AccessControl() {
   const [currentAction, setCurrentAction] = useState<'entry' | 'exit'>('entry');
   const [occupancy, setOccupancy] = useState<{ current?: number; max?: number } | null>(null);
   const [parkIdFromStatus, setParkIdFromStatus] = useState<string | null>(null);
+  const [dogsTimeout, setDogsTimeout] = useState(false);
+  const { execute: executeRetry, state: retryState, reset: resetRetry } = useRetryWithRecovery(retryConfigs.api);
 
   const MAX_DOGS = 3; // 最大3頭まで選択可能
   const NEARBY_PARKS_LIMIT = 3; // 近い順に表示する施設数
@@ -241,66 +245,96 @@ export function AccessControl() {
     setSelectedLock(null);
   };
 
+  const fetchDogsRemote = useCallback(async () => {
+    const uid = user?.id || effectiveUserId;
+    if (!uid) return;
+    const { data, error } = await supabase
+      .from('dogs')
+      .select(`
+        *,
+        vaccine_certifications (
+          id,
+          status,
+          rabies_expiry_date,
+          combo_expiry_date,
+          approved_at
+        )
+      `)
+      .eq('owner_id', uid as any);
+
+    if (error) {
+      console.warn('Error fetching dogs:', error);
+      throw new Error('ワンちゃんの情報を取得できませんでした。');
+    }
+
+    const approvedDogs = (data || []).filter((dog: any) => {
+      const vaccineStatus = getVaccineStatusFromDog(dog);
+      return vaccineStatus === 'approved';
+    });
+
+    setDogs(approvedDogs as Dog[]);
+    safeSetItem('accesscontrol_dogs', JSON.stringify({ ts: Date.now(), dogs: approvedDogs }), 'sessionStorage');
+
+    if (data && data.length > 0 && approvedDogs.length === 0) {
+      setError('ワクチン接種証明書が承認されたワンちゃんがいません。マイページからワクチン証明書をアップロードして承認を受けてください。');
+    }
+  }, [user, effectiveUserId]);
+
+  const handleRetryDogs = useCallback(async () => {
+    setDogsTimeout(false);
+    resetRetry();
+    const timer = setTimeout(() => setDogsTimeout(true), 2000);
+    try {
+      await executeRetry(fetchDogsRemote);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      clearTimeout(timer);
+      setDogsTimeout(false);
+      setIsLoading(false);
+    }
+  }, [executeRetry, fetchDogsRemote, resetRetry]);
+
   useEffect(() => {
     const fetchInitialData = async () => {
       const uid = user?.id || effectiveUserId;
       if (!uid) return;
 
-      // 🚀 フェーズ1: 最優先データ（犬情報）を最初に取得
+      // 1) キャッシュ即時表示（sessionStorage）
       try {
-        const { data, error } = await supabase
-          .from('dogs')
-          .select(`
-            *,
-            vaccine_certifications (
-              id,
-              status,
-              rabies_expiry_date,
-              combo_expiry_date,
-              approved_at
-            )
-          `)
-          .eq('owner_id', uid as any);
-
-        if (error) {
-          console.warn('Error fetching dogs:', error);
-          setError('ワンちゃんの情報を取得できませんでした。');
-        } else {
-          // ワクチン承認済みのワンちゃんのみをフィルタリング
-          const approvedDogs = (data || []).filter((dog: any) => {
-            const vaccineStatus = getVaccineStatusFromDog(dog);
-            return vaccineStatus === 'approved';
-          });
-          
-          setDogs(approvedDogs as Dog[]);
-
-          // 承認済みのワンちゃんがいない場合の警告
-          if (data && data.length > 0 && approvedDogs.length === 0) {
-            setError('ワクチン接種証明書が承認されたワンちゃんがいません。マイページからワクチン証明書をアップロードして承認を受けてください。');
+        const cached = safeGetItem('accesscontrol_dogs', 'sessionStorage');
+        if (cached) {
+          const parsed = JSON.parse(cached) as { ts: number; dogs: Dog[] };
+          if (Array.isArray(parsed?.dogs)) {
+            setDogs(parsed.dogs);
+            setIsLoading(false);
           }
         }
+      } catch {
+        // ignore cache errors
+      }
 
-        // 基本的な犬情報で画面表示を開始
-        setIsLoading(false);
-
-        // 🚀 フェーズ2: バックグラウンドで並列取得
-        const backgroundPromises = [
-          // ドッグラン情報の取得
-          fetchParksData(),
-          // 決済状況の確認
-          fetchPaymentStatusData(),
-          // 位置情報の取得
-          getCurrentUserLocation()
-        ];
-
-        // 並列実行（エラー処理は個別に行う）
-        void Promise.allSettled(backgroundPromises);
-
-      } catch (error) {
-        console.error('Error in initial data fetch:', error);
-        setError('データの取得に失敗しました。');
+      // 2) リモート取得（2秒タイムアウト表示＋リトライ対応）
+      // 2秒タイマー（UI通知用）
+      setDogsTimeout(false);
+      const timer = setTimeout(() => setDogsTimeout(true), 2000);
+      try {
+        await executeRetry(fetchDogsRemote);
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        clearTimeout(timer);
+        setDogsTimeout(false);
         setIsLoading(false);
       }
+
+      // 3) バックグラウンド並列取得
+      const backgroundPromises = [
+        fetchParksData(),
+        fetchPaymentStatusData(),
+        getCurrentUserLocation()
+      ];
+      void Promise.allSettled(backgroundPromises);
     };
 
     // 🔄 ドッグラン情報取得の分離関数
@@ -540,6 +574,14 @@ export function AccessControl() {
               <PawPrint className="w-5 h-5 text-blue-600 mr-2" />
               入場するワンちゃんを選択
             </h2>
+            {/* 2秒を超えた取得遅延を検知したら案内＋再試行 */}
+            {dogsTimeout && (
+              <div className="mb-4 p-3 bg-yellow-50 text-yellow-800 rounded border border-yellow-200 text-sm">
+                情報の取得に時間がかかっています。通信環境をご確認の上、
+                <button className="underline ml-1" onClick={handleRetryDogs}>再試行</button>
+                してください。
+              </div>
+            )}
             
             {dogs.length === 0 ? (
               <div className="text-center py-8">

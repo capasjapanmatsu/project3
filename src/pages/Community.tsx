@@ -6,11 +6,10 @@ import {
     ChevronRight,
     Filter,
     Heart,
-    Key,
     MapPin,
     MessageSquare,
-    PawPrint,
     Paperclip,
+    PawPrint,
     Send,
     Share,
     UserCheck,
@@ -18,7 +17,7 @@ import {
     Users,
     X
 } from 'lucide-react';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -86,10 +85,21 @@ export function Community() {
 
   useEffect(() => {
     const id = user?.id || lineUser?.id || effectiveUserId;
-    if (id) {
-      // 🚀 最適化されたデータ取得とリアルタイム設定
-      initializeCommunityPage(id);
-    }
+    if (!id) return;
+    // キャッシュから即時表示
+    try {
+      const cached = sessionStorage.getItem('community_cached');
+      if (cached) {
+        const { msgs, notifs, frs, friendsCache, ts } = JSON.parse(cached);
+        if (Array.isArray(msgs)) setMessages(msgs);
+        if (Array.isArray(notifs)) setNotifications(notifs);
+        if (Array.isArray(frs)) setFriendRequests(frs);
+        if (Array.isArray(friendsCache)) setFriends(friendsCache);
+        setIsLoading(false);
+      }
+    } catch {}
+    // バックグラウンド更新
+    initializeCommunityPage(id);
   }, [user, lineUser, effectiveUserId]);
 
   const initializeCommunityPage = async (id: string) => {
@@ -115,6 +125,16 @@ export function Community() {
         fetchUserDogs(id),
         fetchBlacklistedDogs(id)
       ]);
+      // キャッシュ保存（60秒）
+      try {
+        sessionStorage.setItem('community_cached', JSON.stringify({
+          msgs: messages,
+          notifs: notifications,
+          frs: friendRequests,
+          friendsCache: friends,
+          ts: Date.now(),
+        }));
+      } catch {}
       
       // フェーズ4: リアルタイムサブスクリプション設定（最後）
       setupRealtimeSubscriptions();
@@ -1039,9 +1059,9 @@ export function Community() {
                         <div className="flex items-start space-x-3">
                           <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden">
                             {partnerProfile?.user_type === 'admin' ? (
-                              <img src="/icons/icon_android_96x96.png" alt="管理者" className="w-full h-full object-contain p-1" />
+                              <img src="/icons/icon_android_96x96.png" alt="管理者" loading="lazy" className="w-full h-full object-contain p-1" />
                             ) : dogNameMap[otherId]?.image_url ? (
-                              <img src={dogNameMap[otherId]?.image_url!} alt="犬" className="w-full h-full object-cover" />
+                              <img src={dogNameMap[otherId]?.image_url!} alt="犬" loading="lazy" className="w-full h-full object-cover" />
                             ) : (
                               <Users className="w-5 h-5 text-gray-500" />
                             )}
@@ -1370,7 +1390,7 @@ function MessageThread({ viewerId, partnerId, refreshKey, onMarkedRead }: { view
                   {attachmentsMap[m.id].map((a, i) => (
                     a.file_type === 'image' ? (
                       <a key={i} href={a.file_url} target="_blank" rel="noreferrer" className="block">
-                        <img src={a.file_url} alt={a.file_name} className="rounded border object-cover h-24 w-full" />
+                        <img src={a.file_url} alt={a.file_name} loading="lazy" className="rounded border object-cover h-24 w-full" />
                       </a>
                     ) : (
                       <a key={i} href={a.file_url} target="_blank" rel="noreferrer" className="block text-xs text-blue-700 underline">
