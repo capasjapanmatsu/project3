@@ -52,7 +52,7 @@ export const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   // メンテナンス状態を確認（DBから取得）
-  const checkMaintenanceStatus = async () => {
+  const checkMaintenanceStatus = useCallback(async () => {
     try {
       // DB照会の前後でloading制御は呼び出し側で行う
       // 1) まず is_active/start_time スキーマを試す
@@ -103,7 +103,7 @@ export const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
       setIsMaintenanceActive(false);
       setMaintenanceInfo(null);
     }
-  };
+  }, []);
 
   const refreshMaintenanceStatus = useCallback(async () => {
     setLoading(true);
