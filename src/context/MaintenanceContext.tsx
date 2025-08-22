@@ -54,6 +54,7 @@ export const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
   // メンテナンス状態を確認（DBから取得）
   const checkMaintenanceStatus = async () => {
     try {
+      // DB照会の前後でloading制御は呼び出し側で行う
       // 1) まず is_active/start_time スキーマを試す
       let query = supabase
         .from('maintenance_schedules')
@@ -105,14 +106,24 @@ export const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const refreshMaintenanceStatus = useCallback(async () => {
-    await checkMaintenanceStatus();
+    setLoading(true);
+    try {
+      await checkMaintenanceStatus();
+    } finally {
+      setLoading(false);
+    }
   }, [checkMaintenanceStatus]);
 
   // 初期化処理
   useEffect(() => {
     const initialize = async () => {
-      await fetchClientIP();
-      await checkMaintenanceStatus();
+      setLoading(true);
+      try {
+        await fetchClientIP();
+        await checkMaintenanceStatus();
+      } finally {
+        setLoading(false);
+      }
     };
 
     initialize();
