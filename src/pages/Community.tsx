@@ -1140,7 +1140,10 @@ export function Community() {
                       </Button>
                     </div>
                     <div className="mt-2 flex items-center gap-3 text-sm">
-                      <button type="button" className="flex items-center gap-1 text-blue-600 hover:text-blue-800" onClick={() => alert('この機能は準備中です。施設貸し切り予約がある場合に利用できます。')}>
+                      <button type="button" className="flex items-center gap-1 text-blue-600 hover:text-blue-800" onClick={() => {
+                        sessionStorage.setItem('communityShareInvite', '1');
+                        alert('予約共有ページを作成します。次のステップで詳細を入力してください。');
+                      }}>
                         <Share className="w-4 h-4" /> 予約を共有
                       </button>
                       <label className="flex items-center gap-1 text-gray-600 hover:text-gray-800 cursor-pointer">
