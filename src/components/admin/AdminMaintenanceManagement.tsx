@@ -126,25 +126,40 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
         return;
       }
 
-      // 列差異を吸収して挿入
-      const payload: any = {
+      // 新スキーマ（start_time/end_time/is_active）で挿入 → 失敗したら旧スキーマ（start_date/end_date/status）にフォールバック
+      const nowIso = new Date().toISOString();
+      const payloadNew: any = {
         title: newSchedule.title,
         message: newSchedule.message,
         is_emergency: newSchedule.is_emergency,
+        start_time: newSchedule.start_time || nowIso,
+        end_time: newSchedule.end_time || null,
+        is_active: true,
       };
-      // どちらのスキーマでも働くよう2系統の列名をセット
-      payload.start_time = newSchedule.start_time || new Date().toISOString();
-      payload.end_time = newSchedule.end_time || null;
-      payload.is_active = true;
-      payload.start_date = payload.start_time;
-      payload.end_date = payload.end_time;
-      payload.status = 'active';
 
-      const { error } = await supabase
+      let insertErr = null as any;
+      const { error: insertNewError } = await supabase
         .from('maintenance_schedules')
-        .insert([payload]);
+        .insert([payloadNew]);
+      insertErr = insertNewError;
 
-      if (error) throw error;
+      if (insertNewError) {
+        // 旧スキーマにフォールバック
+        const payloadOld: any = {
+          title: newSchedule.title,
+          message: newSchedule.message,
+          is_emergency: newSchedule.is_emergency,
+          start_date: newSchedule.start_time || nowIso,
+          end_date: newSchedule.end_time || null,
+          status: 'active',
+        };
+        const { error: insertOldError } = await supabase
+          .from('maintenance_schedules')
+          .insert([payloadOld]);
+        insertErr = insertOldError;
+      }
+
+      if (insertErr) throw insertErr;
 
       onSuccess('メンテナンススケジュールを作成しました');
       setShowNewScheduleForm(false);
@@ -186,17 +201,28 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
     try {
       // 列差異を吸収して終了更新
       const endIso = new Date().toISOString();
-      const { error } = await supabase
+      let updateErr = null as any;
+      const { error: updateNewError } = await supabase
         .from('maintenance_schedules')
         .update({ 
           is_active: false,
           end_time: endIso,
-          status: 'completed',
-          end_date: endIso,
         })
         .eq('id', id);
+      updateErr = updateNewError;
 
-      if (error) throw error;
+      if (updateNewError) {
+        const { error: updateOldError } = await supabase
+          .from('maintenance_schedules')
+          .update({ 
+            status: 'completed',
+            end_date: endIso,
+          })
+          .eq('id', id);
+        updateErr = updateOldError;
+      }
+
+      if (updateErr) throw updateErr;
 
       onSuccess('メンテナンスを終了しました');
       await fetchData();
