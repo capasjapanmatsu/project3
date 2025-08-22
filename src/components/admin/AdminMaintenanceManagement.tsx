@@ -126,40 +126,60 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
         return;
       }
 
-      // 新スキーマ（start_time/end_time/is_active）で挿入 → 失敗したら旧スキーマ（start_date/end_date/status）にフォールバック
+      // スキーマ差異を吸収する多段フォールバック（message/description、title/name、time/status列）
       const nowIso = new Date().toISOString();
-      const payloadNew: any = {
-        title: newSchedule.title,
-        message: newSchedule.message,
-        is_emergency: newSchedule.is_emergency,
-        start_time: newSchedule.start_time || nowIso,
-        end_time: newSchedule.end_time || null,
-        is_active: true,
-      };
-
-      let insertErr = null as any;
-      const { error: insertNewError } = await supabase
-        .from('maintenance_schedules')
-        .insert([payloadNew]);
-      insertErr = insertNewError;
-
-      if (insertNewError) {
-        // 旧スキーマにフォールバック
-        const payloadOld: any = {
+      const attempts: any[] = [
+        // 新スキーマ + message
+        {
           title: newSchedule.title,
+          message: newSchedule.message,
+          is_emergency: newSchedule.is_emergency,
+          start_time: newSchedule.start_time || nowIso,
+          end_time: newSchedule.end_time || null,
+          is_active: true,
+        },
+        // 新スキーマ + description（message列が無い環境）
+        {
+          title: newSchedule.title,
+          description: newSchedule.message,
+          is_emergency: newSchedule.is_emergency,
+          start_time: newSchedule.start_time || nowIso,
+          end_time: newSchedule.end_time || null,
+          is_active: true,
+        },
+        // 旧スキーマ + name/description
+        {
+          name: newSchedule.title,
+          description: newSchedule.message,
+          is_emergency: newSchedule.is_emergency,
+          start_date: newSchedule.start_time || nowIso,
+          end_date: newSchedule.end_time || null,
+          status: 'active',
+        },
+        // 旧スキーマ + name/message（旧にmessage列がある場合）
+        {
+          name: newSchedule.title,
           message: newSchedule.message,
           is_emergency: newSchedule.is_emergency,
           start_date: newSchedule.start_time || nowIso,
           end_date: newSchedule.end_time || null,
           status: 'active',
-        };
-        const { error: insertOldError } = await supabase
+        },
+      ];
+
+      let lastError: any = null;
+      for (const payload of attempts) {
+        const { error } = await supabase
           .from('maintenance_schedules')
-          .insert([payloadOld]);
-        insertErr = insertOldError;
+          .insert([payload]);
+        if (!error) {
+          lastError = null;
+          break;
+        }
+        lastError = error;
       }
 
-      if (insertErr) throw insertErr;
+      if (lastError) throw lastError;
 
       onSuccess('メンテナンススケジュールを作成しました');
       setShowNewScheduleForm(false);
