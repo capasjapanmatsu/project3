@@ -55,22 +55,24 @@ export const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
   const checkMaintenanceStatus = useCallback(async () => {
     try {
       // DB照会の前後でloading制御は呼び出し側で行う
-      // 1) まず is_active/start_time スキーマを試す
+      // 1) まず is_active/start_time スキーマを試す（アプリ全体: dog_park_id が NULL のものを対象）
       let query = supabase
         .from('maintenance_schedules')
         .select('*')
         .eq('is_active', true)
+        .is('dog_park_id', null)
         .order('start_time', { ascending: false })
         .limit(1);
 
       let { data, error } = await query;
 
-      // 2) 列が存在しない場合は status/start_date スキーマにフォールバック
+      // 2) 列が存在しない場合は status/start_date スキーマにフォールバック（dog_park_id が存在しない環境）
       if (error && typeof error === 'object' && (error as any).code === '42703') {
         const alt = await supabase
           .from('maintenance_schedules')
           .select('*')
           .eq('status', 'active')
+          // dog_park_id が無いスキーマでは全件のうち最新1件がアプリ全体とみなされる
           .order('start_date', { ascending: false })
           .limit(1);
         data = alt.data as any[] | null;

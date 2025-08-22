@@ -385,7 +385,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
 
         {showNewScheduleForm && (
           <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
-            <h4 className="font-semibold mb-3">新しいメンテナンススケジュール</h4>
+            <h4 className="font-semibold mb-3">新しいメンテナンススケジュール（アプリ全体）</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="タイトル"
@@ -401,13 +401,13 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
               />
             </div>
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">対象ドッグラン（任意）</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">対象ドッグラン（空欄でアプリ全体）</label>
               <select
                 className="w-full border border-gray-300 rounded-md p-2"
                 value={newSchedule.park_id}
                 onChange={(e) => setNewSchedule({ ...newSchedule, park_id: e.target.value })}
               >
-                <option value="">全体メンテナンス（全ユーザー対象）</option>
+                <option value="">アプリ全体（全ユーザー対象）</option>
                 {parks.map(p => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
