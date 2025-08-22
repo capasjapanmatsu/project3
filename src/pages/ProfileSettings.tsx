@@ -79,6 +79,8 @@ export function ProfileSettings() {
   const [notifyOptIn, setNotifyOptIn] = useState<boolean>(false);
   const [lineLinked, setLineLinked] = useState<boolean>(false);
   const [currentUserType, setCurrentUserType] = useState<string>('user');
+  const [testSending, setTestSending] = useState(false);
+  const [testResult, setTestResult] = useState<string>('');
   
   // サブスクリプション管理関連のstate
   const [subscriptionAction, setSubscriptionAction] = useState<'pause' | 'resume' | 'cancel' | null>(null);
@@ -706,6 +708,43 @@ export function ProfileSettings() {
         <div className="mt-4 text-right">
           <Button onClick={() => void handleSubmit({ preventDefault: () => {} } as any)} isLoading={isSaving}>
             <Save className="w-4 h-4 mr-1" /> 保存
+          </Button>
+        </div>
+
+        {/* テスト送信 */}
+        <div className="mt-3 flex items-center justify-end gap-3">
+          {testResult && <span className="text-sm text-green-700">{testResult}</span>}
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              try {
+                setTestResult('');
+                setTestSending(true);
+                const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
+                if (!uid) throw new Error('ユーザー情報が取得できません');
+                await fetch('/.netlify/functions/app-notify', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId: uid,
+                    title: 'テスト通知',
+                    message: '通知とLINE連携のテストです。コミュニティを開いてご確認ください。',
+                    linkUrl: `${window.location.origin}/community`,
+                    kind: 'alert',
+                  }),
+                });
+                setTestResult('テスト通知を送信しました');
+              } catch (e) {
+                setError('テスト通知の送信に失敗しました');
+                setTimeout(() => setError(''), 3000);
+              } finally {
+                setTestSending(false);
+              }
+            }}
+            isLoading={testSending}
+            disabled={!(lineLinked || linked === true || hasLineSession) || !notifyOptIn}
+          >
+            テスト送信
           </Button>
         </div>
       </Card>
