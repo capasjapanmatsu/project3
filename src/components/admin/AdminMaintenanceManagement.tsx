@@ -25,6 +25,12 @@ interface MaintenanceSchedule {
   created_at: string;
 }
 
+interface ParkLite {
+  id: string;
+  name: string;
+  status?: string;
+}
+
 interface WhitelistedIP {
   id: string;
   ip_address: string;
@@ -52,6 +58,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
   const [loading, setLoading] = useState(true);
   const [showNewScheduleForm, setShowNewScheduleForm] = useState(false);
   const [showNewIPForm, setShowNewIPForm] = useState(false);
+  const [parks, setParks] = useState<ParkLite[]>([]);
 
   // フォーム状態
   const [newSchedule, setNewSchedule] = useState({
@@ -59,7 +66,8 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
     message: '',
     start_time: '',
     end_time: '',
-    is_emergency: false
+    is_emergency: false,
+    park_id: '' as string,
   });
 
   const [newIP, setNewIP] = useState({
@@ -106,6 +114,17 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
         setWhitelistedIPs(ipData || []);
       }
 
+      // 対象ドッグランの候補取得（承認済み中心）
+      try {
+        const { data: parksData } = await supabase
+          .from('dog_parks')
+          .select('id,name,status')
+          .in('status', ['approved', 'pending']);
+        setParks(parksData || []);
+      } catch {
+        setParks([]);
+      }
+
     } catch (error) {
       console.error('Error fetching maintenance data:', error);
       onError('メンテナンスデータの取得でエラーが発生しました');
@@ -128,7 +147,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
 
       // スキーマ差異を吸収する多段フォールバック（message/description、title/name、time/status列）
       const nowIso = new Date().toISOString();
-      const attempts: any[] = [
+      const attemptsBase: any[] = [
         // 新スキーマ + message
         {
           title: newSchedule.title,
@@ -163,6 +182,15 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
         },
       ];
 
+      // dog_park_id が必要な環境に備え、park_id 指定があれば両系統（with/without）を試行順序の先頭に置く
+      const attempts: any[] = [];
+      if (newSchedule.park_id) {
+        for (const base of attemptsBase) {
+          attempts.push({ ...base, dog_park_id: newSchedule.park_id });
+        }
+      }
+      attempts.push(...attemptsBase);
+
       let lastError: any = null;
       for (const payload of attempts) {
         const { error } = await supabase
@@ -170,6 +198,12 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
           .insert([payload]);
         if (!error) {
           lastError = null;
+          break;
+        }
+        // dog_park_id が必須だが未指定のケースをユーザー向けに案内
+        if ((error as any)?.code === '23502' && String((error as any)?.message || '').includes('dog_park_id')) {
+          onError('対象ドッグランの選択が必要です');
+          lastError = error;
           break;
         }
         lastError = error;
@@ -365,6 +399,19 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
                 value={newSchedule.start_time}
                 onChange={(e) => setNewSchedule({ ...newSchedule, start_time: e.target.value })}
               />
+            </div>
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">対象ドッグラン（任意）</label>
+              <select
+                className="w-full border border-gray-300 rounded-md p-2"
+                value={newSchedule.park_id}
+                onChange={(e) => setNewSchedule({ ...newSchedule, park_id: e.target.value })}
+              >
+                <option value="">全体メンテナンス（全ユーザー対象）</option>
+                {parks.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
             </div>
             <div className="mt-4">
               <Input
