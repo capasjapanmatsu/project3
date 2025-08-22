@@ -78,6 +78,7 @@ export function ProfileSettings() {
   // 追加: 通知とLINE連携の状態
   const [notifyOptIn, setNotifyOptIn] = useState<boolean>(false);
   const [lineLinked, setLineLinked] = useState<boolean>(false);
+  const [currentUserType, setCurrentUserType] = useState<string>('user');
   
   // サブスクリプション管理関連のstate
   const [subscriptionAction, setSubscriptionAction] = useState<'pause' | 'resume' | 'cancel' | null>(null);
@@ -158,6 +159,7 @@ export function ProfileSettings() {
         // 追加: 通知/連携の初期状態
         setNotifyOptIn(!!data.notify_opt_in);
         setLineLinked(!!data.line_user_id);
+        setCurrentUserType(data.user_type || 'user');
       }
 
       // 連携状態: DBのリンクテーブルで判定（ログアウトしても持続）
@@ -330,6 +332,7 @@ export function ProfileSettings() {
         phone_number: formData.phone_number,
         email: formData.email,
         notify_opt_in: notifyOptIn,
+        user_type: currentUserType || 'user',
       };
 
       // LINEユーザーの場合、line_user_idも設定
