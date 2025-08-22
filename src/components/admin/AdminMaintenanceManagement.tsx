@@ -25,11 +25,7 @@ interface MaintenanceSchedule {
   created_at: string;
 }
 
-interface ParkLite {
-  id: string;
-  name: string;
-  status?: string;
-}
+// アプリ全体メンテナンスのみをサポートするため、ドッグラン選択は廃止
 
 interface WhitelistedIP {
   id: string;
@@ -58,7 +54,6 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
   const [loading, setLoading] = useState(true);
   const [showNewScheduleForm, setShowNewScheduleForm] = useState(false);
   const [showNewIPForm, setShowNewIPForm] = useState(false);
-  const [parks, setParks] = useState<ParkLite[]>([]);
 
   // フォーム状態
   const [newSchedule, setNewSchedule] = useState({
@@ -67,7 +62,6 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
     start_time: '',
     end_time: '',
     is_emergency: false,
-    park_id: '' as string,
   });
 
   const [newIP, setNewIP] = useState({
@@ -114,16 +108,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
         setWhitelistedIPs(ipData || []);
       }
 
-      // 対象ドッグランの候補取得（承認済み中心）
-      try {
-        const { data: parksData } = await supabase
-          .from('dog_parks')
-          .select('id,name,status')
-          .in('status', ['approved', 'pending']);
-        setParks(parksData || []);
-      } catch {
-        setParks([]);
-      }
+      // アプリ全体メンテナンスのみ。ドッグラン候補取得は不要
 
     } catch (error) {
       console.error('Error fetching maintenance data:', error);
@@ -182,14 +167,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
         },
       ];
 
-      // dog_park_id が必要な環境に備え、park_id 指定があれば両系統（with/without）を試行順序の先頭に置く
-      const attempts: any[] = [];
-      if (newSchedule.park_id) {
-        for (const base of attemptsBase) {
-          attempts.push({ ...base, dog_park_id: newSchedule.park_id });
-        }
-      }
-      attempts.push(...attemptsBase);
+      const attempts: any[] = [...attemptsBase];
 
       let lastError: any = null;
       for (const payload of attempts) {
@@ -200,12 +178,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
           lastError = null;
           break;
         }
-        // dog_park_id が必須だが未指定のケースをユーザー向けに案内
-        if ((error as any)?.code === '23502' && String((error as any)?.message || '').includes('dog_park_id')) {
-          onError('対象ドッグランの選択が必要です');
-          lastError = error;
-          break;
-        }
+        // dog_park_id が NOT NULL な環境。アプリ全体のみを使うため、DB側のNOT NULLを解除が必要
         lastError = error;
       }
 
@@ -400,18 +373,8 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
                 onChange={(e) => setNewSchedule({ ...newSchedule, start_time: e.target.value })}
               />
             </div>
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">対象ドッグラン（空欄でアプリ全体）</label>
-              <select
-                className="w-full border border-gray-300 rounded-md p-2"
-                value={newSchedule.park_id}
-                onChange={(e) => setNewSchedule({ ...newSchedule, park_id: e.target.value })}
-              >
-                <option value="">アプリ全体（全ユーザー対象）</option>
-                {parks.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
+            <div className="mt-4 text-sm text-gray-700">
+              このメンテナンスはアプリ全体に適用されます（ドッグラン個別は対象外）。
             </div>
             <div className="mt-4">
               <Input
