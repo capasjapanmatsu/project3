@@ -133,7 +133,6 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
         {
           title: newSchedule.title,
           message: newSchedule.message,
-          is_emergency: newSchedule.is_emergency,
           start_time: newSchedule.start_time || nowIso,
           end_time: newSchedule.end_time || null,
           is_active: true,
@@ -142,7 +141,6 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
         {
           title: newSchedule.title,
           description: newSchedule.message,
-          is_emergency: newSchedule.is_emergency,
           start_time: newSchedule.start_time || nowIso,
           end_time: newSchedule.end_time || null,
           is_active: true,
@@ -151,7 +149,6 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
         {
           name: newSchedule.title,
           description: newSchedule.message,
-          is_emergency: newSchedule.is_emergency,
           start_date: newSchedule.start_time || nowIso,
           end_date: newSchedule.end_time || null,
           status: 'active',
@@ -160,7 +157,6 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
         {
           name: newSchedule.title,
           message: newSchedule.message,
-          is_emergency: newSchedule.is_emergency,
           start_date: newSchedule.start_time || nowIso,
           end_date: newSchedule.end_time || null,
           status: 'active',
@@ -180,6 +176,19 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
       }
 
       if (lastError) throw lastError;
+
+      // is_emergency が必要なら、存在する環境のみベストエフォートで更新
+      if (newSchedule.is_emergency) {
+        try {
+          await supabase
+            .from('maintenance_schedules')
+            .update({ is_emergency: true })
+            .order('created_at', { ascending: false })
+            .limit(1);
+        } catch {
+          // 列がない環境は無視
+        }
+      }
 
       onSuccess('メンテナンススケジュールを作成しました');
       setShowNewScheduleForm(false);
