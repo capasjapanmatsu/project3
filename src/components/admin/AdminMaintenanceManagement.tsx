@@ -133,7 +133,23 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
       // スキーマ差異を吸収する多段フォールバック（message/description、title/name、time/status列）
       const nowIso = new Date().toISOString();
       const attemptsBase: any[] = [
-        // 新スキーマ + message
+        // 1) title + description + start_date（旧: title列がある環境でstart_date必須）
+        {
+          title: newSchedule.title,
+          description: newSchedule.message,
+          start_date: newSchedule.start_time || nowIso,
+          end_date: newSchedule.end_time || null,
+          status: 'active',
+        },
+        // 2) title + message + start_date（旧: message列がある環境）
+        {
+          title: newSchedule.title,
+          message: newSchedule.message,
+          start_date: newSchedule.start_time || nowIso,
+          end_date: newSchedule.end_time || null,
+          status: 'active',
+        },
+        // 3) 新スキーマ + message
         {
           title: newSchedule.title,
           message: newSchedule.message,
@@ -141,7 +157,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
           end_time: newSchedule.end_time || null,
           is_active: true,
         },
-        // 新スキーマ + description（message列が無い環境）
+        // 4) 新スキーマ + description（message列が無い環境）
         {
           title: newSchedule.title,
           description: newSchedule.message,
@@ -149,7 +165,7 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
           end_time: newSchedule.end_time || null,
           is_active: true,
         },
-        // 旧スキーマ + name/description
+        // 5) 旧スキーマ + name/description
         {
           name: newSchedule.title,
           description: newSchedule.message,
@@ -157,13 +173,21 @@ const AdminMaintenanceManagement = ({ onError, onSuccess }: AdminMaintenanceMana
           end_date: newSchedule.end_time || null,
           status: 'active',
         },
-        // 旧スキーマ + name/message（旧にmessage列がある場合）
+        // 6) 旧スキーマ + name/message（旧にmessage列がある場合）
         {
           name: newSchedule.title,
           message: newSchedule.message,
           start_date: newSchedule.start_time || nowIso,
           end_date: newSchedule.end_time || null,
           status: 'active',
+        },
+        // 7) name + description + start_time（name必須 + 新時間列）
+        {
+          name: newSchedule.title,
+          description: newSchedule.message,
+          start_time: newSchedule.start_time || nowIso,
+          end_time: newSchedule.end_time || null,
+          is_active: true,
         },
       ];
 
