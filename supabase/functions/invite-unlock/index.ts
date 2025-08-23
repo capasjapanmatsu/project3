@@ -3,8 +3,15 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY')!;
 const FACILITY_AUTH_TOKEN = Deno.env.get('FACILITY_AUTH_TOKEN') || 'demo_auth_token';
+
+// Basic CORS
+const corsHeaders: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+};
 
 async function getInviteByToken(token: string) {
   const resp = await fetch(`${SUPABASE_URL}/rest/v1/reservation_invites?select=*&token=eq.${encodeURIComponent(token)}`, {
