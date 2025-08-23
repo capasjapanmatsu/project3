@@ -35,7 +35,7 @@ const dogBreeds: DogBreed[] = [
     careLevel: 'easy',
     exerciseNeeds: 'low',
     popularity: 5,
-    image: 'https://images.pexels.com/photos/1805164/pexels-photo-1805164.jpeg?auto=compress&w=300',
+    image: '/images/breeds/chihuahua.webp',
     description: '世界最小の犬種として知られるチワワは、勇敢で忠実な性格の持ち主です。小さな体に大きな心を持ち、家族を守ろうとする勇敢さがあります。'
   },
   {
@@ -67,7 +67,7 @@ const dogBreeds: DogBreed[] = [
     careLevel: 'medium',
     exerciseNeeds: 'high',
     popularity: 5,
-    image: 'https://images.pexels.com/photos/1643457/pexels-photo-1643457.jpeg?auto=compress&w=300',
+    image: '/images/breeds/golden.webp',
     description: '温厚で賢い性格のゴールデンレトリバーは、家族思いで子供との相性も抜群です。訓練しやすく、様々な場面で活躍します。'
   },
   {
@@ -99,7 +99,7 @@ const dogBreeds: DogBreed[] = [
     careLevel: 'medium',
     exerciseNeeds: 'low',
     popularity: 4,
-    image: 'https://images.pexels.com/photos/1458916/pexels-photo-1458916.jpeg?auto=compress&w=300',
+    image: '/images/breeds/pomeranian.webp',
     description: '小さな体に大きな心を持つポメラニアンは、活発で好奇心旺盛な性格です。豊富な被毛が特徴で、おしゃれな犬種として人気があります。'
   },
   {
@@ -115,7 +115,7 @@ const dogBreeds: DogBreed[] = [
     careLevel: 'medium',
     exerciseNeeds: 'medium',
     popularity: 4,
-    image: 'https://images.pexels.com/photos/1643457/pexels-photo-1643457.jpeg?auto=compress&w=300',
+    image: '/images/breeds/corgi.webp',
     description: '短い足と大きな耳が特徴のコーギーは、活発で賢い性格です。元々は牧畜犬として活躍し、現在も家庭犬として人気があります。'
   }
   ,
@@ -272,7 +272,8 @@ export function Breeds() {
                 <img
                   src={breed.image}
                   alt={breed.japaneseName}
-                  className="w-full h-48 object-cover"
+                  className="w-full aspect-square object-cover"
+                  loading="lazy"
                 />
                 <div className="absolute top-2 right-2 bg-white rounded-full p-1">
                   <div className="flex items-center">
