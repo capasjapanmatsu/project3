@@ -1,11 +1,11 @@
 import { Key } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import useAuth from '../context/AuthContext';
-import { supabase } from '../utils/supabase';
 import { triggerHapticFeedback } from '../utils/hapticFeedback';
+import { supabase } from '../utils/supabase';
 
 type InviteInfo = {
   id: string;
@@ -33,6 +33,7 @@ export default function InviteUnlock() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const toggleTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -69,6 +70,14 @@ export default function InviteUnlock() {
     })();
   }, [token]);
 
+  useEffect(() => {
+    return () => {
+      if (toggleTimerRef.current) {
+        clearTimeout(toggleTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleUnlock = async () => {
     try {
       setPressed(true);
@@ -92,6 +101,11 @@ export default function InviteUnlock() {
       const body = await resp.json().catch(() => ({}));
       if (!resp.ok || !body?.success) throw new Error(body?.error || '解錠に失敗しました');
       setSuccess('解錠しました。安全にご利用ください');
+      // 3秒後に入退場モードを自動トグル
+      if (toggleTimerRef.current) clearTimeout(toggleTimerRef.current);
+      toggleTimerRef.current = window.setTimeout(() => {
+        setMode(prev => (prev === 'entry' ? 'exit' : 'entry'));
+      }, 3000);
     } catch (e) {
       setError(e instanceof Error ? e.message : '解錠に失敗しました');
     }
