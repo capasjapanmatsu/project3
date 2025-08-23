@@ -334,7 +334,7 @@ export function AdminShopManagement() {
             const file = selectedFiles[i];
             const fileName = `${crypto.randomUUID()}.webp`; // 保存名
             const path = `products/${fileName}`;
-            const result = await uploadAndConvertToWebP('public', file, path, { quality: 80, generateThumbnail: false });
+            const result = await uploadAndConvertToWebP('product-images', file, path, { quality: 80, generateThumbnail: false });
             const url = result.webpUrl || result.originalUrl;
             if (url) uploadedUrls.push(url);
           }
