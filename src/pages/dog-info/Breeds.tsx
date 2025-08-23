@@ -51,7 +51,7 @@ const dogBreeds: DogBreed[] = [
     careLevel: 'medium',
     exerciseNeeds: 'medium',
     popularity: 5,
-    image: 'https://images.pexels.com/photos/1458916/pexels-photo-1458916.jpeg?auto=compress&w=300',
+    image: '/images/breeds/shiba.webp',
     description: '日本原産の柴犬は、独立心が強く忠実な性格です。古くから猟犬として活躍し、現在も家庭犬として人気があります。'
   },
   {
@@ -83,7 +83,7 @@ const dogBreeds: DogBreed[] = [
     careLevel: 'medium',
     exerciseNeeds: 'high',
     popularity: 5,
-    image: 'https://images.pexels.com/photos/1805164/pexels-photo-1805164.jpeg?auto=compress&w=300',
+    image: '/images/breeds/labrador.webp',
     description: '友好的で活発なラブラドールは、盲導犬や警察犬としても活躍する賢い犬種です。水泳が得意で、家族との時間を大切にします。'
   },
   {
