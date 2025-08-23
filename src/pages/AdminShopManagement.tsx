@@ -25,6 +25,7 @@ import useAuth from '../context/AuthContext';
 import type { Order, OrderItem, Product } from '../types';
 import { downloadCSVWithBOM } from '../utils/csvExport';
 import { supabase } from '../utils/supabase';
+import { uploadAndConvertToWebP } from '../utils/webpConverter';
 
 interface OrderWithItems extends Order {
   order_items: (OrderItem & { product: Product })[];
@@ -315,9 +316,9 @@ export function AdminShopManagement() {
       setError('');
       setSuccess('');
       
-      // 画像アップロード処理
-      let imageUrl: string = productFormData.image_url || ''; // デフォルトはフォームのURL
-      let hasNewImages = selectedFiles.length > 0;
+      // 画像アップロード処理: Storageに保存しWebP変換したURLを保存
+      let imageUrl: string = productFormData.image_url || '';
+      const hasNewImages = selectedFiles.length > 0;
       
       console.log('画像処理開始:', {
         hasNewImages,
@@ -327,46 +328,20 @@ export function AdminShopManagement() {
       });
       
       if (hasNewImages) {
-        // 新しい画像が選択された場合の処理
-        console.log(`${selectedFiles.length}枚の新しい画像が選択されています。すべて処理します。`);
         try {
-          const processedImages: string[] = [];
-          
-          // すべての選択画像を処理（最大10枚）
+          const uploadedUrls: string[] = [];
           for (let i = 0; i < Math.min(selectedFiles.length, 10); i++) {
             const file = selectedFiles[i];
-            console.log(`画像${i + 1}/${selectedFiles.length}を処理中...`);
-            
-            // 画像をリサイズ・圧縮（431エラー対策でサイズを極限まで削減）
-            const resizedFile = await resizeImage(file, 200, 150); // 200x150に更に縮小
-            const compressedFile = await compressImage(resizedFile, 0.2); // 品質を0.2に更に下げる
-            
-            // Base64エンコード
-            const reader = new FileReader();
-            const base64Data = await new Promise<string>((resolve, reject) => {
-              reader.onload = (e) => {
-                const result = e.target?.result as string;
-                if (result) {
-                  resolve(result);
-                } else {
-                  reject(new Error('Base64変換エラー'));
-                }
-              };
-              reader.onerror = () => reject(new Error('ファイル読み込みエラー'));
-              reader.readAsDataURL(compressedFile);
-            });
-            
-            processedImages.push(base64Data);
-            console.log(`画像${i + 1}処理完了。サイズ:`, Math.round(base64Data.length / 1024), 'KB');
+            const fileName = `${crypto.randomUUID()}.webp`; // 保存名
+            const path = `products/${fileName}`;
+            const result = await uploadAndConvertToWebP('public', file, path, { quality: 80, generateThumbnail: false });
+            const url = result.webpUrl || result.originalUrl;
+            if (url) uploadedUrls.push(url);
           }
-          
-          // 複数画像をJSON配列として保存
-          imageUrl = JSON.stringify(processedImages);
-          console.log(`全${processedImages.length}枚の画像処理完了。総サイズ:`, Math.round(imageUrl.length / 1024), 'KB');
-          
+          imageUrl = uploadedUrls.length === 1 ? uploadedUrls[0] : JSON.stringify(uploadedUrls);
         } catch (error) {
-          console.error('画像処理エラー:', error);
-          setError('画像の処理中にエラーが発生しました');
+          console.error('画像アップロード/変換エラー:', error);
+          setError('画像のアップロードに失敗しました');
           return;
         }
       } else {
