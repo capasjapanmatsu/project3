@@ -1459,7 +1459,7 @@ function MessageThread({ viewerId, partnerId, refreshKey, onMarkedRead }: { view
       const before = text.slice(lastIndex, match.index);
       if (before) pushTextWithBreaks(before);
       elements.push(
-        <a key={`a-${elements.length}`} href={match[2]} target="_blank" rel="noreferrer" className="text-blue-700 underline">
+        <a key={`a-${elements.length}`} href={match[2]} target="_blank" rel="noreferrer" className="text-black font-semibold underline">
           {match[1]}
         </a>
       );
@@ -1517,7 +1517,7 @@ function MessageThread({ viewerId, partnerId, refreshKey, onMarkedRead }: { view
         items.map(m => (
           <div key={m.id} className={`flex ${m.sender_id===viewerId?'justify-end':'justify-start'}`}>
             <div className={`max-w-[80%] space-y-2`}>
-              <div className={`px-3 py-2 rounded-lg text-sm ${m.sender_id===viewerId?'bg-blue-600 text-white':'bg-white border'}`}>{renderMessageContent(m.content)}</div>
+              <div className={`px-3 py-2 rounded-lg text-sm ${m.sender_id===viewerId?'bg-blue-500 text-white':'bg-white border'}`}>{renderMessageContent(m.content)}</div>
               {attachmentsMap[m.id]?.length ? (
                 <div className="grid grid-cols-2 gap-2">
                   {attachmentsMap[m.id].map((a, i) => (
