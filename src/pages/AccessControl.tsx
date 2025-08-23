@@ -22,8 +22,8 @@ import useAuth from '../context/AuthContext';
 import { retryConfigs, useRetryWithRecovery } from '../hooks/useRetryWithRecovery';
 import { useSubscription } from '../hooks/useSubscription';
 import type { Dog, DogPark, SmartLock } from '../types';
-import { DEFAULT_LOCATION, LocationError, formatDistance, getCurrentLocation, sortByDistance, type Location } from '../utils/location';
 import { triggerHapticFeedback } from '../utils/hapticFeedback';
+import { DEFAULT_LOCATION, LocationError, formatDistance, getCurrentLocation, sortByDistance, type Location } from '../utils/location';
 import { checkPaymentStatus, type PaymentStatus } from '../utils/paymentUtils';
 import { safeGetItem, safeSetItem } from '../utils/safeStorage';
 import { supabase } from '../utils/supabase';
@@ -892,6 +892,11 @@ export function AccessControl() {
                       : cooldownRemain > 0
                       ? `再試行まで ${cooldownRemain}秒`
                       : `${currentAction === 'entry' ? '入場' : '退場'}（タップで解錠）`}
+                  </div>
+                  {/* 注意事項 */}
+                  <div className="mt-2 text-xs text-gray-600 text-center leading-relaxed">
+                    ・解錠ボタンを押した後、数秒時間がかかる場合があります。<br/>
+                    ・マナーを守ってお楽しみください。
                   </div>
                   {/* 入場中のステータスと再入場リンク */}
                   {userInside && (
