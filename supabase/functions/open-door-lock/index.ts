@@ -30,8 +30,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // Environment variables
 const FACILITY_AUTH_TOKEN = Deno.env.get("FACILITY_AUTH_TOKEN") || "demo_auth_token";
 
-// Function to open a smart lock
-async function openSmartLock(lockId: string, userId: string, authToken: string, inviteToken?: string) {
+// Function to open a smart lock (after access validation)
+// This function will forward to the real TTLock unlock edge function
+async function openSmartLock(lockId: string, userId: string, authToken: string, inviteToken: string | undefined, bearerToken: string, purpose: 'entry' | 'exit' = 'entry') {
   try {
     // Validate the facility auth token
     if (authToken !== FACILITY_AUTH_TOKEN) {
@@ -74,14 +75,20 @@ async function openSmartLock(lockId: string, userId: string, authToken: string, 
       throw new Error("User does not have access to this facility");
     }
 
-    // In a real implementation, this would call the actual smart lock API
-    // For demo purposes, we'll simulate a successful response
-    const responseData = {
-      status: "success",
-      lock_id: lockId,
-      action: "unlock",
-      timestamp: new Date().toISOString()
-    };
+    // Forward to the real TTLock unlock function
+    const unlockResp = await fetch(`${supabaseUrl}/functions/v1/ttlock-unlock`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // forward the end-user session so ttlock-unlock can auth the user
+        Authorization: `Bearer ${bearerToken}`,
+      },
+      body: JSON.stringify({ lockId: lockId, userId: userId, purpose })
+    });
+    const unlockBody = await unlockResp.json().catch(() => ({}));
+    if (!unlockResp.ok || !unlockBody?.success) {
+      throw new Error(unlockBody?.error || 'Failed to unlock TTLock');
+    }
 
     // Log the successful lock opening
     await supabase.from("lock_access_logs").insert({
@@ -90,7 +97,7 @@ async function openSmartLock(lockId: string, userId: string, authToken: string, 
       action: "unlock",
       status: "success",
       timestamp: new Date().toISOString(),
-      response_data: responseData
+      response_data: unlockBody
     });
 
     return {
@@ -137,7 +144,7 @@ serve(async (req) => {
     }
 
     // Extract parameters from the request
-    const { lock_id, user_id, auth_token, invite_token } = requestData;
+    const { lock_id, user_id, auth_token, invite_token, purpose } = requestData as { lock_id: string; user_id: string; auth_token: string; invite_token?: string; purpose?: 'entry'|'exit' };
 
     // Validate required parameters
     if (!lock_id || !user_id || !auth_token) {
@@ -150,7 +157,7 @@ serve(async (req) => {
     }
 
     // Open the smart lock
-    const result = await openSmartLock(lock_id, user.id, auth_token, invite_token);
+    const result = await openSmartLock(lock_id, user.id, auth_token, invite_token, token, purpose || 'entry');
 
     // Best-effort log (minimal fields to avoid reference errors)
     try {
@@ -159,7 +166,7 @@ serve(async (req) => {
         .insert({
           user_id: user.id,
           lock_id: lock_id,
-          action: 'entry',
+          action: (purpose || 'entry'),
           timestamp: new Date().toISOString()
         });
     } catch (logError) {

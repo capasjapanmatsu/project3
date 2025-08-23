@@ -85,7 +85,7 @@ serve(async (req) => {
           // forward user auth for supabase.auth.getUser validation inside open-door-lock
           Authorization: req.headers.get('Authorization') || '',
         },
-        body: JSON.stringify({ lock_id: lockId, user_id: userId, auth_token: FACILITY_AUTH_TOKEN, invite_token: token })
+        body: JSON.stringify({ lock_id: lockId, user_id: userId, auth_token: FACILITY_AUTH_TOKEN, invite_token: token, purpose: (body?.purpose ?? 'entry') })
       });
       const unlockBody = await unlockResp.json().catch(() => ({}));
       if (!unlockResp.ok) return new Response(JSON.stringify({ error: unlockBody?.error || 'unlock failed' }), { status: 500, headers: corsHeaders });
