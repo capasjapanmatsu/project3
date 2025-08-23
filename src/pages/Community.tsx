@@ -1161,28 +1161,26 @@ export function Community() {
                               alert('貸し切り予約が見つかりません。まずは施設を貸し切り予約してください。');
                               return;
                             }
-                            const startDate = new Date(`${latest.date}T${String(latest.start_time).padStart(2,'0')}:00:00Z`);
-                            const endDate = new Date(startDate.getTime() + (Number(latest.duration) * 60 * 60 * 1000));
+                            // start_time は 'HH' / 'HH:MM' / 'HH:MM:SS' など環境差があるため安全にパース
+                            const parts = String(latest.start_time).split(':');
+                            const hh = parseInt(parts[0] || '0', 10) || 0;
+                            const mm = parseInt(parts[1] || '0', 10) || 0;
+                            const ymd = String(latest.date).split('-').map(n => parseInt(n, 10));
+                            const startDate = new Date(Date.UTC(ymd[0], (ymd[1] || 1) - 1, ymd[2] || 1, hh, mm, 0));
+                            const durationHours = Math.max(1, Number(latest.duration) || 1);
+                            const endDate = new Date(startDate.getTime() + (durationHours * 60 * 60 * 1000));
                             const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
-                            // 共有招待を作成（サービスロール経由のEdge関数を使わずPostgRESTで保存）
-                            const { error: insertErr } = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/reservation_invites`, {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                                apikey: import.meta.env.VITE_SUPABASE_ANON_KEY!,
-                                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                              },
-                              body: JSON.stringify({
-                                token,
-                                host_user_id: user.id,
-                                park_id: latest.park_id,
-                                title: 'ドッグラン貸し切りのご招待',
-                                start_time: startDate.toISOString(),
-                                end_time: endDate.toISOString(),
-                                max_uses: null
-                              })
-                            }).then(async (r) => (r.ok ? null : new Error(await r.text()))).catch(e => ({ message: String(e) } as any));
-                            if (insertErr && (insertErr as any).message) throw new Error((insertErr as any).message);
+                            // 現在のログインユーザーの権限で作成（RLSを満たす）
+                            const { error: insertErr } = await supabase.from('reservation_invites').insert({
+                              token,
+                              host_user_id: user.id,
+                              park_id: latest.park_id,
+                              title: 'ドッグラン貸し切りのご招待',
+                              start_time: startDate.toISOString(),
+                              end_time: endDate.toISOString(),
+                              max_uses: null
+                            });
+                            if (insertErr) throw insertErr;
 
                             const inviteUrl = `${window.location.origin}/invite/${token}`;
 
