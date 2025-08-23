@@ -23,6 +23,7 @@ import { retryConfigs, useRetryWithRecovery } from '../hooks/useRetryWithRecover
 import { useSubscription } from '../hooks/useSubscription';
 import type { Dog, DogPark, SmartLock } from '../types';
 import { DEFAULT_LOCATION, LocationError, formatDistance, getCurrentLocation, sortByDistance, type Location } from '../utils/location';
+import { triggerHapticFeedback } from '../utils/hapticFeedback';
 import { checkPaymentStatus, type PaymentStatus } from '../utils/paymentUtils';
 import { safeGetItem, safeSetItem } from '../utils/safeStorage';
 import { supabase } from '../utils/supabase';
@@ -120,6 +121,15 @@ export function AccessControl() {
       setIsGeneratingPin(false);
       setLastUnlockAt(Date.now());
     }
+  };
+
+  // 大きな丸ボタン押下時のハプティック＋解錠
+  const handleRoundActionClick = async () => {
+    if (isGeneratingPin || cooldownRemain > 0) return;
+    try {
+      await triggerHapticFeedback(currentAction === 'exit' ? 'heavy' : 'medium');
+    } catch {}
+    await remoteUnlock();
   };
 
   // PIN生成（Edge Function を利用して実際のロックに登録）
@@ -857,7 +867,7 @@ export function AccessControl() {
                   <button
                     type="button"
                     aria-label={currentAction === 'entry' ? '入場する' : '退場する'}
-                    onClick={() => !isGeneratingPin && cooldownRemain === 0 && remoteUnlock()}
+                    onClick={handleRoundActionClick}
                     disabled={isGeneratingPin || cooldownRemain > 0}
                     className={`relative w-40 h-40 rounded-full text-white shadow-lg select-none outline-none focus:ring-4 transition active:scale-95 ${
                       (isGeneratingPin || cooldownRemain > 0)
