@@ -28,6 +28,7 @@ export default function InviteUnlock() {
   const [parkAddress, setParkAddress] = useState<string>('');
   const [parkId, setParkId] = useState<string>('');
   const [mode, setMode] = useState<'entry'|'exit'>('entry');
+  const [pressed, setPressed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -69,6 +70,8 @@ export default function InviteUnlock() {
 
   const handleUnlock = async () => {
     try {
+      setPressed(true);
+      setTimeout(() => setPressed(false), 500);
       setError(null);
       setSuccess(null);
       if (!invite) throw new Error('招待情報がありません');
@@ -165,8 +168,9 @@ export default function InviteUnlock() {
             onClick={handleUnlock}
             disabled={!within}
             title={within? (mode==='entry'?'入場（解錠）':'退場（解錠）') : '現在は解錠できません'}
-            className={`flex items-center justify-center rounded-full shadow-lg transition-colors ${within ? (mode==='exit' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white') : 'bg-gray-300 text-gray-500 cursor-not-allowed'} w-20 h-20 text-lg font-semibold`}
+            className={`relative overflow-hidden flex items-center justify-center rounded-full shadow-lg transition-colors ${within ? (mode==='exit' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white') : 'bg-gray-300 text-gray-500 cursor-not-allowed'} w-20 h-20 text-lg font-semibold`}
           >
+            <span className={`absolute inset-0 rounded-full bg-white/30 transition-opacity ${pressed ? 'opacity-100' : 'opacity-0'}`} />
             <Key className="w-7 h-7 mr-1" />
           </button>
           <Button variant="secondary" onClick={() => navigate('/community')}>コミュニティへ戻る</Button>
