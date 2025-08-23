@@ -854,7 +854,7 @@ export function AccessControl() {
                     入場
                   </Button>
                   <Button
-                    variant={currentAction === 'exit' ? 'primary' : 'secondary'}
+                    variant={currentAction === 'exit' ? 'danger' : 'secondary'}
                     size="sm"
                     onClick={() => setCurrentAction('exit')}
                   >

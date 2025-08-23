@@ -175,7 +175,7 @@ export default function InviteUnlock() {
           >入場</button>
           <button
             onClick={() => setMode('exit')}
-            className={`px-3 py-1 rounded-full text-sm font-medium ${mode==='exit'?'bg-blue-600 text-white':'bg-gray-200 text-gray-700'}`}
+            className={`px-3 py-1 rounded-full text-sm font-medium ${mode==='exit'?'bg-red-600 text-white':'bg-gray-200 text-gray-700'}`}
           >退場</button>
         </div>
 
