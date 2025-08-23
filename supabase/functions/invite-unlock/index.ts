@@ -43,13 +43,16 @@ async function resolveEntryLockIdByPark(parkId: string): Promise<string | null> 
 
 serve(async (req) => {
   try {
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders });
+    }
     const { pathname, searchParams } = new URL(req.url);
     if (req.method === 'GET') {
       const token = searchParams.get('token') || pathname.split('/').pop() || '';
       if (!token) return new Response(JSON.stringify({ error: 'token required' }), { status: 400 });
       const invite = await getInviteByToken(token);
       if (!invite) return new Response(JSON.stringify({ error: 'invite not found' }), { status: 404 });
-      return new Response(JSON.stringify({ invite }), { headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ invite }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (req.method === 'POST') {
@@ -85,7 +88,7 @@ serve(async (req) => {
         body: JSON.stringify({ lock_id: lockId, user_id: userId, auth_token: FACILITY_AUTH_TOKEN, invite_token: token })
       });
       const unlockBody = await unlockResp.json().catch(() => ({}));
-      if (!unlockResp.ok) return new Response(JSON.stringify({ error: unlockBody?.error || 'unlock failed' }), { status: 500 });
+      if (!unlockResp.ok) return new Response(JSON.stringify({ error: unlockBody?.error || 'unlock failed' }), { status: 500, headers: corsHeaders });
 
       // Record usage (after successful unlock attempt)
       await fetch(`${SUPABASE_URL}/rest/v1/invite_uses`, {
@@ -99,12 +102,12 @@ serve(async (req) => {
         body: JSON.stringify({ used_count: (invite.used_count || 0) + 1 }),
       });
 
-      return new Response(JSON.stringify({ success: true }));
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    return new Response('Method Not Allowed', { status: 405 });
+    return new Response('Method Not Allowed', { status: 405, headers: corsHeaders });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
+    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: corsHeaders });
   }
 });
 
