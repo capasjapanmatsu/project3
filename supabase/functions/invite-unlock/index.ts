@@ -88,7 +88,10 @@ serve(async (req) => {
         body: JSON.stringify({ lock_id: lockId, user_id: userId, auth_token: FACILITY_AUTH_TOKEN, invite_token: token, purpose: (body?.purpose ?? 'entry') })
       });
       const unlockBody = await unlockResp.json().catch(() => ({}));
-      if (!unlockResp.ok) return new Response(JSON.stringify({ error: unlockBody?.error || 'unlock failed' }), { status: 500, headers: corsHeaders });
+      if (!unlockResp.ok) {
+        const msg = (unlockBody && (unlockBody.error || unlockBody.message)) || 'unlock failed';
+        return new Response(JSON.stringify({ error: msg }), { status: 500, headers: corsHeaders });
+      }
 
       // Record usage (after successful unlock attempt)
       await fetch(`${SUPABASE_URL}/rest/v1/invite_uses`, {
