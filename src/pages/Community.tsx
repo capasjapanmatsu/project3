@@ -1438,6 +1438,37 @@ function MessageThread({ viewerId, partnerId, refreshKey, onMarkedRead }: { view
   const [items, setItems] = useState<Array<{id:string; sender_id:string; receiver_id:string; content:string; read:boolean; created_at:string}>>([]);
   const [attachmentsMap, setAttachmentsMap] = useState<Record<string, Array<{file_url:string; file_type:string; file_name:string}>>>({});
   const listRef = useRef<HTMLDivElement | null>(null);
+
+  // Markdown風の [テキスト](URL) をアンカーに変換し、\n を改行として表示
+  const renderMessageContent = (text: string) => {
+    const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+    const elements: any[] = [];
+    let lastIndex = 0;
+
+    const pushTextWithBreaks = (s: string) => {
+      const lines = s.split(/\r?\n/);
+      lines.forEach((line, idx) => {
+        if (line) elements.push(line);
+        if (idx < lines.length - 1) elements.push(<br key={`br-${elements.length}`} />);
+      });
+    };
+
+    let match: RegExpExecArray | null;
+    // eslint-disable-next-line no-cond-assign
+    while ((match = linkRegex.exec(text)) !== null) {
+      const before = text.slice(lastIndex, match.index);
+      if (before) pushTextWithBreaks(before);
+      elements.push(
+        <a key={`a-${elements.length}`} href={match[2]} target="_blank" rel="noreferrer" className="text-blue-700 underline">
+          {match[1]}
+        </a>
+      );
+      lastIndex = match.index + match[0].length;
+    }
+    const rest = text.slice(lastIndex);
+    if (rest) pushTextWithBreaks(rest);
+    return <>{elements}</>;
+  };
   useEffect(() => {
     (async () => {
       const { data } = await supabase
@@ -1486,7 +1517,7 @@ function MessageThread({ viewerId, partnerId, refreshKey, onMarkedRead }: { view
         items.map(m => (
           <div key={m.id} className={`flex ${m.sender_id===viewerId?'justify-end':'justify-start'}`}>
             <div className={`max-w-[80%] space-y-2`}>
-              <div className={`px-3 py-2 rounded-lg text-sm ${m.sender_id===viewerId?'bg-blue-600 text-white':'bg-white border'}`}>{m.content}</div>
+              <div className={`px-3 py-2 rounded-lg text-sm ${m.sender_id===viewerId?'bg-blue-600 text-white':'bg-white border'}`}>{renderMessageContent(m.content)}</div>
               {attachmentsMap[m.id]?.length ? (
                 <div className="grid grid-cols-2 gap-2">
                   {attachmentsMap[m.id].map((a, i) => (
