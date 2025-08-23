@@ -8,6 +8,7 @@ import useAuth from '../context/AuthContext';
 import type { Dog } from '../types';
 import { log } from '../utils/helpers';
 import { supabase } from '../utils/supabase';
+import { uploadAndConvertToWebP } from '../utils/webpConverter';
 import { safeSupabaseQuery } from '../utils/supabaseHelpers';
 
 export function DogManagement() {
@@ -275,74 +276,27 @@ export function DogManagement() {
         ...(dogFormData.microchipNumber && { microchip_number: dogFormData.microchipNumber }),
       };
 
-      // 画像が変更された場合はアップロード
+      // 画像が変更された場合はアップロード（1:1トリミング → WebP変換保存）
       if (dogImageFile) {
-        // ファイル情報をログ出力
-        log('info', 'Uploading dog image', {
-          name: dogImageFile.name,
-          type: dogImageFile.type,
-          size: dogImageFile.size,
-          lastModified: dogImageFile.lastModified,
-          isFileObject: dogImageFile instanceof File
-        });
-        
-        // ファイル形式の再検証
-        if (!dogImageFile.type || !dogImageFile.type.startsWith('image/')) {
-          throw new Error(`無効なファイル形式です: ${dogImageFile.type}`);
-        }
-        
-        // 🔥 最終手段：fetch API で直接 Storage API を呼び出し
-        const fileName = `${selectedDog.id}/dog-photo.jpg`;
-        log('info', 'File path', { fileName });
-        log('info', 'Using direct fetch API to bypass SDK');
-        
-        // Supabase Storage API の直接呼び出し（正しい認証トークン使用）
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-        const uploadUrl = `${supabaseUrl}/storage/v1/object/dog-images/${fileName}`;
-        
-        // 現在のユーザーのアクセストークンを取得
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) {
-          throw new Error('認証されていません。ログインしてください。');
-        }
-         log('info', 'Direct upload URL', { uploadUrl });
-        log('info', 'Using user access token for authentication');
+        // 1:1にトリミング（オフスクリーンcanvas）
+        const imgBitmap = await createImageBitmap(dogImageFile);
+        const size = Math.min(imgBitmap.width, imgBitmap.height);
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d')!;
+        const sx = (imgBitmap.width - size) / 2;
+        const sy = (imgBitmap.height - size) / 2;
+        ctx.drawImage(imgBitmap, sx, sy, size, size, 0, 0, size, size);
+        const blob: Blob = await new Promise((resolve) => canvas.toBlob((b) => resolve(b as Blob), 'image/jpeg', 0.9));
+        const squaredFile = new File([blob], 'dog-square.jpg', { type: 'image/jpeg' });
 
-        log('info', 'Using PUT method for Supabase Storage API');
-        log('info', 'Upload options', {
-          method: 'PUT',
-          contentType: dogImageFile.type,
-          authorization: 'Bearer [token]',
-          cacheControl: '3600'
-        });
-
-        const response = await fetch(uploadUrl, {
-          method: 'PUT',  // ← 修正: POSTからPUTに変更
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': dogImageFile.type,  // ← Content-Type明示
-            'Cache-Control': '3600'
-          },
-          body: dogImageFile
-        });
-        
-        log('info', 'Response status', { status: response.status });
-        log('info', 'Response headers', { headers: Object.fromEntries(response.headers.entries()) });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          log('error', 'Direct upload failed', { error: errorText });
-          throw new Error(`直接アップロードに失敗しました: ${response.status} ${errorText}`);
-        }
-        
-        const responseData: unknown = await response.json();
-        log('info', 'Direct upload success', { responseData });
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('dog-images')
-          .getPublicUrl(fileName);
-        
-        updateData.image_url = publicUrl;
+        // WebP変換＋Storage保存
+        const fileName = `${selectedDog.id}/${crypto.randomUUID()}.webp`;
+        const result = await uploadAndConvertToWebP('dog-images', squaredFile, fileName, { quality: 85, generateThumbnail: false });
+        const url = result.webpUrl || result.originalUrl;
+        if (!url) throw new Error('画像の保存に失敗しました');
+        updateData.image_url = url;
       }
 
       // 犬の情報を更新
