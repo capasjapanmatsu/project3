@@ -5,6 +5,7 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
+import { triggerHapticFeedback } from '../utils/hapticFeedback';
 
 type InviteInfo = {
   id: string;
@@ -72,6 +73,8 @@ export default function InviteUnlock() {
     try {
       setPressed(true);
       setTimeout(() => setPressed(false), 500);
+      // 端末バイブ：入場は中、退場は強
+      try { await triggerHapticFeedback(mode === 'exit' ? 'heavy' : 'medium'); } catch {}
       setError(null);
       setSuccess(null);
       if (!invite) throw new Error('招待情報がありません');
