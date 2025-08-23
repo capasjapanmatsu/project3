@@ -122,6 +122,7 @@ const Community = React.lazy(() => import('./pages/Community').then(module => ({
 const Contact = React.lazy(() => import('./pages/Contact').then(module => ({ default: module.Contact })));
 const AccessControl = React.lazy(() => import('./pages/AccessControl').then(module => ({ default: module.AccessControl })));
 const SubscriptionIntro = React.lazy(() => import('./pages/SubscriptionIntro').then(module => ({ default: module.SubscriptionIntro })));
+const InviteUnlock = React.lazy(() => import('./pages/InviteUnlock'));
 
 // その他のページ
 const TermsOfService = React.lazy(() => import('./pages/TermsOfService').then(module => ({ default: module.TermsOfService })));
@@ -425,6 +426,14 @@ const App: React.FC = () => {
                 <Suspense fallback={<PageSkeleton />}>
                   <Community />
                 </Suspense>
+              } />
+              {/* 共有招待の専用ページ */}
+              <Route path="/invite/:token" element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <InviteUnlock />
+                  </Suspense>
+                </ProtectedRoute>
               } />
               {/* お問い合わせ（ログイン限定） */}
               <Route path="/inquiry" element={

@@ -1,8 +1,10 @@
+/* eslint-disable */
 // Deno Edge Function: handle invite info and unlock
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const FACILITY_AUTH_TOKEN = Deno.env.get('FACILITY_AUTH_TOKEN') || 'demo_auth_token';
 
 async function getInviteByToken(token: string) {
   const resp = await fetch(`${SUPABASE_URL}/rest/v1/reservation_invites?select=*&token=eq.${encodeURIComponent(token)}`, {
@@ -10,6 +12,26 @@ async function getInviteByToken(token: string) {
   });
   const data = await resp.json();
   return Array.isArray(data) ? data[0] : null;
+}
+
+async function resolveEntryLockIdByPark(parkId: string): Promise<string | null> {
+  // 1st: entry purpose, 2nd: any with pin_enabled, 3rd: any lock
+  const baseHeaders = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } as const;
+  // entry lock preferred
+  let resp = await fetch(`${SUPABASE_URL}/rest/v1/smart_locks?select=lock_id,purpose&park_id=eq.${encodeURIComponent(parkId)}&purpose=eq.entry&status=eq.active&limit=1`, { headers: baseHeaders });
+  let data = await resp.json();
+  if (Array.isArray(data) && data.length > 0) return data[0].lock_id as string;
+
+  // any pin-enabled lock
+  resp = await fetch(`${SUPABASE_URL}/rest/v1/smart_locks?select=lock_id,purpose&park_id=eq.${encodeURIComponent(parkId)}&pin_enabled=eq.true&status=eq.active&limit=1`, { headers: baseHeaders });
+  data = await resp.json();
+  if (Array.isArray(data) && data.length > 0) return data[0].lock_id as string;
+
+  // any lock as fallback
+  resp = await fetch(`${SUPABASE_URL}/rest/v1/smart_locks?select=lock_id&park_id=eq.${encodeURIComponent(parkId)}&status=eq.active&limit=1`, { headers: baseHeaders });
+  data = await resp.json();
+  if (Array.isArray(data) && data.length > 0) return data[0].lock_id as string;
+  return null;
 }
 
 serve(async (req) => {
@@ -41,7 +63,24 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'invite uses exceeded' }), { status: 403 });
       }
 
-      // Record usage
+      // Resolve lock_id by park
+      const lockId = await resolveEntryLockIdByPark(invite.park_id);
+      if (!lockId) return new Response(JSON.stringify({ error: 'no active lock configured for this park' }), { status: 400 });
+
+      // Call secure open-door-lock (performs RPC access check)
+      const unlockResp = await fetch(`${SUPABASE_URL}/functions/v1/open-door-lock`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // forward user auth for supabase.auth.getUser validation inside open-door-lock
+          Authorization: req.headers.get('Authorization') || '',
+        },
+        body: JSON.stringify({ lock_id: lockId, user_id: userId, auth_token: FACILITY_AUTH_TOKEN, invite_token: token })
+      });
+      const unlockBody = await unlockResp.json().catch(() => ({}));
+      if (!unlockResp.ok) return new Response(JSON.stringify({ error: unlockBody?.error || 'unlock failed' }), { status: 500 });
+
+      // Record usage (after successful unlock attempt)
       await fetch(`${SUPABASE_URL}/rest/v1/invite_uses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
@@ -53,14 +92,6 @@ serve(async (req) => {
         body: JSON.stringify({ used_count: (invite.used_count || 0) + 1 }),
       });
 
-      // Unlock via existing ttlock-unlock
-      const unlockResp = await fetch(`${SUPABASE_URL}/functions/v1/ttlock-unlock`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: req.headers.get('Authorization') || '' },
-        body: JSON.stringify({ parkId: invite.park_id, purpose: 'entry' }),
-      });
-      const unlockBody = await unlockResp.json().catch(() => ({}));
-      if (!unlockResp.ok) return new Response(JSON.stringify({ error: unlockBody?.error || 'unlock failed' }), { status: 500 });
       return new Response(JSON.stringify({ success: true }));
     }
 

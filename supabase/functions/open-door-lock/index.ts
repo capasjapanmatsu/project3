@@ -128,22 +128,18 @@ serve(async (req) => {
     // Open the smart lock
     const result = await openSmartLock(lock_id, user_id, auth_token);
 
-    // Log the entry/exit action
-    const { error: logError } = await supabase
-      .from('user_entry_exit_logs')
-      .insert({
-        user_id: user.id,
-        park_id: parkId,
-        dog_ids: dogIds,
-        action: action,
-        timestamp: new Date().toISOString(),
-        pin_code: pinCode,
-        lock_id: lockId
-      });
-
-    if (logError) {
+    // Best-effort log (minimal fields to avoid reference errors)
+    try {
+      await supabase
+        .from('user_entry_exit_logs')
+        .insert({
+          user_id: user.id,
+          lock_id: lock_id,
+          action: 'entry',
+          timestamp: new Date().toISOString()
+        });
+    } catch (logError) {
       console.error('Failed to log entry/exit action:', logError);
-      // Don't fail the request if logging fails
     }
 
     // Return the result

@@ -1140,10 +1140,68 @@ export function Community() {
                       </Button>
                     </div>
                     <div className="mt-2 flex items-center gap-3 text-sm">
-                      <button type="button" className="flex items-center gap-1 text-blue-600 hover:text-blue-800" onClick={() => {
-                        sessionStorage.setItem('communityShareInvite', '1');
-                        alert('予約共有ページを作成します。次のステップで詳細を入力してください。');
-                      }}>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                        onClick={async () => {
+                          try {
+                            if (!user?.id) return;
+                            const friendId = selectedFriend.friend_id as string;
+                            // 最小実装: 直近の自分の施設貸し切り予約から共有リンクを作成
+                            const { data: latest } = await supabase
+                              .from('reservations')
+                              .select('id, park_id, date, start_time, duration, reservation_type')
+                              .eq('user_id', user.id)
+                              .eq('reservation_type', 'whole_facility')
+                              .eq('status', 'confirmed')
+                              .order('date', { ascending: false })
+                              .limit(1)
+                              .maybeSingle();
+                            if (!latest) {
+                              alert('貸し切り予約が見つかりません。まずは施設を貸し切り予約してください。');
+                              return;
+                            }
+                            const startDate = new Date(`${latest.date}T${String(latest.start_time).padStart(2,'0')}:00:00Z`);
+                            const endDate = new Date(startDate.getTime() + (Number(latest.duration) * 60 * 60 * 1000));
+                            const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+                            // 共有招待を作成（サービスロール経由のEdge関数を使わずPostgRESTで保存）
+                            const { error: insertErr } = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/reservation_invites`, {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                apikey: import.meta.env.VITE_SUPABASE_ANON_KEY!,
+                                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                              },
+                              body: JSON.stringify({
+                                token,
+                                host_user_id: user.id,
+                                park_id: latest.park_id,
+                                title: 'ドッグラン貸し切りのご招待',
+                                start_time: startDate.toISOString(),
+                                end_time: endDate.toISOString(),
+                                max_uses: null
+                              })
+                            }).then(async (r) => (r.ok ? null : new Error(await r.text()))).catch(e => ({ message: String(e) } as any));
+                            if (insertErr && (insertErr as any).message) throw new Error((insertErr as any).message);
+
+                            const inviteUrl = `${window.location.origin}/invite/${token}`;
+
+                            // メッセージ本文にリンクを差し込んで送信
+                            const content = `予約を共有します。こちらのリンクから入場できます（予約時間内のみ）\n${inviteUrl}`;
+                            await supabase.from('messages').insert({
+                              sender_id: user.id,
+                              receiver_id: friendId,
+                              content,
+                              read: false
+                            });
+                            setMessageRefreshKey((k) => k + 1);
+                            alert('招待リンクを送信しました');
+                          } catch (e) {
+                            console.error(e);
+                            alert('招待リンクの作成に失敗しました');
+                          }
+                        }}
+                      >
                         <Share className="w-4 h-4" /> 予約を共有
                       </button>
                       <label className="flex items-center gap-1 text-gray-600 hover:text-gray-800 cursor-pointer">
