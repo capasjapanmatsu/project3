@@ -1,5 +1,6 @@
 import { Gift, MessageCircle, Plus, Shield, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
@@ -101,11 +102,23 @@ export const FloatingActionButton = () => {
     <>
       {/* フローティングアクションボタン */}
       <div className="fixed bottom-28 right-4 z-40">
-        {/* サブメニュー（下から上へ表示） */}
+        {/* サブメニュー（横からスライドイン/アウト） */}
+        <AnimatePresence>
         {isOpen && (
-          <div className="absolute bottom-24 -right-28 flex flex-col space-y-3 animate-in slide-in-from-right duration-300">
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: { opacity: 1, transition: { when: 'beforeChildren', staggerChildren: 0.05 } },
+              exit: { opacity: 0, transition: { when: 'afterChildren' } }
+            }}
+            className="absolute bottom-24 -right-28 flex flex-col space-y-3"
+          >
             {/* AIチャット（最上段） */}
-            <button
+            <motion.button
+              variants={{ hidden: { x: 40, opacity: 0 }, visible: { x: 0, opacity: 1 }, exit: { x: 40, opacity: 0 } }}
               onClick={() => {
                 setShowAIChat(true);
                 setIsOpen(false);
@@ -118,9 +131,10 @@ export const FloatingActionButton = () => {
                 <span className="text-sm font-bold whitespace-nowrap block">AIチャット</span>
                 <span className="text-xs opacity-90 whitespace-nowrap block">質問にすぐ回答します</span>
               </div>
-            </button>
+            </motion.button>
             {/* JPパスポート機能ボタン（上位置） */}
-            <button
+            <motion.button
+              variants={{ hidden: { x: 40, opacity: 0 }, visible: { x: 0, opacity: 1 }, exit: { x: 40, opacity: 0 } }}
               onClick={() => {
                 setIsOpen(false);
                 navigate('/jp-passport');
@@ -133,13 +147,17 @@ export const FloatingActionButton = () => {
                 <span className="text-sm font-bold whitespace-nowrap block">JPパスポート</span>
                 <span className="text-xs opacity-90 whitespace-nowrap block">ワクチン証明書表示</span>
               </div>
-            </button>
+            </motion.button>
 
             {/* 区切りライン */}
-            <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent opacity-50"></div>
+            <motion.div
+              variants={{ hidden: { x: 40, opacity: 0 }, visible: { x: 0, opacity: 1 }, exit: { x: 40, opacity: 0 } }}
+              className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent opacity-50"
+            />
 
             {/* クーポン機能ボタン（下位置・慎重な操作用） */}
-            <button
+            <motion.button
+              variants={{ hidden: { x: 40, opacity: 0 }, visible: { x: 0, opacity: 1 }, exit: { x: 40, opacity: 0 } }}
               onClick={() => {
                 
                 // データを最新に更新してからナビゲート（ダイアログなし）
@@ -156,9 +174,10 @@ export const FloatingActionButton = () => {
                 <span className="text-sm font-bold whitespace-nowrap block">クーポン ({userCoupons.length})</span>
                 <span className="text-xs opacity-90 whitespace-nowrap block">店舗利用時に表示</span>
               </div>
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         )}
+        </AnimatePresence>
 
         {/* メインボタン - 小さくしてプレミアムデザイン */}
         <button
