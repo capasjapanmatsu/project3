@@ -144,13 +144,13 @@ serve(async (req) => {
       throw new Error("Missing required parameters: lock_id, user_id, and auth_token are required");
     }
 
-    // Verify that the user_id in the request matches the authenticated user
-    if (user_id !== user.id) {
+    // Verify that the user_id matches authenticated user unless invite link is used
+    if (!invite_token && user_id !== user.id) {
       throw new Error("User ID mismatch");
     }
 
     // Open the smart lock
-    const result = await openSmartLock(lock_id, user_id, auth_token, invite_token);
+    const result = await openSmartLock(lock_id, user.id, auth_token, invite_token);
 
     // Best-effort log (minimal fields to avoid reference errors)
     try {
