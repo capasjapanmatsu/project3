@@ -28,25 +28,46 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const FACILITY_AUTH_TOKEN = Deno.env.get("FACILITY_AUTH_TOKEN") || "demo_auth_token";
 
 // Function to open a smart lock
-async function openSmartLock(lockId: string, userId: string, authToken: string) {
+async function openSmartLock(lockId: string, userId: string, authToken: string, inviteToken?: string) {
   try {
     // Validate the facility auth token
     if (authToken !== FACILITY_AUTH_TOKEN) {
       throw new Error("Invalid authentication token");
     }
 
-    // Check if the user has an active reservation or subscription
-    const { data: userAccess, error: accessError } = await supabase.rpc("check_user_park_access", {
-      p_user_id: userId,
-      p_lock_id: lockId
-    });
+    let hasAccess = false;
 
-    if (accessError) {
-      console.error("Error checking user access:", accessError);
-      throw new Error("Failed to verify user access");
+    // If invite token is provided, validate time window from reservation_invites
+    if (inviteToken) {
+      const { data: invite } = await supabase
+        .from('reservation_invites')
+        .select('park_id, start_time, end_time, revoked')
+        .eq('token', inviteToken)
+        .maybeSingle();
+      if (invite && !invite.revoked) {
+        const now = Date.now();
+        const start = Date.parse(invite.start_time as any);
+        const end = Date.parse(invite.end_time as any);
+        hasAccess = now >= start && now <= end;
+      }
     }
 
-    if (!userAccess || !userAccess.has_access) {
+    if (!hasAccess) {
+      // Fallback to normal access rules
+      const { data: userAccess, error: accessError } = await supabase.rpc("check_user_park_access", {
+        p_user_id: userId,
+        p_lock_id: lockId
+      });
+
+      if (accessError) {
+        console.error("Error checking user access:", accessError);
+        throw new Error("Failed to verify user access");
+      }
+
+      hasAccess = !!(userAccess && (userAccess as any).has_access);
+    }
+
+    if (!hasAccess) {
       throw new Error("User does not have access to this facility");
     }
 
@@ -85,7 +106,7 @@ async function openSmartLock(lockId: string, userId: string, authToken: string) 
       action: "unlock",
       status: "error",
       timestamp: new Date().toISOString(),
-      error_message: error.message
+      error_message: (error as any).message
     });
 
     throw error;
@@ -113,7 +134,7 @@ serve(async (req) => {
     }
 
     // Extract parameters from the request
-    const { lock_id, user_id, auth_token } = requestData;
+    const { lock_id, user_id, auth_token, invite_token } = requestData;
 
     // Validate required parameters
     if (!lock_id || !user_id || !auth_token) {
@@ -126,7 +147,7 @@ serve(async (req) => {
     }
 
     // Open the smart lock
-    const result = await openSmartLock(lock_id, user_id, auth_token);
+    const result = await openSmartLock(lock_id, user_id, auth_token, invite_token);
 
     // Best-effort log (minimal fields to avoid reference errors)
     try {
@@ -159,7 +180,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         status: "error",
-        message: error.message || "An error occurred",
+        message: (error as any).message || "An error occurred",
       }),
       {
         headers: {

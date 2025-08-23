@@ -59,6 +59,12 @@ export function Community() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [blacklistedDogs, setBlacklistedDogs] = useState<any[]>([]);
+  // 予約共有用UI状態
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [reservationsForShare, setReservationsForShare] = useState<Array<{ id:string; park_id:string; park_name:string; date:string; start_time:any; duration:number }>>([]);
+  const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
+  const [shareComment, setShareComment] = useState('');
 
   // 管理画面から遷移したときに即座にスレッドを開く（データ取得前でも仮スレッドを作ってモーダルを開く）
   useEffect(() => {
@@ -1146,57 +1152,30 @@ export function Community() {
                         onClick={async () => {
                           try {
                             if (!user?.id) return;
-                            const friendId = selectedFriend.friend_id as string;
-                            // 最小実装: 直近の自分の施設貸し切り予約から共有リンクを作成
-                            const { data: latest } = await supabase
+                            setShareOpen(true);
+                            setShareLoading(true);
+                            // 当日以降の貸し切り確定予約を取得
+                            const { data: rows } = await supabase
                               .from('reservations')
                               .select('id, park_id, date, start_time, duration, reservation_type')
                               .eq('user_id', user.id)
                               .eq('reservation_type', 'whole_facility')
                               .eq('status', 'confirmed')
                               .order('date', { ascending: false })
-                              .limit(1)
-                              .maybeSingle();
-                            if (!latest) {
-                              alert('貸し切り予約が見つかりません。まずは施設を貸し切り予約してください。');
-                              return;
+                              .limit(10);
+                            const list = rows || [];
+                            const parkIds = Array.from(new Set(list.map(r => r.park_id as any)));
+                            let names: Record<string,string> = {};
+                            if (parkIds.length > 0) {
+                              const { data: parks } = await supabase.from('dog_parks').select('id,name').in('id', parkIds);
+                              (parks||[]).forEach(p => { names[p.id as any] = (p.name as any) || 'ドッグラン'; });
                             }
-                            // start_time は 'HH' / 'HH:MM' / 'HH:MM:SS' など環境差があるため安全にパース
-                            const parts = String(latest.start_time).split(':');
-                            const hh = parseInt(parts[0] || '0', 10) || 0;
-                            const mm = parseInt(parts[1] || '0', 10) || 0;
-                            const ymd = String(latest.date).split('-').map(n => parseInt(n, 10));
-                            const startDate = new Date(Date.UTC(ymd[0], (ymd[1] || 1) - 1, ymd[2] || 1, hh, mm, 0));
-                            const durationHours = Math.max(1, Number(latest.duration) || 1);
-                            const endDate = new Date(startDate.getTime() + (durationHours * 60 * 60 * 1000));
-                            const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
-                            // 現在のログインユーザーの権限で作成（RLSを満たす）
-                            const { error: insertErr } = await supabase.from('reservation_invites').insert({
-                              token,
-                              host_user_id: user.id,
-                              park_id: latest.park_id,
-                              title: 'ドッグラン貸し切りのご招待',
-                              start_time: startDate.toISOString(),
-                              end_time: endDate.toISOString(),
-                              max_uses: null
-                            });
-                            if (insertErr) throw insertErr;
-
-                            const inviteUrl = `${window.location.origin}/invite/${token}`;
-
-                            // メッセージ本文にリンクを差し込んで送信
-                            const content = `予約を共有します。こちらのリンクから入場できます（予約時間内のみ）\n${inviteUrl}`;
-                            await supabase.from('messages').insert({
-                              sender_id: user.id,
-                              receiver_id: friendId,
-                              content,
-                              read: false
-                            });
-                            setMessageRefreshKey((k) => k + 1);
-                            alert('招待リンクを送信しました');
-                          } catch (e) {
-                            console.error(e);
-                            alert('招待リンクの作成に失敗しました');
+                            const normalized = list.map(r => ({ id: r.id as any, park_id: r.park_id as any, park_name: names[r.park_id as any] || 'ドッグラン', date: String(r.date), start_time: r.start_time as any, duration: Number(r.duration || 1) }));
+                            setReservationsForShare(normalized);
+                            if (normalized[0]) setSelectedReservationId(normalized[0].id);
+                            setShareComment('');
+                          } finally {
+                            setShareLoading(false);
                           }
                         }}
                       >
@@ -1215,7 +1194,70 @@ export function Community() {
                 </div>
               </div>
             </div>
-          )}
+            {shareOpen && (
+              <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center p-4 z-[60]">
+                <div className="bg-white rounded-lg max-w-xl w-full p-6">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-lg font-semibold">共有する貸し切り予約を選択</h3>
+                    <button className="text-gray-500 hover:text-gray-700" onClick={() => setShareOpen(false)}><X className="w-5 h-5"/></button>
+                  </div>
+                  {shareLoading ? (
+                    <div className="text-center py-6">読み込み中...</div>
+                  ) : reservationsForShare.length === 0 ? (
+                    <div className="text-sm text-gray-600">貸し切り確定済みの予約が見つかりません。</div>
+                  ) : (
+                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                      {reservationsForShare.map(r => {
+                        const parts = String(r.start_time).split(':');
+                        const hh = parseInt(parts[0] || '0', 10) || 0;
+                        const mm = parseInt(parts[1] || '0', 10) || 0;
+                        const ymd = String(r.date).split('-').map(n => parseInt(n, 10));
+                        const start = new Date(Date.UTC(ymd[0], (ymd[1]||1)-1, ymd[2]||1, hh, mm, 0));
+                        const end = new Date(start.getTime() + (Math.max(1, r.duration) * 60 * 60 * 1000));
+                        return (
+                          <label key={r.id} className={`flex items-start gap-3 p-3 rounded border ${selectedReservationId===r.id?'border-blue-500 bg-blue-50':'border-gray-200'}`}>
+                            <input type="radio" name="share-reservation" checked={selectedReservationId===r.id} onChange={() => setSelectedReservationId(r.id)} className="mt-1"/>
+                            <div>
+                              <div className="font-medium">{r.park_name}</div>
+                              <div className="text-sm text-gray-600">{start.toLocaleString('ja-JP')} 〜 {end.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="mt-4">
+                    <label className="block text-sm text-gray-600 mb-1">メッセージ（編集可）</label>
+                    <textarea value={shareComment} onChange={e=>setShareComment(e.target.value)} className="w-full border rounded p-2 text-sm" rows={3} placeholder="予約を共有します。\n（ここに追記があれば編集してください）"/>
+                  </div>
+                  <div className="mt-4 flex justify-end gap-2">
+                    <Button variant="secondary" onClick={()=>setShareOpen(false)}>キャンセル</Button>
+                    <Button onClick={async ()=>{
+                      try{
+                        if(!user?.id || !selectedReservationId) return;
+                        const r = reservationsForShare.find(x=>x.id===selectedReservationId)!;
+                        const parts = String(r.start_time).split(':');
+                        const hh = parseInt(parts[0]||'0',10)||0; const mm=parseInt(parts[1]||'0',10)||0;
+                        const ymd = String(r.date).split('-').map(n=>parseInt(n,10));
+                        const startDate = new Date(Date.UTC(ymd[0], (ymd[1]||1)-1, ymd[2]||1, hh, mm, 0));
+                        const durationHours = Math.max(1, Number(r.duration)||1);
+                        const endDate = new Date(startDate.getTime() + (durationHours*60*60*1000));
+                        const token = Math.random().toString(36).slice(2)+Date.now().toString(36);
+                        const { error:insErr } = await supabase.from('reservation_invites').insert({ token, host_user_id:user.id, park_id:r.park_id, title:'ドッグラン貸し切りのご招待', start_time:startDate.toISOString(), end_time:endDate.toISOString(), max_uses:null });
+                        if(insErr) throw insErr;
+                        const inviteUrl = `${window.location.origin}/invite/${token}`;
+                        const bodyText = shareComment && shareComment.trim().length>0 ? `${shareComment.trim()}\n` : '';
+                        const msg = `${bodyText}予約を共有します。${r.park_name} / ${startDate.toLocaleString('ja-JP')} 〜 ${endDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}。[こちら](${inviteUrl})`;
+                        await supabase.from('messages').insert({ sender_id:user.id, receiver_id:selectedFriend.friend_id, content: msg, read:false });
+                        setMessageRefreshKey(k=>k+1);
+                        setShareOpen(false);
+                        alert('招待リンクを送信しました');
+                      }catch(e){ console.error(e); alert('招待リンクの作成に失敗しました'); }
+                    }}>送信</Button>
+                  </div>
+                </div>
+              </div>
+            )}
         </div>
         
         {/* サイドバー */}
