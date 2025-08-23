@@ -118,6 +118,39 @@ const dogBreeds: DogBreed[] = [
     image: 'https://images.pexels.com/photos/1643457/pexels-photo-1643457.jpeg?auto=compress&w=300',
     description: '短い足と大きな耳が特徴のコーギーは、活発で賢い性格です。元々は牧畜犬として活躍し、現在も家庭犬として人気があります。'
   }
+  ,
+  {
+    id: 'samoyed',
+    name: 'Samoyed',
+    japaneseName: 'サモエド',
+    category: 'large',
+    size: '大型',
+    weight: '20-30kg',
+    lifespan: '12-14年',
+    temperament: ['友好的', '社交的', '活動的', '賢い'],
+    characteristics: ['ふわふわの白い被毛', '微笑む表情', '寒さに強い', 'そり犬のルーツ'],
+    careLevel: 'medium',
+    exerciseNeeds: 'high',
+    popularity: 4,
+    image: '/images/breeds/samoyed.webp',
+    description: 'ふわふわの白い被毛と「サモエドスマイル」で知られるサモエドは、友好的で社交的な性格です。寒冷地での作業犬としての歴史を持ち、運動量は多めです。'
+  },
+  {
+    id: 'akita',
+    name: 'Akita',
+    japaneseName: '秋田犬',
+    category: 'large',
+    size: '大型',
+    weight: '25-35kg',
+    lifespan: '10-14年',
+    temperament: ['忠実', '勇敢', '落ち着き', '家族思い'],
+    characteristics: ['日本原産', '厚い被毛', '力強い体躯', '警戒心が強い'],
+    careLevel: 'medium',
+    exerciseNeeds: 'medium',
+    popularity: 5,
+    image: '/images/breeds/akita.webp',
+    description: '日本原産の秋田犬は、忠実で勇敢な性格を持つ大型犬です。落ち着きがあり家族思いで、適切な運動としつけが重要です。'
+  }
 ];
 
 export function Breeds() {
