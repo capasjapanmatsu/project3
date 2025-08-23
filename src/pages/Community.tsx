@@ -1213,7 +1213,7 @@ export function Community() {
                         const hh = parseInt(parts[0] || '0', 10) || 0;
                         const mm = parseInt(parts[1] || '0', 10) || 0;
                         const ymd = String(r.date).split('-').map(n => parseInt(n, 10));
-                        const start = new Date(Date.UTC(ymd[0], (ymd[1]||1)-1, ymd[2]||1, hh, mm, 0));
+                        const start = new Date(ymd[0], (ymd[1]||1)-1, ymd[2]||1, hh, mm, 0);
                         const end = new Date(start.getTime() + (Math.max(1, r.duration) * 60 * 60 * 1000));
                         return (
                           <label key={r.id} className={`flex items-start gap-3 p-3 rounded border ${selectedReservationId===r.id?'border-blue-500 bg-blue-50':'border-gray-200'}`}>
@@ -1240,7 +1240,7 @@ export function Community() {
                         const parts = String(r.start_time).split(':');
                         const hh = parseInt(parts[0]||'0',10)||0; const mm=parseInt(parts[1]||'0',10)||0;
                         const ymd = String(r.date).split('-').map(n=>parseInt(n,10));
-                        const startDate = new Date(Date.UTC(ymd[0], (ymd[1]||1)-1, ymd[2]||1, hh, mm, 0));
+                        const startDate = new Date(ymd[0], (ymd[1]||1)-1, ymd[2]||1, hh, mm, 0);
                         const durationHours = Math.max(1, Number(r.duration)||1);
                         const endDate = new Date(startDate.getTime() + (durationHours*60*60*1000));
                         const token = Math.random().toString(36).slice(2)+Date.now().toString(36);
