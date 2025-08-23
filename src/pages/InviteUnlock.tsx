@@ -35,7 +35,12 @@ export default function InviteUnlock() {
           setError('トークンが見つかりません');
           return;
         }
-        const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-unlock?token=${encodeURIComponent(token)}`);
+        const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-unlock?token=${encodeURIComponent(token)}`, {
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+          }
+        });
         if (!resp.ok) {
           const body = await resp.json().catch(() => ({}));
           throw new Error(body?.error || '招待の取得に失敗しました');
