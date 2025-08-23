@@ -1,9 +1,8 @@
+import { Key } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { Link } from 'react-router-dom';
-import { Key } from 'lucide-react';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 
@@ -143,7 +142,8 @@ export default function InviteUnlock() {
         )}
         <div className="text-xs text-gray-600 mb-4">
           ・予約時間内のみ解錠できます。<br/>
-          ・場内ではルールを守って安全にご利用ください。
+          ・場内ではルールを守って安全にご利用ください。<br/>
+          ・解錠までに少し時間がかかる場合があります。
         </div>
         {success && <div className="mb-3 text-green-700">{success}</div>}
         {error && <div className="mb-3 text-red-700">{error}</div>}
@@ -165,7 +165,7 @@ export default function InviteUnlock() {
             onClick={handleUnlock}
             disabled={!within}
             title={within? (mode==='entry'?'入場（解錠）':'退場（解錠）') : '現在は解錠できません'}
-            className={`flex items-center justify-center rounded-full shadow-lg transition-colors ${within?'bg-blue-600 hover:bg-blue-700 text-white':'bg-gray-300 text-gray-500 cursor-not-allowed'} w-20 h-20 text-lg font-semibold`}
+            className={`flex items-center justify-center rounded-full shadow-lg transition-colors ${within ? (mode==='exit' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white') : 'bg-gray-300 text-gray-500 cursor-not-allowed'} w-20 h-20 text-lg font-semibold`}
           >
             <Key className="w-7 h-7 mr-1" />
           </button>
