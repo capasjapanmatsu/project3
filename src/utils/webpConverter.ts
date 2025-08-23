@@ -42,28 +42,9 @@ export async function uploadAndConvertToWebP(
       throw new Error(`ファイルのアップロードに失敗しました: ${uploadError.message}`);
     }
 
-    // Edge FunctionでWebP変換（同一オリジンのプロキシを優先。失敗時は直接Invokeにフォールバック）
+    // Edge FunctionでWebP変換（まず直接invoke、失敗時のみ同一オリジンのプロキシにフォールバック）
     let data: any | undefined;
     try {
-      // Netlify Functions をダイレクトに叩く（OPTIONSも確実に到達）
-      const resp = await fetch('/.netlify/functions/convert-to-webp-proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bucket,
-          path,
-          quality: options.quality ?? 80,
-          generateThumbnail: options.generateThumbnail ?? true,
-          thumbnailSize: options.thumbnailSize ?? 300,
-          keepOriginal: options.keepOriginal ?? false,
-        })
-      });
-      if (!resp.ok) {
-        throw new Error(await resp.text());
-      }
-      data = await resp.json();
-    } catch (proxyError) {
-      // 直接 Supabase Edge Function を呼ぶ
       const direct = await supabase.functions.invoke('convert-to-webp', {
         body: {
           bucket,
@@ -74,7 +55,25 @@ export async function uploadAndConvertToWebP(
           keepOriginal: options.keepOriginal ?? false,
         },
       });
-      if (direct.error) {
+      if (direct.error) throw direct.error;
+      data = direct.data as any;
+    } catch (invokeError) {
+      try {
+        const resp = await fetch('/.netlify/functions/convert-to-webp-proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bucket,
+            path,
+            quality: options.quality ?? 80,
+            generateThumbnail: options.generateThumbnail ?? true,
+            thumbnailSize: options.thumbnailSize ?? 300,
+            keepOriginal: options.keepOriginal ?? false,
+          })
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        data = await resp.json();
+      } catch (proxyError) {
         // 変換に失敗した場合はオリジナルURLでフォールバック
         const { data: original } = supabase.storage.from(bucket).getPublicUrl(path);
         return {
@@ -83,7 +82,6 @@ export async function uploadAndConvertToWebP(
           originalPath: path,
         };
       }
-      data = direct.data as any;
     }
 
     if (!data.success) {
