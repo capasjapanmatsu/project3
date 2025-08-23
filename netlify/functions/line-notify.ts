@@ -96,6 +96,7 @@ function badgeApprovedFlex(dogName: string, expires?: string) {
 
 // ---- ハンドラ ----
 const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) as string | undefined;
+const PUBLIC_BASE = process.env.PUBLIC_BASE_URL || process.env.VITE_PUBLIC_BASE_URL || 'https://dogparkjp.com';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY as string | undefined;
 
 export const handler: Handler = async (event) => {
@@ -174,7 +175,7 @@ export const handler: Handler = async (event) => {
     if (kind === 'alert') {
       const title = body.title ?? '通知';
       const message = body.message ?? '内容はありません';
-      const linkUrl = body.linkUrl ?? body.mapUrl;
+      const linkUrl = (body.linkUrl ?? body.mapUrl)?.replace('http://localhost:3000', PUBLIC_BASE);
       const msgs = alertWithLink(title, message, linkUrl);
       for (const id of recipients) {
         await lineClient.pushMessage(id, msgs as any);

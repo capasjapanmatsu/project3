@@ -1246,7 +1246,8 @@ export function Community() {
                         const token = Math.random().toString(36).slice(2)+Date.now().toString(36);
                         const { error:insErr } = await supabase.from('reservation_invites').insert({ token, host_user_id:user.id, park_id:r.park_id, title:'ドッグラン貸し切りのご招待', start_time:startDate.toISOString(), end_time:endDate.toISOString(), max_uses:null });
                         if(insErr) throw insErr;
-                        const inviteUrl = `${window.location.origin}/invite/${token}`;
+                        const appBaseUrl = (import.meta.env.VITE_PUBLIC_BASE_URL as string) || (window.location.hostname === 'localhost' ? 'https://dogparkjp.com' : window.location.origin);
+                        const inviteUrl = `${appBaseUrl}/invite/${token}`;
                         const bodyText = shareComment && shareComment.trim().length>0 ? `${shareComment.trim()}\n` : '';
                         const msg = `${bodyText}予約を共有します。${r.park_name} / ${startDate.toLocaleString('ja-JP')} 〜 ${endDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}。[こちら](${inviteUrl})`;
                         await supabase.from('messages').insert({ sender_id:user.id, receiver_id:selectedFriend.friend_id, content: msg, read:false });
