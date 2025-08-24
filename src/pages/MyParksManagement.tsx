@@ -238,6 +238,12 @@ export function MyParksManagement() {
       />
       
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* 運営注意事項へのリンク */}
+        <div className="mb-4">
+          <Link to="/park-operation-guidelines" className="inline-flex items-center text-blue-700 hover:text-blue-900 font-medium underline">
+            ドッグラン運営の注意事項（必ずお読みください）
+          </Link>
+        </div>
         {/* ヘッダー */}
         <div className="mb-8">
           <div className="flex items-center mb-4">

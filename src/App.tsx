@@ -3,6 +3,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import useAuth from './context/AuthContext';
 import { MaintenanceProvider } from './context/MaintenanceContext';
+import ParkOperationGuidelines from './pages/ParkOperationGuidelines';
 import { fetchSessionUser } from './utils/sessionClient';
 
 // レイアウトコンポーネント
@@ -491,6 +492,11 @@ const App: React.FC = () => {
                   <Suspense fallback={<PageSkeleton />}>
                     <MyParksManagement />
                   </Suspense>
+                </ProtectedRoute>
+              } />
+              <Route path="/park-operation-guidelines" element={
+                <ProtectedRoute>
+                  <ParkOperationGuidelines />
                 </ProtectedRoute>
               } />
               
