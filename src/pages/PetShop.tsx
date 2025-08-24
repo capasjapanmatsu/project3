@@ -519,8 +519,8 @@ export function PetShop() {
                     </div>
                   )}
                   {hasDiscount && (
-                    <div className="absolute top-3 left-3">
-                      <span className="bg-purple-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
+                    <div className="absolute top-4 left-4">
+                      <span className="bg-purple-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center shadow-md">
                         <Crown className="w-3 h-3 mr-1" />
                         10%OFF
                       </span>
