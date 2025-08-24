@@ -5,7 +5,6 @@ import type { Dog } from '../../types';
 import Button from '../Button';
 import Input from '../Input';
 import LazyImage from '../LazyImage';
-import { OptimizedImage } from '../OptimizedImage';
 import Select from '../Select';
 import VaccineBadge, { getVaccineStatusFromDog } from '../VaccineBadge';
 
@@ -205,8 +204,10 @@ export function DogEditModal({
                       />
                       <button
                         type="button"
-                        onClick={onImageRemove}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                        onClick={(e) => { e.preventDefault(); onImageRemove(); }}
+                        className="absolute top-2 right-2 z-10 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors cursor-pointer"
+                        aria-label="画像を削除"
+                        title="画像を削除"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
