@@ -527,8 +527,8 @@ export function PetShop() {
                     </div>
                   )}
                   {product.stock_quantity <= 5 && (
-                    <div className="absolute top-3 right-3">
-                      <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                    <div className="absolute top-4 right-4">
+                      <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium shadow-md">
                         残り{product.stock_quantity}個
                       </span>
                     </div>
