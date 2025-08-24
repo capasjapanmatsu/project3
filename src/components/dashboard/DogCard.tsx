@@ -204,12 +204,21 @@ export function DogEditModal({
                       />
                       <button
                         type="button"
-                        onClick={(e) => { e.preventDefault(); onImageRemove(); }}
-                        className="absolute top-2 right-2 z-10 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors cursor-pointer"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onImageRemove(); }}
+                        className="absolute top-2 right-2 z-10 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-400"
                         aria-label="画像を削除"
                         title="画像を削除"
                       >
                         <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onImageRemove(); }}
+                        className="text-sm text-red-600 hover:text-red-700 underline"
+                      >
+                        画像を削除
                       </button>
                     </div>
                   ) : (
