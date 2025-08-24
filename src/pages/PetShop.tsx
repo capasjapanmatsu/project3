@@ -501,13 +501,13 @@ export function PetShop() {
 
             return (
               <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                {/* 商品画像 */}
-                <div className="relative h-48 mb-4 -m-6 mb-4">
+                {/* 商品画像（1:1表示） */}
+                <div className="relative -m-6 mb-4">
                   <img
                     data-product-id={product.id}
                     src={getFirstImageUrl(product.image_url)}
                     alt={product.name}
-                    className="w-full h-full object-cover"
+                    className="w-full aspect-square object-cover"
                     onError={(e) => {
                       e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
                     }}
