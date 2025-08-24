@@ -8,8 +8,8 @@ import useAuth from '../context/AuthContext';
 import type { Dog } from '../types';
 import { log } from '../utils/helpers';
 import { supabase } from '../utils/supabase';
-import { uploadAndConvertToWebP } from '../utils/webpConverter';
 import { safeSupabaseQuery } from '../utils/supabaseHelpers';
+import { uploadAndConvertToWebP } from '../utils/webpConverter';
 
 export function DogManagement() {
   const { user } = useAuth();
@@ -182,7 +182,7 @@ export function DogManagement() {
       const result = await safeSupabaseQuery(() =>
         supabase
           .from('dogs')
-          .update({ image_url: null })
+          .update({ image_url: '' })
           .eq('id', selectedDog.id)
       );
       

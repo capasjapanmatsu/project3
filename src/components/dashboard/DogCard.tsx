@@ -201,7 +201,7 @@ export function DogEditModal({
                       <img
                         src={dogImagePreview}
                         alt="ワンちゃんのプレビュー"
-                        className="w-full h-48 object-cover rounded-lg border-2 border-gray-300"
+                        className="w-full h-48 object-cover rounded-lg border-2 border-gray-300 pointer-events-none"
                       />
                       <button
                         type="button"
