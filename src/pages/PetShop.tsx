@@ -519,7 +519,7 @@ export function PetShop() {
                     </div>
                   )}
                   {hasDiscount && (
-                    <div className="absolute top-4 left-4">
+                    <div className="absolute top-5 left-5">
                       <span className="bg-purple-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center shadow-md">
                         <Crown className="w-3 h-3 mr-1" />
                         10%OFF
@@ -527,7 +527,7 @@ export function PetShop() {
                     </div>
                   )}
                   {product.stock_quantity <= 5 && (
-                    <div className="absolute top-4 right-4">
+                    <div className="absolute top-5 right-5">
                       <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium shadow-md">
                         残り{product.stock_quantity}個
                       </span>

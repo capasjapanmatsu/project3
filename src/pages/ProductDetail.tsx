@@ -54,6 +54,16 @@ export function ProductDetail() {
     }
   }, [productId, user]);
 
+  // 一覧と同様のヘルパー: image_url が JSON配列でも先頭を返す
+  const getFirstImageUrl = (imageData: string): string => {
+    if (!imageData) return '';
+    try {
+      const parsed = JSON.parse(imageData);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+    } catch {}
+    return imageData;
+  };
+
   const fetchProductData = async () => {
     try {
       const [productResponse, cartResponse, imagesResponse] = await Promise.all([
@@ -88,11 +98,11 @@ export function ProductDetail() {
       // 商品画像の設定
       const images: ProductImage[] = [];
       
-      // メイン画像を追加
+      // メイン画像を追加（JSON配列対応）
       if (productResponse.data.image_url) {
         images.push({
           id: 'main',
-          url: productResponse.data.image_url
+          url: getFirstImageUrl(productResponse.data.image_url)
         });
       }
       
@@ -323,7 +333,7 @@ export function ProductDetail() {
             )}
             
             {hasDiscount && (
-              <div className="absolute top-4 left-4">
+              <div className="absolute top-6 left-6">
                 <span className="bg-purple-500 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center">
                   <Crown className="w-4 h-4 mr-1" />
                   10%OFF
@@ -332,7 +342,7 @@ export function ProductDetail() {
             )}
             
             {product.stock_quantity <= 5 && (
-              <div className="absolute top-4 right-4">
+              <div className="absolute top-6 right-6">
                 <span className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
                   残り{product.stock_quantity}個
                 </span>

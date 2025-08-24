@@ -1,19 +1,19 @@
 import {
-    AlertTriangle,
-    ArrowLeft,
-    Calendar,
-    Camera,
-    CheckCircle,
-    Download,
-    Edit,
-    Eye,
-    Package,
-    Save,
-    Search,
-    ShoppingBag,
-    Truck,
-    Upload,
-    X
+  AlertTriangle,
+  ArrowLeft,
+  Calendar,
+  Camera,
+  CheckCircle,
+  Download,
+  Edit,
+  Eye,
+  Package,
+  Save,
+  Search,
+  ShoppingBag,
+  Truck,
+  Upload,
+  X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -181,14 +181,28 @@ export function AdminShopManagement() {
         .from('products')
         .delete()
         .eq('id', selectedProduct.id);
+
+      if (error) {
+        const code = (error as any)?.code || '';
+        const msg = (error as any)?.message || '';
+        const isFkViolation = code === '23503' || msg.includes('violates foreign key constraint');
+        if (!isFkViolation) throw error;
+
+        // 外部参照がある → ソフトデリートに切替
+        const { error: softErr } = await supabase
+          .from('products')
+          .update({ is_active: false, stock_quantity: 0, updated_at: new Date().toISOString() })
+          .eq('id', selectedProduct.id);
+        if (softErr) throw softErr;
+        setSuccess('受注履歴の参照があるため削除できません。非公開に変更しました。');
+      } else {
+        setSuccess('商品を削除しました');
+      }
       
-      if (error) throw error;
-      
-      setSuccess('商品を削除しました');
-      
-      // 商品一覧を再取得
+      // 商品一覧を再取得してUIに反映
       await fetchData();
-      
+      // 選択中の参照をリセットして「元に戻る」見えを防止
+      setSelectedProduct(null);
       // モーダルを閉じる
       setShowProductModal(false);
       setSelectedProduct(null);
@@ -358,28 +372,31 @@ export function AdminShopManagement() {
       }
 
       if (selectedProduct) {
-        // 既存商品の更新
-      const { error } = await supabase
-        .from('products')
-        .update({
-          name: productFormData.name,
-          description: productFormData.description,
-          price: productFormData.price,
-          category: productFormData.category,
-          stock_quantity: productFormData.stock_quantity,
-          is_active: productFormData.is_active,
+        // 既存商品の更新（更新後のレコードを返して検証）
+        const { data: updatedData, error } = await supabase
+          .from('products')
+          .update({
+            name: productFormData.name,
+            description: productFormData.description,
+            price: productFormData.price,
+            category: productFormData.category,
+            stock_quantity: productFormData.stock_quantity,
+            is_active: productFormData.is_active,
             image_url: imageUrl,
             // バリエーション機能を有効化
             delivery_days: productFormData.delivery_days,
             has_variations: productFormData.has_variations,
             variation_type: productFormData.has_variations ? productFormData.variation_type : null,
             variations: productFormData.has_variations ? productFormData.variations : [],
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedProduct.id);
-      
-      if (error) throw error;
-      setSuccess('商品情報を更新しました');
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', selectedProduct.id)
+          .select('*');
+
+        if (error) throw error;
+        const updated = Array.isArray(updatedData) ? updatedData[0] : updatedData as any;
+        if (!updated) throw new Error('更新対象が見つかりません（0 rows）。権限またはIDの不一致の可能性があります。');
+        setSuccess('商品情報を更新しました');
       } else {
         // 新規商品の作成
         let insertResult;
@@ -579,12 +596,12 @@ export function AdminShopManagement() {
           continue;
         }
         
-        // 画像をリサイズ・圧縮（431エラー対策でサイズを極限まで削減）
-        const resizedFile = await resizeImage(file, 200, 150); // 200x150に更に縮小
-        const compressedFile = await compressImage(resizedFile, 0.2); // 品質を0.2に更に下げる
-        processedFiles.push(compressedFile);
+        // 画質改善: 事前縮小を緩和（最大1200px・品質0.85）
+        const resizedFile = await resizeImage(file, 1200, 1200);
+        const compressedFile = await compressImage(resizedFile, 0.85);
+        processedFiles.push(resizedFile);
         
-        const previewUrl = URL.createObjectURL(compressedFile);
+        const previewUrl = URL.createObjectURL(resizedFile);
         newPreviews.push(previewUrl);
       }
       
@@ -1065,11 +1082,11 @@ export function AdminShopManagement() {
             {filteredProducts.map((product) => (
               <Card key={product.id} className="overflow-hidden">
                 {product.image_url && (
-                  <div className="h-48 -m-6 mb-4 relative">
+                  <div className="-m-6 mb-4 relative">
                     <img
                       src={getFirstImageUrl(product.image_url)}
                       alt={product.name}
-                      className="w-full h-full object-cover"
+                      className="w-full aspect-square object-cover"
                       onError={(e) => {
                         e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
                       }}
