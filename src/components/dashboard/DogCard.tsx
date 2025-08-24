@@ -205,10 +205,12 @@ export function DogEditModal({
                       />
                       <button
                         type="button"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onImageRemove(); }}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); console.log('[DogEditModal] 🗑️ Delete image button clicked'); onImageRemove(); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); console.log('[DogEditModal] 🗑️ Delete image button keydown'); onImageRemove(); } }}
                         className="absolute top-2 right-2 z-10 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-400"
                         aria-label="画像を削除"
                         title="画像を削除"
+                        data-testid="dog-image-delete-button"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -216,8 +218,10 @@ export function DogEditModal({
                     <div className="mt-2">
                       <button
                         type="button"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onImageRemove(); }}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); console.log('[DogEditModal] 🗑️ Delete image text clicked'); onImageRemove(); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); console.log('[DogEditModal] 🗑️ Delete image text keydown'); onImageRemove(); } }}
                         className="text-sm text-red-600 hover:text-red-700 underline"
+                        data-testid="dog-image-delete-text"
                       >
                         画像を削除
                       </button>

@@ -1,6 +1,6 @@
+import { AnimatePresence, motion } from 'framer-motion';
 import { Gift, MessageCircle, Plus, Shield, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';

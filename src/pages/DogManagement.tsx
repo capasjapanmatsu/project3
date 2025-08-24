@@ -163,6 +163,12 @@ export function DogManagement() {
 
   const handleDogImageRemove = async () => {
     if (!selectedDog) return;
+    console.log('[DogManagement] onImageRemove called');
+    
+    // 楽観的にUIを先に更新（即時プレビュー非表示）
+    setDogImageFile(null);
+    setDogImagePreview(null);
+    setSelectedDog({ ...selectedDog, image_url: null as any });
     
     try {
       setIsUpdatingDog(true);
@@ -178,7 +184,7 @@ export function DogManagement() {
         }
       } catch (_) { /* ストレージ削除失敗は無視 */ }
       
-      // 2. データベースのimage_urlをnullに更新
+      // 2. データベースのimage_urlを空文字に更新
       const result = await safeSupabaseQuery(() =>
         supabase
           .from('dogs')
@@ -192,12 +198,7 @@ export function DogManagement() {
         return;
       }
       
-      // 3. UIを更新（プレビューも即時消去）
-      setDogImageFile(null);
-      setDogImagePreview(null);
-      setSelectedDog({ ...selectedDog, image_url: null as any });
-      
-      // 4. データを再取得
+      // 3. データを再取得
       await fetchDogs();
       
       log('info', '✅ Dog image removed successfully', { dogId: selectedDog.id });
