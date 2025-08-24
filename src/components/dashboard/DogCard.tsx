@@ -196,6 +196,7 @@ export function DogEditModal({
                   </label>
                   
                   {dogImagePreview ? (
+                    <>
                     <div className="relative">
                       <img
                         src={dogImagePreview}
@@ -221,6 +222,7 @@ export function DogEditModal({
                         画像を削除
                       </button>
                     </div>
+                    </>
                   ) : (
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
                       <input
