@@ -1,5 +1,6 @@
 import { Camera, Edit, FileText, PawPrint, Shield, Trash2, Upload, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { dogBreeds } from '../../data/dogBreeds';
 import type { Dog } from '../../types';
 import Button from '../Button';
@@ -138,6 +139,12 @@ export function DogEditModal({
   
   const honorific = getDogHonorific(dog.gender);
   const vaccineStatus = getVaccineStatusFromDog(dog);
+  const [localHidePreview, setLocalHidePreview] = useState(false);
+
+  useEffect(() => {
+    // 画像プレビューが更新されたらローカル非表示フラグをリセット
+    setLocalHidePreview(false);
+  }, [dogImagePreview, dog?.id]);
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -195,7 +202,7 @@ export function DogEditModal({
                     ワンちゃんの写真
                   </label>
                   
-                  {dogImagePreview ? (
+                  {dogImagePreview && !localHidePreview ? (
                     <>
                     <div className="relative">
                       <img
@@ -205,7 +212,7 @@ export function DogEditModal({
                       />
                       <button
                         type="button"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); console.log('[DogEditModal] 🗑️ Delete image button clicked'); onImageRemove(); }}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); console.log('[DogEditModal] 🗑️ Delete image button clicked'); setLocalHidePreview(true); onImageRemove(); }}
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); console.log('[DogEditModal] 🗑️ Delete image button keydown'); onImageRemove(); } }}
                         className="absolute top-2 right-2 z-10 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-400"
                         aria-label="画像を削除"
@@ -218,7 +225,7 @@ export function DogEditModal({
                     <div className="mt-2">
                       <button
                         type="button"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); console.log('[DogEditModal] 🗑️ Delete image text clicked'); onImageRemove(); }}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); console.log('[DogEditModal] 🗑️ Delete image text clicked'); setLocalHidePreview(true); onImageRemove(); }}
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); console.log('[DogEditModal] 🗑️ Delete image text keydown'); onImageRemove(); } }}
                         className="text-sm text-red-600 hover:text-red-700 underline"
                         data-testid="dog-image-delete-text"
