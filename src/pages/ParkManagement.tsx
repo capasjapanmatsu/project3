@@ -36,7 +36,39 @@ import { SmartLockManager } from '../components/admin/SmartLockManager';
 import useAuth from '../context/AuthContext';
 import type { DogPark, SmartLock } from '../types';
 import { supabase } from '../utils/supabase';
-import { uploadAndConvertToWebP } from '../utils/webpConverter';
+
+// 画像ファイル名の安全化
+const sanitizeFileName = (name: string) => name.replace(/[^a-zA-Z0-9_\-.]/g, '_');
+
+// 画像をリサイズしてWebPへ変換（Edge Functionを使わずにブラウザ内で処理）
+async function resizeAndConvertToWebPBlob(inputFile: File, maxSize = 1200, quality = 0.9): Promise<Blob> {
+	// ImageBitmapに変換して高速に描画
+	const imageBitmap = await createImageBitmap(inputFile);
+	const originalWidth = imageBitmap.width;
+	const originalHeight = imageBitmap.height;
+	const longest = Math.max(originalWidth, originalHeight);
+	const scale = Math.min(1, maxSize / longest);
+	const targetWidth = Math.max(1, Math.round(originalWidth * scale));
+	const targetHeight = Math.max(1, Math.round(originalHeight * scale));
+
+	const canvas = document.createElement('canvas');
+	canvas.width = targetWidth;
+	canvas.height = targetHeight;
+	const ctx = canvas.getContext('2d');
+	if (!ctx) throw new Error('Canvasがサポートされていません');
+	ctx.drawImage(imageBitmap, 0, 0, targetWidth, targetHeight);
+
+	return new Promise<Blob>((resolve, reject) => {
+		canvas.toBlob(
+			(blob) => {
+				if (blob) resolve(blob);
+				else reject(new Error('WebP変換に失敗しました'));
+			},
+			'image/webp',
+			quality
+		);
+	});
+}
 
 // 施設画像タイプ定義
 const IMAGE_TYPES = {
@@ -579,7 +611,7 @@ export function ParkManagement() {
     setShowImageCropper(true);
   };
 
-  // 画像クロップ完了関数
+  // 画像クロップ完了関数（ローカルでWebP化→Storageに直接アップロード）
   const handleCropComplete = async (croppedFile: File) => {
     if (!parkId || !imageTypeToUpload) return;
 
@@ -588,31 +620,24 @@ export function ParkManagement() {
       setShowImageCropper(false);
       setError('');
 
-      // ファイル名を元のファイル名に設定
-      const fileWithName = new File([croppedFile], originalFileName, { type: croppedFile.type });
-
-      // WebP変換付きアップロード
-      const fileName = `${imageTypeToUpload}_${Date.now()}_${originalFileName}`;
+      // ファイル名生成（安全化）
+      const safeOriginal = sanitizeFileName(originalFileName || 'image');
+      const fileName = `${imageTypeToUpload}_${Date.now()}_${safeOriginal.replace(/\.[^.]+$/, '')}.webp`;
       const filePath = `${parkId}/${fileName}`;
 
-      const uploadResult = await uploadAndConvertToWebP(
-        'dog-park-images',
-        fileWithName,
-        filePath,
-        {
-          quality: 80,
-          generateThumbnail: true,
-          thumbnailSize: 300,
-          keepOriginal: false
-        }
-      );
+      // ローカルでWebPに変換（最大1200px）
+      const webpBlob = await resizeAndConvertToWebPBlob(croppedFile, 1200, 0.9);
 
-      if (!uploadResult.success) {
-        throw new Error(uploadResult.error || 'アップロードに失敗しました');
-      }
+      // Storageに直接アップロード（上書き許可）
+      const { error: uploadError } = await supabase.storage
+        .from('dog-park-images')
+        .upload(filePath, webpBlob, { upsert: true, contentType: 'image/webp' });
 
-      // WebP画像のURLを使用
-      const publicUrl = uploadResult.webpUrl || '';
+      if (uploadError) throw uploadError;
+
+      // 公開URL取得
+      const { data: pub } = supabase.storage.from('dog-park-images').getPublicUrl(filePath);
+      const publicUrl = pub?.publicUrl || '';
 
       // 既存の画像レコードをチェック
       const { data: existingImage, error: selectError } = await supabase
