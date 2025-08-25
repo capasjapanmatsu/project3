@@ -29,6 +29,7 @@ import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import type { Dog, DogPark, NewsAnnouncement, Notification, Profile, Reservation } from '../types';
 import { supabase } from '../utils/supabase';
+import { uploadAndConvertToWebP } from '../utils/webpConverter';
 
 
 export function UserDashboard() {
@@ -388,28 +389,43 @@ export function UserDashboard() {
         birth_date: dogFormData.birthDate,
       };
 
-      // 画像アップロード処理
+      // 画像アップロード処理（1:1トリミング → WebP変換 → 安全なUUIDファイル名で保存）
       if (dogImageFile) {
-        const fileName = `profile_${Date.now()}_${dogImageFile.name}`;
-        const filePath = `${selectedDog.id}/${fileName}`;
+        const imgBitmap = await createImageBitmap(dogImageFile);
+        const size = Math.min(imgBitmap.width, imgBitmap.height);
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d')!;
+        const sx = (imgBitmap.width - size) / 2;
+        const sy = (imgBitmap.height - size) / 2;
+        ctx.drawImage(imgBitmap, sx, sy, size, size, 0, 0, size, size);
+        const blob: Blob = await new Promise((resolve) => canvas.toBlob((b) => resolve(b as Blob), 'image/jpeg', 0.9));
+        const squaredFile = new File([blob], 'dog-square.jpg', { type: 'image/jpeg' });
 
-        const { error: uploadError } = await supabase.storage
-          .from('dog-images')
-          .upload(filePath, dogImageFile, { upsert: true });
-
-        if (uploadError) throw uploadError;
-
-        updateData.image_url = supabase.storage
-          .from('dog-images')
-          .getPublicUrl(filePath).data.publicUrl;
+        const safePath = `${selectedDog.id}/${crypto.randomUUID()}.webp`;
+        const result = await uploadAndConvertToWebP('dog-images', squaredFile, safePath, { quality: 85, generateThumbnail: false });
+        const url = result.webpUrl || result.originalUrl;
+        if (!url) throw new Error('画像の保存に失敗しました');
+        updateData.image_url = url;
       }
 
-      const { error: updateError } = await supabase
+      // プレビューもファイルも無い場合はDB上のURLをクリア
+      if (!dogImageFile && !dogImagePreview) {
+        updateData.image_url = '' as any;
+      }
+
+      const { data: updatedDogRows, error: updateError } = await supabase
         .from('dogs')
         .update(updateData)
-        .eq('id', selectedDog.id);
+        .eq('id', selectedDog.id)
+        .eq('owner_id', user.id)
+        .select('id,image_url');
 
       if (updateError) throw updateError;
+      if (!updatedDogRows || updatedDogRows.length === 0) {
+        throw new Error('更新対象が見つからない、または権限により更新できませんでした。');
+      }
 
       setSuccess('ワンちゃんの情報を更新しました！');
       addNotification({
