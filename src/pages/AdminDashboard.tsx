@@ -725,18 +725,7 @@ export function AdminDashboard() {
               </div>
             </Card>
 
-            {/* ランディングページ管理 */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">ページ管理</h3>
-              <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-gray-900">ランディングページ</h4>
-                </div>
-                <Link to="/landing" className="inline-block">
-                  <Button variant="secondary">開く</Button>
-                </Link>
-              </div>
-            </Card>
+            {/* 重複していたページ管理（ランディングページ）は削除しました */}
           </div>
         )}
 
