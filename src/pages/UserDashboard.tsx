@@ -30,6 +30,7 @@ import { useUIStore } from '../store/uiStore';
 import type { Dog, DogPark, NewsAnnouncement, Notification, Profile, Reservation } from '../types';
 import { supabase } from '../utils/supabase';
 import { uploadAndConvertToWebP } from '../utils/webpConverter';
+import { Area } from 'react-easy-crop';
 
 
 export function UserDashboard() {
@@ -82,6 +83,10 @@ export function UserDashboard() {
   });
   const [dogImageFile, setDogImageFile] = useState<File | null>(null);
   const [dogImagePreview, setDogImagePreview] = useState<string | null>(null);
+  // Crop state
+  const [crop, setCrop] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [rabiesVaccineFile, setRabiesVaccineFile] = useState<File | null>(null);
   const [comboVaccineFile, setComboVaccineFile] = useState<File | null>(null);
   const [rabiesExpiryDate, setRabiesExpiryDate] = useState('');
@@ -351,6 +356,9 @@ export function UserDashboard() {
       const reader = new FileReader();
       reader.onload = (e) => {
         setDogImagePreview(e.target?.result as string);
+        setCrop({ x: 0, y: 0 });
+        setZoom(1);
+        setCroppedAreaPixels(null);
       };
       reader.readAsDataURL(file);
       setError('');
@@ -398,9 +406,12 @@ export function UserDashboard() {
         canvas.width = targetSize;
         canvas.height = targetSize;
         const ctx = canvas.getContext('2d')!;
-        const sx = (imgBitmap.width - sourceSquare) / 2;
-        const sy = (imgBitmap.height - sourceSquare) / 2;
-        ctx.drawImage(imgBitmap, sx, sy, sourceSquare, sourceSquare, 0, 0, targetSize, targetSize);
+        const hasCrop = !!croppedAreaPixels;
+        const sx = hasCrop ? croppedAreaPixels!.x : (imgBitmap.width - sourceSquare) / 2;
+        const sy = hasCrop ? croppedAreaPixels!.y : (imgBitmap.height - sourceSquare) / 2;
+        const sWidth = hasCrop ? croppedAreaPixels!.width : sourceSquare;
+        const sHeight = hasCrop ? croppedAreaPixels!.height : sourceSquare;
+        ctx.drawImage(imgBitmap, sx, sy, sWidth, sHeight, 0, 0, targetSize, targetSize);
         const blob: Blob = await new Promise((resolve) => canvas.toBlob((b) => resolve(b as Blob), 'image/jpeg', 0.9));
         const squaredFile = new File([blob], 'dog-square.jpg', { type: 'image/jpeg' });
 

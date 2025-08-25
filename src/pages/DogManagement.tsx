@@ -10,6 +10,7 @@ import { log } from '../utils/helpers';
 import { supabase } from '../utils/supabase';
 import { safeSupabaseQuery } from '../utils/supabaseHelpers';
 import { uploadAndConvertToWebP } from '../utils/webpConverter';
+import { Area } from 'react-easy-crop';
 
 export function DogManagement() {
   const { user } = useAuth();
@@ -39,6 +40,10 @@ export function DogManagement() {
   // 犬の画像関連
   const [dogImageFile, setDogImageFile] = useState<File | null>(null);
   const [dogImagePreview, setDogImagePreview] = useState<string | null>(null);
+  // クロップ用State（1:1）
+  const [crop, setCrop] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   
   // ワクチン証明書関連
   const [rabiesVaccineFile, setRabiesVaccineFile] = useState<File | null>(null);
@@ -153,6 +158,10 @@ export function DogManagement() {
         const reader = new FileReader();
         reader.onload = (e) => {
           setDogImagePreview(e.target?.result as string);
+          // 新規選択時はクロップ状態を初期化
+          setCrop({ x: 0, y: 0 });
+          setZoom(1);
+          setCroppedAreaPixels(null);
         };
         reader.readAsDataURL(file);
       } catch (_err) {
@@ -290,15 +299,19 @@ export function DogManagement() {
       if (dogImageFile) {
         // 1:1にトリミング（オフスクリーンcanvas）
         const imgBitmap = await createImageBitmap(dogImageFile);
+        // ユーザーがクロップ指定した領域を優先（なければ中央スクエア）
         const sourceSquare = Math.min(imgBitmap.width, imgBitmap.height);
         const targetSize = Math.min(1200, sourceSquare);
         const canvas = document.createElement('canvas');
         canvas.width = targetSize;
         canvas.height = targetSize;
         const ctx = canvas.getContext('2d')!;
-        const sx = (imgBitmap.width - sourceSquare) / 2;
-        const sy = (imgBitmap.height - sourceSquare) / 2;
-        ctx.drawImage(imgBitmap, sx, sy, sourceSquare, sourceSquare, 0, 0, targetSize, targetSize);
+        const hasCrop = !!croppedAreaPixels;
+        const sx = hasCrop ? croppedAreaPixels!.x : (imgBitmap.width - sourceSquare) / 2;
+        const sy = hasCrop ? croppedAreaPixels!.y : (imgBitmap.height - sourceSquare) / 2;
+        const sWidth = hasCrop ? croppedAreaPixels!.width : sourceSquare;
+        const sHeight = hasCrop ? croppedAreaPixels!.height : sourceSquare;
+        ctx.drawImage(imgBitmap, sx, sy, sWidth, sHeight, 0, 0, targetSize, targetSize);
         const blob: Blob = await new Promise((resolve) => canvas.toBlob((b) => resolve(b as Blob), 'image/jpeg', 0.9));
         const squaredFile = new File([blob], 'dog-square.jpg', { type: 'image/jpeg' });
 
@@ -638,6 +651,12 @@ export function DogManagement() {
           onFormChange={setDogFormData}
           onImageSelect={handleDogImageSelect}
           onImageRemove={() => void handleDogImageRemove()}
+          // クロップ制御
+          crop={crop}
+          zoom={zoom}
+          onCropChange={setCrop}
+          onZoomChange={setZoom}
+          onCropComplete={(_, areaPixels) => setCroppedAreaPixels(areaPixels)}
           // ワクチン証明書関連の props
           rabiesVaccineFile={rabiesVaccineFile}
           comboVaccineFile={comboVaccineFile}

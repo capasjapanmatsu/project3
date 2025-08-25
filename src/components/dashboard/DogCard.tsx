@@ -1,6 +1,7 @@
 import { Camera, Edit, FileText, PawPrint, Shield, Trash2, Upload, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import Cropper from 'react-easy-crop';
 import { dogBreeds } from '../../data/dogBreeds';
 import type { Dog } from '../../types';
 import Button from '../Button';
@@ -102,6 +103,12 @@ interface DogEditModalProps {
   }) => void;
   onImageSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImageRemove: () => void;
+  // クロップ用のプロパティ
+  crop: { x: number; y: number };
+  zoom: number;
+  onCropChange: (crop: { x: number; y: number }) => void;
+  onZoomChange: (zoom: number) => void;
+  onCropComplete: (croppedArea: any, croppedAreaPixels: any) => void;
   // ワクチン証明書関連のプロパティ
   rabiesVaccineFile: File | null;
   comboVaccineFile: File | null;
@@ -133,7 +140,13 @@ export function DogEditModal({
   onRabiesVaccineSelect,
   onComboVaccineSelect,
   onRabiesExpiryDateChange,
-  onComboExpiryDateChange
+  onComboExpiryDateChange,
+  // crop props
+  crop,
+  zoom,
+  onCropChange,
+  onZoomChange,
+  onCropComplete
 }: DogEditModalProps) {
   if (!dog) return null;
   
@@ -204,11 +217,17 @@ export function DogEditModal({
                   
                   {dogImagePreview && !localHidePreview ? (
                     <>
-                    <div className="relative">
-                      <img
-                        src={dogImagePreview}
-                        alt="ワンちゃんのプレビュー"
-                        className="w-full h-48 object-cover rounded-lg border-2 border-gray-300 pointer-events-none"
+                    <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-300">
+                      <Cropper
+                        image={dogImagePreview}
+                        crop={crop}
+                        zoom={zoom}
+                        aspect={1}
+                        onCropChange={onCropChange}
+                        onZoomChange={onZoomChange}
+                        onCropComplete={onCropComplete}
+                        restrictPosition
+                        showGrid
                       />
                       <button
                         type="button"
@@ -221,6 +240,18 @@ export function DogEditModal({
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
+                    </div>
+                    <div className="mt-3">
+                      <label className="text-xs text-gray-600 mr-2">拡大縮小</label>
+                      <input
+                        type="range"
+                        min={1}
+                        max={3}
+                        step={0.01}
+                        value={zoom}
+                        onChange={(e) => onZoomChange(Number(e.target.value))}
+                        className="w-full"
+                      />
                     </div>
                     <div className="mt-2">
                       <button
