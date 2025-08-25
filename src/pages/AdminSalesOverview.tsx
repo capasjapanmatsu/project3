@@ -16,7 +16,9 @@ export default function AdminSalesOverview() {
   const [trend, setTrend] = useState<DailyPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [parkRevenue, setParkRevenue] = useState<Array<{ park_name: string; total_revenue: number }>>([]);
+  const [parkRevenueAll, setParkRevenueAll] = useState<Array<{ park_name: string; total_revenue: number }>>([]);
+  const [isAccordionOpen, setIsAccordionOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(5);
 
   useEffect(() => {
     if (!isAdmin) { navigate('/'); return; }
@@ -91,9 +93,8 @@ export default function AdminSalesOverview() {
       if (error) throw error;
       const rows = (data || [])
         .map((r: any) => ({ park_name: r.park_name, total_revenue: r.total_revenue }))
-        .sort((a: any, b: any) => b.total_revenue - a.total_revenue)
-        .slice(0, 5);
-      setParkRevenue(rows);
+        .sort((a: any, b: any) => b.total_revenue - a.total_revenue);
+      setParkRevenueAll(rows);
     } catch (e) {
       console.warn('Failed to fetch park revenue', e);
     }
@@ -170,13 +171,13 @@ export default function AdminSalesOverview() {
         </div>
       </Card>
 
-      {/* ドッグラン別売上（今月・上位5） */}
+      {/* ドッグラン別売上（今月・上位5 + アコーディオン） */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold flex items-center"><Building className="w-5 h-5 mr-2"/>ドッグラン別売上（今月・上位5）</h2>
           <Link to="/admin/revenue"><Button size="sm">一覧を見る</Button></Link>
         </div>
-        {parkRevenue.length === 0 ? (
+        {parkRevenueAll.length === 0 ? (
           <div className="text-sm text-gray-500">今月の売上データがありません</div>
         ) : (
           <div className="overflow-x-auto">
@@ -188,7 +189,15 @@ export default function AdminSalesOverview() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {parkRevenue.map((r) => (
+                {/* 上位5件 */}
+                {parkRevenueAll.slice(0,5).map((r) => (
+                  <tr key={r.park_name}>
+                    <td className="px-4 py-2 text-sm text-gray-800">{r.park_name}</td>
+                    <td className="px-4 py-2 text-sm text-right font-medium">¥{r.total_revenue?.toLocaleString?.() || r.total_revenue}</td>
+                  </tr>
+                ))}
+                {/* アコーディオン展開分 */}
+                {isAccordionOpen && parkRevenueAll.slice(5, Math.min(visibleCount, parkRevenueAll.length)).map((r) => (
                   <tr key={r.park_name}>
                     <td className="px-4 py-2 text-sm text-gray-800">{r.park_name}</td>
                     <td className="px-4 py-2 text-sm text-right font-medium">¥{r.total_revenue?.toLocaleString?.() || r.total_revenue}</td>
@@ -196,6 +205,27 @@ export default function AdminSalesOverview() {
                 ))}
               </tbody>
             </table>
+            {parkRevenueAll.length > 5 && (
+              <div className="flex items-center justify-between mt-3">
+                {!isAccordionOpen ? (
+                  <Button variant="secondary" onClick={() => { setIsAccordionOpen(true); setVisibleCount(Math.min(25, parkRevenueAll.length)); }}>
+                    他のドッグランを表示
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    {visibleCount < parkRevenueAll.length && (
+                      <Button variant="secondary" onClick={() => setVisibleCount(Math.min(visibleCount + 20, parkRevenueAll.length))}>
+                        さらに表示（+20）
+                      </Button>
+                    )}
+                    <Button onClick={() => { setIsAccordionOpen(false); setVisibleCount(5); }}>折りたたむ</Button>
+                  </div>
+                )}
+                <div className="text-xs text-gray-500 ml-auto">
+                  {Math.min(visibleCount, parkRevenueAll.length)} / {parkRevenueAll.length} 件
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Card>
