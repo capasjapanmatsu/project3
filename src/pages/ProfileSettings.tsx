@@ -88,15 +88,20 @@ export function ProfileSettings() {
   const [subscriptionError, setSubscriptionError] = useState('');
   const [subscriptionSuccess, setSubscriptionSuccess] = useState('');
   
-  // 2FA関連のstateは一時的にコメントアウト
-  // const [mfaFactors, setMfaFactors] = useState<any[]>([]);
-  // const [mfaStatus, setMfaStatus] = useState<'enabled' | 'disabled' | 'loading'>('loading');
+  // 2FA関連のstate
+  const [mfaFactors, setMfaFactors] = useState<any[]>([]);
+  const [mfaStatus, setMfaStatus] = useState<'enabled' | 'disabled' | 'loading'>('loading');
+  const [isMfaModalOpen, setIsMfaModalOpen] = useState(false);
+  const [enrollData, setEnrollData] = useState<{ factorId: string; qrCode?: string } | null>(null);
+  const [otpCode, setOtpCode] = useState('');
+  const [isVerifyingMfa, setIsVerifyingMfa] = useState(false);
+  const [mfaError, setMfaError] = useState('');
 
   useEffect(() => {
     // LINEユーザーまたはSupabaseユーザーがログインしている場合
     if (user || lineUser || effectiveUserId) {
       fetchProfile();
-      // fetchMFAStatus(); // 一時的に無効化
+      fetchMFAStatus();
     } else {
       // どちらの認証もない場合はログインページへ
       navigate('/login');
@@ -192,18 +197,70 @@ export function ProfileSettings() {
     }
   };
 
-  // 2FA関連の関数は一時的に無効化
+  // 2FA関連
   const fetchMFAStatus = async () => {
-    console.log('2FA機能は現在メンテナンス中です');
-    // 関数は存在するが何もしない
+    try {
+      setMfaStatus('loading');
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (error) throw error;
+      const factors = data?.factors || [];
+      setMfaFactors(factors);
+      const enabled = factors.some((f: any) => f.factorType === 'totp' && f.status === 'verified');
+      setMfaStatus(enabled ? 'enabled' : 'disabled');
+    } catch (e) {
+      console.warn('Failed to fetch MFA status', e);
+      setMfaStatus('disabled');
+    }
   };
 
   const handleEnable2FA = async () => {
-    setError('2FA機能は現在メンテナンス中です。しばらくお待ちください。');
+    try {
+      setMfaError('');
+      const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+      if (error) throw error;
+      setEnrollData({ factorId: data.id, qrCode: (data as any)?.totp?.qr_code });
+      setIsMfaModalOpen(true);
+    } catch (e) {
+      setMfaError(e instanceof Error ? e.message : '2FAの有効化に失敗しました');
+      setTimeout(() => setMfaError(''), 4000);
+    }
   };
 
-  const handleDisable2FA = async (factorId: string) => {
-    setError('2FA機能は現在メンテナンス中です。しばらくお待ちください。');
+  const verify2FA = async () => {
+    if (!enrollData || !otpCode) return;
+    try {
+      setIsVerifyingMfa(true);
+      const { data: challenge, error: chErr } = await supabase.auth.mfa.challenge({ factorId: enrollData.factorId });
+      if (chErr) throw chErr;
+      const { error: vErr } = await supabase.auth.mfa.verify({ factorId: enrollData.factorId, challengeId: challenge.id, code: otpCode });
+      if (vErr) throw vErr;
+      setIsMfaModalOpen(false);
+      setEnrollData(null);
+      setOtpCode('');
+      await fetchMFAStatus();
+      setSuccess('2FAを有効化しました');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (e) {
+      setMfaError(e instanceof Error ? e.message : '認証コードの検証に失敗しました');
+    } finally {
+      setIsVerifyingMfa(false);
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    try {
+      setMfaError('');
+      const totp = mfaFactors.find((f: any) => f.factorType === 'totp' && f.status === 'verified');
+      if (!totp) throw new Error('有効な2FA設定が見つかりません');
+      const { error } = await supabase.auth.mfa.unenroll({ factorId: totp.id });
+      if (error) throw error;
+      await fetchMFAStatus();
+      setSuccess('2FAを無効化しました');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (e) {
+      setMfaError(e instanceof Error ? e.message : '2FAの無効化に失敗しました');
+      setTimeout(() => setMfaError(''), 4000);
+    }
   };
 
 
@@ -1106,24 +1163,33 @@ export function ProfileSettings() {
             </Button>
           </div>
 
-          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h3 className="font-semibold mb-2 text-gray-600">2ファクタ認証（2FA）</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              2ファクタ認証機能は現在メンテナンス中です。しばらくお待ちください。
-            </p>
-            <div className="flex items-center space-x-2 text-amber-600">
-              <AlertTriangle className="w-4 h-4" />
-              <span className="text-sm font-medium">サービス準備中</span>
+          <div className="p-4 bg-white rounded-lg border border-gray-200">
+            <h3 className="font-semibold mb-2">2ファクタ認証（2FA）</h3>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {mfaStatus === 'loading' ? (
+                  <div className="flex items-center text-gray-600 text-sm"><Loader className="w-4 h-4 animate-spin mr-2" />状態を確認中...</div>
+                ) : mfaStatus === 'enabled' ? (
+                  <div className="flex items-center text-green-700 text-sm"><Shield className="w-4 h-4 mr-1" />有効</div>
+                ) : (
+                  <div className="flex items-center text-gray-600 text-sm"><Shield className="w-4 h-4 mr-1" />無効</div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {mfaStatus === 'enabled' ? (
+                  <Button variant="secondary" size="sm" className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400" onClick={() => void handleDisable2FA()}>
+                    無効化する
+                  </Button>
+                ) : (
+                  <Button size="sm" onClick={() => void handleEnable2FA()}>
+                    有効化する
+                  </Button>
+                )}
+              </div>
             </div>
-            <Button 
-              variant="secondary" 
-              size="sm"
-              disabled
-              className="mt-3 opacity-50 cursor-not-allowed"
-            >
-              <Shield className="w-4 h-4 mr-2" />
-              2FAを有効化（準備中）
-            </Button>
+            {mfaError && (
+              <div className="mt-3 p-3 bg-red-50 rounded text-red-800 text-sm">{mfaError}</div>
+            )}
           </div>
         </div>
       </Card>
@@ -1443,6 +1509,44 @@ export function ProfileSettings() {
                   {subscriptionAction === 'resume' && '再開する'}
                   {subscriptionAction === 'cancel' && '退会する'}
                 </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2FA 有効化モーダル */}
+      {isMfaModalOpen && enrollData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">2FAを有効化</h3>
+              <button
+                onClick={() => { setIsMfaModalOpen(false); setEnrollData(null); setOtpCode(''); }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">認証アプリ（Google Authenticator 等）で以下のQRコードを読み取り、表示された6桁コードを入力してください。</p>
+              {enrollData.qrCode && (
+                <div className="flex justify-center">
+                  <img src={enrollData.qrCode} alt="2FA QR" className="w-40 h-40" />
+                </div>
+              )}
+              <Input
+                label="6桁コード"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value)}
+                placeholder="123456"
+              />
+              {mfaError && (
+                <div className="p-3 bg-red-50 rounded text-red-800 text-sm">{mfaError}</div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={() => { setIsMfaModalOpen(false); setEnrollData(null); setOtpCode(''); }}>キャンセル</Button>
+                <Button onClick={() => void verify2FA()} isLoading={isVerifyingMfa}>認証して有効化</Button>
               </div>
             </div>
           </div>
