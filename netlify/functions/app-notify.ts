@@ -40,11 +40,15 @@ export const handler: Handler = async (event) => {
     // Optional: also forward to LINE if linked
     try {
       const base = process.env.URL || process.env.DEPLOY_PRIME_URL || '';
-      await fetch(`${base}/.netlify/functions/line-notify`, {
+      const resp = await fetch(`${base}/.netlify/functions/line-notify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: kind || 'alert', title, message, linkUrl })
+        // IMPORTANT: pass userId so the function can resolve recipients
+        body: JSON.stringify({ kind: kind || 'alert', title, message, linkUrl, userId })
       });
+      if (!resp.ok) {
+        console.warn('line-notify forward failed', await resp.text());
+      }
     } catch {}
 
     return { statusCode: 200, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true }) };
