@@ -2,16 +2,13 @@ import {
     AlertTriangle,
     ArrowLeft,
     CheckCircle,
-    CreditCard,
     Crown,
-    History,
     Home,
     Key,
     Loader,
     Lock,
     Mail,
     MapPin,
-    Package,
     Pause,
     Phone,
     Play,
@@ -23,7 +20,7 @@ import {
     X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
@@ -1148,23 +1145,7 @@ export function ProfileSettings() {
           </div>
 
           <div className="p-4 bg-white rounded-lg border border-gray-200">
-            <h3 className="font-semibold mb-2">アカウント削除</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              アカウントを削除すると、すべてのデータが完全に削除され、復元できなくなります。
-            </p>
-            <Button 
-              variant="secondary" 
-              size="sm"
-              className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
-              onClick={() => setShowDeleteModal(true)}
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              アカウントを削除
-            </Button>
-          </div>
-
-          <div className="p-4 bg-white rounded-lg border border-gray-200">
-            <h3 className="font-semibold mb-2">2ファクタ認証（2FA）</h3>
+            <h3 className="font-semibold mb-2">2段階認証（2FA）</h3>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {mfaStatus === 'loading' ? (
@@ -1190,6 +1171,22 @@ export function ProfileSettings() {
             {mfaError && (
               <div className="mt-3 p-3 bg-red-50 rounded text-red-800 text-sm">{mfaError}</div>
             )}
+          </div>
+
+          <div className="p-4 bg-white rounded-lg border border-gray-200">
+            <h3 className="font-semibold mb-2">アカウント削除</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              アカウントを削除すると、すべてのデータが完全に削除され、復元できなくなります。
+            </p>
+            <Button 
+              variant="secondary" 
+              size="sm"
+              className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
+              onClick={() => setShowDeleteModal(true)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              アカウントを削除
+            </Button>
           </div>
         </div>
       </Card>
