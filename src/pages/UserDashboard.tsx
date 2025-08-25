@@ -643,6 +643,11 @@ export function UserDashboard() {
         onCropChange={setCrop}
         onZoomChange={setZoom}
         onCropComplete={(_, area) => setCroppedAreaPixels(area)}
+        onImageCropped={(file) => {
+          setDogImageFile(file);
+          const url = URL.createObjectURL(file);
+          setDogImagePreview(url);
+        }}
       />
 
       {/* Facility Reservations Section */}

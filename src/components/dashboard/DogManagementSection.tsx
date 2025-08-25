@@ -43,6 +43,8 @@ interface DogManagementSectionProps {
   onCropChange?: (crop: { x: number; y: number }) => void;
   onZoomChange?: (zoom: number) => void;
   onCropComplete?: (_: any, areaPixels: Area) => void;
+  // ImageCropper result
+  onImageCropped?: (file: File) => void;
 }
 
 export const DogManagementSection: React.FC<DogManagementSectionProps> = ({
@@ -76,6 +78,7 @@ export const DogManagementSection: React.FC<DogManagementSectionProps> = ({
   onCropChange,
   onZoomChange,
   onCropComplete,
+  onImageCropped,
 }) => {
   return (
     <Card className="p-6">
@@ -152,6 +155,7 @@ export const DogManagementSection: React.FC<DogManagementSectionProps> = ({
           onCropChange={onCropChange || (() => {})}
           onZoomChange={onZoomChange || (() => {})}
           onCropComplete={onCropComplete || (() => {})}
+          onImageCropped={onImageCropped}
           rabiesVaccineFile={rabiesVaccineFile}
           comboVaccineFile={comboVaccineFile}
           rabiesExpiryDate={rabiesExpiryDate}
