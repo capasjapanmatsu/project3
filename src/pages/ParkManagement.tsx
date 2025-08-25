@@ -239,6 +239,17 @@ export function ParkManagement() {
 
   // ウォークスルー関連state
   const [showWalkthrough, setShowWalkthrough] = useState(false);
+  // 統計タブ: 月次統計
+  const [monthlyStats, setMonthlyStats] = useState({
+    reservations: 0,
+    revenue: 0,
+    users: 0,
+    breakdown: {
+      daypass: { count: 0, amount: 0 },
+      whole: { count: 0, amount: 0 },
+      subscription: { count: 0, amount: 0 }
+    }
+  });
 
   // メンテナンス予定取得関数
   const fetchMaintenanceSchedules = async () => {
@@ -318,6 +329,34 @@ export function ParkManagement() {
     }
   }, [parkId, user, park]);
 
+  // 月次統計を取得
+  const fetchMonthlyStats = useCallback(async () => {
+    if (!parkId) return;
+    try {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const { data, error } = await supabase
+        .from('reservations')
+        .select('*')
+        .eq('park_id', parkId)
+        .gte('created_at', start.toISOString())
+        .lt('created_at', end.toISOString());
+      if (error) throw error;
+      const list = data || [] as any[];
+      const reservations = list.length;
+      const revenue = list.reduce((s, r) => s + (r.total_amount || 0), 0);
+      const users = list.reduce((s, r) => s + (r.guest_count || 0), 0);
+      const daypass = list.filter(r => String(r.reservation_type||'').toLowerCase().includes('day')).reduce((acc, r) => ({ count: acc.count + (r.guest_count||1), amount: acc.amount + (r.total_amount||0) }), { count:0, amount:0 });
+      const whole = list.filter(r => ['whole_facility','private','rental'].includes(String(r.reservation_type||'').toLowerCase())).reduce((acc, r) => ({ count: acc.count + 1, amount: acc.amount + (r.total_amount||0) }), { count:0, amount:0 });
+      const subscription = list.filter(r => String(r.reservation_type||'').toLowerCase()==='subscription').reduce((acc, r) => ({ count: acc.count + 1, amount: acc.amount + (r.total_amount||0) }), { count:0, amount:0 });
+      setMonthlyStats({ reservations, revenue, users, breakdown: { daypass, whole, subscription } });
+    } catch (e) {
+      console.warn('Failed to fetch monthly stats', e);
+      setMonthlyStats({ reservations: 0, revenue: 0, users: 0, breakdown: { daypass:{count:0,amount:0}, whole:{count:0,amount:0}, subscription:{count:0,amount:0} } });
+    }
+  }, [parkId]);
+
   // ウォークスルー完了時の処理
   const handleWalkthroughComplete = useCallback(async () => {
     if (!user) return;
@@ -362,6 +401,9 @@ export function ParkManagement() {
   useEffect(() => {
     void checkWalkthroughEligibility();
   }, [parkId, user, park]);
+
+  // 統計タブに入ったら読み込み
+  useEffect(() => { if (activeTab === 'stats') { void fetchMonthlyStats(); } }, [activeTab, fetchMonthlyStats]);
 
   // パークデータ取得関数
   const fetchParkData = async () => {
@@ -1305,8 +1347,8 @@ export function ParkManagement() {
                   <Calendar className="w-5 h-5 text-blue-600" />
                   <h4 className="font-medium text-blue-900">今月の予約</h4>
                 </div>
-                <p className="text-2xl font-bold text-blue-600">32件</p>
-                <p className="text-xs text-blue-700 mt-1">前月比 +12%</p>
+                <p className="text-2xl font-bold text-blue-600">{monthlyStats.reservations}件</p>
+                <p className="text-xs text-blue-700 mt-1">今月</p>
               </div>
               
               <div className="bg-green-50 p-4 rounded-lg">
@@ -1314,8 +1356,8 @@ export function ParkManagement() {
                   <DollarSign className="w-5 h-5 text-green-600" />
                   <h4 className="font-medium text-green-900">今月の収益</h4>
                 </div>
-                <p className="text-2xl font-bold text-green-600">¥25,600</p>
-                <p className="text-xs text-green-700 mt-1">前月比 +8%</p>
+                <p className="text-2xl font-bold text-green-600">¥{monthlyStats.revenue.toLocaleString()}</p>
+                <p className="text-xs text-green-700 mt-1">今月</p>
               </div>
               
               <div className="bg-purple-50 p-4 rounded-lg">
@@ -1323,8 +1365,8 @@ export function ParkManagement() {
                   <Users className="w-5 h-5 text-purple-600" />
                   <h4 className="font-medium text-purple-900">利用者数</h4>
                 </div>
-                <p className="text-2xl font-bold text-purple-600">128人</p>
-                <p className="text-xs text-purple-700 mt-1">前月比 +15%</p>
+                <p className="text-2xl font-bold text-purple-600">{monthlyStats.users}人</p>
+                <p className="text-xs text-purple-700 mt-1">今月</p>
               </div>
             </div>
             
@@ -1344,12 +1386,12 @@ export function ParkManagement() {
                 <h3 className="font-semibold text-blue-900 mb-3">収益配分</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-blue-800 mb-1">オーナー取り分（80%）</p>
-                    <p className="text-2xl font-bold text-blue-600">¥20,480</p>
+                    <p className="text-sm text-blue-800 mb-1">収益（80%）</p>
+                    <p className="text-2xl font-bold text-blue-600">¥{Math.round(monthlyStats.revenue * 0.8).toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="text-sm text-blue-800 mb-1">プラットフォーム手数料（20%）</p>
-                    <p className="text-2xl font-bold text-blue-600">¥5,120</p>
+                    <p className="text-2xl font-bold text-blue-600">¥{Math.round(monthlyStats.revenue * 0.2).toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -1358,19 +1400,19 @@ export function ParkManagement() {
                 <h3 className="font-semibold text-green-900 mb-3">収益内訳</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <p className="text-sm text-green-800 mb-1">通常利用</p>
-                    <p className="text-xl font-bold text-green-600">¥12,800</p>
-                    <p className="text-xs text-green-700">16件</p>
+                    <p className="text-sm text-green-800 mb-1">1Dayパス</p>
+                    <p className="text-xl font-bold text-green-600">¥{monthlyStats.breakdown.daypass.amount.toLocaleString()}</p>
+                    <p className="text-xs text-green-700">{monthlyStats.breakdown.daypass.count}人</p>
                   </div>
                   <div>
                     <p className="text-sm text-green-800 mb-1">施設貸し切り</p>
-                    <p className="text-xl font-bold text-green-600">¥8,800</p>
-                    <p className="text-xs text-green-700">2件</p>
+                    <p className="text-xl font-bold text-green-600">¥{monthlyStats.breakdown.whole.amount.toLocaleString()}</p>
+                    <p className="text-xs text-green-700">{monthlyStats.breakdown.whole.count}件</p>
                   </div>
                   <div>
-                    <p className="text-sm text-green-800 mb-1">プライベートブース</p>
-                    <p className="text-xl font-bold text-green-600">¥4,000</p>
-                    <p className="text-xs text-green-700">2件</p>
+                    <p className="text-sm text-green-800 mb-1">サブスク</p>
+                    <p className="text-xl font-bold text-green-600">¥{monthlyStats.breakdown.subscription.amount.toLocaleString()}</p>
+                    <p className="text-xs text-green-700">{monthlyStats.breakdown.subscription.count}人</p>
                   </div>
                 </div>
               </div>
