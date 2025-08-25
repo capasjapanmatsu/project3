@@ -1,5 +1,6 @@
 import { ArrowLeft, PawPrint, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { Area } from 'react-easy-crop';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -10,7 +11,6 @@ import { log } from '../utils/helpers';
 import { supabase } from '../utils/supabase';
 import { safeSupabaseQuery } from '../utils/supabaseHelpers';
 import { uploadAndConvertToWebP } from '../utils/webpConverter';
-import { Area } from 'react-easy-crop';
 
 export function DogManagement() {
   const { user } = useAuth();
@@ -158,7 +158,6 @@ export function DogManagement() {
         const reader = new FileReader();
         reader.onload = (e) => {
           setDogImagePreview(e.target?.result as string);
-          // 新規選択時はクロップ状態を初期化
           setCrop({ x: 0, y: 0 });
           setZoom(1);
           setCroppedAreaPixels(null);

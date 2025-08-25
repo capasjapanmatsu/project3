@@ -1,10 +1,10 @@
 import { Plus, Shield } from 'lucide-react';
 import React from 'react';
+import { Area } from 'react-easy-crop';
 import { Link } from 'react-router-dom';
 import type { Dog } from '../../types';
 import Card from '../Card';
 import { DogCard, DogEditModal } from './DogCard';
-import { Area } from 'react-easy-crop';
 
 interface DogManagementSectionProps {
   dogs: Dog[];

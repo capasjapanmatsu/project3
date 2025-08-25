@@ -1,7 +1,7 @@
 import { Camera, Edit, FileText, PawPrint, Shield, Trash2, Upload, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import Cropper from 'react-easy-crop';
+import ImageCropper from '../ImageCropper';
+import { Link } from 'react-router-dom';
 import { dogBreeds } from '../../data/dogBreeds';
 import type { Dog } from '../../types';
 import Button from '../Button';
@@ -103,12 +103,8 @@ interface DogEditModalProps {
   }) => void;
   onImageSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImageRemove: () => void;
-  // クロップ用のプロパティ
-  crop: { x: number; y: number };
-  zoom: number;
-  onCropChange: (crop: { x: number; y: number }) => void;
-  onZoomChange: (zoom: number) => void;
-  onCropComplete: (croppedArea: any, croppedAreaPixels: any) => void;
+  // 画像クロップ用（dog-registrationのImageCropperに合わせる）
+  onImageCropped?: (file: File) => void;
   // ワクチン証明書関連のプロパティ
   rabiesVaccineFile: File | null;
   comboVaccineFile: File | null;
@@ -141,18 +137,14 @@ export function DogEditModal({
   onComboVaccineSelect,
   onRabiesExpiryDateChange,
   onComboExpiryDateChange,
-  // crop props
-  crop,
-  zoom,
-  onCropChange,
-  onZoomChange,
-  onCropComplete
+  onImageCropped
 }: DogEditModalProps) {
   if (!dog) return null;
   
   const honorific = getDogHonorific(dog.gender);
   const vaccineStatus = getVaccineStatusFromDog(dog);
   const [localHidePreview, setLocalHidePreview] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
 
   useEffect(() => {
     // 画像プレビューが更新されたらローカル非表示フラグをリセット
@@ -218,17 +210,7 @@ export function DogEditModal({
                   {dogImagePreview && !localHidePreview ? (
                     <>
                     <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-300">
-                      <Cropper
-                        image={dogImagePreview}
-                        crop={crop}
-                        zoom={zoom}
-                        aspect={1}
-                        onCropChange={onCropChange}
-                        onZoomChange={onZoomChange}
-                        onCropComplete={onCropComplete}
-                        restrictPosition
-                        showGrid
-                      />
+                      <img src={dogImagePreview} alt="プレビュー" className="w-full h-full object-cover" />
                       <button
                         type="button"
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); console.log('[DogEditModal] 🗑️ Delete image button clicked'); setLocalHidePreview(true); onImageRemove(); }}
@@ -241,17 +223,8 @@ export function DogEditModal({
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                    <div className="mt-3">
-                      <label className="text-xs text-gray-600 mr-2">拡大縮小</label>
-                      <input
-                        type="range"
-                        min={1}
-                        max={3}
-                        step={0.01}
-                        value={zoom}
-                        onChange={(e) => onZoomChange(Number(e.target.value))}
-                        className="w-full"
-                      />
+                    <div className="mt-3 text-right">
+                      <Button type="button" variant="secondary" onClick={() => setShowCropper(true)}>画像を変更（トリミング）</Button>
                     </div>
                     <div className="mt-2">
                       <button
@@ -267,25 +240,11 @@ export function DogEditModal({
                     </>
                   ) : (
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={onImageSelect}
-                        className="hidden"
-                        id="dog-image-edit"
-                      />
-                      <label
-                        htmlFor="dog-image-edit"
-                        className="cursor-pointer flex flex-col items-center"
-                      >
+                      <button type="button" onClick={() => setShowCropper(true)} className="cursor-pointer flex flex-col items-center w-full">
                         <Camera className="w-12 h-12 text-gray-400 mb-2" />
-                        <span className="text-sm text-gray-600">
-                          クリックして画像を選択
-                        </span>
-                        <span className="text-xs text-gray-500 mt-1">
-                          JPG, PNG, GIF (最大10MB)
-                        </span>
-                      </label>
+                        <span className="text-sm text-gray-600">クリックして画像を選択</span>
+                        <span className="text-xs text-gray-500 mt-1">JPG, PNG, WEBP (最大10MB)</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -514,6 +473,15 @@ export function DogEditModal({
           </form>
         </div>
       </div>
+      {showCropper && (
+        <ImageCropper
+          onCancel={() => setShowCropper(false)}
+          onCropComplete={(file) => { onImageCropped && onImageCropped(file); setShowCropper(false); setLocalHidePreview(false); }}
+          aspectRatio={1}
+          maxWidth={1200}
+          maxHeight={1200}
+        />
+      )}
     </div>
   );
 }
