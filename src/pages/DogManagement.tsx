@@ -184,18 +184,22 @@ export function DogManagement() {
         }
       } catch (_) { /* ストレージ削除失敗は無視 */ }
       
-      // 2. データベースのimage_urlを空文字に更新
-      const result = await safeSupabaseQuery(() =>
-        supabase
-          .from('dogs')
-          .update({ image_url: '' })
-          .eq('id', selectedDog.id)
-      );
+      // 2. データベースのimage_urlを空文字に更新（更新行を必ず取得して検証）
+      const { data: updatedRows, error: updateErr } = await supabase
+        .from('dogs')
+        .update({ image_url: '' })
+        .eq('id', selectedDog.id)
+        .eq('owner_id', user?.id)
+        .select('id,image_url');
       
-      if (result.error) {
-        log('error', 'Error updating dog image_url', { error: result.error, dogId: selectedDog.id });
+      if (updateErr) {
+        log('error', 'Error updating dog image_url', { error: updateErr, dogId: selectedDog.id });
         setDogUpdateError('画像の削除に失敗しました。');
         return;
+      }
+      if (!updatedRows || updatedRows.length === 0) {
+        log('warn', 'Image delete update affected 0 rows', { dogId: selectedDog.id, userId: user?.id });
+        setDogUpdateError('画像の削除が反映されませんでした。（権限または対象なし）');
       }
       
       // 3. データを再取得
@@ -306,14 +310,20 @@ export function DogManagement() {
       }
 
       // 犬の情報を更新
-      const { error: updateError } = await supabase
+      const { data: updatedDogRows, error: updateError } = await supabase
         .from('dogs')
         .update(updateData)
-        .eq('id', selectedDog.id);
+        .eq('id', selectedDog.id)
+        .eq('owner_id', user?.id)
+        .select('id,image_url');
 
       if (updateError) {
         throw updateError;
       }
+      if (!updatedDogRows || updatedDogRows.length === 0) {
+        throw new Error('更新対象が見つからない、または権限により更新できませんでした。');
+      }
+      console.log('[DogManagement] Update result:', updatedDogRows[0]);
 
       // ワクチン証明書の更新
       if (rabiesVaccineFile && comboVaccineFile && rabiesExpiryDate && comboExpiryDate) {
