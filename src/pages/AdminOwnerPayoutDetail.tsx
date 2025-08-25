@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Banknote, Building, DollarSign, User, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Banknote, Building, DollarSign, User } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { supabase } from '../utils/supabase';
@@ -23,8 +23,6 @@ export default function AdminOwnerPayoutDetail() {
   const [rows, setRows] = useState<ParkBreakdown[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [openParkId, setOpenParkId] = useState<string | null>(null);
-  const [dailyByPark, setDailyByPark] = useState<Record<string, Array<{ date: string; total: number }>>>({});
 
   const year = Number(sp.get('year')) || new Date().getFullYear();
   const month = Number(sp.get('month')) || new Date().getMonth();
@@ -66,42 +64,7 @@ export default function AdminOwnerPayoutDetail() {
       }));
       setRows(mapped);
 
-      // 日毎の売上をまとめて取得（該当オーナーの全ドッグラン）
-      const parkIds = mapped.map(m => m.park_id);
-      if (parkIds.length > 0) {
-        const start = new Date(year, month, 1);
-        const end = new Date(year, month + 1, 0);
-        const { data: reservations, error: resErr } = await supabase
-          .from('reservations')
-          .select('park_id,total_amount,created_at')
-          .in('park_id', parkIds)
-          .gte('created_at', start.toISOString())
-          .lt('created_at', new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1).toISOString())
-          .not('total_amount', 'is', null);
-        if (resErr) throw resErr;
-
-        // 月の日付配列
-        const days: string[] = [];
-        for (let d = 1; d <= end.getDate(); d++) {
-          const dt = new Date(year, month, d).toISOString().slice(0, 10);
-          days.push(dt);
-        }
-
-        const grouped: Record<string, Record<string, number>> = {};
-        parkIds.forEach(pid => { grouped[pid] = {}; days.forEach(day => { grouped[pid][day] = 0; }); });
-        (reservations || []).forEach((r: any) => {
-          const day = new Date(r.created_at).toISOString().slice(0, 10);
-          if (grouped[r.park_id] && grouped[r.park_id][day] !== undefined) {
-            grouped[r.park_id][day] += r.total_amount || 0;
-          }
-        });
-
-        const perPark: Record<string, Array<{ date: string; total: number }>> = {};
-        Object.keys(grouped).forEach(pid => {
-          perPark[pid] = days.map(day => ({ date: day, total: grouped[pid][day] || 0 }));
-        });
-        setDailyByPark(perPark);
-      }
+      // 日毎詳細は別ページに移行
     } catch (e) {
       console.error(e);
       setError('明細の取得に失敗しました');
@@ -147,11 +110,8 @@ export default function AdminOwnerPayoutDetail() {
               {rows.map((r) => (
                 <>
                   <tr key={r.park_id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 text-sm text-gray-800 flex items-center">
-                      <button className="mr-2" onClick={() => setOpenParkId(openParkId === r.park_id ? null : r.park_id)} aria-label="toggle-daily">
-                        {openParkId === r.park_id ? <ChevronDown className="w-4 h-4"/> : <ChevronRight className="w-4 h-4"/>}
-                      </button>
-                      <Link to={`/parks/${r.park_id}`} target="_blank" className="text-blue-600 hover:text-blue-800">
+                    <td className="px-4 py-2 text-sm text-gray-800">
+                      <Link to={`/admin/revenue/park/${r.park_id}?year=${year}&month=${month}`} target="_blank" className="text-blue-600 hover:text-blue-800">
                         {r.park_name}
                       </Link>
                     </td>
@@ -159,30 +119,6 @@ export default function AdminOwnerPayoutDetail() {
                     <td className="px-4 py-2 text-sm text-right">¥{r.platform_fee.toLocaleString()}</td>
                     <td className="px-4 py-2 text-sm text-right font-medium">¥{r.owner_payout.toLocaleString()}</td>
                   </tr>
-                  {openParkId === r.park_id && (
-                    <tr>
-                      <td colSpan={4} className="bg-gray-50 p-3">
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full">
-                            <thead>
-                              <tr>
-                                <th className="px-3 py-1 text-left text-xs text-gray-500">日付</th>
-                                <th className="px-3 py-1 text-right text-xs text-gray-500">売上</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {(dailyByPark[r.park_id] || []).map((d) => (
-                                <tr key={d.date}>
-                                  <td className="px-3 py-1 text-xs text-gray-700">{new Date(d.date).getMonth()+1}/{new Date(d.date).getDate()}</td>
-                                  <td className="px-3 py-1 text-xs text-right">¥{(d.total || 0).toLocaleString()}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                 </>
               ))}
             </tbody>
