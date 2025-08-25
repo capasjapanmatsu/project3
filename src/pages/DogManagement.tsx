@@ -277,6 +277,11 @@ export function DogManagement() {
         ...(dogFormData.microchipNumber && { microchip_number: dogFormData.microchipNumber }),
       };
 
+      // 画像が削除されており、新規画像も選択されていない場合はDB側も確実にクリア
+      if (!dogImageFile && !dogImagePreview) {
+        (updateData as any).image_url = '';
+      }
+
       // 画像が変更された場合はアップロード（1:1トリミング → WebP変換保存）
       if (dogImageFile) {
         // 1:1にトリミング（オフスクリーンcanvas）
