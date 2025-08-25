@@ -592,11 +592,13 @@ export function AdminDashboard() {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">ページ管理</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 bg-white rounded-lg border">
-                  <div>
-                    <h4 className="font-medium text-gray-900">ランディングページ</h4>
-                    <p className="text-sm text-gray-600">
-                      広告・SEO用の公開ページ（右上メニューやフッターからアクセス）
-                    </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">ランディングページ</h4>
+                    </div>
+                    <Link to="/landing" target="_blank">
+                      <Button className="bg-blue-600 hover:bg-blue-700">開く</Button>
+                    </Link>
                   </div>
                 </div>
                 <div className="p-4 bg-white rounded-lg border">
