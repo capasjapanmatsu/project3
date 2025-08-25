@@ -1,6 +1,6 @@
 import type { Handler } from '@netlify/functions';
-import { lineClient } from './_lineClient';
 import { createClient } from '@supabase/supabase-js';
+import { lineClient } from './_lineClient';
 
 // ---- Flex 生成ユーティリティ ----
 function flexReservation(params: {
@@ -100,8 +100,17 @@ const PUBLIC_BASE = process.env.PUBLIC_BASE_URL || process.env.VITE_PUBLIC_BASE_
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY as string | undefined;
 
 export const handler: Handler = async (event) => {
+  const cors = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+  } as const;
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers: cors, body: '' };
+  }
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'POST only' };
+    return { statusCode: 405, headers: cors, body: 'POST only' };
   }
   try {
     const body = event.body ? JSON.parse(event.body) : {};
@@ -141,7 +150,7 @@ export const handler: Handler = async (event) => {
         }
       }
     }
-    if (recipients.length === 0) return { statusCode: 400, body: 'Missing "to"' };
+    if (recipients.length === 0) return { statusCode: 400, headers: cors, body: 'Missing "to"' };
 
     const pushAll = async (msg: any) => {
       for (const id of recipients) {
@@ -151,7 +160,7 @@ export const handler: Handler = async (event) => {
 
     if (kind === 'text') {
       await pushAll(textMsg(body.message || 'お知らせです') as any);
-      return { statusCode: 200, body: '{"ok":true}' };
+      return { statusCode: 200, headers: cors, body: '{"ok":true}' };
     }
 
     if (kind === 'reservation') {
@@ -163,13 +172,13 @@ export const handler: Handler = async (event) => {
         note: body.note
       });
       await pushAll(msg as any);
-      return { statusCode: 200, body: '{"ok":true}' };
+      return { statusCode: 200, headers: cors, body: '{"ok":true}' };
     }
 
     if (kind === 'badge_approved') {
       const msg = badgeApprovedFlex(body.dogName ?? 'わんちゃん', body.expires);
       await pushAll(msg as any);
-      return { statusCode: 200, body: '{"ok":true}' };
+      return { statusCode: 200, headers: cors, body: '{"ok":true}' };
     }
 
     if (kind === 'alert') {
@@ -180,13 +189,13 @@ export const handler: Handler = async (event) => {
       for (const id of recipients) {
         await lineClient.pushMessage(id, msgs as any);
       }
-      return { statusCode: 200, body: '{"ok":true}' };
+      return { statusCode: 200, headers: cors, body: '{"ok":true}' };
     }
 
-    return { statusCode: 400, body: 'Unknown "kind"' };
+    return { statusCode: 400, headers: cors, body: 'Unknown "kind"' };
   } catch (e) {
     console.error(e);
-    return { statusCode: 500, body: '{"ok":false}' };
+    return { statusCode: 500, headers: cors, body: '{"ok":false}' };
   }
 };
 

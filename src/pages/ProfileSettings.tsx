@@ -802,7 +802,8 @@ export function ProfileSettings() {
                 setTestSending(true);
                 const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
                 if (!uid) throw new Error('ユーザー情報が取得できません');
-                const base = (import.meta.env.VITE_PUBLIC_BASE_URL as string) || 'https://dogparkjp.com';
+                const isLocal = window.location.origin.includes('localhost');
+                const base = isLocal ? '' : ((import.meta.env.VITE_PUBLIC_BASE_URL as string) || 'https://dogparkjp.com');
                 const resp = await fetch(`${base}/.netlify/functions/line-notify`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -811,7 +812,7 @@ export function ProfileSettings() {
                     kind: 'alert',
                     title: 'テスト通知',
                     message: '通知とLINE連携のテストです。コミュニティを開いてご確認ください。',
-                    linkUrl: `${base}/community`,
+                    linkUrl: `${isLocal ? 'http://localhost:3000' : base}/community`,
                   }),
                 });
                 if (!resp.ok) {
