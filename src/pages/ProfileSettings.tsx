@@ -1069,6 +1069,18 @@ export function ProfileSettings() {
                   )}
                 </div>
 
+                {/* 管理ページリンク */}
+                <div className="text-right">
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    className="text-purple-600 hover:text-purple-700 border-purple-300 hover:border-purple-400"
+                    onClick={() => navigate('/subscription-intro')}
+                  >
+                    <Crown className="w-4 h-4 mr-1" /> 管理ページを開く
+                  </Button>
+                </div>
+
                 {subscriptionError && (
                   <div className="p-3 bg-red-50 rounded-lg">
                     <div className="flex items-start space-x-2">
