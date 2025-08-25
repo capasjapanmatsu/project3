@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import type { Dog } from '../../types';
 import Card from '../Card';
 import { DogCard, DogEditModal } from './DogCard';
+import { Area } from 'react-easy-crop';
 
 interface DogManagementSectionProps {
   dogs: Dog[];
@@ -36,6 +37,12 @@ interface DogManagementSectionProps {
   onFormDataChange: (data: any) => void;
   onRabiesExpiryDateChange: (date: string) => void;
   onComboExpiryDateChange: (date: string) => void;
+  // Crop control (optional)
+  crop?: { x: number; y: number };
+  zoom?: number;
+  onCropChange?: (crop: { x: number; y: number }) => void;
+  onZoomChange?: (zoom: number) => void;
+  onCropComplete?: (_: any, areaPixels: Area) => void;
 }
 
 export const DogManagementSection: React.FC<DogManagementSectionProps> = ({
@@ -64,6 +71,11 @@ export const DogManagementSection: React.FC<DogManagementSectionProps> = ({
   onFormDataChange,
   onRabiesExpiryDateChange,
   onComboExpiryDateChange,
+  crop,
+  zoom,
+  onCropChange,
+  onZoomChange,
+  onCropComplete,
 }) => {
   return (
     <Card className="p-6">
@@ -134,6 +146,12 @@ export const DogManagementSection: React.FC<DogManagementSectionProps> = ({
           onFormChange={onFormDataChange}
           onImageSelect={onDogImageSelect}
           onImageRemove={onDogImageRemove}
+          // Crop props (fallback to sane defaults)
+          crop={crop || { x: 0, y: 0 }}
+          zoom={zoom || 1}
+          onCropChange={onCropChange || (() => {})}
+          onZoomChange={onZoomChange || (() => {})}
+          onCropComplete={onCropComplete || (() => {})}
           rabiesVaccineFile={rabiesVaccineFile}
           comboVaccineFile={comboVaccineFile}
           rabiesExpiryDate={rabiesExpiryDate}

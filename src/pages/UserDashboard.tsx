@@ -16,6 +16,7 @@ import {
     Users
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { Area } from 'react-easy-crop';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -30,7 +31,6 @@ import { useUIStore } from '../store/uiStore';
 import type { Dog, DogPark, NewsAnnouncement, Notification, Profile, Reservation } from '../types';
 import { supabase } from '../utils/supabase';
 import { uploadAndConvertToWebP } from '../utils/webpConverter';
-import { Area } from 'react-easy-crop';
 
 
 export function UserDashboard() {
@@ -637,6 +637,12 @@ export function UserDashboard() {
         onFormDataChange={setDogFormData}
         onRabiesExpiryDateChange={setRabiesExpiryDate}
         onComboExpiryDateChange={setComboExpiryDate}
+        // Crop state
+        crop={crop}
+        zoom={zoom}
+        onCropChange={setCrop}
+        onZoomChange={setZoom}
+        onCropComplete={(_, area) => setCroppedAreaPixels(area)}
       />
 
       {/* Facility Reservations Section */}
