@@ -213,12 +213,38 @@ export function ProfileSettings() {
   const handleEnable2FA = async () => {
     try {
       setMfaError('');
-      const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+      // 既存のTOTP要素があるか確認
+      const { data: list, error: listErr } = await supabase.auth.mfa.listFactors();
+      if (listErr) throw listErr;
+      const existing = (list?.factors || []).find((f: any) => f.factorType === 'totp');
+
+      if (existing && existing.status === 'verified') {
+        // すでに有効化済み
+        setMfaStatus('enabled');
+        setSuccess('2FAはすでに有効です');
+        setTimeout(() => setSuccess(''), 2500);
+        return;
+      }
+
+      if (existing && existing.status !== 'verified') {
+        // 古い未検証の要素があると enroll が重複エラーになるため削除
+        try { await supabase.auth.mfa.unenroll({ factorId: existing.id }); } catch {}
+      }
+
+      const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Authenticator' });
       if (error) throw error;
       setEnrollData({ factorId: data.id, qrCode: (data as any)?.totp?.qr_code });
       setIsMfaModalOpen(true);
     } catch (e) {
-      setMfaError(e instanceof Error ? e.message : '2FAの有効化に失敗しました');
+      const msg = e instanceof Error ? e.message : '2FAの有効化に失敗しました';
+      // 既存要素の重複メッセージが出た場合は状態を再取得して案内
+      if (typeof msg === 'string' && msg.toLowerCase().includes('already exists')) {
+        await fetchMFAStatus();
+        setSuccess('2FAはすでに登録済みです。必要なら無効化してから再設定してください。');
+        setTimeout(() => setSuccess(''), 3000);
+        return;
+      }
+      setMfaError(msg);
       setTimeout(() => setMfaError(''), 4000);
     }
   };
