@@ -389,17 +389,18 @@ export function UserDashboard() {
         birth_date: dogFormData.birthDate,
       };
 
-      // 画像アップロード処理（1:1トリミング → WebP変換 → 安全なUUIDファイル名で保存）
+      // 画像アップロード処理（1:1トリミング → 最大1200pxリサイズ → WebP変換 → 安全なUUIDファイル名で保存）
       if (dogImageFile) {
         const imgBitmap = await createImageBitmap(dogImageFile);
-        const size = Math.min(imgBitmap.width, imgBitmap.height);
+        const sourceSquare = Math.min(imgBitmap.width, imgBitmap.height);
+        const targetSize = Math.min(1200, sourceSquare);
         const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
+        canvas.width = targetSize;
+        canvas.height = targetSize;
         const ctx = canvas.getContext('2d')!;
-        const sx = (imgBitmap.width - size) / 2;
-        const sy = (imgBitmap.height - size) / 2;
-        ctx.drawImage(imgBitmap, sx, sy, size, size, 0, 0, size, size);
+        const sx = (imgBitmap.width - sourceSquare) / 2;
+        const sy = (imgBitmap.height - sourceSquare) / 2;
+        ctx.drawImage(imgBitmap, sx, sy, sourceSquare, sourceSquare, 0, 0, targetSize, targetSize);
         const blob: Blob = await new Promise((resolve) => canvas.toBlob((b) => resolve(b as Blob), 'image/jpeg', 0.9));
         const squaredFile = new File([blob], 'dog-square.jpg', { type: 'image/jpeg' });
 
