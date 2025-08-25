@@ -173,6 +173,7 @@ const AdminShopManagement = React.lazy(() => import('./pages/AdminShopManagement
 const AdminRevenueReport = React.lazy(() => import('./pages/AdminRevenueReport').then(module => ({ default: module.AdminRevenueReport })));
 const AdminNewsManagement = React.lazy(() => import('./pages/AdminNewsManagement').then(module => ({ default: module.AdminNewsManagement })));
 const AdminSponsors = React.lazy(() => import('./pages/AdminSponsors').then(module => ({ default: module.AdminSponsors })));
+const AdminSalesOverview = React.lazy(() => import('./pages/AdminSalesOverview'));
 
 // オーナー・運営関連
 const MyParksManagement = React.lazy(() => import('./pages/MyParksManagement').then(module => ({ default: module.MyParksManagement })));
