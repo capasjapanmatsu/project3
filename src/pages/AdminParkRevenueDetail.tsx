@@ -34,7 +34,7 @@ export default function AdminParkRevenueDetail() {
       const end = new Date(year, month + 1, 0);
       const { data: res, error } = await supabase
         .from('reservations')
-        .select('total_amount,created_at,reservation_type,duration,guest_count')
+        .select('*')
         .eq('park_id', parkId)
         .gte('created_at', start.toISOString())
         .lt('created_at', new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1).toISOString())
@@ -49,11 +49,11 @@ export default function AdminParkRevenueDetail() {
         const key = new Date(r.created_at).toISOString().slice(0,10);
         if (map[key] !== undefined) {
           map[key].total += r.total_amount || 0;
-          const type = String(r.reservation_type || '').toLowerCase();
+          const type = String((r as any).reservation_type || '').toLowerCase();
           if (type === 'daypass' || type === '1day' || type === 'day_pass') {
-            map[key].daypass_count += Number(r.guest_count || 1);
+            map[key].daypass_count += Number((r as any).guest_count || 1);
           } else if (type === 'whole_facility' || type === 'private' || type === 'rental') {
-            map[key].private_hours += Number(r.duration || 1);
+            map[key].private_hours += Number((r as any).duration || 1);
           } else if (type === 'subscription') {
             map[key].subscription_count += 1;
           }
