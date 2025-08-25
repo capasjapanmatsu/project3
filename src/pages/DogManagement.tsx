@@ -169,6 +169,13 @@ export function DogManagement() {
     }
   };
 
+  // ImageCropper からの結果を受け取って差し替える（dog-registration と同じ流れ）
+  const handleImageCropped = (file: File) => {
+    setDogImageFile(file);
+    const previewUrl = URL.createObjectURL(file);
+    setDogImagePreview(previewUrl);
+  };
+
   const handleDogImageRemove = async () => {
     if (!selectedDog) return;
     console.log('[DogManagement] onImageRemove called');
@@ -650,6 +657,7 @@ export function DogManagement() {
           onFormChange={setDogFormData}
           onImageSelect={handleDogImageSelect}
           onImageRemove={() => void handleDogImageRemove()}
+          onImageCropped={(file) => handleImageCropped(file)}
           // クロップ制御
           crop={crop}
           zoom={zoom}

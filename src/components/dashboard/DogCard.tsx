@@ -1,10 +1,10 @@
 import { Camera, Edit, FileText, PawPrint, Shield, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import ImageCropper from '../ImageCropper';
 import { Link } from 'react-router-dom';
 import { dogBreeds } from '../../data/dogBreeds';
 import type { Dog } from '../../types';
 import Button from '../Button';
+import ImageCropper from '../ImageCropper';
 import Input from '../Input';
 import LazyImage from '../LazyImage';
 import Select from '../Select';
