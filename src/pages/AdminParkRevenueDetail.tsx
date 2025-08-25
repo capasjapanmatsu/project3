@@ -14,7 +14,7 @@ export default function AdminParkRevenueDetail() {
   const [parkName, setParkName] = useState('');
   const year = Number(sp.get('year')) || new Date().getFullYear();
   const month = Number(sp.get('month')) || new Date().getMonth();
-  const [days, setDays] = useState<Array<{ date: string; total: number }>>([]);
+  const [days, setDays] = useState<Array<{ date: string; total: number; daypass_count: number; private_hours: number; subscription_count: number }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -34,22 +34,32 @@ export default function AdminParkRevenueDetail() {
       const end = new Date(year, month + 1, 0);
       const { data: res, error } = await supabase
         .from('reservations')
-        .select('total_amount,created_at')
+        .select('total_amount,created_at,reservation_type,duration,guest_count')
         .eq('park_id', parkId)
         .gte('created_at', start.toISOString())
         .lt('created_at', new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1).toISOString())
         .not('total_amount', 'is', null);
       if (error) throw error;
-      const map: Record<string, number> = {};
+      const map: Record<string, { total: number; daypass_count: number; private_hours: number; subscription_count: number }> = {};
       for (let d = 1; d <= end.getDate(); d++) {
         const key = new Date(year, month, d).toISOString().slice(0,10);
-        map[key] = 0;
+        map[key] = { total: 0, daypass_count: 0, private_hours: 0, subscription_count: 0 };
       }
       (res || []).forEach((r: any) => {
         const key = new Date(r.created_at).toISOString().slice(0,10);
-        if (map[key] !== undefined) map[key] += r.total_amount || 0;
+        if (map[key] !== undefined) {
+          map[key].total += r.total_amount || 0;
+          const type = String(r.reservation_type || '').toLowerCase();
+          if (type === 'daypass' || type === '1day' || type === 'day_pass') {
+            map[key].daypass_count += Number(r.guest_count || 1);
+          } else if (type === 'whole_facility' || type === 'private' || type === 'rental') {
+            map[key].private_hours += Number(r.duration || 1);
+          } else if (type === 'subscription') {
+            map[key].subscription_count += 1;
+          }
+        }
       });
-      const arr = Object.entries(map).map(([date,total]) => ({ date, total }));
+      const arr = Object.entries(map).map(([date,val]) => ({ date, ...val }));
       setDays(arr);
     } catch (e) {
       console.error(e);
@@ -60,6 +70,9 @@ export default function AdminParkRevenueDetail() {
   };
 
   const total = useMemo(() => days.reduce((s,d)=>s+d.total,0), [days]);
+  const totalDaypass = useMemo(() => days.reduce((s,d)=>s+d.daypass_count,0), [days]);
+  const totalPrivate = useMemo(() => days.reduce((s,d)=>s+d.private_hours,0), [days]);
+  const totalSubs = useMemo(() => days.reduce((s,d)=>s+d.subscription_count,0), [days]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -91,7 +104,12 @@ export default function AdminParkRevenueDetail() {
       <Card className="p-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold flex items-center"><CalendarDays className="w-5 h-5 mr-2"/>日別売上</h2>
-          <div className="text-sm text-gray-600 flex items-center"><DollarSign className="w-4 h-4 mr-1"/>月合計: ¥{total.toLocaleString()}</div>
+          <div className="text-sm text-gray-600 flex items-center gap-4">
+            <span className="flex items-center"><DollarSign className="w-4 h-4 mr-1"/>月合計: ¥{total.toLocaleString()}</span>
+            <span>1Dayパス: {totalDaypass}人</span>
+            <span>貸し切り: {totalPrivate}時間</span>
+            <span>サブスク: {totalSubs}人</span>
+          </div>
         </div>
         {error && <div className="text-sm text-red-600 mb-2">{error}</div>}
         {isLoading ? (
@@ -103,6 +121,9 @@ export default function AdminParkRevenueDetail() {
                 <tr>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">日付</th>
                   <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">売上</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">1Day</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">貸切(h)</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">サブスク</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -110,6 +131,9 @@ export default function AdminParkRevenueDetail() {
                   <tr key={d.date}>
                     <td className="px-4 py-2 text-sm text-gray-800">{new Date(d.date).getMonth()+1}/{new Date(d.date).getDate()}</td>
                     <td className="px-4 py-2 text-sm text-right">¥{(d.total||0).toLocaleString()}</td>
+                    <td className="px-4 py-2 text-sm text-right">{d.daypass_count || 0}</td>
+                    <td className="px-4 py-2 text-sm text-right">{d.private_hours || 0}</td>
+                    <td className="px-4 py-2 text-sm text-right">{d.subscription_count || 0}</td>
                   </tr>
                 ))}
               </tbody>
