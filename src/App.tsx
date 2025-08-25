@@ -174,6 +174,7 @@ const AdminRevenueReport = React.lazy(() => import('./pages/AdminRevenueReport')
 const AdminNewsManagement = React.lazy(() => import('./pages/AdminNewsManagement').then(module => ({ default: module.AdminNewsManagement })));
 const AdminSponsors = React.lazy(() => import('./pages/AdminSponsors').then(module => ({ default: module.AdminSponsors })));
 const AdminSalesOverview = React.lazy(() => import('./pages/AdminSalesOverview'));
+const AdminOwnerPayoutDetail = React.lazy(() => import('./pages/AdminOwnerPayoutDetail'));
 
 // オーナー・運営関連
 const MyParksManagement = React.lazy(() => import('./pages/MyParksManagement').then(module => ({ default: module.MyParksManagement })));
@@ -777,6 +778,13 @@ const App: React.FC = () => {
                 <AdminRoute>
                   <Suspense fallback={<DashboardSkeleton />}>
                     <AdminRevenueReport />
+                  </Suspense>
+                </AdminRoute>
+              } />
+              <Route path="/admin/revenue/owner/:ownerId" element={
+                <AdminRoute>
+                  <Suspense fallback={<DashboardSkeleton />}>
+                    <AdminOwnerPayoutDetail />
                   </Suspense>
                 </AdminRoute>
               } />

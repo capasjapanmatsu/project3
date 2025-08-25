@@ -377,7 +377,7 @@ export function AdminRevenueReport() {
             <table className="min-w-full bg-white">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">オーナー名</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">オーナー</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ドッグラン名</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">売上合計</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">手数料（20%）</th>
@@ -389,7 +389,15 @@ export function AdminRevenueReport() {
                 {filteredData.map((item) => (
                   <tr key={`${item.park_id}-${item.month}-${item.year}`} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {item.owner_name}
+                      <div className="flex flex-col">
+                        <Link
+                          to={`/admin/revenue/owner/${item.owner_id}?year=${selectedYear}&month=${selectedMonth}`}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          {item.owner_name}
+                        </Link>
+                        <span className="text-xs text-gray-500">ID: {item.owner_id}</span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {item.park_name}
