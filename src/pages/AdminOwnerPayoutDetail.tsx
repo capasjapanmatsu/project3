@@ -146,10 +146,14 @@ export default function AdminOwnerPayoutDetail() {
             <tbody className="divide-y divide-gray-200">
               {rows.map((r) => (
                 <>
-                  <tr key={r.park_id} className="cursor-pointer hover:bg-gray-50" onClick={() => setOpenParkId(openParkId === r.park_id ? null : r.park_id)}>
+                  <tr key={r.park_id} className="hover:bg-gray-50">
                     <td className="px-4 py-2 text-sm text-gray-800 flex items-center">
-                      {openParkId === r.park_id ? <ChevronDown className="w-4 h-4 mr-2"/> : <ChevronRight className="w-4 h-4 mr-2"/>}
-                      {r.park_name}
+                      <button className="mr-2" onClick={() => setOpenParkId(openParkId === r.park_id ? null : r.park_id)} aria-label="toggle-daily">
+                        {openParkId === r.park_id ? <ChevronDown className="w-4 h-4"/> : <ChevronRight className="w-4 h-4"/>}
+                      </button>
+                      <Link to={`/parks/${r.park_id}`} target="_blank" className="text-blue-600 hover:text-blue-800">
+                        {r.park_name}
+                      </Link>
                     </td>
                     <td className="px-4 py-2 text-sm text-right">¥{r.total_revenue.toLocaleString()}</td>
                     <td className="px-4 py-2 text-sm text-right">¥{r.platform_fee.toLocaleString()}</td>
