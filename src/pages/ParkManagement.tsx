@@ -250,6 +250,8 @@ export function ParkManagement() {
       subscription: { count: 0, amount: 0 }
     }
   });
+  // 日次統計（利用統計グラフ用）
+  const [dailyStats, setDailyStats] = useState<Array<{ date: string; reservations: number; users: number }>>([]);
 
   // メンテナンス予定取得関数
   const fetchMaintenanceSchedules = async () => {
@@ -357,6 +359,41 @@ export function ParkManagement() {
     }
   }, [parkId]);
 
+  // 日次統計を取得（当月）
+  const fetchDailyStats = useCallback(async () => {
+    if (!parkId) return;
+    try {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const { data, error } = await supabase
+        .from('reservations')
+        .select('created_at, guest_count')
+        .eq('park_id', parkId)
+        .gte('created_at', start.toISOString())
+        .lt('created_at', end.toISOString());
+      if (error) throw error;
+      const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const map: Record<string, { reservations: number; users: number }> = {};
+      for (let d = 1; d <= totalDays; d++) {
+        const key = new Date(now.getFullYear(), now.getMonth(), d).toISOString().slice(0, 10);
+        map[key] = { reservations: 0, users: 0 };
+      }
+      (data || []).forEach((r: any) => {
+        const key = new Date(r.created_at).toISOString().slice(0, 10);
+        if (map[key]) {
+          map[key].reservations += 1;
+          map[key].users += Number(r.guest_count || 0);
+        }
+      });
+      const arr = Object.entries(map).map(([date, v]) => ({ date, reservations: v.reservations, users: v.users }));
+      setDailyStats(arr);
+    } catch (e) {
+      console.warn('Failed to fetch daily stats', e);
+      setDailyStats([]);
+    }
+  }, [parkId]);
+
   // ウォークスルー完了時の処理
   const handleWalkthroughComplete = useCallback(async () => {
     if (!user) return;
@@ -403,7 +440,7 @@ export function ParkManagement() {
   }, [parkId, user, park]);
 
   // 統計タブに入ったら読み込み
-  useEffect(() => { if (activeTab === 'stats') { void fetchMonthlyStats(); } }, [activeTab, fetchMonthlyStats]);
+  useEffect(() => { if (activeTab === 'stats') { void fetchMonthlyStats(); void fetchDailyStats(); } }, [activeTab, fetchMonthlyStats, fetchDailyStats]);
 
   // パークデータ取得関数
   const fetchParkData = async () => {
@@ -1370,8 +1407,47 @@ export function ParkManagement() {
               </div>
             </div>
             
-            <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-              <p className="text-gray-500">利用統計グラフ（実装予定）</p>
+            <div className="h-64 bg-white rounded-lg border border-gray-200 p-3">
+              {dailyStats.length === 0 ? (
+                <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">データがありません</div>
+              ) : (
+                <svg viewBox="0 0 640 240" className="w-full h-full">
+                  {/* 軸 */}
+                  <line x1="40" y1="10" x2="40" y2="220" stroke="#e5e7eb"/>
+                  <line x1="40" y1="220" x2="620" y2="220" stroke="#e5e7eb"/>
+                  {/* スケール計算 */}
+                  {(() => {
+                    const maxVal = Math.max(1, ...dailyStats.map(d => Math.max(d.reservations, d.users)));
+                    const toX = (i: number) => 40 + (i / Math.max(1, dailyStats.length - 1)) * 580;
+                    const toY = (v: number) => 220 - (v / maxVal) * 180;
+                    const resPoints = dailyStats.map((d, i) => `${toX(i)},${toY(d.reservations)}`).join(' ');
+                    const userPoints = dailyStats.map((d, i) => `${toX(i)},${toY(d.users)}`).join(' ');
+                    return (
+                      <>
+                        {/* 予約件数（青） */}
+                        <polyline fill="none" stroke="#3b82f6" strokeWidth="2" points={resPoints} />
+                        {dailyStats.map((d, i) => <circle key={`r-${i}`} cx={toX(i)} cy={toY(d.reservations)} r="2" fill="#3b82f6" />)}
+                        {/* 利用者数（紫） */}
+                        <polyline fill="none" stroke="#8b5cf6" strokeWidth="2" points={userPoints} />
+                        {dailyStats.map((d, i) => <circle key={`u-${i}`} cx={toX(i)} cy={toY(d.users)} r="2" fill="#8b5cf6" />)}
+                        {/* 目盛りラベル（5分割） */}
+                        {Array.from({ length: 6 }, (_, idx) => {
+                          const yVal = Math.round((maxVal / 5) * idx);
+                          const y = toY(yVal);
+                          return <g key={idx}><line x1="40" y1={y} x2="620" y2={y} stroke="#f3f4f6"/><text x="8" y={y+4} fontSize="10" fill="#6b7280">{yVal}</text></g>
+                        })}
+                        {/* 凡例 */}
+                        <g>
+                          <rect x="460" y="16" width="10" height="10" fill="#3b82f6"/>
+                          <text x="475" y="25" fontSize="12" fill="#374151">予約件数</text>
+                          <rect x="540" y="16" width="10" height="10" fill="#8b5cf6"/>
+                          <text x="555" y="25" fontSize="12" fill="#374151">利用者数</text>
+                        </g>
+                      </>
+                    );
+                  })()}
+                </svg>
+              )}
             </div>
           </Card>
           
