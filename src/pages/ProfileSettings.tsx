@@ -802,20 +802,25 @@ export function ProfileSettings() {
                 setTestSending(true);
                 const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
                 if (!uid) throw new Error('ユーザー情報が取得できません');
-                await fetch('/.netlify/functions/app-notify', {
+                const base = (import.meta.env.VITE_PUBLIC_BASE_URL as string) || 'https://dogparkjp.com';
+                const resp = await fetch(`${base}/.netlify/functions/line-notify`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     userId: uid,
+                    kind: 'alert',
                     title: 'テスト通知',
                     message: '通知とLINE連携のテストです。コミュニティを開いてご確認ください。',
-                    linkUrl: `${window.location.origin}/community`,
-                    kind: 'alert',
+                    linkUrl: `${base}/community`,
                   }),
                 });
+                if (!resp.ok) {
+                  const txt = await resp.text();
+                  throw new Error(`LINE通知に失敗しました: ${txt}`);
+                }
                 setTestResult('テスト通知を送信しました');
               } catch (e) {
-                setError('テスト通知の送信に失敗しました');
+                setError(e instanceof Error ? e.message : 'テスト通知の送信に失敗しました');
                 setTimeout(() => setError(''), 3000);
               } finally {
                 setTestSending(false);
