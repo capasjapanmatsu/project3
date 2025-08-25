@@ -16,11 +16,13 @@ export default function AdminSalesOverview() {
   const [trend, setTrend] = useState<DailyPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [parkRevenue, setParkRevenue] = useState<Array<{ park_name: string; total_revenue: number }>>([]);
 
   useEffect(() => {
     if (!isAdmin) { navigate('/'); return; }
     void fetchSummary();
     void fetchRevenueTrend();
+    void fetchParkRevenueThisMonth();
   }, [isAdmin, navigate]);
 
   const fetchSummary = async () => {
@@ -71,6 +73,29 @@ export default function AdminSalesOverview() {
       setError('売上推移の取得に失敗しました');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 今月のドッグラン別売上（上位5件）
+  const fetchParkRevenueThisMonth = async () => {
+    try {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const startStr = start.toISOString().split('T')[0];
+      const endStr = end.toISOString().split('T')[0];
+      const { data, error } = await supabase.rpc('get_monthly_revenue_by_park', {
+        start_date_param: startStr,
+        end_date_param: endStr
+      });
+      if (error) throw error;
+      const rows = (data || [])
+        .map((r: any) => ({ park_name: r.park_name, total_revenue: r.total_revenue }))
+        .sort((a: any, b: any) => b.total_revenue - a.total_revenue)
+        .slice(0, 5);
+      setParkRevenue(rows);
+    } catch (e) {
+      console.warn('Failed to fetch park revenue', e);
     }
   };
 
@@ -143,6 +168,36 @@ export default function AdminSalesOverview() {
             })}
           </svg>
         </div>
+      </Card>
+
+      {/* ドッグラン別売上（今月・上位5） */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold flex items-center"><Building className="w-5 h-5 mr-2"/>ドッグラン別売上（今月・上位5）</h2>
+          <Link to="/admin/revenue"><Button size="sm">一覧を見る</Button></Link>
+        </div>
+        {parkRevenue.length === 0 ? (
+          <div className="text-sm text-gray-500">今月の売上データがありません</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ドッグラン</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">売上</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {parkRevenue.map((r) => (
+                  <tr key={r.park_name}>
+                    <td className="px-4 py-2 text-sm text-gray-800">{r.park_name}</td>
+                    <td className="px-4 py-2 text-sm text-right font-medium">¥{r.total_revenue?.toLocaleString?.() || r.total_revenue}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
     </div>
   );
