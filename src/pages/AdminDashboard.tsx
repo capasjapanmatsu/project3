@@ -452,9 +452,26 @@ export function AdminDashboard() {
               { id: 'fraud', label: '不正検知', icon: ShieldAlert },
               { id: 'maintenance', label: 'メンテナンス', icon: Settings },
               { id: 'sponsors', label: 'スポンサー', icon: Monitor },
-              { id: 'inquiries', label: 'お問い合わせ', icon: Mail }
+              { id: 'inquiries', label: 'お問い合わせ', icon: Mail },
+              // 売り上げ管理は別ページへリンク
+              { id: 'sales-link', label: '売り上げ管理', icon: DollarSign, to: '/admin/sales-overview' }
             ].map((tab) => {
-              const Icon = tab.icon;
+              const Icon = tab.icon as any;
+              // to がある場合はリンク、それ以外はタブ切り替えボタン
+              if ((tab as any).to) {
+                return (
+                  <Link
+                    key={tab.id}
+                    to={(tab as any).to}
+                    className={`relative flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors no-underline hover:no-underline ${
+                      'text-gray-600 hover:text-blue-700 hover:bg-blue-50'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 mr-2" />
+                    {tab.label}
+                  </Link>
+                );
+              }
               return (
                 <button
                   key={tab.id}

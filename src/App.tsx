@@ -743,6 +743,14 @@ const App: React.FC = () => {
                   </Suspense>
                 </AdminRoute>
               } />
+              {/* 売り上げ管理（簡易ダッシュボード） */}
+              <Route path="/admin/sales-overview" element={
+                <AdminRoute>
+                  <Suspense fallback={<DashboardSkeleton />}>
+                    <AdminSalesOverview />
+                  </Suspense>
+                </AdminRoute>
+              } />
               <Route path="/admin/vaccine-approval" element={
                 <AdminRoute>
                   <Suspense fallback={<DashboardSkeleton />}>
