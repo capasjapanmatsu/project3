@@ -103,7 +103,8 @@ export const handler: Handler = async (event) => {
   const cors = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Content-Type': 'application/json'
   } as const;
 
   if (event.httpMethod === 'OPTIONS') {
@@ -113,6 +114,10 @@ export const handler: Handler = async (event) => {
     return { statusCode: 405, headers: cors, body: 'POST only' };
   }
   try {
+    // 必須: LINEアクセストークン
+    if (!process.env.LINE_ACCESS_TOKEN) {
+      return { statusCode: 500, headers: cors, body: JSON.stringify({ ok: false, error: 'LINE_ACCESS_TOKEN is not set' }) };
+    }
     const body = event.body ? JSON.parse(event.body) : {};
     const { to, userId, lineUserId, kind = 'text' } = body as {
       to?: string; // LINE userId
@@ -150,7 +155,7 @@ export const handler: Handler = async (event) => {
         }
       }
     }
-    if (recipients.length === 0) return { statusCode: 400, headers: cors, body: 'Missing "to"' };
+    if (recipients.length === 0) return { statusCode: 400, headers: cors, body: JSON.stringify({ ok: false, error: 'No recipients resolved (user not linked to LINE?)' }) };
 
     const pushAll = async (msg: any) => {
       for (const id of recipients) {
@@ -160,7 +165,7 @@ export const handler: Handler = async (event) => {
 
     if (kind === 'text') {
       await pushAll(textMsg(body.message || 'お知らせです') as any);
-      return { statusCode: 200, headers: cors, body: '{"ok":true}' };
+      return { statusCode: 200, headers: cors, body: JSON.stringify({ ok: true }) };
     }
 
     if (kind === 'reservation') {
@@ -172,13 +177,13 @@ export const handler: Handler = async (event) => {
         note: body.note
       });
       await pushAll(msg as any);
-      return { statusCode: 200, headers: cors, body: '{"ok":true}' };
+      return { statusCode: 200, headers: cors, body: JSON.stringify({ ok: true }) };
     }
 
     if (kind === 'badge_approved') {
       const msg = badgeApprovedFlex(body.dogName ?? 'わんちゃん', body.expires);
       await pushAll(msg as any);
-      return { statusCode: 200, headers: cors, body: '{"ok":true}' };
+      return { statusCode: 200, headers: cors, body: JSON.stringify({ ok: true }) };
     }
 
     if (kind === 'alert') {
@@ -189,13 +194,14 @@ export const handler: Handler = async (event) => {
       for (const id of recipients) {
         await lineClient.pushMessage(id, msgs as any);
       }
-      return { statusCode: 200, headers: cors, body: '{"ok":true}' };
+      return { statusCode: 200, headers: cors, body: JSON.stringify({ ok: true }) };
     }
 
-    return { statusCode: 400, headers: cors, body: 'Unknown "kind"' };
+    return { statusCode: 400, headers: cors, body: JSON.stringify({ ok: false, error: 'Unknown kind' }) };
   } catch (e) {
     console.error(e);
-    return { statusCode: 500, headers: cors, body: '{"ok":false}' };
+    const msg = e instanceof Error ? e.message : String(e);
+    return { statusCode: 500, headers: cors, body: JSON.stringify({ ok: false, error: msg }) };
   }
 };
 
