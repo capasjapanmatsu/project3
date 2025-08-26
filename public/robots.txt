@@ -1,3 +1,6 @@
+User-agent: *
+Allow: /
+Sitemap: https://dogparkjp.com/sitemap.xml
 # Allow all crawlers
 User-agent: *
 Allow: /
