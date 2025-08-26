@@ -125,22 +125,7 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Contact Section - Full Width */}
-        <div className="border-t border-gray-700 pt-8 mb-8">
-          <h3 className="text-lg font-semibold mb-4">お問い合わせ</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-start">
-              <Mail className="w-5 h-5 text-gray-400 mr-2 mt-0.5" />
-              <span className="text-gray-400">info@dogparkjp.com</span>
-            </div>
-            <div className="flex items-start">
-              <MapPin className="w-5 h-5 text-gray-400 mr-2 mt-0.5" />
-              <span className="text-gray-400">
-                〒861-0563 熊本県山鹿市鹿央町千田１７１８－１３ 株式会社ＣＡＰＡＳ
-              </span>
-            </div>
-          </div>
-        </div>
+        
         
         <hr className="border-gray-700 my-8" />
         
