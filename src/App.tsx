@@ -128,6 +128,7 @@ const InviteUnlock = React.lazy(() => import('./pages/InviteUnlock'));
 // その他のページ
 const TermsOfService = React.lazy(() => import('./pages/TermsOfService').then(module => ({ default: module.TermsOfService })));
 const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy').then(module => ({ default: module.PrivacyPolicy })));
+const BusinessInformation = React.lazy(() => import('./pages/BusinessInformation').then(module => ({ default: module.BusinessInformation })));
 const SponsorApplication = React.lazy(() => import('./pages/SponsorApplication').then(module => ({ default: module.SponsorApplication })));
 const SponsorInquiry = React.lazy(() => import('./pages/SponsorInquiry'));
 const NotFound = React.lazy(() => import('./pages/NotFound').then(module => ({ default: module.NotFound })));
@@ -248,6 +249,7 @@ const App: React.FC = () => {
       '/about',
       '/terms',
       '/privacy',
+      '/business-information',
       '/parks',
       '/facilities',
       '/products',
@@ -464,6 +466,11 @@ const App: React.FC = () => {
               <Route path="/privacy" element={
                 <Suspense fallback={<PageSkeleton />}>
                   <PrivacyPolicy />
+                </Suspense>
+              } />
+              <Route path="/business-information" element={
+                <Suspense fallback={<PageSkeleton />}>
+                  <BusinessInformation />
                 </Suspense>
               } />
               <Route path="/sponsor-inquiry" element={
