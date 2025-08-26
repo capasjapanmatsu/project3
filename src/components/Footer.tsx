@@ -149,7 +149,7 @@ export function Footer() {
             &copy; {currentYear} ドッグパークJP. All rights reserved.
           </p>
           <div className="flex space-x-6">
-            <Link to="/privacy-policy" className="text-gray-400 hover:text-white transition-colors text-sm">
+            <Link to="/privacy" className="text-gray-400 hover:text-white transition-colors text-sm">
               プライバシーポリシー
             </Link>
             <Link to="/terms" className="text-gray-400 hover:text-white transition-colors text-sm">
