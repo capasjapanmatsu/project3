@@ -5,9 +5,10 @@
 
 create or replace function public.fn_is_active_subscription(p_user uuid, p_at timestamptz)
 returns boolean language sql stable as $$
+  -- NOTE: customer_id が存在しない環境に合わせ、user_id のみで判定
   select exists (
     select 1 from stripe_user_subscriptions s
-    where (s.user_id = p_user or s.customer_id = p_user::text)
+    where s.user_id = p_user
       and s.status = 'active'
       and (p_at between to_timestamp(s.current_period_start) and to_timestamp(s.current_period_end))
   );
