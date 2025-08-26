@@ -1,7 +1,7 @@
-import { motion } from 'framer-motion';
+// framer-motionを外して初期TBTを削減。CSSトランジションで代替
 import { Loader } from 'lucide-react';
 import { ReactNode } from 'react';
-import { buttonVariants } from '../utils/animations';
+// import { buttonVariants } from '../utils/animations';
 import { triggerHapticFeedback } from '../utils/hapticFeedback';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'outline' | 'ghost';
@@ -169,19 +169,15 @@ const Button = ({
   );
 
   return (
-    <motion.button
+    <button
       className={buttonClasses}
       onClick={handleClick}
       disabled={disabled || isLoading}
       type={type}
-      variants={buttonVariants}
-      initial="initial"
-      whileHover={!disabled && !isLoading ? "hover" : "initial"}
-      whileTap={!disabled && !isLoading ? "tap" : "initial"}
-      {...(props as any)} // 型安全性を確保しつつMotion propsを受け入れ
+      {...(props as any)}
     >
       {isLoading ? loadingContent : normalContent}
-    </motion.button>
+    </button>
   );
 };
 
