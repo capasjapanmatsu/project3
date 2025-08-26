@@ -165,6 +165,18 @@ export const handler: Handler = async (event) => {
       }
     }
 
+    // 受信者IDの妥当性チェック（LINEのuserIdは"U"で始まる）
+    const looksLikeLineId = (id: string) => /^U[0-9a-zA-Z]+$/.test(id);
+    const invalid = recipients.filter(id => !looksLikeLineId(id));
+    if (invalid.length > 0) {
+      const testId = process.env.LINE_TEST_USER_ID;
+      if (testId) {
+        recipients = [testId];
+      } else {
+        return { statusCode: 400, headers: cors, body: JSON.stringify({ ok: false, error: `Invalid LINE userId(s): ${invalid.join(', ')}` }) };
+      }
+    }
+
     const pushAll = async (msg: any) => {
       for (const id of recipients) {
         await lineClient.pushMessage(id, msg);
@@ -206,9 +218,9 @@ export const handler: Handler = async (event) => {
     }
 
     return { statusCode: 400, headers: cors, body: JSON.stringify({ ok: false, error: 'Unknown kind' }) };
-  } catch (e) {
+  } catch (e: any) {
     console.error(e);
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = e?.response?.data || e?.message || String(e);
     return { statusCode: 500, headers: cors, body: JSON.stringify({ ok: false, error: msg }) };
   }
 };
