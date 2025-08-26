@@ -18,10 +18,25 @@
   <link rel="dns-prefetch" href="https://supabase.co" />
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
   
-  <!-- 🎨 重要なページのprefetch（ユーザーが次に訪問する可能性が高い）-->
-  <link rel="prefetch" href="/login" />
-  <link rel="prefetch" href="/parks" />
-  <link rel="prefetch" href="/dashboard" />
+  <!-- 🎨 重要ページのprefetchは初期描画後に遅延実行（初期負荷軽減） -->
+  <script>
+    (function(){
+      const schedule = () => {
+        const urls = ['/login','/parks','/dashboard'];
+        urls.forEach((u) => {
+          const l = document.createElement('link');
+          l.rel = 'prefetch';
+          l.href = u;
+          document.head.appendChild(l);
+        });
+      };
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(schedule);
+      } else {
+        window.addEventListener('load', () => setTimeout(schedule, 1500));
+      }
+    })();
+  </script>
   
   <!-- Critical CSS for above-the-fold content -->
   <style>
@@ -108,6 +123,8 @@
   
   <link rel="manifest" href="/manifest.json" />
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <!-- 非クリティカル画像の遅延読み込みを明示 -->
+  <link rel="preload" as="image" href="/icons/icon_android_144x144.png" imagesrcset="/icons/icon_android_144x144.png 1x" fetchpriority="low">
   
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
@@ -137,6 +154,25 @@
     </div>
   </div>
   <div id="modal-root"></div>
+  
+  <!-- すべてのimgへ lazy/async decoding をデフォルト適用（安全） -->
+  <script>
+    (function(){
+      const applyImgHints = () => {
+        document.querySelectorAll('img').forEach((img) => {
+          if (!img.hasAttribute('loading')) img.setAttribute('loading','lazy');
+          if (!img.hasAttribute('decoding')) img.setAttribute('decoding','async');
+          img.fetchPriority = 'low';
+        });
+      };
+      new MutationObserver(applyImgHints).observe(document.documentElement,{subtree:true,childList:true});
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyImgHints);
+      } else {
+        applyImgHints();
+      }
+    })();
+  </script>
   
   <!-- PWA インストール用の隠しボタン -->
   <button 
