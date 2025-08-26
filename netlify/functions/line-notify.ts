@@ -155,7 +155,15 @@ export const handler: Handler = async (event) => {
         }
       }
     }
-    if (recipients.length === 0) return { statusCode: 400, headers: cors, body: JSON.stringify({ ok: false, error: 'No recipients resolved (user not linked to LINE?)' }) };
+    // 開発用フォールバック: 受信者解決に失敗したらテストユーザーへ送信
+    if (recipients.length === 0) {
+      const testId = process.env.LINE_TEST_USER_ID;
+      if (testId) {
+        recipients = [testId];
+      } else {
+        return { statusCode: 400, headers: cors, body: JSON.stringify({ ok: false, error: 'No recipients resolved (user not linked to LINE?)' }) };
+      }
+    }
 
     const pushAll = async (msg: any) => {
       for (const id of recipients) {
