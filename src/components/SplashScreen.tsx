@@ -9,7 +9,7 @@ interface SplashScreenProps {
 }
 
 const MIN_SPLASH_MS = 3500; // 最低表示 3.5秒
-const PREFETCH_CONCURRENCY = 4; // 同時ロード数
+const PREFETCH_CONCURRENCY = 1; // 同時ロード数を最小にして初期TBTを抑制
 
 // 汎用: 画像のプリロード
 const preloadImage = (src: string) => new Promise<void>((resolve) => {
@@ -232,30 +232,15 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     const preloadResources = async () => {
       if (!isMounted) return;
 
-      // 主要ページ・よく使うページ（優先）
-      const routeTasks: { name: string; loader: () => Promise<unknown> }[] = [
+      // 主要ページの事前読み込みは本番では実施しない（Lighthouse/TBT抑制）
+      const routeTasks: { name: string; loader: () => Promise<unknown> }[] = import.meta.env.DEV ? [
         { name: 'Home', loader: () => import('../pages/Home') },
-        { name: 'DogParkList', loader: () => import('../pages/DogParkList') },
-        { name: 'DogParkDetail', loader: () => import('../pages/DogParkDetail') },
-        { name: 'UserDashboard', loader: () => import('../pages/UserDashboard') },
-        { name: 'ParkManagement', loader: () => import('../pages/ParkManagement') },
-        { name: 'ParkReservation', loader: () => import('../pages/ParkReservation') },
-        { name: 'JPPassport', loader: () => import('../pages/JPPassport') },
-        { name: 'SubscriptionIntro', loader: () => import('../pages/SubscriptionIntro') },
-        { name: 'Contact', loader: () => import('../pages/Contact') },
-        { name: 'PrivacyPolicy', loader: () => import('../pages/PrivacyPolicy') },
-        { name: 'TermsOfService', loader: () => import('../pages/TermsOfService') },
-        { name: 'AdminDashboard', loader: () => import('../pages/AdminDashboard') },
-      ];
+      ] : [];
 
       // 共通コンポーネント
-      const componentTasks: { name: string; loader: () => Promise<unknown> }[] = [
+      const componentTasks: { name: string; loader: () => Promise<unknown> }[] = import.meta.env.DEV ? [
         { name: 'Navbar', loader: () => import('../components/Navbar') },
-        { name: 'Footer', loader: () => import('../components/Footer') },
-        { name: 'BottomNavigation', loader: () => import('../components/BottomNavigation') },
-        { name: 'GoogleMapsProvider', loader: () => import('../components/GoogleMapsProvider') },
-        { name: 'DogParkCard', loader: () => import('../components/park/DogParkCard') },
-      ];
+      ] : [];
 
       // 画像・アイコン
       const imageTasks: { name: string; loader: () => Promise<unknown> }[] = [
@@ -267,7 +252,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       ];
 
       // 事前にprefetchリンク（ブラウザに任せる）
-      ['/login', '/parks', '/dashboard', '/community', '/news'].forEach((p) => prefetchLink(p));
+      ['/login'].forEach((p) => prefetchLink(p));
 
       const tasks = [...routeTasks, ...componentTasks, ...imageTasks];
       setLoadingTasks(tasks.map((t) => t.name));
