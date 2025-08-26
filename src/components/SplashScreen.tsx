@@ -376,7 +376,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       />
       
       <style>
-        {`@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@300;400;500;700;900&display=swap');
+        {`
         
         @keyframes logoSlideIn {
           0% {
