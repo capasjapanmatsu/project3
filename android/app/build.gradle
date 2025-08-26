@@ -20,6 +20,19 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // Sign if keystore is present
+            if (System.getenv('ANDROID_KEYSTORE_PATH') || file('../../keystores/release.keystore').exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    signingConfigs {
+        release {
+            storeFile System.getenv('ANDROID_KEYSTORE_PATH') ? file(System.getenv('ANDROID_KEYSTORE_PATH')) : file('../../keystores/release.keystore')
+            storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: 'CHANGE_ME'
+            keyAlias System.getenv('ANDROID_KEY_ALIAS') ?: 'dogparkjp'
+            keyPassword System.getenv('ANDROID_KEY_ALIAS_PASSWORD') ?: 'CHANGE_ME'
         }
     }
 }

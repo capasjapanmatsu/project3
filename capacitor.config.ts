@@ -54,10 +54,10 @@ const config: CapacitorConfig = {
   },
   android: {
     buildOptions: {
-      keystorePath: 'undefined',
-      keystorePassword: 'undefined',
-      keystoreAlias: 'undefined',
-      keystoreAliasPassword: 'undefined',
+      keystorePath: process.env.ANDROID_KEYSTORE_PATH || 'android/keystores/release.keystore',
+      keystorePassword: process.env.ANDROID_KEYSTORE_PASSWORD || 'CHANGE_ME',
+      keystoreAlias: process.env.ANDROID_KEY_ALIAS || 'dogparkjp',
+      keystoreAliasPassword: process.env.ANDROID_KEY_ALIAS_PASSWORD || 'CHANGE_ME',
       releaseType: 'AAB'
     },
     permissions: [
