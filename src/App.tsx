@@ -287,7 +287,6 @@ const App: React.FC = () => {
       
       {/* メインアプリケーション */}
       {!showSplash && (
-        <GoogleMapsProvider>
           <MaintenanceProvider>
             <Layout>
               <ScrollToTop />
@@ -839,7 +838,6 @@ const App: React.FC = () => {
               </Routes>
             </Layout>
           </MaintenanceProvider>
-        </GoogleMapsProvider>
       )}
     </>
   );
