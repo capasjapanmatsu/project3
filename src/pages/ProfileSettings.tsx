@@ -791,49 +791,7 @@ export function ProfileSettings() {
           </Button>
         </div>
 
-        {/* テスト送信 */}
-        <div className="mt-3 flex items-center justify-end gap-3">
-          {testResult && <span className="text-sm text-green-700">{testResult}</span>}
-          <Button
-            variant="secondary"
-            onClick={async () => {
-              try {
-                setTestResult('');
-                setTestSending(true);
-                const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
-                if (!uid) throw new Error('ユーザー情報が取得できません');
-                const envBase = (import.meta.env.VITE_PUBLIC_BASE_URL as string) || '';
-                const useProd = /^https?:\/\//i.test(envBase);
-                const base = useProd ? envBase : '';
-                const resp = await fetch(`${base}/.netlify/functions/line-notify`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    userId: uid,
-                    kind: 'alert',
-                    title: 'テスト通知',
-                    message: '通知とLINE連携のテストです。コミュニティを開いてご確認ください。',
-                    linkUrl: `${useProd ? base : 'http://localhost:3000'}/community`,
-                  }),
-                });
-                if (!resp.ok) {
-                  const txt = await resp.text();
-                  throw new Error(`LINE通知に失敗しました: ${txt}`);
-                }
-                setTestResult('テスト通知を送信しました');
-              } catch (e) {
-                setError(e instanceof Error ? e.message : 'テスト通知の送信に失敗しました');
-                setTimeout(() => setError(''), 3000);
-              } finally {
-                setTestSending(false);
-              }
-            }}
-            isLoading={testSending}
-            disabled={!(lineLinked || linked === true || hasLineSession) || !notifyOptIn}
-          >
-            テスト送信
-          </Button>
-        </div>
+        {/* テスト送信は要望により非表示化 */}
       </Card>
 
       <Card className="p-6">
