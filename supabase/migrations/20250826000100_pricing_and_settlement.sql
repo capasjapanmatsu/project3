@@ -9,7 +9,6 @@ returns boolean language sql stable as $$
   select exists (
     select 1 from stripe_user_subscriptions s
     where s.user_id = p_user
-      and s.status = 'active'
       and (p_at between to_timestamp(s.current_period_start) and to_timestamp(s.current_period_end))
   );
 $$;
