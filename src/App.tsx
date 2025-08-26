@@ -386,7 +386,7 @@ const App: React.FC = () => {
                   <News />
                 </Suspense>
               } />
-              <Route path="/news/:id" element={
+              <Route path="/news/:newsId" element={
                 <Suspense fallback={<PageSkeleton />}>
                   <NewsDetail />
                 </Suspense>
