@@ -1,0 +1,14 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.dogparkjp.app",
+      "sha256_cert_fingerprints": [
+        "98:5D:5F:B5:14:75:06:73:01:A8:D2:9F:53:5A:2B:2E:32:23:5E:09:42:54:D6:CB:D6:B5:CF:BB:BC:13:4A:15"
+      ]
+    }
+  }
+]
+
+

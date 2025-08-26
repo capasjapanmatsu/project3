@@ -6,21 +6,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <!-- 🚀 重要リソースのpreload（最優先）-->
-  <link rel="preload" href="/favicon.svg" as="image" />
+  <link rel="preload" href="/favicon.svg" as="image" />
+  
   
   <!-- 🎯 フォント最適化 -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Google Fonts を非ブロッキングで読み込み（display=swap） -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;600;700&display=swap" onload="this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;600;700&display=swap" />
+  </noscript>
   
   <!-- 📡 外部API最適化 -->
   <link rel="preconnect" href="https://maps.googleapis.com" />
   <link rel="dns-prefetch" href="https://supabase.co" />
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
   
-  <!-- 🎨 重要なページのprefetch（ユーザーが次に訪問する可能性が高い）-->
-  <link rel="prefetch" href="/login" />
-  <link rel="prefetch" href="/parks" />
-  <link rel="prefetch" href="/dashboard" />
+  <!-- 🎨 重要ページのprefetchは初期描画後に遅延実行（初期負荷軽減） -->
+  <script>
+    (function(){
+      const schedule = () => {
+        const urls = ['/login','/parks','/dashboard'];
+        urls.forEach((u) => {
+          const l = document.createElement('link');
+          l.rel = 'prefetch';
+          l.href = u;
+          document.head.appendChild(l);
+        });
+      };
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(schedule);
+      } else {
+        window.addEventListener('load', () => setTimeout(schedule, 1500));
+      }
+    })();
+  </script>
   
   <!-- Critical CSS for above-the-fold content -->
   <style>
@@ -52,6 +73,9 @@
     .lazy-content{opacity:0;transform:translateY(20px);transition:opacity 0.3s ease,transform 0.3s ease}
     .lazy-content.loaded{opacity:1;transform:translateY(0)}
   </style>
+  
+  <!-- LCP想定のヒーロー画像を先読み（Landing用） -->
+  <link rel="preload" as="image" href="/images/splash-dog-running.webp" imagesrcset="/images/splash-dog-running.webp 1x" fetchpriority="high">
   
   <meta name="description" content="愛犬とのお散歩をもっと楽しく。全国のドッグランを簡単に検索・予約できるサービスです。" />
   <meta name="theme-color" content="#3B82F6" />
@@ -107,6 +131,8 @@
   
   <link rel="manifest" href="/manifest.json" />
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <!-- 非クリティカル画像の遅延読み込みを明示 -->
+  <link rel="preload" as="image" href="/icons/icon_android_144x144.png" imagesrcset="/icons/icon_android_144x144.png 1x" fetchpriority="low">
   
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
@@ -123,14 +149,8 @@
   <meta name="twitter:image" content="https://dogparkjp.com/og-image.jpg" />
   
   <title>DogPark JP - 愛犬と楽しむドッグラン検索・予約サイト</title>
-  <script type="module" crossorigin src="/assets/js/index-C8-ZovGr.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/js/react-vendor-cniURDpR.js">
-  <link rel="modulepreload" crossorigin href="/assets/js/motion-CuO0nkIV.js">
-  <link rel="modulepreload" crossorigin href="/assets/js/heavy-features-BIdEME4r.js">
-  <link rel="modulepreload" crossorigin href="/assets/js/router-CiK0M--J.js">
-  <link rel="modulepreload" crossorigin href="/assets/js/supabase-DJQiR77k.js">
-  <link rel="modulepreload" crossorigin href="/assets/js/ui-basic-DtvVsAeD.js">
-  <link rel="stylesheet" crossorigin href="/assets/css/index-UodHnp91.css">
+  <script type="module" crossorigin src="/assets/js/index-DcAUXhuw.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/css/index-zjdDj_dm.css">
 </head>
 <body>
   <a href="#main-content" id="skip-to-content">コンテンツにスキップ</a>
@@ -144,6 +164,25 @@
     </div>
   </div>
   <div id="modal-root"></div>
+  
+  <!-- すべてのimgへ lazy/async decoding をデフォルト適用（安全） -->
+  <script>
+    (function(){
+      const applyImgHints = () => {
+        document.querySelectorAll('img').forEach((img) => {
+          if (!img.hasAttribute('loading')) img.setAttribute('loading','lazy');
+          if (!img.hasAttribute('decoding')) img.setAttribute('decoding','async');
+          img.fetchPriority = 'low';
+        });
+      };
+      new MutationObserver(applyImgHints).observe(document.documentElement,{subtree:true,childList:true});
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyImgHints);
+      } else {
+        applyImgHints();
+      }
+    })();
+  </script>
   
   <!-- PWA インストール用の隠しボタン -->
   <button 

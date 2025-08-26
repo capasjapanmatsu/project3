@@ -39,6 +39,26 @@ export function DogRegistration() {
     comboExpiryDate: '',
   });
 
+  // 犬種リスト: 漢字優先 → 五十音順、最後に「ミックス犬（雑種）」「その他」
+  const breedOptionsSorted = (() => {
+    const specialRank = new Map<string, number>([
+      ['ミックス犬（雑種）', 1],
+      ['その他', 2],
+    ]);
+    const collator = new Intl.Collator('ja', { sensitivity: 'base', usage: 'sort', numeric: true });
+    const hasKanji = (s: string) => /[\u4E00-\u9FFF]/.test(s);
+    const unique = Array.from(new Set(dogBreeds));
+    return unique.sort((a, b) => {
+      const ar = specialRank.get(a) || 0;
+      const br = specialRank.get(b) || 0;
+      if (ar !== 0 || br !== 0) return ar - br; // ラスト固定
+      const ak = hasKanji(a) ? 0 : 1;
+      const bk = hasKanji(b) ? 0 : 1;
+      if (ak !== bk) return ak - bk; // 漢字優先
+      return collator.compare(a, b); // 五十音順
+    });
+  })();
+
   // 年のオプション（現在年から20年前まで）
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 21 }, (_, i) => {
@@ -371,7 +391,7 @@ export function DogRegistration() {
                     onChange={(e) => setFormData(prev => ({ ...prev, breed: e.target.value }))}
                     options={[
                       { value: '', label: '犬種を選択してください' },
-                      ...dogBreeds.map(breed => ({ value: breed, label: breed }))
+                      ...breedOptionsSorted.map(breed => ({ value: breed, label: breed }))
                     ]}
                     required
                   />

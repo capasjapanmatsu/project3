@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DogParkJP ログイン</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto; padding: 24px; }
+    .card { max-width: 560px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px; }
+    .ok { color:#16a34a } .err{ color:#dc2626 }
+    pre { background:#f7fafc; padding:12px; border-radius:8px; overflow:auto }
+    button { padding:10px 16px; border:0; border-radius:8px; background:#2563eb; color:#fff; cursor:pointer }
+  </style>
+  <!-- NOTE: {{LIFF_ID}} は動作確認時に実値へ置き換えてください。将来的にビルド時注入でも可 -->
+</head>
+<body>
+  <div class="card">
+    <h1>DogParkJP ログイン</h1>
+    <p>LINEの同意後、自動でログイン検証を行います。</p>
+    <p id="status">初期化中…</p>
+    <div id="result"></div>
+    <p><button id="retry" style="display:none">もう一度試す</button></p>
+  </div>
+
+  <script>
+    // ★ LIFF_ID の決め方
+    // 1) URLクエリ ?liffId=XXXX を優先
+    // 2) それが無い場合は本番固定IDを使用
+    const params = new URL(location.href).searchParams;
+    const LIFF_ID = params.get('liffId') || "2007901083-yrjAg3Q5";
+
+    async function main() {
+      const $status = document.getElementById('status');
+      const $result = document.getElementById('result');
+      const $retry  = document.getElementById('retry');
+
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) {
+          liff.login({ scope: ['profile','openid'] });
+          return;
+        }
+
+        $status.textContent = "プロフィール取得中…";
+        const profile = await liff.getProfile();
+        try { sessionStorage.setItem('liff_display_name', profile.displayName || ''); } catch {}
+        const idToken = liff.getIDToken();
+
+        $status.textContent = "サーバーで検証中…";
+        // 新APIへ切替
+        const res = await fetch('/.netlify/functions/auth-session', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          // トークン期限切れなどの際は再ログインを要求
+          if (res.status === 401 && data && typeof data.error === 'string' && data.error.toLowerCase().includes('expired')) {
+            $status.textContent = 'トークン期限切れのため再ログインします…';
+            try { await liff.logout(); } catch {}
+            liff.login({ scope: ['profile','openid'], prompt: 'consent' });
+            return;
+          }
+          throw new Error(data.error || '検証に失敗しました');
+        }
+
+        // iOS/LINE WebView 対策：Cookie反映待ち
+        await new Promise(r => setTimeout(r, 0));
+        $status.innerHTML = '<span class="ok">ログイン成功！</span>';
+        $result.innerHTML = `
+          <p>ようこそ、${profile.displayName} さん。</p>
+          <pre>${JSON.stringify({ lineUserId: profile.userId, verified: data.user }, null, 2)}</pre>
+        `;
+        // スプラッシュを一度だけスキップするフラグ
+        try { localStorage.setItem('skipSplashOnce', '1'); } catch {}
+        // 成功: リダイレクト先（?redirect=/profile-settings 等）へ
+        const redirect = params.get('redirect') || '/dashboard';
+        location.assign(redirect);
+      } catch (err) {
+        console.error(err);
+        $status.innerHTML = '<span class="err">エラー: ' + err.message + '</span>';
+        $retry.style.display = 'inline-block';
+        $retry.onclick = async () => {
+          try { await liff.logout(); } catch {}
+          location.reload();
+        };
+      }
+    }
+
+    main();
+  </script>
+</body>
+</html>
+
+

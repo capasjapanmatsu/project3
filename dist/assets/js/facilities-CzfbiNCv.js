@@ -1,0 +1,1 @@
+const e="dog_park",t="pet_friendly_restaurant",_="pet_friendly_hotel",p="pet_shop",r="pet_salon",n="pet_hotel",o="veterinary_clinic",a={[e]:"ドッグラン",[t]:"ペット同伴可能店舗",[_]:"ペット同伴可能宿泊施設",[p]:"ペットショップ",[r]:"ペットサロン",[n]:"ペットホテル",[o]:"動物病院"};export{a as F};

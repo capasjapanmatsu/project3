@@ -1,1 +1,11 @@
+ /liff/login /liff/login/index.html 200!
+ /login /liff/login/index.html 200!
+ /line/notify /.netlify/functions/line-notify 200!
+ /auth/session /.netlify/functions/auth-session 200!
+ /auth/me /.netlify/functions/auth-me 200!
+ /auth/logout /.netlify/functions/auth-logout 200!
+ /line/link-user /.netlify/functions/line-link-user 200!
+ /line/unlink-user /.netlify/functions/line-unlink-user 200!
+ /line/exchange-supabase-session /.netlify/functions/line-exchange-supabase-session 200!
+ /functions/v1/convert-to-webp /.netlify/functions/convert-to-webp-proxy 200!
 /* /index.html 200
