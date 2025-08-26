@@ -5,6 +5,9 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
+  <!-- Google AdSense Site Verification -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8201385960519217" crossorigin="anonymous"></script>
+  
   <!-- 🚀 重要リソースのpreload（最優先）-->
   <link rel="preload" href="/favicon.svg" as="image" />
   
@@ -83,13 +86,13 @@
   <!-- Content Security Policy -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://maps.googleapis.com;
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://maps.googleapis.com https://pagead2.googlesyndication.com;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com data: blob:;
     style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com data: blob:;
     font-src 'self' https://fonts.gstatic.com data: blob:;
     img-src 'self' data: https: blob:;
-    connect-src 'self' https: wss: ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:* https://api.stripe.com https://*.supabase.co https://maps.googleapis.com;
-    frame-src https://js.stripe.com https://hooks.stripe.com;
+    connect-src 'self' https: wss: ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:* https://api.stripe.com https://*.supabase.co https://maps.googleapis.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net;
+    frame-src https://js.stripe.com https://hooks.stripe.com https://googleads.g.doubleclick.net;
     object-src 'none';
     base-uri 'self';
     form-action 'self';
