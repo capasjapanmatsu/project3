@@ -1183,7 +1183,7 @@ export function Community() {
                             if (!user?.id) return;
                             setShareOpen(true);
                             setShareLoading(true);
-                            // 当日以降の貸し切り確定予約を取得
+                            // 当日以降の貸し切り確定予約を取得（終了時刻が現在より後のもののみ表示）
                             const { data: rows } = await supabase
                               .from('reservations')
                               .select('id, park_id, date, start_time, duration, reservation_type')
@@ -1199,9 +1199,20 @@ export function Community() {
                               const { data: parks } = await supabase.from('dog_parks').select('id,name').in('id', parkIds);
                               (parks||[]).forEach(p => { names[p.id as any] = (p.name as any) || 'ドッグラン'; });
                             }
+                            const now = new Date();
                             const normalized = list.map(r => ({ id: r.id as any, park_id: r.park_id as any, park_name: names[r.park_id as any] || 'ドッグラン', date: String(r.date), start_time: r.start_time as any, duration: Number(r.duration || 1) }));
-                            setReservationsForShare(normalized);
-                            if (normalized[0]) setSelectedReservationId(normalized[0].id);
+                            // 終了時刻が過去の予約は除外
+                            const upcoming = normalized.filter(r => {
+                              const parts = String(r.start_time).split(':');
+                              const hh = parseInt(parts[0] || '0', 10) || 0;
+                              const mm = parseInt(parts[1] || '0', 10) || 0;
+                              const ymd = String(r.date).split('-').map(n => parseInt(n, 10));
+                              const start = new Date(ymd[0], (ymd[1]||1)-1, ymd[2]||1, hh, mm, 0);
+                              const end = new Date(start.getTime() + (Math.max(1, r.duration) * 60 * 60 * 1000));
+                              return end.getTime() > now.getTime();
+                            });
+                            setReservationsForShare(upcoming);
+                            if (upcoming[0]) setSelectedReservationId(upcoming[0].id);
                             setShareComment('');
                           } finally {
                             setShareLoading(false);
