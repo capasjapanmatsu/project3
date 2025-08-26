@@ -412,6 +412,21 @@ export function Community() {
       
       if (error) throw error;
       
+      // 相手に通知（承認のみ）
+      if (accept) {
+        try {
+          // 承認対象のリクエストから申請者IDを取得
+          const { data: req } = await supabase
+            .from('friend_requests')
+            .select('from_user_id')
+            .eq('id', requestId)
+            .maybeSingle();
+          if (req?.from_user_id) {
+            await notifyFriendApproved(req.from_user_id);
+          }
+        } catch {}
+      }
+
       // 友達リクエスト一覧を更新
       await fetchFriendRequests();
       
@@ -524,6 +539,20 @@ export function Community() {
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
+  };
+
+  // 通知タブ: 通知を作成する箇所（例：友達申請承認時の相手側へ通知）にLINE連携も併送
+  const notifyFriendApproved = async (targetUserId: string) => {
+    try {
+      const { notifyAppAndLine } = await import('../utils/notify');
+      await notifyAppAndLine({
+        userId: targetUserId,
+        title: '友達申請が承認されました',
+        message: 'コミュニティでメッセージを送ってみましょう',
+        linkUrl: `${window.location.origin}/community`,
+        kind: 'alert'
+      });
+    } catch {}
   };
 
   const getNotificationIcon = (type: string) => {

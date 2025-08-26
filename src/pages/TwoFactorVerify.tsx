@@ -1,4 +1,43 @@
 import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import Button from '../components/Button';
+import Input from '../components/Input';
+import { supabase } from '../utils/supabase';
+
+export default function TwoFactorVerify() {
+  const [sp] = useSearchParams();
+  const factorId = sp.get('factorId') || '';
+  const [code, setCode] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleVerify = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      const verifyRes = await supabase.auth.mfa.verify({ factorId, code });
+      if (verifyRes.error) throw verifyRes.error;
+      // 完了後はプロフィールへ
+      navigate('/profile-settings');
+    } catch (e: any) {
+      setError(e.message || '認証に失敗しました');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto p-8">
+      <h2 className="text-xl font-semibold mb-4">2ファクタ認証コードの入力</h2>
+      <Input label="6桁コード" value={code} onChange={(e)=> setCode(e.target.value)} placeholder="123456" />
+      {error && <div className="mt-2 text-sm text-red-600">{error}</div>}
+      <Button onClick={handleVerify} isLoading={isLoading} className="mt-3 w-full">送信</Button>
+    </div>
+  );
+}
+
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabase';
 import Button from '../components/Button';
