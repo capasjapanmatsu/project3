@@ -1,4 +1,4 @@
-import { Plus, Shield } from 'lucide-react';
+import { Dog as DogIcon, Plus, Shield } from 'lucide-react';
 import React from 'react';
 import { Area } from 'react-easy-crop';
 import { Link } from 'react-router-dom';
@@ -84,7 +84,7 @@ export const DogManagementSection: React.FC<DogManagementSectionProps> = ({
     <Card className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-          <span className="mr-2">🐕</span>
+          <DogIcon className="w-5 h-5 mr-2 text-gray-700" />
           登録済みの愛犬
         </h2>
         <div className="flex space-x-3">
@@ -109,7 +109,7 @@ export const DogManagementSection: React.FC<DogManagementSectionProps> = ({
 
       {dogs.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
-          <div className="text-6xl mb-4">🐕</div>
+          <DogIcon className="w-16 h-16 mx-auto mb-4 text-gray-400" />
           <p className="text-lg font-medium mb-2">まだ愛犬が登録されていません</p>
           <p className="text-sm mb-4">
             ドッグランを利用するために、愛犬の情報を登録してください
