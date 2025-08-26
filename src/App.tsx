@@ -8,8 +8,8 @@ import { fetchSessionUser } from './utils/sessionClient';
 
 // レイアウトコンポーネント
 import { BottomNavigation } from './components/BottomNavigation';
-import CampaignModal from './components/CampaignModal';
-import FloatingActionButton from './components/FloatingActionButton';
+const CampaignModal = React.lazy(() => import('./components/CampaignModal'));
+const FloatingActionButton = React.lazy(() => import('./components/FloatingActionButton'));
 import { Footer } from './components/Footer';
 import { GoogleMapsProvider } from './components/GoogleMapsProvider';
 import { DashboardSkeleton, PageSkeleton, ShopSkeleton } from './components/LoadingStates';
@@ -207,8 +207,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <Footer />
           <BottomNavigation />
           
-          {/* フローティングアクションボタン */}
-          <FloatingActionButton />
+          {/* フローティングアクションボタン（遅延読込） */}
+          <Suspense fallback={null}>
+            <FloatingActionButton />
+          </Suspense>
         </div>
     </HelmetProvider>
   );
@@ -289,10 +291,12 @@ const App: React.FC = () => {
           <MaintenanceProvider>
             <Layout>
               <ScrollToTop />
-              <CampaignModal 
-                isOpen={showCampaignModal} 
-                onClose={handleCampaignModalClose} 
-              />
+              <Suspense fallback={null}>
+                <CampaignModal 
+                  isOpen={showCampaignModal} 
+                  onClose={handleCampaignModalClose} 
+                />
+              </Suspense>
               <Routes>
               {/* 🏠 公開ページ（高速表示） */}
               <Route path="/" element={

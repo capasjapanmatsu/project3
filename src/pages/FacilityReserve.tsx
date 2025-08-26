@@ -171,11 +171,7 @@ export default function FacilityReserve() {
         }).select().maybeSingle();
         // オーナーにも通知
         if (enabledMsg) {
-          const { data: facOwner } = await supabase.from('pet_facilities').select('owner_id').eq('id', facilityId).maybeSingle();
-          if (facOwner?.owner_id) {
-            const { notifyAppAndLine } = await import('../utils/notify');
-            await notifyAppAndLine({ userId: facOwner.owner_id, title: '予約チャットにメッセージ', message: initialMessage.slice(0,50), linkUrl: `${window.location.origin}/community`, kind: 'alert' });
-          }
+          // LINE重複を避けるため予約チャットの個別通知は送らない
         }
       } catch {}
       // 通知（アプリ内＋LINE）
@@ -183,12 +179,12 @@ export default function FacilityReserve() {
         const { notifyAppAndLine } = await import('../utils/notify');
         const linkUrlUser = `${window.location.origin}/my-reservations`;
         const seatText = seat ? `席:${seat}` : '座席:指定なし';
-        await notifyAppAndLine({ userId: user.id!, title: isAuto ? '予約確定' : '仮予約', message: `${customerName} 様 / ${date} ${start}-${end} / ${guestCount}名 / ${seatText}`, linkUrl: linkUrlUser, kind: 'reservation' });
+        await notifyAppAndLine({ userId: user.id!, title: 'ご予約を受け付けました。', message: `${date} ${start}-${end} / ${guestCount}名`, linkUrl: linkUrlUser, kind: 'alert', sendApp: false, sendLine: true });
         // オーナーにも通知
         const { data: facility } = await supabase.from('pet_facilities').select('id, owner_id, name').eq('id', facilityId).maybeSingle();
         if (facility?.owner_id) {
           const linkUrlOwner = `${window.location.origin}/facilities/${facilityId}/reservations`;
-          await notifyAppAndLine({ userId: facility.owner_id, title: '新規予約が入りました', message: `${customerName} 様 / ${facility.name} / ${date} ${start}-${end} / ${guestCount}名 / ${seatText}`, linkUrl: linkUrlOwner, kind: 'reservation' });
+          await notifyAppAndLine({ userId: facility.owner_id, title: '新規予約が入りました', message: `${customerName} 様 / ${facility.name} / ${date} ${start}-${end}`, linkUrl: linkUrlOwner, kind: 'alert', sendApp: false, sendLine: true });
           // オーナーにもアプリ内通知（コミュニティ通知）
           const ins = await supabase.from('notifications').insert({
             user_id: facility.owner_id,
@@ -203,18 +199,12 @@ export default function FacilityReserve() {
             await fetch('/.netlify/functions/app-notify', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: facility.owner_id, title: '新規予約が入りました', message: `${customerName} 様 / ${facility.name} / ${date} ${start}-${end} / ${guestCount}名 / ${seatText}`, linkUrl: linkUrlOwner, kind: 'reservation' })
+              body: JSON.stringify({ userId: facility.owner_id, title: '新規予約が入りました', message: `${customerName} 様 / ${facility.name} / ${date} ${start}-${end}`, linkUrl: linkUrlOwner, kind: 'alert' })
             });
           }
         }
         // コミュニティ通知（アプリ内の通知リストに残す）
-        await supabase.from('notifications').insert({
-          user_id: user.id,
-          title: isAuto ? '予約確定' : '仮予約',
-          message: `${customerName} 様 / ${date} ${start}-${end} / ${guestCount}名 / ${seatText}`,
-          link_url: linkUrlUser,
-          read: false
-        });
+        // アプリ内の控え通知は残さない
       } catch {}
       alert('予約が完了しました');
       navigate(`/facilities/${facilityId}`);
