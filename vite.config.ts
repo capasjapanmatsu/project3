@@ -8,6 +8,10 @@ const PERFORMANCE_THRESHOLD_MS = 500;
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // 现代ブラウザ想定で modulePreload ポリフィルを無効化（軽量化）
+  // https://vitejs.dev/config/shared-options.html#build-modulepreload
+  // build.modulePreload: false はVite5では top-level で指定
+  // 互換性のため experimental オプションは使わず、build.modulePreload を設定
   plugins: [
     react({
       // 開発時のランタイムエラー表示強化
@@ -51,6 +55,7 @@ export default defineConfig({
     },
   },
   build: {
+    modulePreload: false,
     target: 'es2020',
     cssCodeSplit: true,
     assetsDir: 'assets',
