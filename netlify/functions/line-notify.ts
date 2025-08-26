@@ -58,23 +58,28 @@ function flexReservation(params: {
 function textMsg(text: string) { return { type: 'text', text } as const; }
 
 function alertWithLink(title: string, message: string, linkUrl?: string) {
-  if (!linkUrl) return [textMsg(`【${title}】`), textMsg(message)] as const;
-  return [
-    textMsg(`【${title}】`),
-    {
-      type: 'flex',
-      altText: title,
-      contents: {
-        type: 'bubble',
-        body: { type: 'box', layout: 'vertical', spacing: 'sm', contents: [
-          { type: 'text', text: message, wrap: true }
-        ]},
-        footer: { type: 'box', layout: 'vertical', contents: [
-          { type: 'button', style: 'primary', action: { type: 'uri', label: 'アプリで開く', uri: linkUrl } }
-        ]}
-      }
-    } as any
-  ] as const;
+  // 1通だけ送る: タイトルだけのテキストは送らない
+  if (!linkUrl) {
+    return { type: 'text', text: `【${title}】\n${message}` } as const;
+  }
+  return {
+    type: 'flex',
+    altText: title,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [ { type: 'text', text: `【${title}】`, weight: 'bold' } ]
+      },
+      body: { type: 'box', layout: 'vertical', spacing: 'sm', contents: [
+        { type: 'text', text: message, wrap: true }
+      ]},
+      footer: { type: 'box', layout: 'vertical', contents: [
+        { type: 'button', style: 'primary', action: { type: 'uri', label: 'アプリで開く', uri: linkUrl } }
+      ]}
+    }
+  } as any;
 }
 
 function badgeApprovedFlex(dogName: string, expires?: string) {
