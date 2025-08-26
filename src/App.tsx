@@ -197,8 +197,8 @@ const SimplePage = ({ title, children }: { title: string; children: React.ReactN
 const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <HelmetProvider>
-      <GoogleMapsProvider>
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* GoogleMapsProvider はアプリ全体で一度だけラップ */}
+      <div className="min-h-screen bg-gray-50 flex flex-col">
           <SEO />
           <Navbar />
           <main className="flex-1">
@@ -210,7 +210,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           {/* フローティングアクションボタン */}
           <FloatingActionButton />
         </div>
-      </GoogleMapsProvider>
     </HelmetProvider>
   );
 };

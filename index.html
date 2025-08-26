@@ -69,6 +69,9 @@
     .lazy-content.loaded{opacity:1;transform:translateY(0)}
   </style>
   
+  <!-- LCP想定のヒーロー画像を先読み（Landing用） -->
+  <link rel="preload" as="image" href="/images/splash-dog-running.webp" imagesrcset="/images/splash-dog-running.webp 1x" fetchpriority="high">
+  
   <meta name="description" content="愛犬とのお散歩をもっと楽しく。全国のドッグランを簡単に検索・予約できるサービスです。" />
   <meta name="theme-color" content="#3B82F6" />
   

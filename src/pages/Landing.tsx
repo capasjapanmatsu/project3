@@ -92,6 +92,12 @@ export default function Landing() {
           alt="走るワンちゃん"
           className={`absolute inset-0 w-full h-full object-cover transition-transform duration-[2500ms] ${heroReady ? 'scale-100' : 'scale-110'}`}
           style={{ filter: 'brightness(0.7)' }}
+          loading="eager"
+          decoding="async"
+          fetchpriority="high"
+          width={1920}
+          height={1080}
+          sizes="100vw"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-transparent" />
         <div className={`relative z-10 container mx-auto px-4 text-center max-w-4xl transition-all duration-700 ${heroReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
@@ -289,6 +295,10 @@ export default function Landing() {
                   src="/images/facility-dogrun.webp"
                   alt="スマートドッグラン"
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  width={1280}
+                  height={720}
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=400&h=300&fit=crop&crop=center';
                   }}
@@ -311,6 +321,10 @@ export default function Landing() {
                   src="/images/facility-cafe.webp"
                   alt="ペット同伴カフェ"
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  width={1280}
+                  height={720}
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1581888227599-779811939961?w=400&h=300&fit=crop&crop=center';
                   }}
@@ -333,6 +347,10 @@ export default function Landing() {
                   src="/images/facility-hotel.webp"
                   alt="ペットホテル"
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  width={1280}
+                  height={720}
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=300&fit=crop&crop=center';
                   }}
@@ -355,6 +373,10 @@ export default function Landing() {
                   src="/images/facility-training.webp"
                   alt="ドッグトレーニング"
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  width={1280}
+                  height={720}
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop&crop=center';
                   }}
