@@ -162,34 +162,34 @@ async function safeReplyRich(
 }
 
 function buildMenuFlex(): any {
+  const imgPng = 'https://dogparkjp.com/icons/icon_android_192x192.png';
+  const makeBubble = (title: string, subtitle: string, uri: string): any => ({
+    type: 'bubble',
+    hero: { type: 'image', url: imgPng, size: 'full', aspectRatio: '1:1', aspectMode: 'cover', action: { type: 'uri', uri } },
+    body: {
+      type: 'box', layout: 'vertical', spacing: 'sm', contents: [
+        { type: 'text', text: title, weight: 'bold', size: 'lg', wrap: true },
+        { type: 'text', text: subtitle, size: 'sm', color: '#6b7280', wrap: true }
+      ]
+    },
+    footer: {
+      type: 'box', layout: 'vertical', contents: [
+        { type: 'button', style: 'primary', color: '#06C755', action: { type: 'uri', label: '開く', uri } }
+      ]
+    }
+  });
+
   return {
     type: 'flex',
     altText: 'メニュー',
     contents: {
-      type: 'bubble',
-      header: {
-        type: 'box',
-        layout: 'vertical',
-        contents: [{ type: 'text', text: 'ドッグパークJP', weight: 'bold', size: 'lg' }]
-      },
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'md',
-        contents: [
-          { type: 'text', text: 'メニューから選択してください', size: 'md', wrap: true },
-          {
-            type: 'box',
-            layout: 'vertical',
-            spacing: 'sm',
-            contents: [
-              button('ドッグランを探す', 'https://dogparkjp.com/parks'),
-              button('サポート', undefined, 'help'),
-              button('マイページ', 'https://dogparkjp.com/dashboard')
-            ]
-          }
-        ]
-      }
+      type: 'carousel',
+      contents: [
+        makeBubble('ドッグランを探す', '近くのドッグランを検索', 'https://dogparkjp.com/parks'),
+        makeBubble('ワンちゃんと行ける施設', 'ショップ・病院・サロンなど', 'https://dogparkjp.com/parks?view=facilities'),
+        makeBubble('コミュニティ', '飼い主同士で交流・メッセージ', 'https://dogparkjp.com/community'),
+        makeBubble('入退場', 'スマートロックで入退場', 'https://dogparkjp.com/access-control')
+      ]
     }
   };
 }
