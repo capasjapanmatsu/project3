@@ -79,7 +79,47 @@ async function handleEvent(evt: import('@line/bot-sdk').WebhookEvent) {
       return;
     }
 
-    await safeReply(evt.replyToken, `受信: ${text}`);
+    // ルールベース応答
+    const normalized = (text || '').toLowerCase();
+    const quickItems = [
+      { type: 'action', action: { type: 'message', label: 'メニュー', text: 'メニュー' } },
+      { type: 'action', action: { type: 'message', label: '予約方法', text: '予約方法' } },
+      { type: 'action', action: { type: 'message', label: '料金', text: '料金' } },
+      { type: 'action', action: { type: 'message', label: 'サブスク', text: 'サブスク' } },
+      { type: 'action', action: { type: 'message', label: 'サポート', text: 'サポート' } },
+    ];
+
+    const replyWith = async (message: string) =>
+      safeReplyRich(evt.replyToken, message, quickItems);
+
+    // あいさつ/メニュー
+    if (/^(こんにちは|こんちは|こんばんは|おはよう|はじめまして)$/i.test(text || '') || /^(menu|メニュー)$/.test(text || '')) {
+      await replyWith('ドッグパークJPです。ご用件をお選びください。');
+      return;
+    }
+    // 予約方法
+    if (/^(予約|予約方法|どうやって予約|どうやって使う)$/.test(text || '')) {
+      await replyWith('予約はサイトから行えます。ドッグラン一覧 → 施設ページ → 予約 からお進みください。\nhttps://dogparkjp.com/parks');
+      return;
+    }
+    // 料金
+    if (/^(料金|いくら|値段|price)$/i.test(text || '')) {
+      await replyWith('料金: 1Dayパス 800円 / 貸切 4,400円/時（サブスクは30%OFF）。サブスクは3,800円/月です。詳しくはサイトをご覧ください。');
+      return;
+    }
+    // サブスク
+    if (/^(サブスク|subscription|定額)$/i.test(text || '')) {
+      await replyWith('サブスクは全国使い放題で月額3,800円。詳細・お申し込みはこちら：https://dogparkjp.com/subscription-intro');
+      return;
+    }
+    // サポート
+    if (/^(サポート|問い合わせ|お問い合わせ|ヘルプ|help)$/i.test(text || '')) {
+      await replyWith('お困りの内容を教えてください。フォームからもお問い合わせいただけます：https://dogparkjp.com/contact');
+      return;
+    }
+
+    // 既定: メニュー案内
+    await replyWith('メニューをお選びください。');
     return;
   }
   console.log('Unhandled event:', JSON.stringify(evt));
@@ -89,6 +129,23 @@ async function safeReply(replyToken: string | undefined, message: string) {
   if (!replyToken) return;
   try {
     await lineClient.replyMessage(replyToken, { type: 'text', text: message });
+  } catch (e) {
+    console.error('reply error', e);
+  }
+}
+
+async function safeReplyRich(
+  replyToken: string | undefined,
+  message: string,
+  quickItems?: any[]
+) {
+  if (!replyToken) return;
+  try {
+    const messages: any[] = [{ type: 'text', text: message }];
+    if (quickItems && quickItems.length > 0) {
+      messages[0].quickReply = { items: quickItems };
+    }
+    await lineClient.replyMessage(replyToken, messages as any);
   } catch (e) {
     console.error('reply error', e);
   }
