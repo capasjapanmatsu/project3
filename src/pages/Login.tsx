@@ -10,7 +10,7 @@ import { logger } from '../utils/logger';
 import { notify } from '../utils/notification';
 
 export function Login() {
-  const { signInWithMagicLink, signInWithPassword } = useAuth();
+  const { signInWithMagicLink, signInWithPassword, signInWithGoogle } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
@@ -240,6 +240,17 @@ export function Login() {
         <div className="flex-grow border-t border-gray-200"></div>
         <span className="mx-3 text-gray-400 text-sm">または</span>
         <div className="flex-grow border-t border-gray-200"></div>
+      </div>
+
+      {/* Googleでログイン */}
+      <div className="mb-4">
+        <Button
+          onClick={() => void signInWithGoogle()}
+          className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50"
+        >
+          <img src="/public/icons/icon_android_144x144.png" alt="" className="w-5 h-5 mr-2" />
+          Googleでログイン
+        </Button>
       </div>
 
       {/* LINEでログイン（メール無しで作成可） */}

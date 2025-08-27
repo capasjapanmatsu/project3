@@ -21,6 +21,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   signInWithMagicLink: (email: string) => Promise<{ success: boolean; error?: string }>;
   signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   verify2FA: (code: string) => Promise<{ success: boolean; error?: string }>;
   setIsTrustedDevice: (trusted: boolean) => void;
   isAdmin: boolean;
@@ -38,6 +39,7 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   signInWithMagicLink: async () => { await Promise.resolve(); return { success: false }; },
   signInWithPassword: async () => { await Promise.resolve(); return { success: false }; },
+  signInWithGoogle: async () => { await Promise.resolve(); return { success: false }; },
   verify2FA: async () => { await Promise.resolve(); return { success: false }; },
   setIsTrustedDevice: () => {},
   isAdmin: false,
@@ -234,6 +236,29 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const signInWithGoogle = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+          queryParams: {
+            // 追加のスコープが必要ならここに指定
+          },
+        },
+      });
+      if (error) {
+        console.error('Google sign in error:', error);
+        return { success: false, error: error.message };
+      }
+      // OAuthは外部リダイレクトされるため、ここでは結果を待たず成功を返す
+      return { success: true };
+    } catch (error) {
+      console.error('Google sign in exception:', error);
+      return { success: false, error: String(error) };
+    }
+  }, []);
+
   const verify2FA = useCallback(async (code: string): Promise<{ success: boolean; error?: string }> => {
     try {
       // 2FA認証用のエンドポイントを呼び出す
@@ -367,6 +392,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     effectiveUserId,
     signInWithMagicLink,
     signInWithPassword,
+    signInWithGoogle,
     verify2FA,
     setIsTrustedDevice,
     isAdmin,
@@ -382,6 +408,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     effectiveUserId,
     signInWithMagicLink,
     signInWithPassword,
+    signInWithGoogle,
     verify2FA,
     setIsTrustedDevice,
     isAdmin,
