@@ -248,6 +248,7 @@ export function Login() {
           onClick={() => void signInWithGoogle()}
           className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50"
         >
+          <img src="/icons/google.svg" alt="" className="w-5 h-5 mr-2" />
           Googleアカウントでログイン
         </Button>
       </div>
