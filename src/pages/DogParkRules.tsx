@@ -188,13 +188,13 @@ export function DogParkRules() {
               <div className="border border-blue-200 p-4 rounded-lg">
                 <h4 className="font-semibold text-blue-900 mb-2">🐕 大型犬エリア</h4>
                 <p className="text-sm text-blue-800">
-                  体重20kg以上の犬が対象です。小型犬の入場はご遠慮ください。
+                  体重10kg以上の犬が対象です。小型犬の入場はご遠慮ください。
                 </p>
               </div>
               <div className="border border-pink-200 p-4 rounded-lg">
                 <h4 className="font-semibold text-pink-900 mb-2">🐕‍🦺 小型犬エリア</h4>
                 <p className="text-sm text-pink-800">
-                  体重20kg未満の犬が対象です。大型犬との事故防止のため、サイズを守ってください。
+                  体重10kg未満の犬が対象です。大型犬との事故防止のため、サイズを守ってください。
                 </p>
               </div>
             </div>
