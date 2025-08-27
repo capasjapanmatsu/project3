@@ -94,7 +94,7 @@ export function TermsOfService() {
                 <li>施設や設備を大切に扱うこと</li>
               </ul>
               <p className="mb-4">
-                詳細な利用ルールは、<Link to="/parks/rules" className="text-blue-600 hover:underline">ドッグラン利用ルール</Link>をご確認ください。
+                詳細な利用ルールは、<Link to="/rules" className="text-blue-600 hover:underline">ドッグラン利用ルール</Link>をご確認ください。
               </p>
             </div>
           </div>
