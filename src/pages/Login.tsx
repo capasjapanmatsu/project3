@@ -2,9 +2,9 @@ import { AlertTriangle, ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
-import LineLoginButton from '../components/LineLoginButton';
 import Card from '../components/Card';
 import Input from '../components/Input';
+import LineLoginButton from '../components/LineLoginButton';
 import useAuth from '../context/AuthContext';
 import { logger } from '../utils/logger';
 import { notify } from '../utils/notification';
@@ -246,7 +246,7 @@ export function Login() {
       <div className="mb-4">
         <Button
           onClick={() => void signInWithGoogle()}
-          className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50"
+          className="w-full bg-white text-gray-900 border border-gray-300 hover:bg-gray-50"
         >
           <img src="/icons/google.svg" alt="" className="w-5 h-5 mr-2" />
           Googleアカウントでログイン

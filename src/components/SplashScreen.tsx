@@ -708,7 +708,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                       } catch {}
                       await signInWithGoogle();
                     }}
-                    className="w-full py-2 px-4 bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 font-medium rounded-md transition-all flex items-center justify-center"
+                    className="w-full py-2 px-4 bg-white border border-gray-300 hover:bg-gray-50 text-gray-900 font-medium rounded-md transition-all flex items-center justify-center"
                     aria-label="Googleアカウントでログイン"
                   >
                     <img src="/icons/google.svg" alt="" className="w-5 h-5 mr-2" />
