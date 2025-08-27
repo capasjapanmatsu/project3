@@ -39,7 +39,10 @@ async function handleEvent(evt: import('@line/bot-sdk').WebhookEvent) {
   // follow
   if (evt.type === 'follow' && evt.source.type === 'user' && evt.source.userId) {
     console.log('FOLLOW userId:', evt.source.userId);
-    await safeReply(evt.replyToken, '友だち追加ありがとうございます！通知設定が完了しました。');
+    await safeReplyMessages(evt.replyToken, [
+      { type: 'text', text: '友だち追加ありがとうございます！通知設定が完了しました。' },
+      buildMenuFlex()
+    ]);
     // 通知ONに更新（users.notify_opt_in=true）。既存がなければ挿入
     if (admin) {
       try {
@@ -94,7 +97,7 @@ async function handleEvent(evt: import('@line/bot-sdk').WebhookEvent) {
 
     // あいさつ/メニュー
     if (/^(こんにちは|こんちは|こんばんは|おはよう|はじめまして)$/i.test(text || '') || /^(menu|メニュー)$/.test(text || '')) {
-      await replyWith('ドッグパークJPです。ご用件をお選びください。');
+      await safeReplyMessages(evt.replyToken, [buildMenuFlex()]);
       return;
     }
     // 予約方法
@@ -119,7 +122,26 @@ async function handleEvent(evt: import('@line/bot-sdk').WebhookEvent) {
     }
 
     // 既定: メニュー案内
-    await replyWith('メニューをお選びください。');
+    await safeReplyMessages(evt.replyToken, [buildMenuFlex()]);
+    return;
+  }
+  // postback
+  if (evt.type === 'postback') {
+    const data = evt.postback?.data || '';
+    if (data === 'help') {
+      await safeReplyRich(evt.replyToken, 'サポートが必要な内容を教えてください。フォームもご利用いただけます：https://dogparkjp.com/contact');
+      return;
+    }
+    if (data === 'pricing') {
+      await safeReplyRich(evt.replyToken, '料金: 1Dayパス 800円 / 貸切 4,400円/時（サブスクは30%OFF）。サブスクは3,800円/月です。');
+      return;
+    }
+    if (data === 'subscribe') {
+      await safeReplyRich(evt.replyToken, 'サブスクのご案内：https://dogparkjp.com/subscription-intro');
+      return;
+    }
+    // default -> show menu
+    await safeReplyMessages(evt.replyToken, [buildMenuFlex()]);
     return;
   }
   console.log('Unhandled event:', JSON.stringify(evt));
@@ -129,6 +151,15 @@ async function safeReply(replyToken: string | undefined, message: string) {
   if (!replyToken) return;
   try {
     await lineClient.replyMessage(replyToken, { type: 'text', text: message });
+  } catch (e) {
+    console.error('reply error', e);
+  }
+}
+
+async function safeReplyMessages(replyToken: string | undefined, messages: any[]) {
+  if (!replyToken) return;
+  try {
+    await lineClient.replyMessage(replyToken, messages as any);
   } catch (e) {
     console.error('reply error', e);
   }
@@ -149,5 +180,47 @@ async function safeReplyRich(
   } catch (e) {
     console.error('reply error', e);
   }
+}
+
+function buildMenuFlex(): any {
+  return {
+    type: 'flex',
+    altText: 'メニュー',
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [{ type: 'text', text: 'ドッグパークJP', weight: 'bold', size: 'lg' }]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          { type: 'text', text: 'メニューから選択してください', size: 'md', wrap: true },
+          {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'sm',
+            contents: [
+              button('ドッグランを探す', 'https://dogparkjp.com/parks'),
+              button('予約方法', undefined, 'help'),
+              button('料金', undefined, 'pricing'),
+              button('サブスク', undefined, 'subscribe'),
+              button('マイページ', 'https://dogparkjp.com/dashboard')
+            ]
+          }
+        ]
+      }
+    }
+  };
+}
+
+function button(label: string, uri?: string, data?: string): any {
+  if (uri) {
+    return { type: 'button', action: { type: 'uri', label, uri } };
+  }
+  return { type: 'button', action: { type: 'postback', label, data } };
 }
 
