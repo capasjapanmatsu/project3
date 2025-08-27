@@ -712,7 +712,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                     aria-label="Googleアカウントでログイン"
                   >
                     <img src="/icons/google.svg" alt="" className="w-5 h-5 mr-2" />
-                    Googleアカウントでログイン
+                    <span className="text-gray-900 font-semibold">Googleアカウントでログイン</span>
                   </button>
                   {/* LINEログイン（ロゴ付き） */}
                   <button
