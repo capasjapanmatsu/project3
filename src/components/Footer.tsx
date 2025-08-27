@@ -20,6 +20,17 @@ export function Footer() {
               愛犬とのお散歩をもっと楽しく。
               全国のドッグランを簡単に検索・予約できるサービスです。
             </p>
+            <div className="mt-4">
+              <a
+                href="https://line.me/R/ti/p/%40662udgcy"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="公式LINEに登録"
+                className="inline-flex items-center px-4 py-2 rounded-lg bg-[#06C755] hover:bg-[#05b34d] text-white font-semibold shadow"
+              >
+                公式LINEに登録
+              </a>
+            </div>
           </div>
           
           {/* Navigation Links */}
@@ -146,6 +157,14 @@ export function Footer() {
             <Link to="/contact" className="text-gray-400 hover:text-white transition-colors text-sm">
               お問い合わせ
             </Link>
+            <a
+              href="https://line.me/R/ti/p/%40662udgcy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-white transition-colors text-sm"
+            >
+              公式LINE
+            </a>
           </div>
         </div>
       </div>
