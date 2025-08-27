@@ -86,9 +86,6 @@ async function handleEvent(evt: import('@line/bot-sdk').WebhookEvent) {
     const normalized = (text || '').toLowerCase();
     const quickItems = [
       { type: 'action', action: { type: 'message', label: 'メニュー', text: 'メニュー' } },
-      { type: 'action', action: { type: 'message', label: '予約方法', text: '予約方法' } },
-      { type: 'action', action: { type: 'message', label: '料金', text: '料金' } },
-      { type: 'action', action: { type: 'message', label: 'サブスク', text: 'サブスク' } },
       { type: 'action', action: { type: 'message', label: 'サポート', text: 'サポート' } },
     ];
 
@@ -100,19 +97,9 @@ async function handleEvent(evt: import('@line/bot-sdk').WebhookEvent) {
       await safeReplyMessages(evt.replyToken, [buildMenuFlex()]);
       return;
     }
-    // 予約方法
-    if (/^(予約|予約方法|どうやって予約|どうやって使う)$/.test(text || '')) {
-      await replyWith('予約はサイトから行えます。ドッグラン一覧 → 施設ページ → 予約 からお進みください。\nhttps://dogparkjp.com/parks');
-      return;
-    }
-    // 料金
-    if (/^(料金|いくら|値段|price)$/i.test(text || '')) {
-      await replyWith('料金: 1Dayパス 800円 / 貸切 4,400円/時（サブスクは30%OFF）。サブスクは3,800円/月です。詳しくはサイトをご覧ください。');
-      return;
-    }
-    // サブスク
-    if (/^(サブスク|subscription|定額)$/i.test(text || '')) {
-      await replyWith('サブスクは全国使い放題で月額3,800円。詳細・お申し込みはこちら：https://dogparkjp.com/subscription-intro');
+    // 予約・料金・サブスクに対してはメニュー案内に誘導（個別説明は廃止）
+    if (/^(予約|予約方法|どうやって予約|どうやって使う|料金|いくら|値段|price|サブスク|subscription|定額)$/i.test(text || '')) {
+      await safeReplyMessages(evt.replyToken, [buildMenuFlex()]);
       return;
     }
     // サポート
@@ -130,14 +117,6 @@ async function handleEvent(evt: import('@line/bot-sdk').WebhookEvent) {
     const data = evt.postback?.data || '';
     if (data === 'help') {
       await safeReplyRich(evt.replyToken, 'サポートが必要な内容を教えてください。フォームもご利用いただけます：https://dogparkjp.com/contact');
-      return;
-    }
-    if (data === 'pricing') {
-      await safeReplyRich(evt.replyToken, '料金: 1Dayパス 800円 / 貸切 4,400円/時（サブスクは30%OFF）。サブスクは3,800円/月です。');
-      return;
-    }
-    if (data === 'subscribe') {
-      await safeReplyRich(evt.replyToken, 'サブスクのご案内：https://dogparkjp.com/subscription-intro');
       return;
     }
     // default -> show menu
@@ -205,9 +184,7 @@ function buildMenuFlex(): any {
             spacing: 'sm',
             contents: [
               button('ドッグランを探す', 'https://dogparkjp.com/parks'),
-              button('予約方法', undefined, 'help'),
-              button('料金', undefined, 'pricing'),
-              button('サブスク', undefined, 'subscribe'),
+              button('サポート', undefined, 'help'),
               button('マイページ', 'https://dogparkjp.com/dashboard')
             ]
           }
