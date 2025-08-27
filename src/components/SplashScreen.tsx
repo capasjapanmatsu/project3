@@ -35,7 +35,7 @@ const prefetchLink = (href: string, as?: string) => {
 const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signInWithMagicLink, signInWithPassword } = useAuth();
+  const { signInWithMagicLink, signInWithPassword, signInWithGoogle } = useAuth();
 
   const [imageOpacity, setImageOpacity] = useState(0);
   const [showLoginForm] = useState(true); // 常にログインフォームを表示
@@ -695,9 +695,26 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
               )}
 
               {/* フォーム共通コンテナ（高さ統一） */}
-              <div className="min-h-[200px] flex flex-col justify-between">
-                {/* LINEログイン導線（メール不要） */}
-                <div className="mb-2">
+              <div className="min-h-[220px] flex flex-col justify-between">
+                {/* OAuthボタン群 */}
+                <div className="space-y-2 mb-2">
+                  {/* Googleログイン */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        localStorage.setItem('skipSplashOnce', '1');
+                        localStorage.setItem('hasSeenSplash', 'true');
+                      } catch {}
+                      await signInWithGoogle();
+                    }}
+                    className="w-full py-2 px-4 bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 font-medium rounded-md transition-all flex items-center justify-center"
+                    aria-label="Googleアカウントでログイン"
+                  >
+                    <img src="/icons/google.svg" alt="" className="w-5 h-5 mr-2" />
+                    Googleアカウントでログイン
+                  </button>
+                  {/* LINEログイン（ロゴ付き） */}
                   <button
                     type="button"
                     onClick={() => {
@@ -708,9 +725,10 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                       } catch {}
                       window.location.assign('/liff/login');
                     }}
-                    className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md transition-all"
+                    className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md transition-all flex items-center justify-center"
                     aria-label="LINEでログイン（スプラッシュをスキップ）"
                   >
+                    <img src="/icons/line.svg" alt="" className="w-5 h-5 mr-2" />
                     LINEでログイン
                   </button>
                 </div>
