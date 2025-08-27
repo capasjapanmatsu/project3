@@ -878,102 +878,100 @@ export function UserDashboard() {
         )}
       </Card>
 
-      {/* 管理中のペット関連施設一覧 */}
-      {facilities.length > 0 && (
-        <Card className="p-6 bg-gradient-to-br from-teal-50 to-cyan-50 border-teal-200">
-          <div className="mb-6 flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-semibold flex items-center">
-                <Building className="w-6 h-6 text-teal-600 mr-2" />
-                管理中のペット関連施設 ({facilities.length}施設)
-              </h2>
-              <p className="text-gray-600 mt-1">ペットショップ、動物病院、トリミングサロンなどの施設管理</p>
-            </div>
-            <Link to="/my-facilities-management">
-              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">
-                <Edit className="w-4 h-4 mr-1" />
-                一覧・管理
-              </Button>
+      {/* 管理中のペット関連施設一覧（0件でも表示） */}
+      <Card className="p-6 bg-gradient-to-br from-teal-50 to-cyan-50 border-teal-200">
+        <div className="mb-6 flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-semibold flex items-center">
+              <Building className="w-6 h-6 text-teal-600 mr-2" />
+              管理中のペット関連施設 ({facilities.length}施設)
+            </h2>
+            <p className="text-gray-600 mt-1">ペットショップ、動物病院、トリミングサロンなどの施設管理</p>
+          </div>
+          <Link to="/my-facilities-management">
+            <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">
+              <Edit className="w-4 h-4 mr-1" />
+              一覧・管理
+            </Button>
+          </Link>
+        </div>
+
+        {facilities.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-600 mb-4">管理中のペット関連施設がありません。</p>
+            <Link to="/facility-registration">
+              <Button className="bg-teal-600 hover:bg-teal-700">新規施設登録</Button>
             </Link>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {facilities.slice(0, 4).map((facility: any) => (
-              <div key={facility.id} className="p-4 bg-white rounded-lg border border-teal-100">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold mb-2">{facility.name}</h3>
-                    <div className="flex items-center space-x-2 mb-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${
-                        facility.status === 'approved' 
-                          ? 'bg-green-100 text-green-800'
-                          : facility.status === 'pending'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {facility.status === 'approved' && <CheckCircle className="w-3 h-3" />}
-                        {facility.status === 'pending' && <Clock className="w-3 h-3" />}
-                        {facility.status === 'rejected' && <AlertTriangle className="w-3 h-3" />}
-                        <span>
-                          {facility.status === 'approved' && '公開中'}
-                          {facility.status === 'pending' && '審査中'}
-                          {facility.status === 'rejected' && '却下'}
-                          {facility.status === 'suspended' && '停止中'}
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {facilities.slice(0, 4).map((facility: any) => (
+                <div key={facility.id} className="p-4 bg-white rounded-lg border border-teal-100">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-2">{facility.name}</h3>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${
+                          facility.status === 'approved'
+                            ? 'bg-green-100 text-green-800'
+                            : facility.status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {facility.status === 'approved' && <CheckCircle className="w-3 h-3" />}
+                          {facility.status === 'pending' && <Clock className="w-3 h-3" />}
+                          {facility.status === 'rejected' && <AlertTriangle className="w-3 h-3" />}
+                          <span>
+                            {facility.status === 'approved' && '公開中'}
+                            {facility.status === 'pending' && '審査中'}
+                            {facility.status === 'rejected' && '却下'}
+                            {facility.status === 'suspended' && '停止中'}
+                          </span>
                         </span>
-                      </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {facility.description && (
-                  <p className="text-gray-600 mb-3 text-sm line-clamp-2">{facility.description}</p>
-                )}
-
-                <div className="space-y-1 mb-3">
-                  <div className="flex items-center text-gray-600">
-                    <MapPin className="w-3 h-3 mr-2" />
-                    <span className="text-xs">{facility.address}</span>
-                  </div>
-                  {facility.phone && (
-                    <div className="flex items-center text-gray-600">
-                      <Users className="w-3 h-3 mr-2" />
-                      <span className="text-xs">{facility.phone}</span>
-                    </div>
+                  {facility.description && (
+                    <p className="text-gray-600 mb-3 text-sm line-clamp-2">{facility.description}</p>
                   )}
-                  {facility.website && (
-                    <div className="flex items-center text-gray-600">
-                      <Globe className="w-3 h-3 mr-2" />
-                      <a 
-                        href={facility.website} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs text-teal-600 hover:text-teal-800"
-                      >
-                        公式サイト
-                      </a>
-                    </div>
-                  )}
-                </div>
 
-                <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                  <div className="text-xs text-gray-500">
-                    {facility.category_name || 'その他施設'}
+                  <div className="space-y-1 mb-3">
+                    <div className="flex items-center text-gray-600">
+                      <MapPin className="w-3 h-3 mr-2" />
+                      <span className="text-xs">{facility.address}</span>
+                    </div>
+                    {facility.phone && (
+                      <div className="flex items-center text-gray-600">
+                        <Users className="w-3 h-3 mr-2" />
+                        <span className="text-xs">{facility.phone}</span>
+                      </div>
+                    )}
+                    {facility.website && (
+                      <div className="flex items-center text-gray-600">
+                        <Globe className="w-3 h-3 mr-2" />
+                        <a href={facility.website} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:text-teal-800">公式サイト</a>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                    <div className="text-xs text-gray-500">{facility.category_name || 'その他施設'}</div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-          {facilities.length > 4 && (
-            <div className="mt-4 text-center">
-              <Link to="/my-facilities-management">
-                <Button variant="secondary" size="sm">
-                  すべて表示 ({facilities.length}施設)
-                </Button>
-              </Link>
+              ))}
             </div>
-          )}
-        </Card>
-      )}
+            {facilities.length > 4 && (
+              <div className="mt-4 text-center">
+                <Link to="/my-facilities-management">
+                  <Button variant="secondary" size="sm">すべて表示 ({facilities.length}施設)</Button>
+                </Link>
+              </div>
+            )}
+          </>
+        )}
+      </Card>
 
       {/* AIチャット（ページ内版）はFABに統合したため削除 */}
 
