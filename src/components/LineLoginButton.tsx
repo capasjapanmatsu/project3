@@ -19,7 +19,7 @@ export const LineLoginButton: React.FC<Props> = ({ full = false }) => {
   return (
     <Button onClick={handleClick} className={`${full ? 'w-full' : ''} bg-green-600 hover:bg-green-700`}>
       <MessageCircle className="w-4 h-4 mr-2" />
-      LINEでログイン
+      LINEアカウントでログイン
     </Button>
   );
 };

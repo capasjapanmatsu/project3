@@ -729,7 +729,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                     aria-label="LINEでログイン（スプラッシュをスキップ）"
                   >
                     <img src="/icons/line.svg" alt="" className="w-5 h-5 mr-2" />
-                    LINEでログイン
+                    LINEアカウントでログイン
                   </button>
                 </div>
                 {/* 画面内で確実に見えるスキップ導線（カード内） */}
