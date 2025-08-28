@@ -127,6 +127,73 @@ export function ProductDetail() {
     }
   };
 
+  // カート投入アニメーション（一覧と同等の演出）
+  const animateAddToCartByProductId = (productId: string) => {
+    const img = document.querySelector(`img[data-product-id="${productId}"]`) as HTMLImageElement | null;
+    if (!img) return;
+    const rect = img.getBoundingClientRect();
+    const overlay = document.createElement('div');
+    Object.assign(overlay.style, {
+      position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: '9999',
+      contain: 'paint', backfaceVisibility: 'hidden'
+    } as CSSStyleDeclaration);
+    document.body.appendChild(overlay);
+
+    const clone = new Image();
+    clone.src = (img as HTMLImageElement).src;
+    const scrollY = window.scrollY || window.pageYOffset;
+    const prev = {
+      htmlOverflow: document.documentElement.style.overflow,
+      bodyPosition: document.body.style.position,
+      bodyTop: document.body.style.top,
+      bodyWidth: document.body.style.width,
+      bodyPaddingRight: document.body.style.paddingRight,
+    };
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`;
+    try { (document.activeElement as HTMLElement)?.blur(); } catch {}
+    const startScale = 0.8;
+    Object.assign(clone.style, {
+      position: 'absolute', transformOrigin: 'top left', opacity: '0.9', borderRadius: '8px',
+      pointerEvents: 'none', willChange: 'transform, opacity', backfaceVisibility: 'hidden',
+      boxShadow: '0 12px 24px rgba(0,0,0,0.35)',
+      transform: `translate3d(${rect.left}px, ${rect.top}px, 0) scale(${startScale}, ${startScale})`
+    } as CSSStyleDeclaration);
+    overlay.appendChild(clone);
+
+    const cartIcon = document.querySelector('[data-cart-target="true"]') as HTMLElement | null;
+    const cartRect = cartIcon ? cartIcon.getBoundingClientRect() : { left: window.innerWidth - 40, top: 20, width: 20, height: 20 } as DOMRect as any;
+    const centerX = window.innerWidth / 2 - rect.width * startScale / 2;
+    const centerY = window.innerHeight / 2 - rect.height * startScale / 2;
+    const dx = cartRect.left + cartRect.width / 2 - (rect.left + rect.width * startScale / 2);
+    const dy = cartRect.top + cartRect.height / 2 - (rect.top + rect.height * startScale / 2);
+
+    const start = () => {
+      const anim = (clone as any).animate(
+        [
+          { transform: `translate3d(${rect.left}px, ${rect.top}px, 0) scale(${startScale}, ${startScale})`, opacity: 0.9 },
+          { transform: `translate3d(${centerX}px, ${centerY}px, 0) scale(${startScale}, ${startScale})`, opacity: 0.85, offset: 0.5 },
+          { transform: `translate3d(${rect.left + dx}px, ${rect.top + dy}px, 0) scale(0.2, 0.2)`, opacity: 0 }
+        ],
+        { duration: 3000, easing: 'cubic-bezier(0.16, 0.84, 0.3, 1)', fill: 'forwards' }
+      );
+      anim.addEventListener('finish', () => {
+        overlay.remove();
+        document.documentElement.style.overflow = prev.htmlOverflow;
+        document.body.style.position = prev.bodyPosition;
+        document.body.style.top = prev.bodyTop;
+        document.body.style.width = prev.bodyWidth;
+        document.body.style.paddingRight = prev.bodyPaddingRight;
+        window.scrollTo(0, scrollY);
+      });
+    };
+    if ((clone as any).complete) start(); else clone.onload = () => start();
+  };
+
   const addToCart = async () => {
     if (!user) {
       navigate('/login');
@@ -142,7 +209,7 @@ export function ProductDetail() {
     try {
       const existingItem = cartItems.find(item => 
         item.product_id === product?.id && 
-        item.variation_sku === selectedVariation
+        (item as any).variation_sku === selectedVariation
       );
 
       if (existingItem) {
@@ -166,6 +233,8 @@ export function ProductDetail() {
       }
 
       await fetchProductData();
+      // 追加: アニメーション（一覧と同等）
+      if (product?.id) animateAddToCartByProductId(product.id);
       
       // カートに追加完了のフィードバック
       notify.success('カートに追加しました！');
@@ -361,6 +430,7 @@ export function ProductDetail() {
             {productImages.length > 0 ? (
               <>
                 <img
+                  data-product-id={product.id}
                   src={productImages[currentImageIndex].url}
                   alt={product.name}
                   className="w-full h-96 object-cover rounded-lg shadow-lg cursor-pointer"
