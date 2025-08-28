@@ -466,6 +466,37 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ポイント利用: クーポンで減額
+    const pointsToUse = Number(points_use || 0) || 0;
+    if (pointsToUse > 0) {
+      // メタデータにも保存（Webhookでの控除用）
+      sessionParams.metadata = {
+        ...(sessionParams.metadata || {}),
+        points_use: String(pointsToUse),
+      } as Record<string, string>;
+
+      // 小計（price_dataのみ対象）を算出して超過しないようにする
+      const subtotal = (sessionParams.line_items || []).reduce((sum, li) => {
+        // @ts-ignore - 型の分岐評価
+        const unit = li.price_data?.unit_amount || 0;
+        const qty = li.quantity || 1;
+        return sum + (unit * qty);
+      }, 0);
+
+      const discountAmount = Math.max(0, Math.min(pointsToUse, subtotal));
+      if (discountAmount > 0) {
+        const coupon = await stripe.coupons.create({
+          currency: 'jpy',
+          amount_off: discountAmount,
+          duration: 'once',
+          name: 'ポイント利用',
+        });
+        // Checkoutの割引に適用
+        // @ts-ignore Stripe型のバージョン差回避
+        sessionParams.discounts = [{ coupon: coupon.id }];
+      }
+    }
+
     // Create the checkout session
     let session: Stripe.Checkout.Session;
     try {
