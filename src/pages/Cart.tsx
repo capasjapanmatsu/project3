@@ -144,6 +144,16 @@ export function Cart() {
     return hasSubscription ? Math.round(price * 0.9) : price; // 10%割引
   };
 
+  // 商品画像がJSON配列でも先頭を返す（単一URLにも対応）
+  const getFirstImageUrl = (imageData: string): string => {
+    if (!imageData) return '';
+    try {
+      const parsed = JSON.parse(imageData);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+    } catch {}
+    return imageData;
+  };
+
   const calculateTotals = () => {
     const subtotal = cartItems.reduce((sum, item) => {
       const discountedPrice = getDiscountedPrice(item.product.price);
@@ -255,9 +265,12 @@ export function Cart() {
                   {/* 商品画像 */}
                   <div className="flex-shrink-0">
                     <img
-                      src={item.product.image_url}
+                      src={getFirstImageUrl(item.product.image_url)}
                       alt={item.product.name}
                       className="w-20 h-20 object-cover rounded-lg"
+                      width={80}
+                      height={80}
+                      decoding="async"
                       onError={(e) => {
                         e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
                       }}
