@@ -607,6 +607,13 @@ const App: React.FC = () => {
                   </Suspense>
                 </ProtectedRoute>
               } />
+              <Route path="/orders" element={
+                <ProtectedRoute>
+                  <Suspense fallback={<DashboardSkeleton />}>
+                    <OrderHistory />
+                  </Suspense>
+                </ProtectedRoute>
+              } />
               <Route path="/points" element={
                 <ProtectedRoute>
                   <Suspense fallback={<DashboardSkeleton />}>
