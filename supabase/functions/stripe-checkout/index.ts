@@ -54,6 +54,23 @@ Deno.serve(async (req) => {
       return corsResponse({ error: 'Invalid mode. Must be "payment" or "subscription"' }, 400);
     }
 
+    // Validate URLs (Stripeは完全URLを要求)
+    const isValidUrl = (value: string): boolean => {
+      try {
+        const u = new URL(value);
+        return u.protocol === 'http:' || u.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    };
+
+    if (!isValidUrl(success_url)) {
+      return corsResponse({ error: 'Invalid success_url' }, 400);
+    }
+    if (!isValidUrl(cancel_url)) {
+      return corsResponse({ error: 'Invalid cancel_url' }, 400);
+    }
+
     const authHeader = req.headers.get('Authorization')!;
     const token = authHeader.replace('Bearer ', '');
     const {
@@ -168,13 +185,20 @@ Deno.serve(async (req) => {
     });
 
     // Create checkout session parameters
+    // Stripe metadataはstringのみ許容
+    const metadata: Record<string, string> = {};
+    Object.entries(customParams || {}).forEach(([k, v]) => {
+      if (v === undefined || v === null) return;
+      metadata[k] = String(v);
+    });
+
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       payment_method_types: ['card'],
       mode: mode as 'payment' | 'subscription',
       success_url,
       cancel_url,
-      metadata: customParams,
+      metadata,
     };
 
     // サブスクリプションモードの場合、トライアル期間を設定
