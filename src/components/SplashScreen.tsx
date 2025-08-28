@@ -55,48 +55,33 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const [loadingTasks, setLoadingTasks] = useState<string[]>([]);
   const [isPreloading, setIsPreloading] = useState(true);
 
-  const message1 = ' さぁ　ワンちゃんと';
-  const message2 = '冒険に出かけよう！';
+  const message1 = ' さあ！ワンちゃんと';
+  const message2 = ' 冒険に出かけましょう';
   
-  // textCharactersを正しい長さで初期化
-  const [textCharacters, setTextCharacters] = useState<boolean[]>(() => 
-    new Array(message1.length + message2.length).fill(false) as boolean[]
-  );
+  // スライドイン制御（全文入力後に横から登場）
+  const [slideIn1, setSlideIn1] = useState(false);
+  const [slideIn2, setSlideIn2] = useState(false);
+  const [startHeadlineAnim, setStartHeadlineAnim] = useState(false);
+
+  // タイピング表示用フラグ配列（1文字ずつ表示）
+  const [typed1, setTyped1] = useState<boolean[]>(() => new Array(message1.length).fill(false));
+  const [typed2, setTyped2] = useState<boolean[]>(() => new Array(message2.length).fill(false));
+
+  // タイピング演出は廃止し、行全体のスライドのみ使用（→今回リクエストでタイピング復活）
 
   // URLクエリパラメータ処理
   const searchParams = new URLSearchParams(location.search);
   const redirectTo = searchParams.get('redirect') || '/dashboard';
   const infoMessage = searchParams.get('message');
 
-  // 文字アニメーション用のメモ化されたコールバック
-  const animateText = useCallback(() => {
-    const totalLength = message1.length + message2.length;
-    let currentIndex = 0;
-    
-    const showNextCharacter = () => {
-      if (currentIndex < totalLength) {
-        const currentChar = currentIndex < message1.length 
-          ? message1[currentIndex] 
-          : message2[currentIndex - message1.length];
-        
-        setTextCharacters(prev => {
-          const newArray = [...prev];
-          newArray[currentIndex] = true;
-          return newArray;
-        });
-        
-        currentIndex++;
-        setTimeout(showNextCharacter, 70); // より滑らかに（100ms → 70ms）
-      } else {
-        // 文字表示完了後、充分な時間を置いてから色を濃くする
-        setTimeout(() => {
-          startTextColorAnimation();
-        }, 3000); // 3秒の確実な遅延
-      }
-    };
-    
-    showNextCharacter();
-  }, [message1, message2]);
+  // フラッシュ後に文字を1文字ずつ出し、その後スライドイン
+  const onTypingCompleted = useCallback(() => {
+    // 既存のスライドは維持（使わないが後方互換）
+    setSlideIn1(true);
+    setTimeout(() => setSlideIn2(true), 80);
+    // 新アニメーション開始トリガ
+    setStartHeadlineAnim(true);
+  }, []);
 
   // 文字と画像の色を濃くするアニメーション
   const startTextColorAnimation = useCallback(() => {
@@ -127,10 +112,10 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       if (progress < 1) {
         requestAnimationFrame(animateOpacity);
       } else {
-        // アニメーション完了を確実にするため、長い遅延を追加
+        // アニメーション完了後にフラッシュを更に早く開始
         setTimeout(() => {
           startWhiteFlash();
-        }, 2000); // 2秒の確実な遅延
+        }, 0);
       }
     };
     
@@ -162,11 +147,31 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         requestAnimationFrame(animateFlash);
       } else {
         setWhiteFlashOpacity(0);
+        // フラッシュ完了後にタイピングを開始
+        let i = 0;
+        const type1 = () => {
+          if (i < message1.length) {
+            setTyped1(prev => { const a = [...prev]; a[i] = true; return a; });
+            i++;
+            setTimeout(type1, 60);
+          } else {
+            let j = 0;
+            const type2 = () => {
+              if (j < message2.length) {
+                setTyped2(prev => { const b = [...prev]; b[j] = true; return b; });
+                j++;
+                setTimeout(type2, 60);
+              }
+            };
+            type2();
+          }
+        };
+        type1();
       }
     };
     
     requestAnimationFrame(animateFlash);
-  }, []);
+  }, [message1.length, message2.length]);
 
   // 画像とテキストのアニメーション
   useEffect(() => {
@@ -187,7 +192,8 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           if (newOpacity < 1) {
             requestAnimationFrame(fadeIn);
           } else {
-            setTimeout(animateText, 500);
+            // 画像フェード完了後は色を濃くするアニメーションへ
+            setTimeout(startTextColorAnimation, 500);
           }
           return newOpacity;
         });
@@ -196,7 +202,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     };
 
     setTimeout(imageAnimation, 800);
-  }, [animateText]);
+  }, [startTextColorAnimation]);
 
   // 並列制御付きプリロード
   const runWithConcurrency = useCallback(async (items: {name: string; loader: () => Promise<unknown>}[], update: (done: number, total: number) => void) => {
@@ -449,44 +455,38 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           animation-iteration-count: 1 !important;
           opacity: 0;
         }
+
+        /* ロゴタイトルに合わせた挙動: それぞれ独立に出現 */
+        .hidden-left { transform: translate3d(-120%,0,0); opacity: 0; }
+        .hidden-right { transform: translate3d(120%,0,0); opacity: 0; }
+        .hidden-up { transform: translate3d(0,24px,0); opacity: 0; }
+
+        .anim-left { animation: animLeft 20s cubic-bezier(0.18, 0.9, 0.2, 1) forwards; }
+        .anim-right { animation: animRight 20s cubic-bezier(0.18, 0.9, 0.2, 1) forwards; }
+        .anim-up { animation: animUp 20s cubic-bezier(0.18, 0.9, 0.2, 1) forwards; }
+
+        @keyframes animLeft {
+          0% { transform: translate3d(-120%,0,0); opacity: 0; }
+          70% { transform: translate3d(1.5%,0,0); opacity: 1; }
+          88% { transform: translate3d(0,-6px,0); }
+          100% { transform: translate3d(0,0,0); opacity: 1; }
+        }
+        @keyframes animRight {
+          0% { transform: translate3d(120%,0,0); opacity: 0; }
+          70% { transform: translate3d(-1.5%,0,0); opacity: 1; }
+          88% { transform: translate3d(0,-6px,0); }
+          100% { transform: translate3d(0,0,0); opacity: 1; }
+        }
+        @keyframes animUp {
+          0% { transform: translate3d(0,24px,0); opacity: 0; }
+          75% { transform: translate3d(0,-2px,0); opacity: 1; }
+          100% { transform: translate3d(0,0,0); opacity: 1; }
+        }
         `}
       </style>
 
       <div className="min-h-screen flex flex-col">
-        {/* 上部：白い背景エリア（ロゴ） */}
-        <div className="bg-white px-6 py-4 shadow-sm overflow-hidden">
-          <div className="flex items-center">
-            {/* ロゴアイコン（アニメーション付き） */}
-            <div className="logo-icon">
-              <img
-                src="/icons/icon_android_48x48.png"
-                alt="ドッグパーク"
-                className="w-12 h-12 sm:w-16 sm:h-16"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  const parent = (e.target as HTMLElement).parentElement;
-                  if (parent) {
-                    const dogIcon = document.createElement('div');
-                    dogIcon.className = 'w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center';
-                    dogIcon.innerHTML = '<svg class="w-full h-full text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M18,4C16.29,4 15.25,4.33 14.65,4.61C13.88,4.23 13,4 12,4C11,4 10.12,4.23 9.35,4.61C8.75,4.33 7.71,4 6,4C3,4 1,12 1,14C1,14.83 2.32,15.59 4.14,15.9C4.78,18.14 7.8,19.85 11.5,20V15.72C10.91,15.35 10,14.68 10,14C10,13 11,12 12,12C13,12 14,13 14,14C14,14.68 13.09,15.35 12.5,15.72V20C16.2,19.85 19.22,18.14 19.86,15.9C21.68,15.59 23,14.83 23,14C23,12 21,4 18,4Z"/></svg>';
-                    parent.replaceChild(dogIcon, e.target as HTMLElement);
-                  }
-                }}
-              />
-            </div>
-            
-            {/* テキスト部分（タイポグラフィアニメーション） */}
-            <div className="ml-4">
-              <h1 className="text-xl sm:text-2xl font-bold leading-tight">
-                <span className="text-dogpark text-black">ドッグパーク</span>
-                <span className="text-jp text-blue-600 ml-1">JP</span>
-              </h1>
-              <p className="subtitle-text text-sm sm:text-base text-gray-600 leading-tight">
-                愛犬との素敵な時間を
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* 上部白帯は非表示（画像内オーバーレイのみ使用） */}
 
         {/* 中央画像とメッセージ */}
         <div className="flex-1 relative">
@@ -508,62 +508,61 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             }}
           />
 
+          {/* 画像上部 オーバーレイ ロゴ＋タイトル（上部ヘッダーと同じ動き） */}
+          <div className="absolute top-2 left-0 right-0 px-4 sm:px-6 z-[2]">
+            <div className="mx-auto max-w-6xl">
+              <div className="inline-flex items-center bg-transparent">
+                {/* ロゴアイコン（既存と同じアニメーション） */}
+                <div className="logo-icon">
+                  <img
+                    src="/icons/icon_ios_180x180.png"
+                    alt="ドッグパーク"
+                    className="w-12 h-12 sm:w-16 sm:h-16"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+                {/* タイトルテキスト（既存と同じアニメーション） */}
+                <div className="ml-3">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 text-dogpark">
+                    ドッグパーク<span className="text-jp text-blue-600 ml-1">JP</span>
+                  </h2>
+                  <p className="subtitle-text text-sm sm:text-lg text-gray-700 -mt-2">
+                    愛犬との素敵な時間を
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* 画像上のオーバーレイとメッセージ */}
           <div className="absolute bottom-0 left-0 right-0 pb-4">
-            <div className="text-center w-full">
+            <div className="text-center w-full pl-2">
               {/* 2行のメッセージ（背景なし、強い白縁） */}
               <div className="space-y-2 px-4">
-                {/* 1行目: さぁ ワンちゃんと */}
                 <h2 
-                className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
+                className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide`}
                 style={{ 
                   fontFamily: 'Zen Maru Gothic, sans-serif',
-                  textShadow: `0 0 10px rgba(255,255,255,${textOpacity}), 0 0 20px rgba(255,255,255,${textOpacity}), 0 0 30px rgba(255,255,255,${textOpacity * 0.8}), 2px 2px 4px rgba(255,255,255,${textOpacity}), -2px -2px 4px rgba(255,255,255,${textOpacity}), 2px -2px 4px rgba(255,255,255,${textOpacity}), -2px 2px 4px rgba(255,255,255,${textOpacity})`
+                  textShadow: '0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.8), 0 0 30px rgba(255,255,255,0.6), 2px 2px 4px rgba(255,255,255,0.9), -2px -2px 4px rgba(255,255,255,0.9), 2px -2px 4px rgba(255,255,255,0.9), -2px 2px 4px rgba(255,255,255,0.9)',
+                  color: '#355E3B'
                 }}
               >
-                {message1.split('').map((char, index) => (
-                  <span
-                    key={index}
-                    className={`inline-block transition-all duration-700 ease-in-out ${
-                      textCharacters[index] 
-                        ? 'opacity-100 translate-y-0 scale-100' 
-                        : 'opacity-0 translate-y-3 scale-98'
-                    }`}
-                    style={{
-                      transitionDelay: `${index * 70}ms`,
-                      color: textCharacters[index] ? `rgba(53, 94, 59, ${textOpacity})` : 'rgba(53, 94, 59, 0.1)',
-                      transformOrigin: 'center bottom'
-                    }}
-                  >
-                    {char === '　' ? '\u00A0' : char}
-                  </span>
+                {message1.split('').map((c, idx) => (
+                  <span key={idx} className={`inline-block transition-opacity duration-150 ${typed1[idx] ? 'opacity-100' : 'opacity-0'}`}>{c}</span>
                 ))}
                 </h2>
-                
-                {/* 2行目: 冒険に出かけよう！ */}
                 <h2 
-                className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide"
+                className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide`}
                 style={{ 
                   fontFamily: 'Zen Maru Gothic, sans-serif',
-                  textShadow: `0 0 10px rgba(255,255,255,${textOpacity}), 0 0 20px rgba(255,255,255,${textOpacity}), 0 0 30px rgba(255,255,255,${textOpacity * 0.8}), 2px 2px 4px rgba(255,255,255,${textOpacity}), -2px -2px 4px rgba(255,255,255,${textOpacity}), 2px -2px 4px rgba(255,255,255,${textOpacity}), -2px 2px 4px rgba(255,255,255,${textOpacity})`
+                  textShadow: '0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.8), 0 0 30px rgba(255,255,255,0.6), 2px 2px 4px rgba(255,255,255,0.9), -2px -2px 4px rgba(255,255,255,0.9), 2px -2px 4px rgba(255,255,255,0.9), -2px 2px 4px rgba(255,255,255,0.9)',
+                  color: '#3C6E47'
                 }}
               >
-                {message2.split('').map((char, index) => (
-                  <span
-                    key={index + message1.length}
-                    className={`inline-block transition-all duration-700 ease-in-out ${
-                      textCharacters[index + message1.length] 
-                        ? 'opacity-100 translate-y-0 scale-100' 
-                        : 'opacity-0 translate-y-3 scale-98'
-                    }`}
-                    style={{
-                      transitionDelay: `${(index + message1.length) * 70}ms`,
-                      color: textCharacters[index + message1.length] ? `rgba(60, 110, 71, ${textOpacity})` : 'rgba(60, 110, 71, 0.1)',
-                      transformOrigin: 'center bottom'
-                    }}
-                  >
-                    {char}
-                  </span>
+                {message2.split('').map((c, idx) => (
+                  <span key={idx} className={`inline-block transition-opacity duration-150 ${typed2[idx] ? 'opacity-100' : 'opacity-0'}`}>{c}</span>
                 ))}
                 </h2>
               </div>
