@@ -456,7 +456,9 @@ export function AdminDashboard() {
               { id: 'news-link', label: '新着情報', icon: FileText, to: '/admin/news' },
               { id: 'inquiries', label: 'お問い合わせ', icon: Mail },
               // 売り上げ管理は別ページへリンク
-              { id: 'sales-link', label: '売り上げ管理', icon: DollarSign, to: '/admin/sales-overview' }
+              { id: 'sales-link', label: '売り上げ管理', icon: DollarSign, to: '/admin/sales-overview' },
+              // ショップ管理（上部タグ）
+              { id: 'shop-link', label: 'ショップ管理', icon: ShoppingBag, to: '/admin/shop' }
             ].map((tab) => {
               const Icon = tab.icon as any;
               // to がある場合はリンク、それ以外はタブ切り替えボタン
