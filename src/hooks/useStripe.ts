@@ -41,8 +41,8 @@ export function useStripe() {
   const createCheckoutSession = useCallback(async ({
     priceId,
     mode,
-    successUrl = `${window.location.origin}/payment-confirmation?success=true`,
-    cancelUrl = `${window.location.origin}/payment-confirmation?canceled=true`,
+    successUrl,
+    cancelUrl,
     customAmount,
     customName,
     customParams,
@@ -98,10 +98,16 @@ export function useStripe() {
         is_line_user: !!lineUser
       }));
 
+      // Stripeの成功/キャンセルURL: localhost時は本番ドメインにフォールバック（StripeのURL検証対策）
+      const baseForStripe = successUrl && cancelUrl
+        ? null
+        : (import.meta.env.VITE_PUBLIC_BASE_URL as string | undefined) ||
+          (window.location.hostname === 'localhost' ? 'https://dogparkjp.com' : window.location.origin);
+
       const requestBody: Record<string, unknown> = {
         mode,
-        success_url: successUrl,
-        cancel_url: cancelUrl,
+        success_url: successUrl || `${baseForStripe}/payment-confirmation?success=true`,
+        cancel_url: cancelUrl || `${baseForStripe}/payment-confirmation?canceled=true`,
       };
 
       // priceIdが指定されている場合は追加

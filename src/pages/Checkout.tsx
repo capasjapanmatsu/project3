@@ -223,8 +223,9 @@ export function Checkout() {
       await createCheckoutSession({
         priceId: 'price_placeholder', // 実際には使用されない
         mode: 'payment',
-        successUrl: `${window.location.origin}/payment-confirmation?success=true&order_number=${orderNumber}`,
-        cancelUrl: `${window.location.origin}/checkout?canceled=true`,
+        // local環境では本番URLにフォールバックするようhook側で処理
+        successUrl: undefined,
+        cancelUrl: undefined,
         cartItems: cartItems.map(item => item.id),
         customParams: {
           shipping_name: formData.name,
