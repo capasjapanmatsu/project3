@@ -1,6 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import Stripe from 'npm:stripe@17.7.0';
 import { createClient } from 'npm:@supabase/supabase-js@2.49.1';
+import Stripe from 'npm:stripe@17.7.0';
 
 const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY')!;
 const stripeWebhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;
@@ -89,6 +89,32 @@ async function handleEvent(event: Stripe.Event) {
     if (isSubscription) {
       console.info(`Starting subscription sync for customer: ${customerId}`);
       await syncCustomerFromStripe(customerId);
+      // When a new subscription is created, create a pseudo order for admin visibility
+      try {
+        const session = stripeData as Stripe.Checkout.Session;
+        const { data: customerMap } = await supabase
+          .from('stripe_customers')
+          .select('user_id')
+          .eq('customer_id', customerId)
+          .maybeSingle();
+        if (customerMap?.user_id) {
+          const amount_total = (session.amount_total ?? 0) / 100;
+          const { error: orderErr } = await supabase.from('orders').insert({
+            user_id: customerMap.user_id,
+            order_number: `SUB${Date.now()}`,
+            status: 'confirmed',
+            payment_method: 'credit_card',
+            payment_status: 'completed',
+            total_amount: amount_total,
+            final_amount: amount_total,
+            is_subscription: true,
+            subscription_id: (session.subscription as string) || null,
+          });
+          if (orderErr) console.error('Failed to insert subscription order:', orderErr);
+        }
+      } catch (e) {
+        console.error('Error creating subscription order record:', e);
+      }
     } else if (mode === 'payment' && payment_status === 'paid') {
       try {
         // Extract the necessary information from the session

@@ -8,15 +8,14 @@ import { fetchSessionUser } from './utils/sessionClient';
 
 // レイアウトコンポーネント
 import { BottomNavigation } from './components/BottomNavigation';
-const CampaignModal = React.lazy(() => import('./components/CampaignModal'));
-const FloatingActionButton = React.lazy(() => import('./components/FloatingActionButton'));
 import { Footer } from './components/Footer';
-import { GoogleMapsProvider } from './components/GoogleMapsProvider';
 import { DashboardSkeleton, PageSkeleton, ShopSkeleton } from './components/LoadingStates';
 import { Navbar } from './components/Navbar';
 import { SEO } from './components/SEO';
 import ScrollToTop from './components/ScrollToTop';
 import SplashScreen from './components/SplashScreen';
+const CampaignModal = React.lazy(() => import('./components/CampaignModal'));
+const FloatingActionButton = React.lazy(() => import('./components/FloatingActionButton'));
 // 新規ページ（問い合わせ）
 const Inquiry = React.lazy(() => import('./pages/Inquiry'));
 const AdminInquiries = React.lazy(() => import('./pages/AdminInquiries'));

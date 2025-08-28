@@ -1,19 +1,19 @@
 import {
-  AlertTriangle,
-  ArrowLeft,
-  Calendar,
-  Camera,
-  CheckCircle,
-  Download,
-  Edit,
-  Eye,
-  Package,
-  Save,
-  Search,
-  ShoppingBag,
-  Truck,
-  Upload,
-  X
+    AlertTriangle,
+    ArrowLeft,
+    Calendar,
+    Camera,
+    CheckCircle,
+    Download,
+    Edit,
+    Eye,
+    Package,
+    Save,
+    Search,
+    ShoppingBag,
+    Truck,
+    Upload,
+    X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';

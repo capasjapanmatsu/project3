@@ -4,18 +4,18 @@ import {
     Building,
     CheckCircle,
     Clock,
+    Coins,
     Crown,
     Edit,
     Gift,
     Globe,
     Heart,
+    History,
     MapPin,
     ShoppingBag,
     Ticket,
     User,
-    Users,
-    Coins,
-    History
+    Users
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Area } from 'react-easy-crop';

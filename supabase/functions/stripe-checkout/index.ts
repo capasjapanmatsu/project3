@@ -342,15 +342,30 @@ Deno.serve(async (req) => {
         }
 
         // サブスクリプション会員かどうかを確認
-        const { data: subscriptionData, error: subscriptionError } = await supabase
-          .from('stripe_user_subscriptions')
-          .select('status')
-          .maybeSingle();
+        let hasSubscription = false;
+        try {
+          // 1) ビュー（存在すれば）からcustomer_id経由で参照
+          const { data: vSub } = await supabase
+            .from('stripe_user_subscriptions')
+            .select('status, customer_id')
+            .eq('customer_id', customerId)
+            .maybeSingle();
+          if (vSub && (vSub.status === 'active' || vSub.status === 'trialing')) {
+            hasSubscription = true;
+          }
+        } catch {}
 
-        const hasSubscription = !subscriptionError && 
-                               subscriptionData && 
-                               (subscriptionData.status === 'active' || 
-                                subscriptionData.status === 'trialing');
+        if (!hasSubscription) {
+          // 2) 直接テーブルで確認
+          const { data: tSub } = await supabase
+            .from('stripe_subscriptions')
+            .select('status')
+            .eq('customer_id', customerId)
+            .maybeSingle();
+          if (tSub && (tSub.status === 'active' || tSub.status === 'trialing')) {
+            hasSubscription = true;
+          }
+        }
 
         // 送料を計算
         let shippingFee = 690; // デフォルト送料
@@ -466,34 +481,39 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ポイント利用: クーポンで減額
+    // ポイント利用: 合計に直接反映（line_itemsの単価を調整）
     const pointsToUse = Number(points_use || 0) || 0;
-    if (pointsToUse > 0) {
-      // メタデータにも保存（Webhookでの控除用）
+    if (pointsToUse > 0 && (sessionParams.line_items || []).length > 0) {
       sessionParams.metadata = {
         ...(sessionParams.metadata || {}),
         points_use: String(pointsToUse),
       } as Record<string, string>;
 
-      // 小計（price_dataのみ対象）を算出して超過しないようにする
-      const subtotal = (sessionParams.line_items || []).reduce((sum, li) => {
-        // @ts-ignore - 型の分岐評価
+      const items = (sessionParams.line_items as Stripe.Checkout.SessionCreateParams.LineItem[]) || [];
+      // 小計算出
+      const subtotal = items.reduce((sum, li) => {
+        // @ts-ignore
         const unit = li.price_data?.unit_amount || 0;
         const qty = li.quantity || 1;
         return sum + (unit * qty);
       }, 0);
+      let remaining = Math.max(0, Math.min(pointsToUse, subtotal));
 
-      const discountAmount = Math.max(0, Math.min(pointsToUse, subtotal));
-      if (discountAmount > 0) {
-        const coupon = await stripe.coupons.create({
-          currency: 'jpy',
-          amount_off: discountAmount,
-          duration: 'once',
-          name: 'ポイント利用',
-        });
-        // Checkoutの割引に適用
-        // @ts-ignore Stripe型のバージョン差回避
-        sessionParams.discounts = [{ coupon: coupon.id }];
+      // 先頭のprice_dataを優先して差し引き（1商品想定だが複数でも順に適用）
+      for (const li of items) {
+        if (remaining <= 0) break;
+        // @ts-ignore
+        if (!li.price_data?.unit_amount) continue;
+        // @ts-ignore
+        const unit: number = li.price_data.unit_amount;
+        const qty: number = li.quantity || 1;
+        const lineTotal = unit * qty;
+        const reduce = Math.min(remaining, lineTotal);
+        const newLineTotal = lineTotal - reduce;
+        const newUnit = Math.floor(newLineTotal / qty);
+        // @ts-ignore
+        li.price_data.unit_amount = Math.max(0, newUnit);
+        remaining -= reduce;
       }
     }
 

@@ -222,6 +222,14 @@ export interface Product {
   sku?: string; // Stock Keeping Unit
   created_at: string;
   updated_at: string;
+  // 定期購入
+  subscription_enabled?: boolean;
+  subscription_options?: Array<{
+    id: string; // UI用の識別子
+    name: string; // 例: 毎月 / 2ヶ月ごと
+    interval_months: number; // 1,2,3...
+    unit_price: number; // 円
+  }>;
 }
 
 export interface CartItem {
@@ -255,6 +263,10 @@ export interface Order {
   created_at: string;
   updated_at: string;
   cancellable_until?: string;
+  // 定期購入関連
+  is_subscription?: boolean;
+  subscription_id?: string | null;
+  next_billing_date?: string | null;
 }
 
 export interface OrderItem {
@@ -408,3 +420,4 @@ export interface NewParkOpening {
 
 // PINコード管理システム関連の型定義をエクスポート
 export * from './pinCode';
+
