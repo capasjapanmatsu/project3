@@ -453,7 +453,31 @@ Deno.serve(async (req) => {
     }
 
     // Create the checkout session
-    const session = await stripe.checkout.sessions.create(sessionParams);
+    let session: Stripe.Checkout.Session;
+    try {
+      console.log('Creating Checkout Session with URLs:', {
+        success_url: sessionParams.success_url,
+        cancel_url: sessionParams.cancel_url,
+      });
+      session = await stripe.checkout.sessions.create(sessionParams);
+    } catch (e) {
+      const message = (e as Error).message || '';
+      console.error('Stripe create session failed:', message);
+      if (message.toLowerCase().includes('not a valid url')) {
+        // Retry with minimal required params and ultra-simple URLs
+        const fallbackParams: Stripe.Checkout.SessionCreateParams = {
+          customer: customerId,
+          mode: mode as 'payment' | 'subscription',
+          success_url: `${Deno.env.get('PUBLIC_BASE_URL') || 'https://dogparkjp.com'}/payment/success`,
+          cancel_url: `${Deno.env.get('PUBLIC_BASE_URL') || 'https://dogparkjp.com'}/payment/cancel`,
+          line_items: sessionParams.line_items,
+        };
+        console.log('Retrying Checkout Session with fallback URLs');
+        session = await stripe.checkout.sessions.create(fallbackParams);
+      } else {
+        throw e;
+      }
+    }
 
     console.log(`Created checkout session ${session.id} for customer ${customerId}`);
 
