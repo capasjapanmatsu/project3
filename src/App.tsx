@@ -150,6 +150,7 @@ const LikedDogs = React.lazy(() => import('./pages/LikedDogs').then(module => ({
 const MyCoupons = React.lazy(() => import('./pages/MyCoupons').then(module => ({ default: module.MyCoupons })));
 const MyReservations = React.lazy(() => import('./pages/MyReservations'));
 const OrderHistory = React.lazy(() => import('./pages/OrderHistory').then(module => ({ default: module.OrderHistory })));
+const PointsHistory = React.lazy(() => import('./pages/PointsHistory'));
 const ParkReservation = React.lazy(() => import('./pages/ParkReservation').then(module => ({ default: module.ParkReservation })));
 const ParkRegistration = React.lazy(() => import('./pages/ParkRegistration'));
 const ParkRegistrationAgreement = React.lazy(() => import('./pages/ParkRegistrationAgreement'));
@@ -603,6 +604,13 @@ const App: React.FC = () => {
                 <ProtectedRoute>
                   <Suspense fallback={<DashboardSkeleton />}>
                     <OrderHistory />
+                  </Suspense>
+                </ProtectedRoute>
+              } />
+              <Route path="/points" element={
+                <ProtectedRoute>
+                  <Suspense fallback={<DashboardSkeleton />}>
+                    <PointsHistory />
                   </Suspense>
                 </ProtectedRoute>
               } />

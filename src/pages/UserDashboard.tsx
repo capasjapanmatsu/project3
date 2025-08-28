@@ -13,7 +13,8 @@ import {
     ShoppingBag,
     Ticket,
     User,
-    Users
+    Users,
+    Coins
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Area } from 'react-easy-crop';
@@ -100,6 +101,7 @@ export function UserDashboard() {
   // クーポン管理用のstate
   const [userCoupons, setUserCoupons] = useState<any[]>([]);
   const [validCouponsCount, setValidCouponsCount] = useState(0);
+  const [pointsBalance, setPointsBalance] = useState<number>(0);
 
   // Subscription hook
   const { isActive: hasSubscription } = useSubscription();
@@ -204,7 +206,7 @@ export function UserDashboard() {
       setNotifications(notificationsResponse.data || []);
       setFacilityReservations(facilityReservationsResponse.data || []);
 
-      // フェーズ3: 追加データ（ニュース・施設・いいね）をバックグラウンドで取得
+      // フェーズ3: 追加データ（ニュース・施設・いいね・ポイント）をバックグラウンドで取得
       void Promise.allSettled([
         // ニュースデータ
         supabase
@@ -275,6 +277,17 @@ export function UserDashboard() {
           .catch((error) => {
             console.error('❌ [Dashboard] Error loading coupons:', error);
           })
+        ,
+        // ポイント残高
+        supabase
+          .from('points_balances')
+          .select('balance')
+          .eq('user_id', uid)
+          .maybeSingle()
+          .then((res) => {
+            setPointsBalance(res.data?.balance || 0);
+          })
+          .catch(() => {})
       ]);
       
     } catch (error) {
@@ -680,6 +693,21 @@ export function UserDashboard() {
             ))}
           </div>
         )}
+      </Card>
+
+      {/* Points Balance */}
+      <Card className="p-6 bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xl font-semibold flex items-center">
+            <Coins className="w-6 h-6 text-amber-600 mr-2" />
+            保有ポイント
+          </h2>
+          <Link to="/points">
+            <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white">履歴を見る</Button>
+          </Link>
+        </div>
+        <div className="text-3xl font-bold text-amber-700">{pointsBalance.toLocaleString()} P</div>
+        <p className="text-sm text-amber-700 mt-2">ペットショップで利用可能</p>
       </Card>
 
       {/* User Coupons Section */}

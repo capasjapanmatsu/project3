@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     }
 
     const requestData = await req.json();
-    const { price_id, success_url, cancel_url, mode, custom_amount, custom_name, cart_items, reservation_data, trial_period_days, ...customParams } = requestData;
+    const { price_id, success_url, cancel_url, mode, custom_amount, custom_name, cart_items, reservation_data, trial_period_days, points_use, ...customParams } = requestData;
 
     if (!success_url || !cancel_url || !mode) {
       return corsResponse({ error: 'Missing required parameters' }, 400);
@@ -386,7 +386,8 @@ Deno.serve(async (req) => {
     // Return the session ID and URL
     return corsResponse({ 
       sessionId: session.id, 
-      url: session.url 
+      url: session.url,
+      points_use: points_use || 0,
     });
   } catch (error: unknown) {
     console.error('Error creating checkout session:', error);

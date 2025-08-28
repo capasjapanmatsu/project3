@@ -117,6 +117,48 @@ async function handleEvent(event: Stripe.Event) {
           return;
         }
         console.info(`Successfully processed one-time payment for session: ${checkout_session_id}`);
+
+        // Handle point usage (deduct) and award 10% back for shop purchases
+        try {
+          // Lookup app user_id from stripe_customers
+          const { data: customerMap } = await supabase
+            .from('stripe_customers')
+            .select('user_id')
+            .eq('customer_id', customerId)
+            .maybeSingle();
+
+          if (customerMap?.user_id) {
+            // Deduct points if used (embedded in metadata by checkout function)
+            const checkout = stripeData as Stripe.Checkout.Session;
+            const usedPointsRaw = (checkout.metadata?.points_use as string) || '0';
+            const usedPoints = Math.max(0, parseInt(usedPointsRaw, 10) || 0);
+            if (usedPoints > 0) {
+              await supabase.rpc('rpc_use_points', {
+                p_user: customerMap.user_id,
+                p_points: usedPoints,
+                p_reference: 'order',
+                p_reference_id: checkout_session_id,
+              });
+            }
+
+            if (typeof amount_total === 'number') {
+              const points = Math.round((amount_total / 100) * 0.10); // amount_total in yen
+              if (points > 0) {
+                await supabase.rpc('fn_add_points', {
+                  p_user: customerMap.user_id,
+                  p_points: points,
+                  p_entry_type: 'earn',
+                  p_source: 'shop',
+                  p_description: 'ショップ購入10%還元',
+                  p_reference: 'stripe_checkout',
+                  p_reference_id: checkout_session_id,
+                });
+              }
+            }
+          }
+        } catch (pointsError) {
+          console.error('Failed to award shop points:', pointsError);
+        }
       } catch (error) {
         console.error('Error processing one-time payment:', error);
       }

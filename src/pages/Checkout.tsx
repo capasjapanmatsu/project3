@@ -63,6 +63,8 @@ export function Checkout() {
     shippingFee: 0,
     total: 0
   });
+  const [usePoints, setUsePoints] = useState<number>(0);
+  const [pointsBalance, setPointsBalance] = useState<number>(0);
 
   useEffect(() => {
     if (!user) {
@@ -128,6 +130,14 @@ export function Checkout() {
         if (cartError) throw cartError;
         setCartItems(cartData || []);
       }
+
+      // ユーザーポイント残高
+      const { data: pointsBal } = await supabase
+        .from('points_balances')
+        .select('balance')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+      setPointsBalance(pointsBal?.balance || 0);
 
       // URLパラメータをチェック
       const urlParams = new URLSearchParams(window.location.search);
@@ -212,7 +222,8 @@ export function Checkout() {
           shipping_postal_code: formData.postalCode,
           shipping_phone: formData.phoneNumber,
           notes: formData.notes,
-          order_number: orderNumber
+          order_number: orderNumber,
+          points_use: Math.min(usePoints, totals.total)
         }
       });
     } catch (err) {
@@ -387,7 +398,30 @@ export function Checkout() {
                 />
               </div>
               
-              <h2 className="text-xl font-semibold mb-4 mt-8">支払い方法</h2>
+              <h2 className="text-xl font-semibold mb-4 mt-8">ポイント利用</h2>
+
+              <div className="mb-4 p-4 bg-yellow-50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-yellow-800">保有ポイント</div>
+                    <div className="text-2xl font-bold text-yellow-700">{pointsBalance.toLocaleString()} P</div>
+                  </div>
+                  <div className="text-right">
+                    <label className="block text-sm text-gray-700 mb-1">使用ポイント</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={pointsBalance}
+                      value={usePoints}
+                      onChange={(e) => setUsePoints(Math.max(0, Math.min(pointsBalance, Number(e.target.value) || 0)))}
+                      className="w-32 px-2 py-1 border border-gray-300 rounded"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-yellow-700 mt-2">ポイントは1ポイント=1円として利用できます。</p>
+              </div>
+
+              <h2 className="text-xl font-semibold mb-4">支払い方法</h2>
               
               <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center space-x-2">
@@ -485,9 +519,13 @@ export function Checkout() {
                 </span>
               </div>
               
+              <div className="flex justify-between text-sm">
+                <span>ポイント利用</span>
+                <span className="text-red-600">-¥{Math.min(usePoints, totals.total).toLocaleString()}</span>
+              </div>
               <div className="flex justify-between font-bold text-base pt-2 border-t border-gray-200 mt-2">
-                <span>合計</span>
-                <span className="text-green-600">¥{totals.total.toLocaleString()}</span>
+                <span>支払い合計</span>
+                <span className="text-green-600">¥{Math.max(0, totals.total - Math.min(usePoints, totals.total)).toLocaleString()}</span>
               </div>
             </div>
           </Card>

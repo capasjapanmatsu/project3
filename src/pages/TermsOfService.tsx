@@ -1,5 +1,5 @@
+import { AlertTriangle, ArrowLeft, Ban, Clock, CreditCard, FileText, Scale, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, FileText, AlertTriangle, Shield, Scale, Clock, Ban, CreditCard } from 'lucide-react';
 import Card from '../components/Card';
 
 export function TermsOfService() {
