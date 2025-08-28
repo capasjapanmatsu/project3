@@ -343,35 +343,16 @@ Deno.serve(async (req) => {
         }
 
         // 商品ごとの行アイテムを作成
-        const getFirstImageUrl = (imageData?: string | null): string | undefined => {
-          if (!imageData) return undefined;
-          try {
-            const parsed = JSON.parse(imageData);
-            if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
-              const url = parsed[0] as string;
-              return url.startsWith('http://') || url.startsWith('https://') ? url : undefined;
-            }
-          } catch {
-            // not JSON, treat as plain URL
-            if (imageData.startsWith('http://') || imageData.startsWith('https://')) {
-              return imageData;
-            }
-          }
-          return undefined;
-        };
-
         const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = cartData.map(item => {
           const price = hasSubscription 
             ? Math.round(item.product.price * 0.9) // サブスク会員は10%オフ
             : item.product.price;
-          const firstImage = getFirstImageUrl(item.product.image_url as unknown as string);
           
           return {
             price_data: {
               currency: 'jpy',
               product_data: {
                 name: item.product.name,
-                images: firstImage ? [firstImage] : undefined,
               },
               unit_amount: price,
             },
