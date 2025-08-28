@@ -476,7 +476,7 @@ export function Checkout() {
                 disabled={cartItems.length === 0}
               >
                 <CreditCard className="w-5 h-5 mr-2" />
-                注文を確定する (¥{totals.total.toLocaleString()})
+                注文を確定する (¥{Math.max(0, totals.total - Math.min(usePoints, totals.total)).toLocaleString()})
               </Button>
             </form>
           </Card>
