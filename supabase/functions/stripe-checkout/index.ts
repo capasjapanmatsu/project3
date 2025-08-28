@@ -78,7 +78,21 @@ Deno.serve(async (req) => {
       }
     };
 
-    const normalizedSuccessUrl = normalizeUrl(success_url, '/payment-confirmation?success=true');
+    const addSessionPlaceholder = (url: string): string => {
+      try {
+        const u = new URL(url);
+        if (!u.searchParams.has('session_id')) {
+          u.searchParams.set('session_id', '{CHECKOUT_SESSION_ID}');
+        }
+        return u.toString();
+      } catch {
+        return url;
+      }
+    };
+
+    const normalizedSuccessUrl = addSessionPlaceholder(
+      normalizeUrl(success_url, '/payment-confirmation?success=true')
+    );
     const normalizedCancelUrl = normalizeUrl(cancel_url, '/payment-confirmation?canceled=true');
 
     const authHeader = req.headers.get('Authorization')!;
@@ -468,7 +482,7 @@ Deno.serve(async (req) => {
         const fallbackParams: Stripe.Checkout.SessionCreateParams = {
           customer: customerId,
           mode: mode as 'payment' | 'subscription',
-          success_url: `${Deno.env.get('PUBLIC_BASE_URL') || 'https://dogparkjp.com'}/payment/success`,
+          success_url: `${Deno.env.get('PUBLIC_BASE_URL') || 'https://dogparkjp.com'}/payment-confirmation?success=true&session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${Deno.env.get('PUBLIC_BASE_URL') || 'https://dogparkjp.com'}/payment/cancel`,
           line_items: sessionParams.line_items,
         };
