@@ -57,19 +57,29 @@ Deno.serve(async (req) => {
     // Validate URLs (Stripeは完全URLを要求)
     const isValidUrl = (value: string): boolean => {
       try {
-        const u = new URL(value);
+        const u = new URL(String(value).trim());
         return u.protocol === 'http:' || u.protocol === 'https:';
       } catch {
         return false;
       }
     };
 
-    if (!isValidUrl(success_url)) {
-      return corsResponse({ error: 'Invalid success_url' }, 400);
-    }
-    if (!isValidUrl(cancel_url)) {
-      return corsResponse({ error: 'Invalid cancel_url' }, 400);
-    }
+    // 正規化 + localhost の場合は公開ドメインへフォールバック
+    const PUBLIC_BASE_URL = Deno.env.get('PUBLIC_BASE_URL') || 'https://dogparkjp.com';
+    const normalizeUrl = (value: string, fallbackPath: string): string => {
+      try {
+        const url = new URL(String(value).trim());
+        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+          return `${PUBLIC_BASE_URL}${fallbackPath}`;
+        }
+        return url.href;
+      } catch {
+        return `${PUBLIC_BASE_URL}${fallbackPath}`;
+      }
+    };
+
+    const normalizedSuccessUrl = normalizeUrl(success_url, '/payment-confirmation?success=true');
+    const normalizedCancelUrl = normalizeUrl(cancel_url, '/payment-confirmation?canceled=true');
 
     const authHeader = req.headers.get('Authorization')!;
     const token = authHeader.replace('Bearer ', '');
@@ -196,8 +206,8 @@ Deno.serve(async (req) => {
       customer: customerId,
       payment_method_types: ['card'],
       mode: mode as 'payment' | 'subscription',
-      success_url,
-      cancel_url,
+      success_url: normalizedSuccessUrl,
+      cancel_url: normalizedCancelUrl,
       metadata,
     };
 
