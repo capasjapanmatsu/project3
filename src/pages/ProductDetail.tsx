@@ -90,7 +90,7 @@ export function ProductDetail() {
 
       if (productResponse.error) {
         console.error('Product not found:', productResponse.error);
-        navigate('/shop');
+        navigate('/petshop');
         return;
       }
 
@@ -121,7 +121,7 @@ export function ProductDetail() {
       setProductImages(images);
     } catch (error) {
       console.error('Error fetching product data:', error);
-      navigate('/shop');
+      navigate('/petshop');
     } finally {
       setIsLoading(false);
     }
@@ -324,7 +324,7 @@ export function ProductDetail() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-600">商品が見つかりませんでした</p>
-        <Button onClick={() => navigate('/shop')} className="mt-4">
+        <Button onClick={() => navigate('/petshop')} className="mt-4">
           ショップに戻る
         </Button>
       </div>
@@ -341,7 +341,7 @@ export function ProductDetail() {
       {/* パンくずナビ */}
       <div className="mb-6">
         <button
-          onClick={() => navigate('/shop')}
+          onClick={() => navigate('/petshop')}
           className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
