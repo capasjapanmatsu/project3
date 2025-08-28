@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     }
 
     const requestData = await req.json();
-    const { price_id, success_url, cancel_url, mode, custom_amount, custom_name, cart_items, reservation_data, trial_period_days, points_use, ...customParams } = requestData;
+    const { price_id, success_url, cancel_url, mode, custom_amount, custom_name, cart_items, reservation_data, trial_period_days, points_use, subscription, ...customParams } = requestData;
 
     if (!success_url || !cancel_url || !mode) {
       return corsResponse({ error: 'Missing required parameters' }, 400);
@@ -208,13 +208,54 @@ Deno.serve(async (req) => {
 
     // Handle line items based on mode and custom parameters
     if (mode === 'subscription') {
-      // サブスクリプションの場合は固定価格IDを使用
+      let effectivePriceId = price_id;
+      // price_id が未指定なら動的にStripe価格を作成
+      if (!effectivePriceId && subscription && typeof subscription === 'object') {
+        const name = String(subscription.name ?? '定期購入');
+        const unit_price = Number(subscription.unit_price ?? 0);
+        const interval_months = Number(subscription.interval_months ?? subscription.interval ?? 1);
+        if (!unit_price || unit_price <= 0) {
+          return corsResponse({ error: 'unit_price is required for dynamic price' }, 400);
+        }
+
+        // Stripe Product 作成（または再利用）
+        const product = await stripe.products.create({
+          name,
+        });
+        const interval = interval_months === 3 ? 'month' : interval_months === 12 ? 'year' : 'month';
+        const interval_count = interval_months === 12 ? 1 : interval_months; // 12ヶ月はyear×1で表現
+        const price = await stripe.prices.create({
+          currency: 'jpy',
+          unit_amount: unit_price,
+          recurring: {
+            interval: interval as 'day' | 'week' | 'month' | 'year',
+            interval_count,
+          },
+          product: product.id,
+        });
+        effectivePriceId = price.id;
+      }
+
+      if (!effectivePriceId) {
+        return corsResponse({ error: 'price_id or subscription details are required for subscription' }, 400);
+      }
+
       sessionParams.line_items = [
         {
-          price: price_id || 'price_1RZpDjAHWLDQ7ynZP7zD3TQB', // ドッグパークJPサブスク
+          price: effectivePriceId,
           quantity: 1,
         },
       ];
+      // 管理用途のメタデータ
+      if (subscription && typeof subscription === 'object') {
+        sessionParams.metadata = {
+          ...sessionParams.metadata,
+          sub_product_id: String(subscription.product_id ?? ''),
+          sub_option_id: String(subscription.option_id ?? ''),
+          sub_interval: String(subscription.interval ?? ''),
+          sub_unit_price: String(subscription.unit_price ?? ''),
+        } as Record<string, string>;
+      }
     } else if (mode === 'payment') {
       if (custom_amount && custom_name) {
         // 施設貸し切りなどのカスタム金額の場合
@@ -278,17 +319,35 @@ Deno.serve(async (req) => {
         }
 
         // 商品ごとの行アイテムを作成
+        const getFirstImageUrl = (imageData?: string | null): string | undefined => {
+          if (!imageData) return undefined;
+          try {
+            const parsed = JSON.parse(imageData);
+            if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+              const url = parsed[0] as string;
+              return url.startsWith('http://') || url.startsWith('https://') ? url : undefined;
+            }
+          } catch {
+            // not JSON, treat as plain URL
+            if (imageData.startsWith('http://') || imageData.startsWith('https://')) {
+              return imageData;
+            }
+          }
+          return undefined;
+        };
+
         const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = cartData.map(item => {
           const price = hasSubscription 
             ? Math.round(item.product.price * 0.9) // サブスク会員は10%オフ
             : item.product.price;
+          const firstImage = getFirstImageUrl(item.product.image_url as unknown as string);
           
           return {
             price_data: {
               currency: 'jpy',
               product_data: {
                 name: item.product.name,
-                images: item.product.image_url ? [item.product.image_url] : undefined,
+                images: firstImage ? [firstImage] : undefined,
               },
               unit_amount: price,
             },
