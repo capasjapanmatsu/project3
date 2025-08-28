@@ -192,6 +192,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           if (newOpacity < 1) {
             requestAnimationFrame(fadeIn);
           } else {
+            // ズームアウト試験演出はCSSアニメーションで進行するためJS操作不要
             // 画像フェード完了後は色を濃くするアニメーションへ
             setTimeout(startTextColorAnimation, 500);
           }
