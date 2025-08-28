@@ -2,6 +2,7 @@ import { ArrowLeft, Coins } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Card from '../components/Card';
+import Button from '../components/Button';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 
@@ -77,6 +78,11 @@ export default function PointsHistory() {
       <Card className="p-4">
         <div className="text-gray-700">保有ポイント</div>
         <div className="text-3xl font-bold text-amber-600">{balance.toLocaleString()} P</div>
+        <div className="mt-3">
+          <Link to="/petshop">
+            <Button className="bg-purple-600 hover:bg-purple-700 text-white">ペットショップへ</Button>
+          </Link>
+        </div>
       </Card>
 
       <Card className="p-0 overflow-hidden">
