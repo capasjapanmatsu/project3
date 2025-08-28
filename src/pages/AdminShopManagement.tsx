@@ -69,7 +69,10 @@ export function AdminShopManagement() {
     delivery_days: 3, // お届けまでの目安（日）
     has_variations: false, // バリエーションがあるか
     variation_type: '', // バリエーションの種類（例: サイズ、色など）
-    variations: [{ name: '', sku: '' }] as Array<{ name: string; sku: string }> // バリエーション詳細
+    variations: [{ name: '', sku: '' }] as Array<{ name: string; sku: string }>, // バリエーション詳細
+    // 定期購入
+    subscription_enabled: false,
+    subscription_options: [{ id: 'opt-1', name: '毎月', interval_months: 1, unit_price: 0 }] as Array<{ id: string; name: string; interval_months: number; unit_price: number }>
   });
   const [showProductModal, setShowProductModal] = useState(false);
 
@@ -158,7 +161,10 @@ export function AdminShopManagement() {
       delivery_days: (product as any).delivery_days || 3,
       has_variations: (product as any).has_variations || false,
       variation_type: (product as any).variation_type || '',
-      variations: (product as any).variations || []
+      variations: (product as any).variations || [],
+      // 定期購入
+      subscription_enabled: (product as any).subscription_enabled || false,
+      subscription_options: (product as any).subscription_options || []
     });
     setShowProductModal(true);
     
@@ -388,6 +394,9 @@ export function AdminShopManagement() {
             has_variations: productFormData.has_variations,
             variation_type: productFormData.has_variations ? productFormData.variation_type : null,
             variations: productFormData.has_variations ? productFormData.variations : [],
+            // 定期購入
+            subscription_enabled: productFormData.subscription_enabled,
+            subscription_options: productFormData.subscription_options,
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedProduct.id)
@@ -416,7 +425,10 @@ export function AdminShopManagement() {
               delivery_days: productFormData.delivery_days,
               has_variations: productFormData.has_variations,
               variation_type: productFormData.has_variations ? productFormData.variation_type : null,
-              variations: productFormData.has_variations ? productFormData.variations : []
+              variations: productFormData.has_variations ? productFormData.variations : [],
+              // 定期購入
+              subscription_enabled: productFormData.subscription_enabled,
+              subscription_options: productFormData.subscription_options
             }]);
         } catch (firstError) {
           console.log('通常の挿入でエラー、service_role で再試行:', firstError);
@@ -443,7 +455,10 @@ export function AdminShopManagement() {
                 delivery_days: productFormData.delivery_days,
                 has_variations: productFormData.has_variations,
                 variation_type: productFormData.has_variations ? productFormData.variation_type : null,
-                variations: productFormData.has_variations ? productFormData.variations : []
+                variations: productFormData.has_variations ? productFormData.variations : [],
+                // 定期購入
+                subscription_enabled: productFormData.subscription_enabled,
+                subscription_options: productFormData.subscription_options
               })
             });
             
@@ -1659,6 +1674,92 @@ export function AdminShopManagement() {
                 </div>
             </div>
                     </>
+                  )}
+                </div>
+
+                {/* 定期購入設定 */}
+                <div className="mt-6 space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <label htmlFor="subscription_enabled" className="text-sm font-medium text-gray-700">
+                      定期購入を有効にする
+                    </label>
+                    <input
+                      id="subscription_enabled"
+                      type="checkbox"
+                      checked={productFormData.subscription_enabled}
+                      onChange={(e) => setProductFormData({ ...productFormData, subscription_enabled: e.target.checked })}
+                      className="w-5 h-5"
+                    />
+                  </div>
+
+                  {productFormData.subscription_enabled && (
+                    <div className="space-y-3 border rounded-lg p-4">
+                      <div className="text-sm text-gray-700">定期購入プラン（名称・間隔（月）・価格）</div>
+                      {productFormData.subscription_options.map((opt, idx) => (
+                        <div key={opt.id} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                          <Input
+                            label={`プラン名 ${idx + 1}`}
+                            value={opt.name}
+                            onChange={(e) => {
+                              const next = [...productFormData.subscription_options];
+                              next[idx] = { ...opt, name: e.target.value };
+                              setProductFormData({ ...productFormData, subscription_options: next });
+                            }}
+                          />
+                          <Input
+                            label="間隔（月)"
+                            type="number"
+                            value={String(opt.interval_months)}
+                            onChange={(e) => {
+                              const next = [...productFormData.subscription_options];
+                              next[idx] = { ...opt, interval_months: parseInt(e.target.value) || 1 };
+                              setProductFormData({ ...productFormData, subscription_options: next });
+                            }}
+                            min="1"
+                          />
+                          <div className="flex items-end space-x-2">
+                            <Input
+                              label="価格(円)"
+                              type="number"
+                              value={String(opt.unit_price)}
+                              onChange={(e) => {
+                                const next = [...productFormData.subscription_options];
+                                next[idx] = { ...opt, unit_price: parseInt(e.target.value) || 0 };
+                                setProductFormData({ ...productFormData, subscription_options: next });
+                              }}
+                              min="0"
+                            />
+                            {productFormData.subscription_options.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                className="bg-red-100 text-red-700 border-red-300 hover:bg-red-200"
+                                onClick={() => {
+                                  const next = productFormData.subscription_options.filter((_, i) => i !== idx);
+                                  setProductFormData({ ...productFormData, subscription_options: next });
+                                }}
+                              >
+                                削除
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="w-full bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200"
+                        onClick={() => setProductFormData({
+                          ...productFormData,
+                          subscription_options: [
+                            ...productFormData.subscription_options,
+                            { id: crypto.randomUUID(), name: '毎月', interval_months: 1, unit_price: 0 }
+                          ]
+                        })}
+                      >
+                        + プランを追加
+                      </Button>
+                    </div>
                   )}
                 </div>
 

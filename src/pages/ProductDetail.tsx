@@ -43,6 +43,8 @@ export function ProductDetail() {
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedVariation, setSelectedVariation] = useState<string>(''); // 選択されたバリエーション
   const [variationError, setVariationError] = useState<string>(''); // バリエーションエラーメッセージ
+  const [selectedSubOptionId, setSelectedSubOptionId] = useState<string>('');
+  const [isSubscribing, setIsSubscribing] = useState(false);
   
   // スワイプ操作用の状態
   const [touchStart, setTouchStart] = useState<number>(0);
@@ -179,6 +181,56 @@ export function ProductDetail() {
   const buyNow = async () => {
     await addToCart();
     navigate('/cart');
+  };
+
+  const subscribeNow = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (!product?.subscription_enabled) return;
+    const options: any[] = (product as any).subscription_options || [];
+    const selected = options.find((o) => o.id === selectedSubOptionId);
+    if (!selected) {
+      notify.error('定期購入プランを選択してください');
+      return;
+    }
+    try {
+      setIsSubscribing(true);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          mode: 'subscription',
+          success_url: `${window.location.origin}/order-history`,
+          cancel_url: `${window.location.origin}/products/${product.id}`,
+          subscription: {
+            product_id: product.id,
+            option_id: selected.id,
+            name: `${product.name} - ${selected.name}`,
+            interval_months: selected.interval_months,
+            unit_price: selected.unit_price,
+          }
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || '定期購入の開始に失敗しました');
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        notify.error('チェックアウトURLの取得に失敗しました');
+      }
+    } catch (e) {
+      logger.error('subscribe error', e);
+      notify.error('定期購入の開始に失敗しました');
+    } finally {
+      setIsSubscribing(false);
+    }
   };
 
   const getDiscountedPrice = (price: number) => {
@@ -561,6 +613,33 @@ export function ProductDetail() {
                     <ShoppingCart className="w-5 h-5 mr-2" />
                     カートに追加
                   </Button>
+                  {(product as any).subscription_enabled && (
+                    <div className="mt-4 space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">定期購入のプランを選択</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          {(((product as any).subscription_options) || []).map((opt: any) => (
+                            <button
+                              key={opt.id}
+                              onClick={() => setSelectedSubOptionId(opt.id)}
+                              className={`p-3 border rounded-lg text-left transition-all ${selectedSubOptionId === opt.id ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-gray-300 hover:border-amber-400'}`}
+                            >
+                              <div className="font-medium">{opt.name}</div>
+                              <div className="text-sm text-gray-500">{opt.interval_months}ヶ月ごと</div>
+                              <div className="text-sm font-semibold text-amber-700 mt-1">¥{Number(opt.unit_price).toLocaleString()}</div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <Button
+                        onClick={subscribeNow}
+                        className="w-full bg-amber-600 hover:bg-amber-700 text-lg py-3"
+                        isLoading={isSubscribing}
+                      >
+                        定期購入に申し込む
+                      </Button>
+                    </div>
+                  )}
                 </>
               ) : (
                 <Button disabled className="w-full text-lg py-3">
