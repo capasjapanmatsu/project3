@@ -200,17 +200,11 @@ export function ProductDetail() {
       return;
     }
 
-    // バリエーション選択チェック
-    if (product?.has_variations && !selectedVariation) {
-      setVariationError('バリエーションを選択してください');
-      return;
-    }
+    // 既存スキーマには variation_sku がないため選択は保持のみ（DB保存はしない）
+    setVariationError('');
 
     try {
-      const existingItem = cartItems.find(item => 
-        item.product_id === product?.id && 
-        (item as any).variation_sku === selectedVariation
-      );
+      const existingItem = cartItems.find(item => item.product_id === product?.id);
 
       if (existingItem) {
         const { error } = await supabase
@@ -226,7 +220,6 @@ export function ProductDetail() {
             user_id: user.id,
             product_id: product.id,
             quantity: quantity,
-            variation_sku: selectedVariation || null,
           }]);
 
         if (error) throw error;
