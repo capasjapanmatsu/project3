@@ -175,6 +175,16 @@ export function Checkout() {
     }
   };
 
+  // 商品画像がJSON配列でも先頭を返す（単一URLにも対応）
+  const getFirstImageUrl = (imageData: string): string => {
+    if (!imageData) return '';
+    try {
+      const parsed = JSON.parse(imageData);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+    } catch {}
+    return imageData;
+  };
+
   const generateOrderNumber = () => {
     return `DP${Date.now()}${Math.floor(Math.random() * 1000)}`;
   };
@@ -476,9 +486,12 @@ export function Checkout() {
                 <div key={item.id} className="flex items-center space-x-3 pb-3 border-b border-gray-100 last:border-b-0">
                   <div className="w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                     <img
-                      src={item.product.image_url}
+                      src={getFirstImageUrl(item.product.image_url)}
                       alt={item.product.name}
                       className="w-full h-full object-cover"
+                      width={64}
+                      height={64}
+                      decoding="async"
                       onError={(e) => {
                         e.currentTarget.src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
                       }}
