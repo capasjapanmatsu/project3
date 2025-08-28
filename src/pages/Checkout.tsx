@@ -422,8 +422,13 @@ export function Checkout() {
                       type="number"
                       min={0}
                       max={pointsBalance}
-                      value={usePoints}
+                      value={usePoints === 0 ? '' : usePoints}
                       onChange={(e) => setUsePoints(Math.max(0, Math.min(pointsBalance, Number(e.target.value) || 0)))}
+                      onFocus={(e) => {
+                        // 初期0が残らないように選択状態にする
+                        if (usePoints === 0) e.currentTarget.select();
+                      }}
+                      placeholder="0"
                       className="w-32 px-2 py-1 border border-gray-300 rounded"
                     />
                   </div>
