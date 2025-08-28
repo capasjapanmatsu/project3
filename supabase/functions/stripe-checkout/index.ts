@@ -90,10 +90,10 @@ Deno.serve(async (req) => {
       }
     };
 
-    const normalizedSuccessUrl = addSessionPlaceholder(
-      normalizeUrl(success_url, '/payment-confirmation?success=true')
-    );
-    const normalizedCancelUrl = normalizeUrl(cancel_url, '/payment-confirmation?canceled=true');
+    const BASE = (Deno.env.get('PUBLIC_BASE_URL') || 'https://dogparkjp.com').trim();
+    // 入力に依存せず常に安全なURLを使用
+    const normalizedSuccessUrl = `${BASE}/payment-confirmation?success=true&session_id={CHECKOUT_SESSION_ID}`;
+    const normalizedCancelUrl = `${BASE}/payment-confirmation?canceled=true`;
 
     const authHeader = req.headers.get('Authorization')!;
     const token = authHeader.replace('Bearer ', '');
@@ -482,8 +482,8 @@ Deno.serve(async (req) => {
         const fallbackParams: Stripe.Checkout.SessionCreateParams = {
           customer: customerId,
           mode: mode as 'payment' | 'subscription',
-          success_url: `${Deno.env.get('PUBLIC_BASE_URL') || 'https://dogparkjp.com'}/payment-confirmation?success=true&session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${Deno.env.get('PUBLIC_BASE_URL') || 'https://dogparkjp.com'}/payment/cancel`,
+          success_url: `${BASE}/payment-confirmation?success=true&session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${BASE}/payment-confirmation?canceled=true`,
           line_items: sessionParams.line_items,
         };
         console.log('Retrying Checkout Session with fallback URLs');
