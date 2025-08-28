@@ -1083,7 +1083,10 @@ export function AdminShopManagement() {
                 delivery_days: 3,
                 has_variations: false,
                 variation_type: '',
-                variations: []
+                variations: [],
+                // 定期購入の初期値を必ずセット
+                subscription_enabled: false,
+                subscription_options: [{ id: 'opt-1', name: '毎月', interval_months: 1, unit_price: 0 }]
               });
               setShowProductModal(true);
             }}>

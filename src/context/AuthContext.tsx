@@ -22,6 +22,7 @@ interface AuthContextType {
   signInWithMagicLink: (email: string) => Promise<{ success: boolean; error?: string }>;
   signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  signInWithTwitter: () => Promise<{ success: boolean; error?: string }>;
   verify2FA: (code: string) => Promise<{ success: boolean; error?: string }>;
   setIsTrustedDevice: (trusted: boolean) => void;
   isAdmin: boolean;
@@ -40,6 +41,7 @@ const AuthContext = createContext<AuthContextType>({
   signInWithMagicLink: async () => { await Promise.resolve(); return { success: false }; },
   signInWithPassword: async () => { await Promise.resolve(); return { success: false }; },
   signInWithGoogle: async () => { await Promise.resolve(); return { success: false }; },
+  signInWithTwitter: async () => { await Promise.resolve(); return { success: false }; },
   verify2FA: async () => { await Promise.resolve(); return { success: false }; },
   setIsTrustedDevice: () => {},
   isAdmin: false,
@@ -259,6 +261,25 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const signInWithTwitter = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'twitter',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      if (error) {
+        console.error('Twitter sign in error:', error);
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Twitter sign in exception:', error);
+      return { success: false, error: String(error) };
+    }
+  }, []);
+
   const verify2FA = useCallback(async (code: string): Promise<{ success: boolean; error?: string }> => {
     try {
       // 2FA認証用のエンドポイントを呼び出す
@@ -393,6 +414,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     signInWithMagicLink,
     signInWithPassword,
     signInWithGoogle,
+    signInWithTwitter,
     verify2FA,
     setIsTrustedDevice,
     isAdmin,
@@ -409,6 +431,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     signInWithMagicLink,
     signInWithPassword,
     signInWithGoogle,
+    signInWithTwitter,
     verify2FA,
     setIsTrustedDevice,
     isAdmin,

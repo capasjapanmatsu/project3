@@ -10,7 +10,7 @@ import { logger } from '../utils/logger';
 import { notify } from '../utils/notification';
 
 export function Login() {
-  const { signInWithMagicLink, signInWithPassword, signInWithGoogle } = useAuth();
+  const { signInWithMagicLink, signInWithPassword, signInWithGoogle, signInWithTwitter } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
@@ -250,6 +250,17 @@ export function Login() {
         >
           <img src="/icons/google.svg" alt="" className="w-5 h-5 mr-2" />
           <span className="text-gray-900 font-semibold">Googleアカウントでログイン</span>
+        </Button>
+      </div>
+
+      {/* X(Twitter)でログイン */}
+      <div className="mb-4">
+        <Button
+          onClick={() => void signInWithTwitter()}
+          className="w-full bg-black text-white border border-gray-800 hover:bg-gray-900"
+        >
+          <img src="/icons/x.svg" alt="" className="w-5 h-5 mr-2" />
+          <span className="font-semibold">X (Twitter) でログイン</span>
         </Button>
       </div>
 

@@ -35,7 +35,7 @@ const prefetchLink = (href: string, as?: string) => {
 const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signInWithMagicLink, signInWithPassword, signInWithGoogle } = useAuth();
+  const { signInWithMagicLink, signInWithPassword, signInWithGoogle, signInWithTwitter } = useAuth();
 
   const [imageOpacity, setImageOpacity] = useState(0);
   const [showLoginForm] = useState(true); // 常にログインフォームを表示
@@ -713,6 +713,22 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   >
                     <img src="/icons/google.svg" alt="" className="w-5 h-5 mr-2" />
                     <span className="text-gray-900 font-semibold">Googleアカウントでログイン</span>
+                  </button>
+                  {/* X(Twitter)ログイン */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        localStorage.setItem('skipSplashOnce', '1');
+                        localStorage.setItem('hasSeenSplash', 'true');
+                      } catch {}
+                      await signInWithTwitter();
+                    }}
+                    className="w-full py-2 px-4 bg-black hover:bg-gray-900 text-white font-medium rounded-md transition-all flex items-center justify-center"
+                    aria-label="X (Twitter) でログイン"
+                  >
+                    <img src="/icons/x.svg" alt="" className="w-5 h-5 mr-2" />
+                    X (Twitter) でログイン
                   </button>
                   {/* LINEログイン（ロゴ付き） */}
                   <button

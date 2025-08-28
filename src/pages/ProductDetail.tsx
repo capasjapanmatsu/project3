@@ -99,26 +99,42 @@ export function ProductDetail() {
       
       // 商品画像の設定
       const images: ProductImage[] = [];
-      
-      // メイン画像を追加（JSON配列対応）
+
+      // メイン画像: image_urlがJSON配列なら全て追加、文字列なら1枚
       if (productResponse.data.image_url) {
-        images.push({
-          id: 'main',
-          url: getFirstImageUrl(productResponse.data.image_url)
-        });
+        try {
+          const parsed = JSON.parse(productResponse.data.image_url);
+          if (Array.isArray(parsed)) {
+            parsed.forEach((u: string, idx: number) => {
+              if (typeof u === 'string' && u) {
+                images.push({ id: `main-${idx}`, url: u });
+              }
+            });
+          } else if (typeof productResponse.data.image_url === 'string') {
+            images.push({ id: 'main-0', url: productResponse.data.image_url });
+          }
+        } catch {
+          images.push({ id: 'main-0', url: getFirstImageUrl(productResponse.data.image_url) });
+        }
       }
-      
-      // 追加画像を追加
+
+      // 追加画像を追加（テーブル側）
       if (!imagesResponse.error && imagesResponse.data) {
         imagesResponse.data.forEach(img => {
-          images.push({
-            id: img.id,
-            url: img.image_url
-          });
+          if (img?.image_url) {
+            images.push({ id: img.id, url: img.image_url });
+          }
         });
       }
-      
-      setProductImages(images);
+
+      // 重複URLを除去
+      const deduped: ProductImage[] = [];
+      const seen = new Set<string>();
+      for (const im of images) {
+        if (!seen.has(im.url)) { seen.add(im.url); deduped.push(im); }
+      }
+
+      setProductImages(deduped);
     } catch (error) {
       console.error('Error fetching product data:', error);
       navigate('/petshop');
