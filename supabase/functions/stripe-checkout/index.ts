@@ -473,6 +473,10 @@ Deno.serve(async (req) => {
         success_url: sessionParams.success_url,
         cancel_url: sessionParams.cancel_url,
       });
+      console.log('Checkout mode and line items:', {
+        mode: sessionParams.mode,
+        line_items_count: (sessionParams.line_items || []).length,
+      });
       session = await stripe.checkout.sessions.create(sessionParams);
     } catch (e) {
       const message = (e as Error).message || '';
@@ -502,7 +506,12 @@ Deno.serve(async (req) => {
       points_use: points_use || 0,
     });
   } catch (error: unknown) {
-    console.error('Error creating checkout session:', error);
-    return corsResponse({ error: (error as Error).message }, 500);
+    const err: any = error;
+    console.error('Error creating checkout session:', err?.message || err);
+    return corsResponse({ 
+      error: (err?.message as string) || 'Unknown error',
+      type: err?.type || null,
+      param: err?.param || null
+    }, 500);
   }
 });
