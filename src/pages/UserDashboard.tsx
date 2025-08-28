@@ -14,7 +14,8 @@ import {
     Ticket,
     User,
     Users,
-    Coins
+    Coins,
+    History
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Area } from 'react-easy-crop';
@@ -1032,6 +1033,14 @@ export function UserDashboard() {
               <ShoppingBag className="w-8 h-8 text-purple-600 mb-3" />
               <h3 className="font-semibold text-purple-900 mb-1">ペットショップ</h3>
               <p className="text-sm text-purple-700">ペット用品を購入</p>
+            </div>
+          </Link>
+          
+          <Link to="/order-history" className="group">
+            <div className="p-6 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl hover:from-amber-100 hover:to-yellow-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-amber-200">
+              <History className="w-8 h-8 text-amber-600 mb-3" />
+              <h3 className="font-semibold text-amber-900 mb-1">注文履歴</h3>
+              <p className="text-sm text-amber-700">購入履歴を確認</p>
             </div>
           </Link>
           
