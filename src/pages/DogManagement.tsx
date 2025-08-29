@@ -400,33 +400,40 @@ export function DogManagement() {
 
         // 既存のワクチン証明書を更新または新規作成
         log('info', 'Saving vaccine certificates to database');
-        const result = await safeSupabaseQuery(() =>
-          supabase
-            .from('vaccine_certifications')
-            .upsert([
-              {
-                dog_id: selectedDog.id,
-                rabies_vaccine_image: rabiesPublicUrl || undefined,
-                combo_vaccine_image: comboPublicUrl || undefined,
-                rabies_expiry_date: rabiesExpiryDate || null,
-                combo_expiry_date: comboExpiryDate || null,
-                status: 'pending'
-              },
-            ], { onConflict: 'dog_id', ignoreDuplicates: false })
-        );
+        // PostgRESTのupsertは一意制約が必要なため、手動で update → insert の順に実行
+        const { data: existingCert } = await supabase
+          .from('vaccine_certifications')
+          .select('id')
+          .eq('dog_id', selectedDog.id)
+          .maybeSingle();
 
-        if (result.error) {
-          log('error', 'Database save error', { error: result.error });
-          
-          // サーバーエラーの場合、より適切なエラーメッセージを提供
-          const errorMessage = result.error instanceof Error 
-            ? result.error.message 
-            : JSON.stringify(result.error);
-          if (errorMessage.includes('520')) {
-            throw new Error('一時的なサーバーエラーが発生しました。ファイルのアップロードは成功しましたが、データベースへの保存に失敗しました。しばらく待ってから再度お試しください。');
-          } else {
-            throw new Error(`データベースへの保存に失敗しました: ${errorMessage}`);
-          }
+        const payload: any = {
+          dog_id: selectedDog.id,
+          rabies_vaccine_image: rabiesPublicUrl || undefined,
+          combo_vaccine_image: comboPublicUrl || undefined,
+          rabies_expiry_date: rabiesExpiryDate || null,
+          combo_expiry_date: comboExpiryDate || null,
+          status: 'pending'
+        };
+
+        let dbError: any = null;
+        if (existingCert?.id) {
+          const { error } = await supabase
+            .from('vaccine_certifications')
+            .update(payload)
+            .eq('id', existingCert.id);
+          dbError = error;
+        } else {
+          const { error } = await supabase
+            .from('vaccine_certifications')
+            .insert([payload]);
+          dbError = error;
+        }
+
+        if (dbError) {
+          log('error', 'Database save error', { error: dbError });
+          const errorMessage = dbError instanceof Error ? dbError.message : JSON.stringify(dbError);
+          throw new Error(`データベースへの保存に失敗しました: ${errorMessage}`);
         }
         
         log('info', 'Vaccine certificates saved to database successfully');
