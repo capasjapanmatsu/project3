@@ -318,13 +318,17 @@ export function DogManagement() {
         const sWidth = hasCrop ? croppedAreaPixels!.width : sourceSquare;
         const sHeight = hasCrop ? croppedAreaPixels!.height : sourceSquare;
         ctx.drawImage(imgBitmap, sx, sy, sWidth, sHeight, 0, 0, targetSize, targetSize);
-        const blob: Blob = await new Promise((resolve) => canvas.toBlob((b) => resolve(b as Blob), 'image/jpeg', 0.9));
-        const squaredFile = new File([blob], 'dog-square.jpg', { type: 'image/jpeg' });
+        const blob: Blob = await new Promise((resolve) => canvas.toBlob((b) => resolve(b as Blob), 'image/webp', 0.9));
+        const squaredFile = new File([blob], 'dog-square.webp', { type: 'image/webp' });
 
-        // WebP変換＋Storage保存
+        // 直接StorageにWebPで保存（公開URLを使用）
         const fileName = `${selectedDog.id}/${crypto.randomUUID()}.webp`;
-        const result = await uploadAndConvertToWebP('dog-images', squaredFile, fileName, { quality: 85, generateThumbnail: false });
-        const url = result.webpUrl || result.originalUrl;
+        const { error: upErr } = await supabase.storage
+          .from('dog-images')
+          .upload(fileName, squaredFile, { upsert: true, contentType: 'image/webp' });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from('dog-images').getPublicUrl(fileName);
+        const url = pub?.publicUrl;
         if (!url) throw new Error('画像の保存に失敗しました');
         updateData.image_url = url;
       }
