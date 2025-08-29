@@ -14,7 +14,7 @@ import { logger } from '../utils/logger';
 import { notify } from '../utils/notification';
 import { supabase } from '../utils/supabase';
 import { uploadVaccineImage, validateVaccineFile } from '../utils/vaccineUpload';
-import { uploadAndConvertToWebP } from '../utils/webpConverter';
+import { uploadAndConvertToWebP, getOptimizedImageUrl } from '../utils/webpConverter';
 
 export function DogRegistration() {
   const { user, lineUser, effectiveUserId } = useAuth();
@@ -200,8 +200,8 @@ export function DogRegistration() {
         throw new Error(`プロフィール画像のアップロードに失敗しました: ${uploadResult.error}`);
       }
 
-      // WebP画像のURLを使用
-      const profileImageUrl = { publicUrl: uploadResult.webpUrl };
+      // 最適なURL（WebP優先、失敗時はオリジナル）を選択
+      const finalizedImageUrl = getOptimizedImageUrl(uploadResult.originalUrl, uploadResult.webpUrl);
 
       // ワクチン画像のアップロード
       let rabiesImageUrl = '';
@@ -240,7 +240,7 @@ export function DogRegistration() {
             breed: formData.breed,
             birth_date: birthDate,
             gender: formData.gender,
-            image_url: uploadResult.webpUrl
+            image_url: finalizedImageUrl
           }
         ])
         .select()
