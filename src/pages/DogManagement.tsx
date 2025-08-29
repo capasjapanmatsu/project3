@@ -406,13 +406,13 @@ export function DogManagement() {
             .upsert([
               {
                 dog_id: selectedDog.id,
-                rabies_vaccine_image: rabiesPublicUrl,
-                combo_vaccine_image: comboPublicUrl,
-                rabies_expiry_date: rabiesExpiryDate,
-                combo_expiry_date: comboExpiryDate,
-                status: 'pending' // 承認待ち状態
+                rabies_vaccine_image: rabiesPublicUrl || undefined,
+                combo_vaccine_image: comboPublicUrl || undefined,
+                rabies_expiry_date: rabiesExpiryDate || null,
+                combo_expiry_date: comboExpiryDate || null,
+                status: 'pending'
               },
-            ], { onConflict: 'dog_id' })
+            ], { onConflict: 'dog_id', ignoreDuplicates: false })
         );
 
         if (result.error) {
