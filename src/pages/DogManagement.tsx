@@ -349,8 +349,8 @@ export function DogManagement() {
       }
       console.log('[DogManagement] Update result:', updatedDogRows[0]);
 
-      // ワクチン証明書の更新
-      if (rabiesVaccineFile && comboVaccineFile && rabiesExpiryDate && comboExpiryDate) {
+      // ワクチン証明書の更新（片方でも可。少なくとも画像または日付のいずれかがあれば提出扱い）
+      if ((rabiesVaccineFile || comboVaccineFile) || (rabiesExpiryDate || comboExpiryDate)) {
         // 新しいワクチン証明書をアップロード
         const rabiesExt = rabiesVaccineFile.name.split('.').pop() || 'jpg';
         const comboExt = comboVaccineFile.name.split('.').pop() || 'jpg';
@@ -370,8 +370,8 @@ export function DogManagement() {
         log('info', 'Direct upload function imported successfully');
         
         const [rabiesUpload, comboUpload] = await Promise.all([
-          directVaccineUpload(rabiesPath, rabiesVaccineFile),
-          directVaccineUpload(comboPath, comboVaccineFile),
+          rabiesVaccineFile ? directVaccineUpload(rabiesPath, rabiesVaccineFile) : Promise.resolve({ success: true, url: undefined }),
+          comboVaccineFile ? directVaccineUpload(comboPath, comboVaccineFile) : Promise.resolve({ success: true, url: undefined }),
         ]);
         
         log('info', 'Upload results', { rabiesUpload, comboUpload });
@@ -413,10 +413,11 @@ export function DogManagement() {
 
         const payload: any = {
           dog_id: selectedDog.id,
+          // 片方だけでも保存。undefinedは更新しないため既存値を保持
           rabies_vaccine_image: rabiesPublicUrl || undefined,
           combo_vaccine_image: comboPublicUrl || undefined,
-          rabies_expiry_date: rabiesExpiryDate || null,
-          combo_expiry_date: comboExpiryDate || null,
+          rabies_expiry_date: rabiesExpiryDate || undefined,
+          combo_expiry_date: comboExpiryDate || undefined,
           status: 'pending'
         };
 
