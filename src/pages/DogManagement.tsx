@@ -318,7 +318,25 @@ export function DogManagement() {
         const sWidth = hasCrop ? croppedAreaPixels!.width : sourceSquare;
         const sHeight = hasCrop ? croppedAreaPixels!.height : sourceSquare;
         ctx.drawImage(imgBitmap, sx, sy, sWidth, sHeight, 0, 0, targetSize, targetSize);
-        const blob: Blob = await new Promise((resolve) => canvas.toBlob((b) => resolve(b as Blob), 'image/webp', 0.9));
+        // WebP Blob生成（toBlobがnullを返す環境へのフォールバック付き）
+        const dataURLtoBlob = (dataUrl: string) => {
+          const arr = dataUrl.split(',');
+          const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/webp';
+          const bstr = atob(arr[1]);
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) u8arr[n] = bstr.charCodeAt(n);
+          return new Blob([u8arr], { type: mime });
+        };
+
+        const blob: Blob = await new Promise((resolve) =>
+          canvas.toBlob((b) => {
+            if (b) return resolve(b);
+            // フォールバック: dataURL経由でWebP作成
+            const alt = canvas.toDataURL('image/webp', 0.9);
+            resolve(dataURLtoBlob(alt));
+          }, 'image/webp', 0.9)
+        );
         const squaredFile = new File([blob], 'dog-square.webp', { type: 'image/webp' });
 
         // 直接StorageにWebPで保存（公開URLを使用）
