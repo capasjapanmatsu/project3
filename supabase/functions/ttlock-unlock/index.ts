@@ -25,7 +25,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
-    const { lockId, userId, purpose = "entry", ttlockLockId } = await req.json();
+    const { lockId, userId, purpose = "entry", ttlockLockId, userLat, userLng, radiusKm } = await req.json();
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("認証が必要です");
@@ -60,6 +60,53 @@ serve(async (req) => {
       if (lockErr || !lock?.ttlock_lock_id) throw new Error("スマートロック情報が見つかりません");
       resolvedTtlockId = String(lock.ttlock_lock_id);
       parkId = lock.park_id as any;
+    }
+
+    // 位置チェック（ジオフェンス）: ユーザー位置が提供されている場合のみ検証
+    const effectiveRadiusKm = typeof radiusKm === 'number' && radiusKm > 0 ? radiusKm : (parseFloat(Deno.env.get('GEOFENCE_RADIUS_KM') || '1') || 1);
+    if (typeof userLat === 'number' && typeof userLng === 'number' && parkId) {
+      const { data: park, error: parkErr } = await supabase
+        .from('dog_parks')
+        .select('latitude, longitude, geofence_radius_km')
+        .eq('id', parkId as any)
+        .maybeSingle();
+      if (!parkErr && park?.latitude && park?.longitude) {
+        const toRad = (deg: number) => deg * (Math.PI / 180);
+        const R = 6371; // km
+        const dLat = toRad(park.latitude - userLat);
+        const dLon = toRad(park.longitude - userLng);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(userLat)) * Math.cos(toRad(park.latitude)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const dist = R * c;
+        const allowed = (park as any).geofence_radius_km ?? effectiveRadiusKm;
+        if (dist > allowed) {
+          // ログ（拒否理由: 距離超過）
+          try {
+            await supabase.from('lock_access_logs').insert({
+              user_id: user.id,
+              lock_id: lockId,
+              action: 'unlock',
+              status: 'error',
+              timestamp: new Date().toISOString(),
+              error_message: `Geofence exceeded: distance=${dist.toFixed(3)}km, allowed=${allowed}`
+            });
+          } catch {}
+          return ok({ success: false, error: `解錠は施設から${allowed}km以内でのみ可能です（現在約${dist.toFixed(2)}km）` }, 403);
+        }
+      }
+    } else {
+      // 位置未提供の場合はエラー（クライアントにGPS必須を促す）
+      try {
+        await supabase.from('lock_access_logs').insert({
+          user_id: user.id,
+          lock_id: lockId,
+          action: 'unlock',
+          status: 'error',
+          timestamp: new Date().toISOString(),
+          error_message: 'Location not provided'
+        });
+      } catch {}
+      return ok({ success: false, error: '解錠には位置情報（GPS）が必須です。端末の位置情報を許可してください。' }, 400);
     }
 
     const client = new TTLockClient({

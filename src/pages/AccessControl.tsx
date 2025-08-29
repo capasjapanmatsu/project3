@@ -23,7 +23,7 @@ import { retryConfigs, useRetryWithRecovery } from '../hooks/useRetryWithRecover
 import { useSubscription } from '../hooks/useSubscription';
 import type { Dog, DogPark, SmartLock } from '../types';
 import { triggerHapticFeedback } from '../utils/hapticFeedback';
-import { DEFAULT_LOCATION, LocationError, formatDistance, getCurrentLocation, sortByDistance, type Location } from '../utils/location';
+import { DEFAULT_LOCATION, LocationError, formatDistance, getCurrentLocation, sortByDistance, calculateDistance, type Location } from '../utils/location';
 import { checkPaymentStatus, type PaymentStatus } from '../utils/paymentUtils';
 import { safeGetItem, safeSetItem } from '../utils/safeStorage';
 import { supabase } from '../utils/supabase';
@@ -63,7 +63,7 @@ export function AccessControl() {
   const NEARBY_PARKS_LIMIT = 3; // 近い順に表示する施設数
   const OTHERS_PARKS_PER_PAGE = 10; // その他施設の1ページあたり表示件数
 
-  // リモート解錠（ゲートウェイがある場合はこちらを優先）
+  // リモート解錠（GPS必須・半径1km以内）
   const remoteUnlock = async () => {
     if (!selectedPark || selectedDogs.length === 0) {
       setError('犬と施設を選択してください');
@@ -73,6 +73,22 @@ export function AccessControl() {
     if (currentAction === 'entry' && (!paymentStatus || paymentStatus.needsPayment)) {
       navigate(`/parks/${selectedPark.id}/reserve`);
       return;
+    }
+
+    // 位置情報が必要であることを明示
+    if (!userLocation) {
+      setError('解錠には位置情報（GPS）の許可が必要です。設定 > 位置情報 で有効化し、ブラウザに許可してください。');
+      return;
+    }
+
+    // 半径チェック（クライアント側の早期バリデーション）
+    if (selectedPark?.latitude && selectedPark?.longitude) {
+      const dist = calculateDistance(userLocation.latitude, userLocation.longitude, selectedPark.latitude, selectedPark.longitude);
+      const allowed = (selectedPark as any).geofence_radius_km ?? 1;
+      if (dist > allowed) {
+        setError(`この施設から${dist.toFixed(2)}km離れています。解錠は${allowed}km以内でのみ可能です（推奨1.0km）。`);
+        return;
+      }
     }
 
     setIsGeneratingPin(true);
@@ -102,7 +118,14 @@ export function AccessControl() {
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ttlock-unlock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-        body: JSON.stringify({ lockId: lock.lock_id, userId: (user?.id || effectiveUserId), purpose: currentAction })
+        body: JSON.stringify({ 
+          lockId: lock.lock_id, 
+          userId: (user?.id || effectiveUserId), 
+          purpose: currentAction,
+          userLat: userLocation.latitude,
+          userLng: userLocation.longitude,
+          radiusKm: 1
+        })
       });
 
       const body = await resp.json();

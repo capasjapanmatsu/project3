@@ -255,6 +255,7 @@ export function ParkManagement() {
     address: '',
     latitude: null as number | null,
     longitude: null as number | null,
+    geofence_radius_km: 1.0 as number,
     is_public: false, // 公開・非公開状態
   });
 
@@ -515,6 +516,7 @@ export function ParkManagement() {
         address: parkData.address || '',
         latitude: parkData.latitude || null,
         longitude: parkData.longitude || null,
+        geofence_radius_km: (parkData as any).geofence_radius_km ?? 1.0,
         is_public: parkData.is_public || false,
       });
       
@@ -1982,6 +1984,7 @@ export function ParkManagement() {
                           .update({
                             latitude: editForm.latitude,
                             longitude: editForm.longitude,
+                            geofence_radius_km: editForm.geofence_radius_km,
                             updated_at: new Date().toISOString()
                           })
                           .eq('id', park.id);

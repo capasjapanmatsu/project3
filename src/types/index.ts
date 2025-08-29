@@ -63,6 +63,7 @@ export interface DogPark {
   created_at: string;
   updated_at?: string;
   is_public?: boolean;
+  geofence_radius_km?: number; // 施設ごとのジオフェンス半径（km）
   currentMaintenance?: {
     id: string;
     title: string;
