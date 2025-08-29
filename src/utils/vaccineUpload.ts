@@ -93,9 +93,10 @@ export const uploadVaccineImage = async (
 
     return {
       success: true,
-      publicUrl: uploadResult.webpUrl,
+      // WebP変換失敗時はオリジナルURLでフォールバック
+      publicUrl: uploadResult.webpUrl || uploadResult.originalUrl,
       fileName,
-      filePath: uploadResult.webpPath,
+      filePath: uploadResult.webpPath || uploadResult.originalPath,
       thumbnailUrl: uploadResult.thumbnailUrl
     };
 
