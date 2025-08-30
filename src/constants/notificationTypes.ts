@@ -5,6 +5,8 @@ export const NOTIFICATION_TYPES = [
   'vaccine_requested',
   'vaccine_approved',
   'vaccine_rejected',
+  // 管理通知（DBトリガー等でも使用）
+  'vaccine_approval_required',
   'owner_verify_requested',
   'owner_verify_approved',
   'owner_verify_rejected',
