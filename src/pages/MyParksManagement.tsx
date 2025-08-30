@@ -317,16 +317,8 @@ export function MyParksManagement() {
                     </div>
                   </div>
 
-                  {/* 詳細情報 - 統計機能一時無効化 */}
+                  {/* 詳細情報 - 料金/収容人数は非表示 */}
                   <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <div className="text-sm text-gray-600">料金</div>
-                      <div className="font-semibold">¥{(park as any).price_per_hour?.toLocaleString() || '未設定'}/時間</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">収容人数</div>
-                      <div className="font-semibold">{(park as any).capacity || '未設定'}人</div>
-                    </div>
                     {/* 統計情報を一時的に無効化（400エラー対策） */}
                     {/* 
                     <div>
