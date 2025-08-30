@@ -1,11 +1,14 @@
+import { usePremiumOwner } from '@/hooks/usePremiumOwner';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import PremiumPaywall from '../components/PremiumPaywall';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 
 export default function FacilityReserve() {
+  const premium = usePremiumOwner();
   const { id: facilityId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -217,6 +220,13 @@ export default function FacilityReserve() {
     }
   };
 
+  if (premium.state !== 'active') {
+    return (
+      <div className="max-w-3xl mx-auto p-4">
+        <PremiumPaywall />
+      </div>
+    );
+  }
   if (loading) return <div className="p-6">読み込み中...</div>;
   if (!enabled) return <div className="p-6">この施設では現在予約を受け付けていません。</div>;
 

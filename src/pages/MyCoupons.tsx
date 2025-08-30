@@ -1,3 +1,5 @@
+import PremiumPaywall from '@/components/PremiumPaywall';
+import { usePremiumOwner } from '@/hooks/usePremiumOwner';
 import {
     ArrowLeft,
     Calendar,
@@ -26,6 +28,14 @@ type CouponWithFacility = UserCoupon & {
 };
 
 export function MyCoupons() {
+  const premium = usePremiumOwner();
+  if (premium.state !== 'active') {
+    return (
+      <div className="max-w-3xl mx-auto p-4">
+        <PremiumPaywall />
+      </div>
+    );
+  }
   const { user, lineUser, effectiveUserId } = useAuth();
   const [coupons, setCoupons] = useState<CouponWithFacility[]>([]);
   const [isLoading, setIsLoading] = useState(true);
