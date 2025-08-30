@@ -220,6 +220,7 @@ export default function FacilityReserve() {
     }
   };
 
+  // 予約管理はプレミアム会員のみ利用可
   if (premium.state !== 'active') {
     return (
       <div className="max-w-3xl mx-auto p-4">

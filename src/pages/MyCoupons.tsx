@@ -29,6 +29,7 @@ type CouponWithFacility = UserCoupon & {
 
 export function MyCoupons() {
   const premium = usePremiumOwner();
+  // ペイウォールはこのページでのみ表示（他の機能は従来通り利用可能）
   if (premium.state !== 'active') {
     return (
       <div className="max-w-3xl mx-auto p-4">

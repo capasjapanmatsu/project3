@@ -1,5 +1,3 @@
-import PremiumPaywall from '@/components/PremiumPaywall';
-import { usePremiumOwner } from '@/hooks/usePremiumOwner';
 import {
     AlertTriangle,
     ArrowLeft,
@@ -38,14 +36,6 @@ interface PetFacilityFromDB {
 }
 
 export function MyFacilitiesManagement() {
-  const premium = usePremiumOwner();
-  if (premium.state !== 'active') {
-    return (
-      <div className="max-w-3xl mx-auto p-4">
-        <PremiumPaywall />
-      </div>
-    );
-  }
   const { user } = useAuth();
   const navigate = useNavigate();
   const [facilities, setFacilities] = useState<PetFacility[]>([]);

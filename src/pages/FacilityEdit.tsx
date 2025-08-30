@@ -1,3 +1,4 @@
+import { usePremiumOwner } from '@/hooks/usePremiumOwner';
 import {
     AlertCircle,
     AlertTriangle,
@@ -118,6 +119,44 @@ interface FacilityCategory {
 }
 
 export default function FacilityEdit() {
+  const premium = usePremiumOwner();
+
+  // プレミアム加入（初月無料）を開始する
+  const startCheckout = async () => {
+    const priceId = import.meta.env.VITE_PREMIUM_OWNER_PRICE_ID as string | undefined;
+    if (!priceId) {
+      alert('環境変数 VITE_PREMIUM_OWNER_PRICE_ID が未設定です');
+      return;
+    }
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const accessToken = session.session?.access_token;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`;
+      const success = `${window.location.origin}/premium/success`;
+      const cancel = `${window.location.origin}/premium/cancel`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          mode: 'subscription',
+          price_id: priceId,
+          trial_period_days: 30,
+          success_url: success,
+          cancel_url: cancel,
+          notes: 'premium_owner_subscription'
+        })
+      });
+      const body = await res.json();
+      if (!res.ok || !body?.url) throw new Error(body?.error || 'checkout failed');
+      window.location.href = body.url;
+    } catch (e: any) {
+      alert(`決済開始に失敗しました: ${e?.message || e}`);
+    }
+  };
   const { id: facilityId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -1155,24 +1194,24 @@ export default function FacilityEdit() {
         <div className="max-w-4xl mx-auto px-4 py-8">
           {/* ヘッダー */}
           <div className="bg-white rounded-lg border p-6 mb-6">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">{facility.name}</h1>
-                <p className="text-gray-600 mt-1">{facility.address}</p>
-                <div className="flex items-center mt-2">
-                  {getStatusBadge(facility.status)}
-                </div>
-              </div>
-
-              <div className="flex space-x-3">
-                {facility.status === 'approved' && (
+            <div className="mb-2">
+              <h1 className="text-2xl font-bold text-gray-900">{facility.name}</h1>
+              <p className="text-gray-600 mt-1">{facility.address}</p>
+              {facility.status === 'approved' && (
+                <div className="mt-3">
                   <Link to={`/parks?view=facilities&facility=${facility.id}`}>
-                    <Button variant="secondary" className="min-w-[100px]">
+                    <Button variant="secondary" className="w-full">
                       <Eye className="w-4 h-4 mr-2" />
                       公開ページ
                     </Button>
                   </Link>
-                )}
+                </div>
+              )}
+              <div className="flex items-center gap-2 mt-3">
+                {getStatusBadge(facility.status)}
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${formData.is_public ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                  {formData.is_public ? '公開' : '非公開'}
+                </span>
               </div>
             </div>
           </div>
@@ -1219,15 +1258,15 @@ export default function FacilityEdit() {
                   画像管理
                 </button>
                 <button
-                  onClick={() => setActiveTab('coupons')}
+                  onClick={() => setActiveTab('location')}
                   className={`py-3 px-3 border-b-2 font-medium text-sm whitespace-nowrap w-1/3 sm:w-auto text-center ${
-                    activeTab === 'coupons'
+                    activeTab === 'location'
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  <Gift className="w-4 h-4 inline mr-2" />
-                  クーポン管理
+                  <MapPin className="w-4 h-4 inline mr-2" />
+                  位置調整
                 </button>
                 <button
                   onClick={() => setActiveTab('schedule')}
@@ -1241,15 +1280,18 @@ export default function FacilityEdit() {
                   営業日管理
                 </button>
                 <button
-                  onClick={() => setActiveTab('location')}
+                  onClick={() => setActiveTab('coupons')}
                   className={`py-3 px-3 border-b-2 font-medium text-sm whitespace-nowrap w-1/3 sm:w-auto text-center ${
-                    activeTab === 'location'
+                    activeTab === 'coupons'
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  <MapPin className="w-4 h-4 inline mr-2" />
-                  位置調整
+                  <Gift className="w-4 h-4 inline mr-2" />
+                  クーポン管理
+                  {premium.state !== 'active' && (
+                    <span className="ml-1 text-yellow-600" title="プレミアム限定">🔒</span>
+                  )}
                 </button>
                 <button
                   onClick={() => setActiveTab('reservation')}
@@ -1261,6 +1303,9 @@ export default function FacilityEdit() {
                 >
                   <Calendar className="w-4 h-4 inline mr-2" />
                   予約管理
+                  {premium.state !== 'active' && (
+                    <span className="ml-1 text-yellow-600" title="プレミアム限定">🔒</span>
+                  )}
                 </button>
               </nav>
             </div>
@@ -1469,19 +1514,31 @@ export default function FacilityEdit() {
                     <Calendar className="w-6 h-6 text-blue-600 mr-2" />
                     予約管理
                   </h2>
+                  {premium.state !== 'active' && (
+                    <div className="max-w-2xl mb-6">
+                      <div className="p-4 border rounded bg-yellow-50">
+                        <div className="font-semibold mb-1">この機能はプレミアム会員限定です（初月無料）</div>
+                        <div className="text-sm">
+                          月額¥500の <strong>プレミアムオーナー会員</strong> には、
+                          <strong>予約管理</strong>（受付・カレンダー・上限制御）に加えて
+                          <strong>クーポン管理</strong>（発行・配布・使用履歴）も含まれます。
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <p className="text-sm text-gray-600 mb-4">時間単位の予約、客席コード、受付期間を設定します。公開ページからユーザーが予約できます。</p>
 
                   {/* 基本設定（1行ずつ） */}
                   <div className="bg-white rounded-lg border p-4 mb-6 space-y-3">
                     <div className="flex items-center justify-between">
                       <label className="flex items-center space-x-2">
-                        <input type="checkbox" className="h-4 w-4" checked={reservationEnabled} onChange={(e) => setReservationEnabled(e.target.checked)} />
+                        <input type="checkbox" className="h-4 w-4" checked={reservationEnabled} onChange={(e) => setReservationEnabled(e.target.checked)} disabled={premium.state !== 'active'} />
                         <span>予約を受け付ける</span>
                       </label>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-700">予約単位</span>
-                      <select className="border rounded px-2 py-1" value={slotUnit} onChange={(e) => setSlotUnit(Number(e.target.value))}>
+                      <select className="border rounded px-2 py-1" value={slotUnit} onChange={(e) => setSlotUnit(Number(e.target.value))} disabled={premium.state !== 'active'}>
                         {[15,30,45,60,90,120].map((m) => (
                           <option key={m} value={m}>{m}分</option>
                         ))}
@@ -1490,30 +1547,30 @@ export default function FacilityEdit() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-700">受付可能日数</span>
                       <div className="flex items-center space-x-2">
-                        <input type="number" min={1} max={365} className="border rounded px-2 py-1 w-24 text-right" value={daysAhead} onChange={(e) => setDaysAhead(Number(e.target.value))} />
+                        <input type="number" min={1} max={365} className="border rounded px-2 py-1 w-24 text-right" value={daysAhead} onChange={(e) => setDaysAhead(Number(e.target.value))} disabled={premium.state !== 'active'} />
                         <span className="text-sm text-gray-600">日先</span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-700">仮予約の自動承認</span>
                       <label className="flex items-center space-x-2">
-                        <input type="checkbox" className="h-4 w-4" checked={autoConfirm} onChange={(e) => setAutoConfirm(e.target.checked)} />
+                        <input type="checkbox" className="h-4 w-4" checked={autoConfirm} onChange={(e) => setAutoConfirm(e.target.checked)} disabled={premium.state !== 'active'} />
                         <span>自動で予約確定にする</span>
                       </label>
                     </div>
                     <div className="mt-2">
                       <label className="flex items-center space-x-2 mb-2">
-                        <input type="checkbox" className="h-4 w-4" checked={autoMsgEnabled} onChange={(e)=>setAutoMsgEnabled(e.target.checked)} />
+                        <input type="checkbox" className="h-4 w-4" checked={autoMsgEnabled} onChange={(e)=>setAutoMsgEnabled(e.target.checked)} disabled={premium.state !== 'active'} />
                         <span className="text-sm text-gray-700">予約確定時にデフォルトメッセージを自動送信</span>
                       </label>
-                      <textarea className="w-full border rounded px-2 py-1 text-sm" rows={3} value={autoMsgText} onChange={(e)=>setAutoMsgText(e.target.value)} />
+                      <textarea className="w-full border rounded px-2 py-1 text-sm" rows={3} value={autoMsgText} onChange={(e)=>setAutoMsgText(e.target.value)} disabled={premium.state !== 'active'} />
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-700">同一時間キャパ</span>
-                      <input type="number" min={1} max={1000} className="border rounded px-2 py-1 w-24 text-right" value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} />
+                      <input type="number" min={1} max={1000} className="border rounded px-2 py-1 w-24 text-right" value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} disabled={premium.state !== 'active'} />
                     </div>
                     <div className="flex justify-end pt-2">
-                      <Button onClick={saveReservationSettings}>設定を保存</Button>
+                      <Button onClick={saveReservationSettings} disabled={premium.state !== 'active'}>設定を保存</Button>
                     </div>
                   </div>
 
@@ -1716,10 +1773,26 @@ export default function FacilityEdit() {
 
               {activeTab === 'coupons' && facility && (
                 <div>
-                  <CouponManager 
-                    facilityId={facility.id} 
-                    facilityName={facility.name}
-                  />
+                  {premium.state !== 'active' ? (
+                    <div className="max-w-2xl">
+                      <div className="mb-4 text-sm text-gray-700">
+                        クーポン管理はプレミアム会員向け機能です（初月無料・月額¥500）。
+                        このプランには <strong>予約管理</strong>（受付・カレンダー・上限制御）も含まれます。
+                      </div>
+                      {/* PremiumPaywall を軽量に内側で再利用 */}
+                      <div className="mb-6">
+                        <div className="p-4 border rounded bg-yellow-50">
+                          <div className="font-semibold mb-1">プレミアムオーナー会員（月額¥500／初月無料）</div>
+                          <div className="text-sm mb-3">クーポン発行・配布・使用履歴に加えて、予約管理（受付・カレンダー・上限制御）もご利用いただけます。</div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <CouponManager 
+                      facilityId={facility.id} 
+                      facilityName={facility.name}
+                    />
+                  )}
                 </div>
               )}
               
@@ -2021,6 +2094,15 @@ export default function FacilityEdit() {
               maxWidth={400}
               maxHeight={400}
             />
+          )}
+
+          {/* 初月無料CTA（ページ最下部） */}
+          {premium.state !== 'active' && (
+            <div className="max-w-4xl mx-auto px-4 py-6">
+              <Button onClick={startCheckout} className="w-full bg-orange-500 hover:bg-orange-600">
+                初月無料で試す
+              </Button>
+            </div>
           )}
         </div>
       </div>
