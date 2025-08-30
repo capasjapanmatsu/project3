@@ -1,5 +1,5 @@
 import { ArrowLeft, Camera, X } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -22,6 +22,8 @@ export function DogRegistration() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showImageCropper, setShowImageCropper] = useState(false);
+  // 二重送信防止（同期ガード）
+  const isSubmittingRef = useRef(false);
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -124,61 +126,84 @@ export function DogRegistration() {
   // フォームの送信処理
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // 多重送信ガード（同期）
+    if (isSubmittingRef.current || isLoading) return;
+    isSubmittingRef.current = true;
+    setIsLoading(true);
 
     const uid = (user?.id || lineUser?.id || effectiveUserId) as string | undefined;
 
     if (!uid) {
       setError('ログインが必要です。');
+      setIsLoading(false);
+      isSubmittingRef.current = false;
       return;
     }
 
     // バリデーション
     if (!formData.name.trim()) {
       setError('ワンちゃんの名前を入力してください。');
+      setIsLoading(false);
+      isSubmittingRef.current = false;
       return;
     }
 
     if (!formData.breed) {
       setError('犬種を選択してください。');
+      setIsLoading(false);
+      isSubmittingRef.current = false;
       return;
     }
 
     if (!formData.birthYear || !formData.birthMonth || !formData.birthDay) {
       setError('生年月日を選択してください。');
+      setIsLoading(false);
+      isSubmittingRef.current = false;
       return;
     }
 
     if (!formData.gender) {
       setError('性別を選択してください。');
+      setIsLoading(false);
+      isSubmittingRef.current = false;
       return;
     }
 
     if (!imageFile) {
       setError('プロフィール画像をアップロードしてください。');
+      setIsLoading(false);
+      isSubmittingRef.current = false;
       return;
     }
 
     if (!formData.rabiesVaccineImage) {
       setError('狂犬病ワクチン証明書をアップロードしてください。');
+      setIsLoading(false);
+      isSubmittingRef.current = false;
       return;
     }
 
     if (!formData.comboVaccineImage) {
       setError('混合ワクチン証明書をアップロードしてください。');
+      setIsLoading(false);
+      isSubmittingRef.current = false;
       return;
     }
 
     if (!formData.rabiesExpiryDate) {
       setError('狂犬病ワクチンの有効期限を入力してください。');
+      setIsLoading(false);
+      isSubmittingRef.current = false;
       return;
     }
 
     if (!formData.comboExpiryDate) {
       setError('混合ワクチンの有効期限を入力してください。');
+      setIsLoading(false);
+      isSubmittingRef.current = false;
       return;
     }
 
-    setIsLoading(true);
     setError('');
 
     try {
@@ -291,6 +316,7 @@ export function DogRegistration() {
       setError(error instanceof Error ? error.message : 'ワンちゃんの登録中にエラーが発生しました。');
     } finally {
       setIsLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 
