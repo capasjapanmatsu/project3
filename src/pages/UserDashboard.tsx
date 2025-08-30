@@ -453,6 +453,75 @@ export function UserDashboard() {
         throw new Error('更新対象が見つからない、または権限により更新できませんでした。');
       }
 
+      // ワクチン証明（保存で完結）: 画像が選択されている、または期限が入力されていれば提出扱い
+      if ((rabiesVaccineFile || comboVaccineFile) || (rabiesExpiryDate || comboExpiryDate)) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) throw new Error('ログインが必要です（提出）');
+
+        const ensureJpeg = async (file: File): Promise<File> => {
+          if (file.type === 'image/jpeg') return file;
+          const bmp = await createImageBitmap(file);
+          const c = document.createElement('canvas');
+          c.width = bmp.width; c.height = bmp.height;
+          c.getContext('2d')!.drawImage(bmp, 0, 0);
+          const blob: Blob = await new Promise((res) => c.toBlob((b) => res(b!), 'image/jpeg', 0.92));
+          return new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), { type: 'image/jpeg' });
+        };
+
+        const uploadDirect = async (file: File, kind: 'rabies' | 'combo') => {
+          const jpeg = await ensureJpeg(file);
+          const key = `${user.id}/${kind}/${Date.now()}-${crypto.randomUUID()}.jpg`;
+          const { error: upErr } = await supabase.storage
+            .from('vaccine-certs')
+            .upload(key, jpeg, { upsert: false, cacheControl: '0', contentType: 'image/jpeg' });
+          if (upErr) {
+            // フォールバック: REST 直叩き
+            const projectUrl = import.meta.env.VITE_SUPABASE_URL as string;
+            const anonKey    = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+            const resp = await fetch(`${projectUrl}/storage/v1/object/vaccine-certs/${key}`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+                apikey: anonKey,
+                'Content-Type': 'image/jpeg',
+                'x-upsert': 'false',
+                'Cache-Control': '0',
+              },
+              body: jpeg,
+            });
+            const txt = await resp.text();
+            if (!resp.ok) throw new Error(`upload ${kind} failed: ${resp.status} ${txt}`);
+          }
+          const { data: pub } = supabase.storage.from('vaccine-certs').getPublicUrl(key);
+          return pub.publicUrl;
+        };
+
+        let rabiesUrl: string | undefined;
+        let comboUrl: string | undefined;
+        if (rabiesVaccineFile) rabiesUrl = await uploadDirect(rabiesVaccineFile, 'rabies');
+        if (comboVaccineFile)  comboUrl  = await uploadDirect(comboVaccineFile,  'combo');
+
+        const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/submit-vaccine`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: (import.meta.env.VITE_SUPABASE_ANON_KEY as string)
+          },
+          body: JSON.stringify({
+            dog_id: selectedDog.id,
+            rabies_url: rabiesUrl,
+            combo_url: comboUrl,
+            rabies_expiry: rabiesExpiryDate || undefined,
+            combo_expiry: comboExpiryDate || undefined,
+          })
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok || !(json as any)?.success) {
+          throw new Error(`ワクチン提出に失敗しました: ${resp.status}`);
+        }
+      }
+
       setSuccess('ワンちゃんの情報を更新しました！');
       addNotification({
         type: 'success',

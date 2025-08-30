@@ -125,17 +125,21 @@ export function AdminTasks() {
       if (updateError) throw updateError;
 
       // 通知を送信
-      const { error: notifyError } = await supabase
-        .from('notifications')
-        .insert([{
+      const { insertNotificationSafe } = await import('@/lib/supabase/notifications');
+      try {
+        await insertNotificationSafe({
           user_id: vaccine.dog.owner.id,
-          type: 'vaccine_review',
+          type: approved ? 'vaccine_approved' : 'vaccine_rejected',
           title: approved ? 'ワクチン証明書が承認されました' : 'ワクチン証明書について',
-          message: approved 
+          message: approved
             ? `${vaccine.dog.name}のワクチン証明書が承認されました。ドッグランのご利用が可能になりました。`
             : `${vaccine.dog.name}のワクチン証明書の確認が必要です。マイページから再度アップロードしてください。`,
+          link_url: '/dashboard',
           data: { vaccine_id: vaccineId, dog_id: vaccine.dog_id }
-        }]);
+        });
+      } catch (notifyError) {
+        throw notifyError;
+      }
 
       if (notifyError) throw notifyError;
 
@@ -178,17 +182,21 @@ export function AdminTasks() {
       if (updateError) throw updateError;
 
       // 通知を送信
-      const { error: notifyError } = await supabase
-        .from('notifications')
-        .insert([{
+      const { insertNotificationSafe: insertNotificationSafe2 } = await import('@/lib/supabase/notifications');
+      try {
+        await insertNotificationSafe2({
           user_id: park.owner_id,
-          type: 'park_review',
+          type: approved ? 'park_apply_approved' : 'park_apply_rejected',
           title: approved ? '審査結果のお知らせ' : '審査結果について',
-          message: approved 
+          message: approved
             ? `${park.name}の審査が通過しました。${park.status === 'pending' ? '詳細情報の入力にお進みください。' : 'スマートロックシステムの実証検査の準備に入ります。'}`
             : `${park.name}の審査が不通過となりました。詳細はダッシュボードをご確認ください。`,
+          link_url: '/dashboard',
           data: { park_id: parkId }
-        }]);
+        });
+      } catch (notifyError) {
+        throw notifyError;
+      }
 
       if (notifyError) throw notifyError;
 

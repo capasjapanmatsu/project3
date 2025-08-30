@@ -184,7 +184,7 @@ export default function AdminVaccineApproval() {
             type: 'vaccine_approval_required',
             created_at: new Date().toISOString(),
             read: false,
-            link: '/dashboard'
+            link_url: '/dashboard'
           }
         ]);
       }

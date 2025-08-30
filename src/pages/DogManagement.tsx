@@ -49,6 +49,9 @@ export function DogManagement() {
   const [comboVaccineFile, setComboVaccineFile] = useState<File | null>(null);
   const [rabiesExpiryDate, setRabiesExpiryDate] = useState('');
   const [comboExpiryDate, setComboExpiryDate] = useState('');
+  // 選択と同時にStorageへアップロードしてURLを保持（犬登録と同等の即時反映挙動に寄せる）
+  const [rabiesUploadedUrl, setRabiesUploadedUrl] = useState<string | undefined>(undefined);
+  const [comboUploadedUrl, setComboUploadedUrl] = useState<string | undefined>(undefined);
 
   const fetchDogs = useCallback(async () => {
     try {
@@ -251,8 +254,52 @@ export function DogManagement() {
       }
       
       setRabiesVaccineFile(file);
+      // 即時アップロード（JPEG統一）
+      (async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.access_token) throw new Error('ログインが必要です');
+          const ensureJpeg = async (f: File): Promise<File> => {
+            if (f.type === 'image/jpeg') return f;
+            const bmp = await createImageBitmap(f);
+            const c = document.createElement('canvas');
+            c.width = bmp.width; c.height = bmp.height;
+            c.getContext('2d')!.drawImage(bmp, 0, 0);
+            const blob: Blob = await new Promise((res) => c.toBlob((b) => res(b!), 'image/jpeg', 0.92));
+            return new File([blob], f.name.replace(/\.[^/.]+$/, '.jpg'), { type: 'image/jpeg' });
+          };
+          const jpeg = await ensureJpeg(file);
+          const key = `${session.user.id}/rabies/${Date.now()}-${crypto.randomUUID()}.jpg`;
+          const { error: upErr } = await supabase.storage
+            .from('vaccine-certs')
+            .upload(key, jpeg, { upsert: false, cacheControl: '0', contentType: 'image/jpeg' });
+          if (upErr) {
+            // フォールバック REST
+            const projectUrl = import.meta.env.VITE_SUPABASE_URL as string;
+            const anonKey    = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+            const resp = await fetch(`${projectUrl}/storage/v1/object/vaccine-certs/${key}`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+                apikey: anonKey,
+                'Content-Type': 'image/jpeg',
+                'x-upsert': 'false',
+                'Cache-Control': '0',
+              },
+              body: jpeg,
+            });
+            const txt = await resp.text();
+            if (!resp.ok) throw new Error(`upload rabies failed: ${resp.status} ${txt}`);
+          }
+          const { data: pub } = supabase.storage.from('vaccine-certs').getPublicUrl(key);
+          setRabiesUploadedUrl(pub.publicUrl);
+        } catch (err) {
+          setDogUpdateError(err instanceof Error ? err.message : 'アップロードに失敗しました');
+        }
+      })();
     } else {
       setRabiesVaccineFile(null);
+      setRabiesUploadedUrl(undefined);
     }
   };
 
@@ -272,8 +319,51 @@ export function DogManagement() {
       }
       
       setComboVaccineFile(file);
+      // 即時アップロード（JPEG統一）
+      (async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.access_token) throw new Error('ログインが必要です');
+          const ensureJpeg = async (f: File): Promise<File> => {
+            if (f.type === 'image/jpeg') return f;
+            const bmp = await createImageBitmap(f);
+            const c = document.createElement('canvas');
+            c.width = bmp.width; c.height = bmp.height;
+            c.getContext('2d')!.drawImage(bmp, 0, 0);
+            const blob: Blob = await new Promise((res) => c.toBlob((b) => res(b!), 'image/jpeg', 0.92));
+            return new File([blob], f.name.replace(/\.[^/.]+$/, '.jpg'), { type: 'image/jpeg' });
+          };
+          const jpeg = await ensureJpeg(file);
+          const key = `${session.user.id}/combo/${Date.now()}-${crypto.randomUUID()}.jpg`;
+          const { error: upErr } = await supabase.storage
+            .from('vaccine-certs')
+            .upload(key, jpeg, { upsert: false, cacheControl: '0', contentType: 'image/jpeg' });
+          if (upErr) {
+            const projectUrl = import.meta.env.VITE_SUPABASE_URL as string;
+            const anonKey    = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+            const resp = await fetch(`${projectUrl}/storage/v1/object/vaccine-certs/${key}`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+                apikey: anonKey,
+                'Content-Type': 'image/jpeg',
+                'x-upsert': 'false',
+                'Cache-Control': '0',
+              },
+              body: jpeg,
+            });
+            const txt = await resp.text();
+            if (!resp.ok) throw new Error(`upload combo failed: ${resp.status} ${txt}`);
+          }
+          const { data: pub } = supabase.storage.from('vaccine-certs').getPublicUrl(key);
+          setComboUploadedUrl(pub.publicUrl);
+        } catch (err) {
+          setDogUpdateError(err instanceof Error ? err.message : 'アップロードに失敗しました');
+        }
+      })();
     } else {
       setComboVaccineFile(null);
+      setComboUploadedUrl(undefined);
     }
   };
 
@@ -410,10 +500,10 @@ export function DogManagement() {
           return pub.publicUrl;
         };
 
-        let rabiesUrl: string | undefined;
-        let comboUrl: string | undefined;
-        if (rabiesVaccineFile) rabiesUrl = await uploadDirect(rabiesVaccineFile, 'rabies');
-        if (comboVaccineFile)  comboUrl  = await uploadDirect(comboVaccineFile,  'combo');
+        let rabiesUrl: string | undefined = rabiesUploadedUrl;
+        let comboUrl: string | undefined  = comboUploadedUrl;
+        if (!rabiesUrl && rabiesVaccineFile) rabiesUrl = await uploadDirect(rabiesVaccineFile, 'rabies');
+        if (!comboUrl && comboVaccineFile)  comboUrl  = await uploadDirect(comboVaccineFile,  'combo');
 
         // Edge Functionで pending 行を作成（RLSを確実に回避）
         const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/submit-vaccine`, {
@@ -436,6 +526,8 @@ export function DogManagement() {
           throw new Error(`提出に失敗しました: ${resp.status} ${JSON.stringify(json)}`);
         }
         log('info', 'Vaccine submit via Edge Function completed');
+        setRabiesUploadedUrl(undefined);
+        setComboUploadedUrl(undefined);
       }
       
       setDogUpdateSuccess('ワンちゃん情報を更新しました');
@@ -737,10 +829,10 @@ export function DogManagement() {
                 return pub.publicUrl;
               };
 
-              let rabiesUrl: string | undefined;
-              let comboUrl: string | undefined;
-              if (rabiesVaccineFile) rabiesUrl = await uploadDirect(rabiesVaccineFile, 'rabies');
-              if (comboVaccineFile)  comboUrl  = await uploadDirect(comboVaccineFile,  'combo');
+              let rabiesUrl: string | undefined = rabiesUploadedUrl;
+              let comboUrl: string | undefined  = comboUploadedUrl;
+              if (!rabiesUrl && rabiesVaccineFile) rabiesUrl = await uploadDirect(rabiesVaccineFile, 'rabies');
+              if (!comboUrl && comboVaccineFile)  comboUrl  = await uploadDirect(comboVaccineFile,  'combo');
 
               // 画像が一切ない状態での提出はエラーにする（ストレージ削除後の再申請など）
               if (!rabiesUrl && !comboUrl) {
@@ -769,6 +861,8 @@ export function DogManagement() {
               // 提出成功後はローカルの選択状態をクリア
               setRabiesVaccineFile(null);
               setComboVaccineFile(null);
+              setRabiesUploadedUrl(undefined);
+              setComboUploadedUrl(undefined);
 
               setDogUpdateSuccess('ワクチン提出を受け付けました（審査待ち）');
               await fetchDogs();

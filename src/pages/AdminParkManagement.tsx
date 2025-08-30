@@ -707,6 +707,21 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
 
       console.log('✅ ステータス更新完了:', nextStatus);
 
+      // 承認処理が成功した場合の追記: 第一審査承認時にコミュニティへ通知メッセージを送信
+      try {
+        if (park.status === 'pending' && nextStatus === 'second_stage_waiting') {
+          const message = `@https://dogparkjp.com/products/c9d47ff9-a6c1-4f09-97ec-ad4d2334cbe7\nこちらよりスマートドッグラン用のスマートロックをご注文お願いします。運営為に必須となります。`;
+          await supabase.from('messages').insert({
+            sender_id: user?.id || null,
+            receiver_id: park.owner_id,
+            content: message
+          });
+        }
+      } catch (e) {
+        // 送信失敗は致命的ではないためログのみ
+        console.error('コミュニティ通知の送信に失敗:', e);
+      }
+
       // 承認処理が成功した場合は、データを強制的に再取得
       await adminData.refetch();
       

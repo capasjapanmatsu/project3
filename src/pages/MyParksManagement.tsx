@@ -373,7 +373,7 @@ export function MyParksManagement() {
                       <Link to={`/parks/${park.id}/second-stage`} className="flex-1">
                         <Button className="w-full bg-orange-600 hover:bg-orange-700">
                           <FileText className="w-4 h-4 mr-2" />
-                          詳細情報を入力
+                          ドッグランの運営準備が出来たらこちらから申請をしてください。
                         </Button>
                       </Link>
                     ) : park.status === 'pending' ? (
