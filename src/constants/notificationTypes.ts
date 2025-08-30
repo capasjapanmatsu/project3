@@ -11,6 +11,15 @@ export const NOTIFICATION_TYPES = [
   'park_apply_requested',
   'park_apply_approved',
   'park_apply_rejected',
+  // 施設・ドッグラン関連（不足で落ちやすいので明示的に追加）
+  'park_application_received',
+  'park_application_status',
+  'park_approval_required',
+  'facility_registered',
+  'facility_apply_requested',
+  'facility_apply_approved',
+  'facility_apply_rejected',
+  'facility_approval_required',
 ] as const;
 
 export type NotificationType = typeof NOTIFICATION_TYPES[number];
