@@ -5,6 +5,8 @@ export interface WebPConvertOptions {
   generateThumbnail?: boolean; // サムネイル生成 (デフォルト: true)
   thumbnailSize?: number; // サムネイルサイズ (デフォルト: 300)
   keepOriginal?: boolean; // オリジナル画像を保持 (デフォルト: false)
+  upsert?: boolean; // Storageアップロード時の上書き可否（デフォルト: true）
+  cacheControl?: string; // アップロード時のキャッシュ制御（秒）
 }
 
 export interface WebPConvertResult {
@@ -33,10 +35,17 @@ export async function uploadAndConvertToWebP(
   options: WebPConvertOptions = {}
 ): Promise<WebPConvertResult> {
   try {
+    // Content-Type が空や application/octet-stream の場合は拡張子から補正
+    let uploadFile: File = file;
+    if (!file.type || file.type === 'application/octet-stream') {
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+      const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      uploadFile = new File([file], file.name, { type: mime });
+    }
     // まず元画像をアップロード
     const { error: uploadError } = await supabase.storage
       .from(bucket)
-      .upload(path, file, { upsert: true });
+      .upload(path, uploadFile, { upsert: options.upsert ?? true, cacheControl: options.cacheControl ?? '3600' });
 
     if (uploadError) {
       throw new Error(`ファイルのアップロードに失敗しました: ${uploadError.message}`);

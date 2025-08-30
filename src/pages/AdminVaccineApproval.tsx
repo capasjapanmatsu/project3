@@ -127,7 +127,7 @@ export default function AdminVaccineApproval() {
         dog_breed: item.dog?.breed || '不明',
         dog_gender: item.dog?.gender || '不明',
         dog_birth_date: item.dog?.birth_date || '',
-        owner_id: item.owner_id,
+        owner_id: item.dog?.owner?.id || '',
         owner_name: item.dog?.owner?.name || '不明',
         owner_email: item.dog?.owner?.email || '不明',
         owner_phone: item.dog?.owner?.phone_number || '',
@@ -175,19 +175,18 @@ export default function AdminVaccineApproval() {
       // 承認されたアプリケーションの情報を取得
       const application = applications.find(app => app.id === applicationId);
       if (application) {
-        // 通知を送信
-        await supabase
-          .from('notifications')
-          .insert([
-            {
-              user_id: application.owner_id,
-              title: 'ワクチン証明書承認',
-              message: `${application.dog_name}ちゃんのワクチン証明書が承認されました。`,
-              type: 'vaccine_approved',
-              created_at: new Date().toISOString(),
-              read: false
-            }
-          ]);
+        // 通知タイプ制約に合わせて既存タイプを使用
+        await supabase.from('notifications').insert([
+          {
+            user_id: application.owner_id,
+            title: 'ワクチン証明書承認',
+            message: `${application.dog_name}ちゃんのワクチン証明書が承認されました。`,
+            type: 'vaccine_approval_required',
+            created_at: new Date().toISOString(),
+            read: false,
+            link: '/dashboard'
+          }
+        ]);
       }
 
       showSuccess('ワクチン証明書を承認しました。');
@@ -204,6 +203,64 @@ export default function AdminVaccineApproval() {
     } catch (error) {
       console.error('❌ 承認エラー:', error);
       showError('承認処理に失敗しました。');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 却下処理（コメント必須・コミュニティメッセージ送信）
+  const handleReject = async (application: VaccineApplication) => {
+    const note = window.prompt('却下理由を入力してください（ユーザーに送信されます）');
+    if (note === null) return; // キャンセル
+    const rejectionNote = String(note).trim();
+    if (!rejectionNote) { showError('却下理由を入力してください'); return; }
+
+    try {
+      setActionLoading(true);
+      setError('');
+      setSuccess('');
+
+      // ステータスを申請待ち（pending）に戻す（理由はコミュニティメッセージで通知）
+      const { error: updErr } = await supabase
+        .from('vaccine_certifications')
+        .update({ status: 'pending' })
+        .eq('id', application.id);
+      if (updErr) throw updErr;
+
+      // 管理者 → 飼い主 へコミュニティメッセージ送信
+      if (user?.id) {
+        let receiverId = application.owner_id;
+        if (!receiverId) {
+          const { data: rec } = await supabase
+            .from('vaccine_certifications')
+            .select('dog:dogs(owner_id)')
+            .eq('id', application.id)
+            .single();
+          receiverId = (rec as any)?.dog?.owner_id || '';
+        }
+
+        if (!receiverId) {
+          showError('飼い主IDの取得に失敗しました');
+        } else {
+          const content = `【ワクチン証明書 却下のお知らせ】\n${application.dog_name}ちゃんのワクチン証明書は却下されました。\n理由: ${rejectionNote}\nお手数ですが、画像や有効期限をご確認のうえ再提出をお願いいたします。`;
+          const { error: msgErr } = await supabase.from('messages').insert({
+            sender_id: user.id,
+            receiver_id: receiverId,
+            content,
+          });
+          if (msgErr) {
+            console.error('message insert error:', msgErr);
+            showError('却下は反映しましたが、メッセージ送信に失敗しました');
+          }
+        }
+      }
+
+      // 画面更新
+      setApplications(prev => prev.map(a => a.id === application.id ? { ...a, status: 'pending' as const } : a));
+      showSuccess('却下（申請待ちに戻しました）し、メッセージを送信しました');
+    } catch (e) {
+      console.error('❌ 却下エラー:', e);
+      showError('却下処理に失敗しました');
     } finally {
       setActionLoading(false);
     }
@@ -419,6 +476,14 @@ export default function AdminVaccineApproval() {
                         >
                           <CheckCircle className="w-4 h-4 mr-1" />
                           承認
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => handleReject(app)}
+                          disabled={actionLoading}
+                        >
+                          却下
                         </Button>
                       </div>
                     </div>

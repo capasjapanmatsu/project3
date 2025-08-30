@@ -1,5 +1,4 @@
-import React from 'react';
-import { Shield, Clock, X, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Clock, Shield, X } from 'lucide-react';
 
 export interface VaccineBadgeProps {
   status: 'approved' | 'pending' | 'rejected' | 'none' | 'expired';
@@ -133,11 +132,12 @@ export function VaccineBadge({
 
 // ワクチン証明書の詳細ステータスを取得するヘルパー関数
 export function getVaccineStatusFromDog(dog: any) {
-  const cert = dog.vaccine_certifications?.[0];
-  
-  if (!cert) {
-    return 'none';
-  }
+  const list = Array.isArray(dog?.vaccine_certifications) ? dog.vaccine_certifications : [];
+  const cert = list.length > 0
+    ? [...list].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+    : null;
+
+  if (!cert) return 'none';
   
   // 期限切れチェック
   const now = new Date();

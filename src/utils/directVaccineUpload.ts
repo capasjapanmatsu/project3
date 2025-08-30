@@ -77,41 +77,40 @@ export const directVaccineUpload = async (
     const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${filePath}`;
 
 
-    // v2 の正しいfetchアップロード（PUTメソッド使用）
-    const response = await fetch(uploadUrl, {
-      method: 'PUT',  // Storage API は PUT が正しい
-      headers: {
-        'Authorization': `Bearer ${token}`,      // ← v2のトークンを使用
-        'Content-Type': contentType,
-        'Cache-Control': '3600',
-        'x-upsert': 'true'
-      },
-      body: file
-    });
+    // まずは公式SDKのupload(upsert対応)を使用（CORSや将来互換の面で安全）
+    const sdkUpload = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file, { contentType, upsert: true, cacheControl: '3600' });
 
+    if (sdkUpload.error) {
+      console.warn('⚠️ SDK upload failed. Falling back to REST PUT.', sdkUpload.error);
+      // v2 のREST APIでフォールバック
+      const response = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': contentType,
+          'Cache-Control': '3600',
+          'x-upsert': 'true'
+        },
+        body: file
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Upload failed:', errorText);
-      
-      // Cloudflareエラーの場合、より適切なエラーメッセージを提供
-      if (response.status === 520) {
-        console.error('🌐 Cloudflare Error 520 detected - temporary server issue');
-        throw new Error('一時的なサーバーエラーが発生しました。しばらく待ってから再度お試しください。');
-      } else if (response.status >= 500) {
-        console.error('🔧 Server error detected:', response.status);
-        throw new Error(`サーバーエラーが発生しました (${response.status})。しばらく待ってから再度お試しください。`);
-      } else {
-        throw new Error(`アップロードに失敗しました: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Upload failed:', errorText);
+        if (response.status === 520) {
+          throw new Error('一時的なサーバーエラーが発生しました。しばらく待ってから再度お試しください。');
+        } else if (response.status >= 500) {
+          throw new Error(`サーバーエラーが発生しました (${response.status})。しばらく待ってから再度お試しください。`);
+        } else {
+          throw new Error(`アップロードに失敗しました: ${response.status} ${response.statusText}`);
+        }
       }
     }
 
-    const responseData = await response.json();
-
     // 公開URLを取得
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(filePath);
+    const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(filePath);
 
 
     return {

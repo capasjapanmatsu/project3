@@ -60,21 +60,24 @@ export const validateVaccineFile = (file: File): { isValid: boolean; error?: str
  */
 export const uploadVaccineImage = async (
   file: File,
-  dogId: string,
+  userId: string,
   vaccineType: VaccineType = 'mixed'
 ): Promise<VaccineUploadResult> => {
   try {
-    const dogIdTyped = dogId as string;
+    const uid = userId as string;
     const fileValidation = validateVaccineFile(file);
-    
+
     if (!fileValidation.isValid) {
       throw new Error(fileValidation.error);
     }
 
-    const fileName = `${dogIdTyped}_${vaccineType}_${Date.now()}_${file.name}`;
-    const filePath = `${dogIdTyped}/${fileName}`;
+    // キャッシュ回避のため、毎回一意なキーにする
+    const uniqueId = `${Date.now()}-${crypto.randomUUID?.() || Math.random().toString(36).slice(2)}`;
+    const safeType = vaccineType === 'rabies' ? 'rabies' : vaccineType === 'combo' ? 'combo' : 'mixed';
+    const baseName = `${uid}_${safeType}_${uniqueId}`;
+    const filePath = `${uid}/${safeType}/${baseName}.jpg`;
 
-    // WebP変換付きアップロード
+    // WebP変換付きアップロード（上書き禁止・キャッシュ0）
     const uploadResult = await uploadAndConvertToWebP(
       'vaccine-certs',
       file,
@@ -83,7 +86,9 @@ export const uploadVaccineImage = async (
         quality: 80,
         generateThumbnail: true,
         thumbnailSize: 300,
-        keepOriginal: false // オリジナルは削除してWebPのみ保存
+        keepOriginal: false,
+        upsert: false,
+        cacheControl: '0'
       }
     );
 
@@ -93,9 +98,8 @@ export const uploadVaccineImage = async (
 
     return {
       success: true,
-      // WebP変換失敗時はオリジナルURLでフォールバック
       publicUrl: uploadResult.webpUrl || uploadResult.originalUrl,
-      fileName,
+      fileName: `${baseName}.jpg`,
       filePath: uploadResult.webpPath || uploadResult.originalPath,
       thumbnailUrl: uploadResult.thumbnailUrl
     };

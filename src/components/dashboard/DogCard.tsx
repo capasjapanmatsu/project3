@@ -114,6 +114,7 @@ interface DogEditModalProps {
   onComboVaccineSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRabiesExpiryDateChange: (date: string) => void;
   onComboExpiryDateChange: (date: string) => void;
+  onSubmitVaccine?: () => void;
 }
 
 export function DogEditModal({
@@ -137,7 +138,8 @@ export function DogEditModal({
   onComboVaccineSelect,
   onRabiesExpiryDateChange,
   onComboExpiryDateChange,
-  onImageCropped
+  onImageCropped,
+  onSubmitVaccine
 }: DogEditModalProps) {
   if (!dog) return null;
   
@@ -450,6 +452,15 @@ export function DogEditModal({
                     <strong>注意:</strong> 新しいワクチン証明書をアップロードすると、管理者による再承認が必要になります。
                     承認されるまでドッグランのご利用はできません。
                   </p>
+                </div>
+
+                {/* 強制提出ボタン（Edge Function） */}
+                <div className="mt-3 text-right">
+                  {onSubmitVaccine && (
+                    <Button type="button" onClick={() => onSubmitVaccine()}>
+                      ワクチン提出（審査待ちにする）
+                    </Button>
+                  )}
                 </div>
               </div>
               
