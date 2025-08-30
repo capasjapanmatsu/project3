@@ -1024,30 +1024,23 @@ export function ParkManagement() {
             {/* Park Header */}
             <div className="bg-white rounded-lg border p-6 mb-6">
               <div className="flex justify-between items-start mb-4">
-          <div>
+                <div className="w-full">
                   <h1 className="text-2xl font-bold text-gray-900">{park.name}</h1>
                   <p className="text-gray-600 mt-1">{park.address}</p>
+                  <Link to={`/parks/${park.id}`}>
+                    <Button variant="secondary" className="w-full mt-3">
+                      <Eye className="w-4 h-4 mr-2" />
+                      公開ページ
+                    </Button>
+                  </Link>
                   <div className="flex items-center mt-2">
                     <Star className="w-4 h-4 text-yellow-400 fill-current mr-1" />
                     <span className="text-sm font-medium">{park.average_rating.toFixed(1)}</span>
                     <span className="text-sm text-gray-500 ml-1">({park.review_count}件)</span>
+                  </div>
                 </div>
-          </div>
-
-          <div className="flex space-x-3">
-            <Link to={`/parks/${park.id}`}>
-              <Button variant="secondary" className="min-w-[100px]">
-                <Eye className="w-4 h-4 mr-2" />
-                公開ページ
-              </Button>
-            </Link>
-            <Button onClick={() => setShowEditForm(true)} className="min-w-[100px]">
-              <Edit className="w-4 h-4 mr-2" />
-              設定編集
-            </Button>
-          </div>
-        </div>
-      </div>
+              </div>
+            </div>
 
             {/* 既存のコンテンツ */}
       {/* エラー・成功メッセージ */}
