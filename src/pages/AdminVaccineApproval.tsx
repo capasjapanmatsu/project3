@@ -172,22 +172,7 @@ export default function AdminVaccineApproval() {
 
       if (updateError) throw updateError;
 
-      // 承認されたアプリケーションの情報を取得
-      const application = applications.find(app => app.id === applicationId);
-      if (application) {
-        // 承認通知（利用者向け）
-        await supabase.from('notifications').insert([
-          {
-            user_id: application.owner_id,
-            title: 'ワクチン証明書承認',
-            message: `${application.dog_name}ちゃんのワクチン証明書が承認されました。`,
-            type: 'vaccine_approved',
-            created_at: new Date().toISOString(),
-            read: false,
-            link_url: '/dashboard'
-          }
-        ]);
-      }
+      // 通知はDBトリガー（notify_vaccine_approval）が送信するため、フロントからは送らない
 
       showSuccess('ワクチン証明書を承認しました。');
       
