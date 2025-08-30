@@ -172,7 +172,25 @@ export default function AdminVaccineApproval() {
 
       if (updateError) throw updateError;
 
-      // 通知はDBトリガー（notify_vaccine_approval）が送信するため、フロントからは送らない
+      // 通知はDBトリガー（notify_vaccine_approval）がアプリ内通知を送る
+      // LINE連携はクライアント側からのみ送信して二重通知を防ぐ
+      const application = applications.find(app => app.id === applicationId);
+      if (application) {
+        try {
+          const { notifyAppAndLine } = await import('../utils/notify');
+          await notifyAppAndLine({
+            userId: application.owner_id,
+            title: 'ワクチン証明書承認',
+            message: `${application.dog_name}ちゃんのワクチン証明書が承認されました。`,
+            linkUrl: '/dashboard',
+            kind: 'alert',
+            sendApp: false, // アプリ内はDBトリガーが送る
+            sendLine: true,
+          });
+        } catch (e) {
+          console.warn('LINE notify failed (will continue without it)', e);
+        }
+      }
 
       showSuccess('ワクチン証明書を承認しました。');
       
