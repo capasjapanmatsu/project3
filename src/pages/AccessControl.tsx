@@ -588,6 +588,13 @@ export function AccessControl() {
         </div>
       )}
 
+      {/* 注意喚起（GPS必須） */}
+      <Card className="p-4 mb-4 bg-yellow-50 border-yellow-200">
+        <div className="text-sm text-yellow-800">
+          GPS機能をオンにして使用してください。ドッグランに近い場所でないと開錠はできません。
+        </div>
+      </Card>
+
       {/* 決済状況表示 */}
       {paymentStatus && (
         <Card className="p-4 mb-6 bg-blue-50 border-blue-200">
