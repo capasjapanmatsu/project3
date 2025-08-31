@@ -26,6 +26,8 @@ export const NOTIFICATION_TYPES = [
   'facility_apply_approved',
   'facility_apply_rejected',
   'facility_approval_required',
+  'facility_public_on',
+  'facility_public_off',
 ] as const;
 
 export type NotificationType = typeof NOTIFICATION_TYPES[number];
