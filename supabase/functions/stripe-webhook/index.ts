@@ -112,7 +112,7 @@ async function handleEvent(event: Stripe.Event) {
           });
           if (orderErr) console.error('Failed to insert subscription order:', orderErr);
 
-          // Notify user (App notification)
+          // Notify user (App notification + LINE)
           try {
             const notes = (session.metadata?.notes as string) || '';
             const isPremiumOwner = /premium_owner/i.test(notes);
@@ -132,6 +132,24 @@ async function handleEvent(event: Stripe.Event) {
               },
               read: false,
             });
+
+            // LINE通知（Netlify Functions 経由）
+            try {
+              const base = Deno.env.get('PUBLIC_SITE_URL') ?? 'https://dogparkjp.com';
+              await fetch(`${base}/.netlify/functions/line-notify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: customerMap.user_id,
+                  kind: 'alert',
+                  title,
+                  message,
+                  linkUrl: isPremiumOwner ? `${base}/my-facilities-management` : `${base}/dashboard`,
+                })
+              });
+            } catch (e) {
+              console.error('Failed to send LINE notification for subscription:', e);
+            }
           } catch (notifyErr) {
             console.error('Failed to insert subscription notification:', notifyErr);
           }
@@ -206,7 +224,7 @@ async function handleEvent(event: Stripe.Event) {
               }
             }
 
-            // Notify user (App notification)
+            // Notify user (App notification + LINE)
             try {
               const title = 'お支払いが完了しました';
               const message = 'ご注文の決済が完了しました。ご利用ありがとうございます。';
@@ -223,6 +241,24 @@ async function handleEvent(event: Stripe.Event) {
                 },
                 read: false,
               });
+
+              // LINE通知（Netlify Functions 経由）
+              try {
+                const base = Deno.env.get('PUBLIC_SITE_URL') ?? 'https://dogparkjp.com';
+                await fetch(`${base}/.netlify/functions/line-notify`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId: customerMap.user_id,
+                    kind: 'alert',
+                    title,
+                    message,
+                    linkUrl: `${base}/dashboard`,
+                  })
+                });
+              } catch (e) {
+                console.error('Failed to send LINE notification for payment:', e);
+              }
             } catch (notifyErr) {
               console.error('Failed to insert payment notification:', notifyErr);
             }
