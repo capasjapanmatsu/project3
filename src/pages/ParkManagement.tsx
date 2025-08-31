@@ -1971,20 +1971,40 @@ export function ParkManagement() {
                         setIsEditLoading(true);
                         setError('');
                         
-                        // 施設情報を更新
-                        const { error: updateError } = await supabase
-                          .from('dog_parks')
-                          .update({
-                            latitude: editForm.latitude,
-                            longitude: editForm.longitude,
-                            geofence_radius_km: editForm.geofence_radius_km,
-                            // 手動調整を明示（今後の自動ジオコーディングを抑止するため）
-                            location_locked: true,
-                            updated_at: new Date().toISOString()
-                          })
-                          .eq('id', park.id);
-                        
-                        if (updateError) throw updateError;
+                        // 施設情報を更新（スキーマ互換のためフォールバック付き）
+                        const baseUpdate = {
+                          latitude: editForm.latitude,
+                          longitude: editForm.longitude,
+                          updated_at: new Date().toISOString(),
+                        } as Record<string, unknown>;
+
+                        // まずは拡張カラム込みで試行
+                        let updateError: any | null = null;
+                        {
+                          const firstTry = await supabase
+                            .from('dog_parks')
+                            .update({
+                              ...baseUpdate,
+                              geofence_radius_km: editForm.geofence_radius_km,
+                              location_locked: true,
+                            })
+                            .eq('id', park.id);
+                          updateError = firstTry.error;
+                        }
+
+                        // geofence_radius_km や location_locked が存在しない環境では、緯度経度のみで再試行
+                        if (updateError) {
+                          const msg = String(updateError?.message || updateError);
+                          if (msg.includes('geofence_radius_km') || msg.includes('location_locked') || msg.includes('schema')) {
+                            const secondTry = await supabase
+                              .from('dog_parks')
+                              .update(baseUpdate)
+                              .eq('id', park.id);
+                            if (secondTry.error) throw secondTry.error;
+                          } else {
+                            throw updateError;
+                          }
+                        }
                         
                         // フロント側にもロック状態を反映（コンポーネントの自動ジオコーディング抑止用）
                         (window as any).__PARK_LOCATION_LOCKED__ = true;
