@@ -25,10 +25,15 @@ export default function AdminSmartLockSetup({ parkId, parkName }: { parkId: stri
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('smart_locks')
         .select('*')
-        .eq('park_id', parkId);
+        .eq('park_id', parkId)
+        .order('purpose', { ascending: true });
+      if (error) {
+        console.warn('smart_locks load error', error);
+        return;
+      }
       if (Array.isArray(data) && data.length) {
         setLocks((prev) => prev.map(row => data.find(d => d.purpose === row.purpose) ? {
           ...row,
@@ -43,28 +48,51 @@ export default function AdminSmartLockSetup({ parkId, parkName }: { parkId: stri
     setLocks(prev => prev.map(row => row.purpose === purpose ? { ...row, [field]: value } : row));
   };
 
+  const ensureSupabaseSession = async () => {
+    const { data } = await supabase.auth.getUser();
+    if (data?.user?.id) return true;
+    try {
+      const resp = await fetch('/line/exchange-supabase-session', { method: 'POST', credentials: 'include' });
+      if (!resp.ok) return false;
+      const { access_token, refresh_token } = await resp.json();
+      const set = await supabase.auth.setSession({ access_token, refresh_token });
+      return Boolean(set?.data?.session?.user?.id);
+    } catch {
+      return false;
+    }
+  };
+
   const save = async () => {
     setSaving(true);
     setMessage('');
     try {
+      const ok = await ensureSupabaseSession();
+      if (!ok) throw new Error('認証セッションを確立できませんでした');
       // upsert by (park_id, purpose) 近似: 既存レコードを取得して update/insert を分岐
       for (const row of locks) {
-        const { data: existing } = await supabase
+        const { error: upsertError } = await supabase
           .from('smart_locks')
-          .select('id')
-          .eq('park_id', parkId)
-          .eq('purpose', row.purpose)
-          .maybeSingle();
-        if (existing?.id) {
-          await supabase
-            .from('smart_locks')
-            .update({ lock_id: row.lock_id, ttlock_lock_id: row.ttlock_lock_id, pin_enabled: true })
-            .eq('id', existing.id as any);
-        } else {
-          await supabase
-            .from('smart_locks')
-            .insert({ park_id: parkId, lock_id: row.lock_id, purpose: row.purpose, ttlock_lock_id: row.ttlock_lock_id, pin_enabled: true });
-        }
+          .upsert({
+            park_id: parkId,
+            purpose: row.purpose,
+            lock_id: row.lock_id,
+            ttlock_lock_id: row.ttlock_lock_id,
+            pin_enabled: true,
+          }, { onConflict: 'park_id,purpose' });
+        if (upsertError) throw upsertError;
+      }
+      // 再取得してUIに反映
+      const { data: refreshed, error: reloadErr } = await supabase
+        .from('smart_locks')
+        .select('*')
+        .eq('park_id', parkId)
+        .order('purpose', { ascending: true });
+      if (reloadErr) throw reloadErr;
+      if (refreshed && refreshed.length) {
+        setLocks((prev) => prev.map(row => refreshed.find(d => d.purpose === row.purpose) ? {
+          ...row,
+          ...refreshed.find(d => d.purpose === row.purpose) as any,
+        } : row));
       }
       setMessage('保存しました');
     } catch (e) {
