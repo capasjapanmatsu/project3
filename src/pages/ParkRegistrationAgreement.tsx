@@ -17,10 +17,25 @@ import { supabase } from '../utils/supabase';
 
 export default function ParkRegistrationAgreement() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, effectiveUserId } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isAgreementChecked, setIsAgreementChecked] = useState(false);
+
+  // Supabaseセッションを確実に用意して userId を返す（LINEのみログイン時のフォールバック含む）
+  const resolveOwnerUserId = async (): Promise<string | null> => {
+    if (user?.id) return user.id;
+    if (effectiveUserId) return effectiveUserId as string;
+    try {
+      const resp = await fetch('/line/exchange-supabase-session', { method: 'POST', credentials: 'include' });
+      if (resp.ok) {
+        const { access_token, refresh_token } = await resp.json() as { access_token: string; refresh_token: string };
+        const { data } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (data?.session?.user?.id) return data.session.user.id;
+      }
+    } catch {}
+    return null;
+  };
 
   const handleAgreementSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,12 +49,19 @@ export default function ParkRegistrationAgreement() {
       setIsLoading(true);
       setError('');
 
+      const uid = await resolveOwnerUserId();
+      if (!uid) {
+        setError('ログインが必要です。LINEログイン後に再度お試しください。');
+        setIsLoading(false);
+        return;
+      }
+
       // 同意情報をデータベースに保存
       const { error: agreementError } = await supabase
         .from('owner_agreements')
         .upsert([
           {
-            user_id: user?.id,
+            user_id: uid,
             agreed_at: new Date().toISOString(),
             agreement_version: '1.0',
             agreement_type: 'park_owner'
