@@ -279,6 +279,21 @@ export function AdminShopManagement() {
           console.error('Error sending notification:', e);
         }
       }
+
+      // 注文がキャンセルになった場合も通知を送信（アプリ＋LINE）
+      if (orderFormData.status === 'cancelled' && selectedOrder.status !== 'cancelled') {
+        try {
+          const { notifyAppAndLineBoth } = await import('@/lib/supabase/notifyAll');
+          await notifyAppAndLineBoth({
+            userId: selectedOrder.user_id,
+            type: 'order_cancelled',
+            title: '注文がキャンセルされました',
+            message: `注文番号: ${selectedOrder.order_number} はキャンセルされました。`,
+          });
+        } catch (e) {
+          console.error('Error sending notification:', e);
+        }
+      }
       
       setSuccess('注文情報を更新しました');
       
