@@ -2117,7 +2117,7 @@ export default function FacilityEdit() {
           {premium.state !== 'active' && (
             <div className="max-w-4xl mx-auto px-4 py-6">
               <Button onClick={startCheckout} className="w-full bg-orange-500 hover:bg-orange-600">
-                初月無料で試す
+                プレミアム会員初月無料で試す
               </Button>
             </div>
           )}
