@@ -568,6 +568,13 @@ export function AccessControl() {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {/* FX styles for game-like animations */}
+      <style>{`
+        @keyframes ripple { 0% { transform: scale(1); opacity: .45; } 100% { transform: scale(1.8); opacity: 0; } }
+        .animate-ripple { animation: ripple 1.1s ease-out infinite; }
+        .animate-ripple-delay { animation: ripple 1.4s ease-out infinite 0.25s; }
+        @keyframes particle { 0% { transform: translate(-50%, -50%) scale(.6); opacity: 1; } 100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.15); opacity: 0; } }
+      `}</style>
       <div className="flex items-center mb-6">
         <Button
           variant="primary"
@@ -914,15 +921,37 @@ export function AccessControl() {
                     }`}
                   >
                     {isGeneratingPin ? (
-                      <Loader2 className="w-10 h-10 animate-spin mx-auto" />
+                      <>
+                        {/* Core spinner */}
+                        <Loader2 className="w-10 h-10 animate-spin mx-auto" />
+                        {/* Game-like ripples */}
+                        <span className={`pointer-events-none absolute inset-0 rounded-full ${currentAction === 'entry' ? 'bg-blue-400/10' : 'bg-red-400/10'} animate-ripple`} />
+                        <span className={`pointer-events-none absolute inset-0 rounded-full ${currentAction === 'entry' ? 'bg-blue-300/10' : 'bg-red-300/10'} animate-ripple-delay`} />
+                        {/* Burst particles */}
+                        {Array.from({ length: 8 }).map((_, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              position: 'absolute',
+                              left: '50%',
+                              top: '50%',
+                              width: '8px',
+                              height: '8px',
+                              transform: 'translate(-50%, -50%)',
+                              borderRadius: '9999px',
+                              backgroundColor: currentAction === 'entry' ? '#60A5FA' : '#F87171',
+                              // 放射状に飛ばす
+                              ['--tx' as any]: `${Math.cos((i / 8) * Math.PI * 2) * 60}px`,
+                              ['--ty' as any]: `${Math.sin((i / 8) * Math.PI * 2) * 60}px`,
+                              animation: 'particle 0.9s ease-out forwards',
+                              animationDelay: `${(i % 4) * 0.05}s`,
+                              opacity: 0.9
+                            } as React.CSSProperties}
+                          />
+                        ))}
+                      </>
                     ) : (
                       <Unlock className="w-12 h-12 mx-auto" />
-                    )}
-                    {isGeneratingPin && (
-                      <>
-                        <span className={`pointer-events-none absolute inset-0 rounded-full ring-4 animate-ping ${currentAction === 'entry' ? 'ring-blue-300' : 'ring-red-300'}`} />
-                        <span className={`pointer-events-none absolute inset-0 rounded-full border-4 ${currentAction === 'entry' ? 'border-blue-200' : 'border-red-200'} animate-pulse`} />
-                      </>
                     )}
                   </button>
                   <div className="mt-3 text-sm text-gray-700">
