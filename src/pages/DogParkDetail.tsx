@@ -996,7 +996,7 @@ export function DogParkDetail() {
                 ) : (
                   <Link to={`/access-control?park=${park.id}`}>
                     <Button className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-3">
-                      予約する
+                      入場する
                     </Button>
                   </Link>
                 )}
