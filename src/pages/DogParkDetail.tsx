@@ -527,7 +527,21 @@ export function DogParkDetail() {
 
   // オーナー問い合わせ
   const handleContactOwner = async () => {
-    setShowInquiry(true);
+    try {
+      // コミュニティ画面で対象オーナーとのスレッドを開く
+      // park.owner_id を利用（存在しない場合はフォールバックしない）
+      const ownerId = (park as any)?.owner_id;
+      if (ownerId) {
+        sessionStorage.setItem('communityActiveTab', 'messages');
+        sessionStorage.setItem('communityOpenPartnerId', ownerId);
+        navigate('/community');
+        return;
+      }
+      // フォールバック: 旧モーダルを開く
+      setShowInquiry(true);
+    } catch {
+      setShowInquiry(true);
+    }
   };
 
   if (isLoading) {
