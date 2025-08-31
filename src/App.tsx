@@ -35,11 +35,17 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // なければ LIFF セッションを確認
+    // なければ LIFF セッションを確認し、見つかったら即時にSupabaseセッションへ交換（RLSやAPIで必要なため）
     let mounted = true;
     (async () => {
       const me = await fetchSessionUser();
       if (!mounted) return;
+      if (me) {
+        try {
+          const resp = await fetch('/line/exchange-supabase-session', { method: 'POST', credentials: 'include' });
+          if (!resp.ok) throw new Error('exchange failed');
+        } catch {}
+      }
       setLiffAllowed(Boolean(me));
       if (!me) {
         const redirect = encodeURIComponent(location.pathname + location.search);
