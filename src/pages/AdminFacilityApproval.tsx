@@ -272,7 +272,7 @@ export default function AdminFacilityApproval() {
       // データを再取得
       await fetchApplications();
 
-      // 通知（承認時のみ）
+      // 通知（承認時のみ）：アプリ通知 + LINE
       if (approved) {
         try {
           const { data: facility } = await supabase
@@ -282,13 +282,13 @@ export default function AdminFacilityApproval() {
             .maybeSingle();
           if (facility?.owner_id) {
             const linkUrl = `${window.location.origin}/facilities/${facility.id}/edit`;
-            const { notifyAppAndLine } = await import('../utils/notify');
-            await notifyAppAndLine({
+            const { notifyAppAndLineBoth } = await import('@/lib/supabase/notifyAll');
+            await notifyAppAndLineBoth({
               userId: facility.owner_id,
+              type: 'facility_apply_approved',
               title: '施設が承認されました',
               message: '画像を登録し、公開設定を公開にしてください。',
               linkUrl,
-              kind: 'alert'
             });
           }
         } catch {}

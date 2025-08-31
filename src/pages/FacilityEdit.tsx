@@ -737,6 +737,21 @@ export default function FacilityEdit() {
       setFacility(prev => prev ? { ...prev, is_public: isPublic } : null);
 
       setSuccess(isPublic ? '施設を公開しました' : '施設を非公開にしました');
+      // 通知: 公開に切り替え時のみオーナーへ案内（アプリ通知+LINE）
+      if (isPublic) {
+        try {
+          const { notifyAppAndLineBoth } = await import('@/lib/supabase/notifyAll');
+          await notifyAppAndLineBoth({
+            userId: user.id!,
+            type: 'facility_apply_approved',
+            title: '施設を公開しました',
+            message: `${facility?.name || '施設'}が公開になりました。公開ページを確認してください。`,
+            linkUrl: `${window.location.origin}/parks?view=facilities&facility=${facilityId}`,
+          });
+        } catch (e) {
+          console.warn('facility publish notify failed', e);
+        }
+      }
       setTimeout(() => setSuccess(''), 3000);
 
     } catch (error: any) {
