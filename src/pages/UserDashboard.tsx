@@ -114,10 +114,26 @@ export function UserDashboard() {
       setIsLoading(true);
       
       // フェーズ1: 最優先データ（プロフィール・犬情報）
-      // LINEユーザーまたはSupabaseユーザーのIDを取得
-      const uid = user?.id || lineUser?.id || me?.id;
+      // 常に Supabase ユーザーID を使用（LINEのみログイン時はセッション交換して取得）
+      let uid: string | null = null;
+      try {
+        const { data: gu } = await supabase.auth.getUser();
+        uid = gu?.user?.id ?? null;
+        if (!uid) {
+          // LINEセッションがある前提で Supabase セッションを交換
+          try {
+            const resp = await fetch('/line/exchange-supabase-session', { method: 'POST', credentials: 'include' });
+            if (resp.ok) {
+              const { access_token, refresh_token } = await resp.json() as { access_token: string; refresh_token: string };
+              const { data } = await supabase.auth.setSession({ access_token, refresh_token });
+              uid = data?.session?.user?.id ?? null;
+            }
+          } catch {}
+        }
+      } catch {}
+
       if (!uid) {
-        // どちらの認証もない場合はローディングを解除してリダイレクト
+        // 認証セッションが確立できない場合は終了
         setIsLoading(false);
         setGlobalLoading(false);
         return;
