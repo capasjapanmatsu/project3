@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import GoogleMapsProvider from './components/GoogleMapsProvider';
 import useAuth from './context/AuthContext';
 import { MaintenanceProvider } from './context/MaintenanceContext';
 import ParkOperationGuidelines from './pages/ParkOperationGuidelines';
@@ -205,20 +206,22 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <HelmetProvider>
       {/* GoogleMapsProvider はアプリ全体で一度だけラップ */}
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-          <SEO />
-          <Navbar />
-          <main className="flex-1">
-            {children}
-          </main>
-          <Footer />
-          <BottomNavigation />
-          
-          {/* フローティングアクションボタン（遅延読込） */}
-          <Suspense fallback={null}>
-            <FloatingActionButton />
-          </Suspense>
-        </div>
+      <GoogleMapsProvider>
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+            <SEO />
+            <Navbar />
+            <main className="flex-1">
+              {children}
+            </main>
+            <Footer />
+            <BottomNavigation />
+            
+            {/* フローティングアクションボタン（遅延読込） */}
+            <Suspense fallback={null}>
+              <FloatingActionButton />
+            </Suspense>
+          </div>
+      </GoogleMapsProvider>
     </HelmetProvider>
   );
 };

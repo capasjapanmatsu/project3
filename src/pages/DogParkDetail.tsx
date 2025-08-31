@@ -80,6 +80,17 @@ export function DogParkDetail() {
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [smartLocks, setSmartLocks] = useState<SmartLock[]>([]);
+  // 画像URLを正規化（Storageパス→公開URL）
+  const toPublicUrl = (url: string | null | undefined): string | null => {
+    if (!url) return null;
+    if (/^https?:\/\//i.test(url)) return url;
+    try {
+      const { data } = supabase.storage.from('dog-park-images').getPublicUrl(url);
+      return data.publicUrl || null;
+    } catch {
+      return null;
+    }
+  };
 
   const [userHasAccess, setUserHasAccess] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -130,17 +141,16 @@ export function DogParkDetail() {
       // 画像の優先処理（メイン画像を最優先）
       const priorityImages: ParkImage[] = [];
       // メイン画像（dog_parks.image_url）
-      if (parkData.image_url) {
-        priorityImages.push({ id: 'main', url: parkData.image_url, caption: `${parkData.name} - メイン画像` });
-      }
+      const mainUrl = toPublicUrl(parkData.image_url);
+      if (mainUrl) priorityImages.push({ id: 'main', url: mainUrl, caption: `${parkData.name} - メイン画像` });
       // カバー画像
-      if ((parkData as any).cover_image_url) {
-        priorityImages.push({ id: 'cover', url: (parkData as any).cover_image_url, caption: `${parkData.name} - カバー画像` });
-      }
+      const coverUrl = toPublicUrl((parkData as any).cover_image_url);
+      if (coverUrl) priorityImages.push({ id: 'cover', url: coverUrl, caption: `${parkData.name} - カバー画像` });
       // サブ画像（dog_park_images）
       if (!imageResult.error && Array.isArray(imageResult.data)) {
         imageResult.data.forEach((img: any) => {
-          priorityImages.push({ id: img.id, url: img.image_url, caption: img.caption || `${parkData.name} - 施設画像` });
+          const u = toPublicUrl(img.image_url);
+          if (u) priorityImages.push({ id: img.id, url: u, caption: img.caption || `${parkData.name} - 施設画像` });
         });
       }
       if (priorityImages.length === 0) {
@@ -211,11 +221,12 @@ export function DogParkDetail() {
       if (additionalImagesResult && !additionalImagesResult.error && additionalImagesResult.data) {
         setParkImages(prev => [
           ...prev,
-          ...additionalImagesResult.data.map(img => ({
-            id: img.id,
-            url: img.image_url,
-            caption: img.caption || `${parkData.name} - 施設画像`
-          }))
+          ...additionalImagesResult.data
+            .map((img: any) => {
+              const u = toPublicUrl(img.image_url);
+              return u ? { id: img.id, url: u, caption: img.caption || `${parkData.name} - 施設画像` } : null;
+            })
+            .filter(Boolean) as ParkImage[]
         ]);
       }
 
