@@ -1978,13 +1978,17 @@ export function ParkManagement() {
                             latitude: editForm.latitude,
                             longitude: editForm.longitude,
                             geofence_radius_km: editForm.geofence_radius_km,
+                            // 手動調整を明示（今後の自動ジオコーディングを抑止するため）
+                            location_locked: true,
                             updated_at: new Date().toISOString()
                           })
                           .eq('id', park.id);
                         
                         if (updateError) throw updateError;
                         
-                        setSuccess('位置情報を更新しました。');
+                        // フロント側にもロック状態を反映（コンポーネントの自動ジオコーディング抑止用）
+                        (window as any).__PARK_LOCATION_LOCKED__ = true;
+                        setSuccess('位置情報を更新しました。以後はこの座標を基準に固定します。');
                         
                         // パークデータを再取得
                         await fetchParkData();

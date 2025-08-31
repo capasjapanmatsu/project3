@@ -173,7 +173,10 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
       });
       
       // 初期住所があり、座標が未設定で、マップが初期化済みの場合
-      if (initialAddress && 
+      // 位置が手動固定されている場合は自動ジオコーディングを行わない
+      const locked = (window as any).__PARK_LOCATION_LOCKED__ === true;
+
+      if (!locked && initialAddress && 
           !initialLatitude && 
           !initialLongitude && 
           !isGeocoding && 
