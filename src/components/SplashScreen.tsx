@@ -369,6 +369,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       
       <style>
         {`
+        @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800;900&display=swap');
         
         @keyframes logoSlideIn {
           0% {
@@ -545,7 +546,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                 <h2 
                 className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide`}
                 style={{ 
-                  fontFamily: 'Zen Maru Gothic, sans-serif',
+                  fontFamily: '"M PLUS Rounded 1c", Zen Maru Gothic, sans-serif',
                   textShadow: '0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.8), 0 0 30px rgba(255,255,255,0.6), 2px 2px 4px rgba(255,255,255,0.9), -2px -2px 4px rgba(255,255,255,0.9), 2px -2px 4px rgba(255,255,255,0.9), -2px 2px 4px rgba(255,255,255,0.9)',
                   color: '#355E3B'
                 }}
@@ -557,7 +558,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                 <h2 
                 className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide`}
                 style={{ 
-                  fontFamily: 'Zen Maru Gothic, sans-serif',
+                  fontFamily: '"M PLUS Rounded 1c", Zen Maru Gothic, sans-serif',
                   textShadow: '0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.8), 0 0 30px rgba(255,255,255,0.6), 2px 2px 4px rgba(255,255,255,0.9), -2px -2px 4px rgba(255,255,255,0.9), 2px -2px 4px rgba(255,255,255,0.9), -2px 2px 4px rgba(255,255,255,0.9)',
                   color: '#3C6E47'
                 }}
