@@ -707,7 +707,7 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
 
       console.log('✅ ステータス更新完了:', nextStatus);
 
-      // 承認処理が成功した場合の追記: 第一審査承認時にコミュニティへ通知メッセージを送信
+      // 承認処理が成功した場合の追記
       try {
         if (park.status === 'pending' && nextStatus === 'second_stage_waiting') {
           const message = `@https://dogparkjp.com/products/c9d47ff9-a6c1-4f09-97ec-ad4d2334cbe7\nこちらよりスマートドッグラン用のスマートロックをご注文お願いします。運営為に必須となります。`;
@@ -715,6 +715,27 @@ ALTER TABLE dog_parks ADD CONSTRAINT dog_parks_status_check CHECK (status IN ('p
             sender_id: user?.id || null,
             receiver_id: park.owner_id,
             content: message
+          });
+          // アプリ通知 + LINE
+          const { notifyAppAndLineBoth } = await import('@/lib/supabase/notifyAll');
+          await notifyAppAndLineBoth({
+            userId: park.owner_id,
+            type: 'park_apply_approved',
+            title: 'ドッグラン第一審査承認',
+            message: `${park.name}の第一審査が承認されました。`,
+            linkUrl: `/parks/${park.id}`,
+          });
+        }
+
+        // 第二審査承認（approved への遷移）
+        if ((park.status === 'second_stage_review' || park.status === 'second_stage_waiting') && nextStatus === 'approved') {
+          const { notifyAppAndLineBoth } = await import('@/lib/supabase/notifyAll');
+          await notifyAppAndLineBoth({
+            userId: park.owner_id,
+            type: 'park_apply_approved',
+            title: 'ドッグラン第二審査承認',
+            message: `${park.name}の第二審査が承認されました。公開設定を行ってください。`,
+            linkUrl: `/parks/${park.id}`,
           });
         }
       } catch (e) {
