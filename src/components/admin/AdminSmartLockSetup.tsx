@@ -70,16 +70,26 @@ export default function AdminSmartLockSetup({ parkId, parkName }: { parkId: stri
       if (!ok) throw new Error('認証セッションを確立できませんでした');
       // upsert by (park_id, purpose) 近似: 既存レコードを取得して update/insert を分岐
       for (const row of locks) {
-        const { error: upsertError } = await supabase
+        // まず既存を確認して update、それ以外は insert（onConflict不要で安全）
+        const { data: existing, error: findErr } = await supabase
           .from('smart_locks')
-          .upsert({
-            park_id: parkId,
-            purpose: row.purpose,
-            lock_id: row.lock_id,
-            ttlock_lock_id: row.ttlock_lock_id,
-            pin_enabled: true,
-          }, { onConflict: 'park_id,purpose' });
-        if (upsertError) throw upsertError;
+          .select('id')
+          .eq('park_id', parkId)
+          .eq('purpose', row.purpose)
+          .maybeSingle();
+        if (findErr) throw findErr;
+        if (existing?.id) {
+          const { error: updErr } = await supabase
+            .from('smart_locks')
+            .update({ lock_id: row.lock_id, ttlock_lock_id: row.ttlock_lock_id, pin_enabled: true })
+            .eq('id', existing.id as any);
+          if (updErr) throw updErr;
+        } else {
+          const { error: insErr } = await supabase
+            .from('smart_locks')
+            .insert({ park_id: parkId, purpose: row.purpose, lock_id: row.lock_id, ttlock_lock_id: row.ttlock_lock_id, pin_enabled: true });
+          if (insErr) throw insErr;
+        }
       }
       // 再取得してUIに反映
       const { data: refreshed, error: reloadErr } = await supabase
