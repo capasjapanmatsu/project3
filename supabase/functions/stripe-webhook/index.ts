@@ -111,6 +111,30 @@ async function handleEvent(event: Stripe.Event) {
             subscription_id: (session.subscription as string) || null,
           });
           if (orderErr) console.error('Failed to insert subscription order:', orderErr);
+
+          // Notify user (App notification)
+          try {
+            const notes = (session.metadata?.notes as string) || '';
+            const isPremiumOwner = /premium_owner/i.test(notes);
+            const title = isPremiumOwner ? 'プレミアムオーナー登録が完了しました' : 'サブスクリプションの登録が完了しました';
+            const message = isPremiumOwner
+              ? '予約管理・クーポン管理（プレミアム）がご利用いただけます。'
+              : 'サブスクリプションが開始されました。ご利用ありがとうございます。';
+            await supabase.from('notifications').insert({
+              user_id: customerMap.user_id,
+              type: 'order',
+              title,
+              message,
+              link_url: isPremiumOwner ? `${Deno.env.get('PUBLIC_SITE_URL') ?? ''}/my-facilities-management` : `${Deno.env.get('PUBLIC_SITE_URL') ?? ''}/dashboard`,
+              data: {
+                mode: 'subscription',
+                subscription_id: session.subscription || null,
+              },
+              read: false,
+            });
+          } catch (notifyErr) {
+            console.error('Failed to insert subscription notification:', notifyErr);
+          }
         }
       } catch (e) {
         console.error('Error creating subscription order record:', e);
@@ -180,6 +204,27 @@ async function handleEvent(event: Stripe.Event) {
                   p_reference_id: checkout_session_id,
                 });
               }
+            }
+
+            // Notify user (App notification)
+            try {
+              const title = 'お支払いが完了しました';
+              const message = 'ご注文の決済が完了しました。ご利用ありがとうございます。';
+              await supabase.from('notifications').insert({
+                user_id: customerMap.user_id,
+                type: 'order',
+                title,
+                message,
+                link_url: `${Deno.env.get('PUBLIC_SITE_URL') ?? ''}/dashboard`,
+                data: {
+                  mode: 'payment',
+                  checkout_session_id,
+                  amount_total,
+                },
+                read: false,
+              });
+            } catch (notifyErr) {
+              console.error('Failed to insert payment notification:', notifyErr);
             }
           }
         } catch (pointsError) {
