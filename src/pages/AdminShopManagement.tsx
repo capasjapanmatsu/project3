@@ -250,46 +250,33 @@ export function AdminShopManagement() {
       
       if (error) throw error;
       
-      // 注文が発送済みになった場合は通知を送信
+      // 注文が発送済みになった場合は通知を送信（アプリ＋LINE）
       if (orderFormData.status === 'shipped' && selectedOrder.status !== 'shipped') {
-        const { error: notifyError } = await supabase
-          .from('notifications')
-          .insert([{
-            user_id: selectedOrder.user_id,
+        try {
+          const { notifyAppAndLineBoth } = await import('@/lib/supabase/notifyAll');
+          await notifyAppAndLineBoth({
+            userId: selectedOrder.user_id,
             type: 'order_shipped',
             title: '注文が発送されました',
             message: `注文番号: ${selectedOrder.order_number} の商品が発送されました。${orderFormData.tracking_number ? `追跡番号: ${orderFormData.tracking_number}` : ''}`,
-            data: { 
-              order_id: selectedOrder.id, 
-              order_number: selectedOrder.order_number,
-              tracking_number: orderFormData.tracking_number || null
-            }
-          }]);
-        
-        if (notifyError) {
-          console.error('Error sending notification:', notifyError);
-          // 通知エラーは無視して続行
+          });
+        } catch (e) {
+          console.error('Error sending notification:', e);
         }
       }
       
-      // 注文が配達完了になった場合も通知を送信
+      // 注文が配達完了になった場合も通知を送信（アプリ＋LINE）
       if (orderFormData.status === 'delivered' && selectedOrder.status !== 'delivered') {
-        const { error: notifyError } = await supabase
-          .from('notifications')
-          .insert([{
-            user_id: selectedOrder.user_id,
+        try {
+          const { notifyAppAndLineBoth } = await import('@/lib/supabase/notifyAll');
+          await notifyAppAndLineBoth({
+            userId: selectedOrder.user_id,
             type: 'order_delivered',
             title: '注文が配達されました',
             message: `注文番号: ${selectedOrder.order_number} の商品が配達されました。ご利用ありがとうございました。`,
-            data: { 
-              order_id: selectedOrder.id, 
-              order_number: selectedOrder.order_number
-            }
-          }]);
-        
-        if (notifyError) {
-          console.error('Error sending notification:', notifyError);
-          // 通知エラーは無視して続行
+          });
+        } catch (e) {
+          console.error('Error sending notification:', e);
         }
       }
       
