@@ -85,7 +85,11 @@ export function DogParkDetail() {
     if (!url) return null;
     if (/^https?:\/\//i.test(url)) return url;
     try {
-      const { data } = supabase.storage.from('dog-park-images').getPublicUrl(url);
+      // 正規化: 先頭スラッシュ, public/, バケット名重複を除去
+      let key = url.replace(/^\/+/, '');
+      if (key.startsWith('public/')) key = key.slice('public/'.length);
+      if (key.startsWith('dog-park-images/')) key = key.slice('dog-park-images/'.length);
+      const { data } = supabase.storage.from('dog-park-images').getPublicUrl(key);
       return data.publicUrl || null;
     } catch {
       return null;
