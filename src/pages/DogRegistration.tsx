@@ -123,6 +123,24 @@ export function DogRegistration() {
     }
   };
 
+  // Supabaseセッションを確実に用意して userId を返す（LINEのみログイン時のフォールバック含む）
+  const resolveOwnerUserId = async (): Promise<string | null> => {
+    // 既にSupabaseユーザーがいればそれを使う
+    if (user?.id) return user.id;
+    // AuthContextから推定ID（Supabaseユーザーのはず）
+    if (effectiveUserId) return effectiveUserId as string;
+    // LINEセッションがある場合は Supabase セッションを交換して確保
+    try {
+      const resp = await fetch('/line/exchange-supabase-session', { method: 'POST', credentials: 'include' });
+      if (resp.ok) {
+        const { access_token, refresh_token } = await resp.json() as { access_token: string; refresh_token: string };
+        const { data } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (data?.session?.user?.id) return data.session.user.id;
+      }
+    } catch {}
+    return null;
+  };
+
   // フォームの送信処理
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,7 +149,8 @@ export function DogRegistration() {
     isSubmittingRef.current = true;
     setIsLoading(true);
 
-    const uid = (user?.id || lineUser?.id || effectiveUserId) as string | undefined;
+    // dogs.owner_id は Supabase ユーザーID（profiles.id）にFK制約があるため、SupabaseのユーザーIDを必ず使用する
+    const uid = await resolveOwnerUserId();
 
     if (!uid) {
       setError('ログインが必要です。');
