@@ -632,6 +632,32 @@ export function DogParkDetail() {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">{park.name}</h1>
+                    {/* ドッグラン名の下に横長ボタンを配置 */}
+                    <div className="mt-2">
+                      {currentMaintenance ? (
+                        <div className="grid grid-cols-2 gap-3">
+                          <Button className="w-full text-lg py-3 opacity-50 cursor-not-allowed" disabled>
+                            入場する
+                          </Button>
+                          <Button variant="secondary" className="w-full text-lg py-3 opacity-50 cursor-not-allowed" disabled>
+                            予約する
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3">
+                          <Link to={`/access-control?park=${park.id}`}>
+                            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-3">
+                              入場する
+                            </Button>
+                          </Link>
+                          <Link to={`/parks/${park.id}/reserve`}>
+                            <Button variant="secondary" className="w-full bg-gray-600 hover:bg-gray-700 text-lg py-3">
+                              予約する
+                            </Button>
+                          </Link>
+                        </div>
+                      )}
+                    </div>
                     
                     {/* 営業状況とメンテナンス情報 */}
                     <div className="mb-3">
@@ -700,20 +726,7 @@ export function DogParkDetail() {
                     >
                       予約不可
                     </Button>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Link to={`/access-control?park=${park.id}`}>
-                        <Button className="bg-blue-600 hover:bg-blue-700">
-                          入場する
-                        </Button>
-                      </Link>
-                      <Link to={`/parks/${park.id}/reserve`}>
-                        <Button variant="secondary" className="bg-gray-600 hover:bg-gray-700">
-                          予約する
-                        </Button>
-                      </Link>
-                    </div>
-                  )}
+                  ) : null}
                 </div>
 
                 <p className="text-gray-700 mb-6">{park.description}</p>
