@@ -85,8 +85,14 @@ export function DogParkDetail() {
     if (!url) return null;
     if (/^https?:\/\//i.test(url)) return url;
     try {
-      // 正規化: 先頭スラッシュ, public/, バケット名重複を除去
-      let key = url.replace(/^\/+/, '');
+      // 正規化: /storage/v1/object/public/... を含む場合はその後ろを使用
+      let key = url.trim();
+      const storIdx = key.indexOf('storage/v1/object/public/');
+      const oragIdx = key.indexOf('orage/v1/object/public/'); // 一部のデータに含まれる欠損表記にも対応
+      if (storIdx >= 0) key = key.slice(storIdx + 'storage/v1/object/public/'.length);
+      else if (oragIdx >= 0) key = key.slice(oragIdx + 'orage/v1/object/public/'.length);
+      // 先頭スラッシュ, public/, バケット名重複を除去
+      key = key.replace(/^\/+/, '');
       if (key.startsWith('public/')) key = key.slice('public/'.length);
       if (key.startsWith('dog-park-images/')) key = key.slice('dog-park-images/'.length);
       const { data } = supabase.storage.from('dog-park-images').getPublicUrl(key);
@@ -115,7 +121,7 @@ export function DogParkDetail() {
   const fetchParkData = async () => {
     try {
       // 🚀 フェーズ1: クリティカルデータの並列取得（最優先）
-      const [parkResult, imageResult] = await Promise.all([
+      const [parkResult, imageResult, facilityImageResult] = await Promise.all([
         // ドッグラン基本情報
         supabase
           .from('dog_parks')
@@ -129,7 +135,13 @@ export function DogParkDetail() {
           .select('*')
           .eq('park_id', parkId)
           .order('display_order', { ascending: true })
-          .limit(3) // 最初の3枚のみ取得
+          .limit(3), // 最初の3枚のみ取得
+        // 施設画像（承認済み優先）
+        supabase
+          .from('dog_park_facility_images')
+          .select('*')
+          .eq('park_id', parkId)
+          .order('created_at', { ascending: true })
       ]);
 
       // パーク情報の処理
@@ -155,6 +167,17 @@ export function DogParkDetail() {
         imageResult.data.forEach((img: any) => {
           const u = toPublicUrl(img.image_url);
           if (u) priorityImages.push({ id: img.id, url: u, caption: img.caption || `${parkData.name} - 施設画像` });
+        });
+      }
+      // 施設画像（dog_park_facility_images）
+      if (!facilityImageResult.error && Array.isArray(facilityImageResult.data)) {
+        // 承認済みを優先して並べる
+        const approved = facilityImageResult.data.filter((i: any) => i.is_approved === true);
+        const others = facilityImageResult.data.filter((i: any) => i.is_approved !== true);
+        const ordered = [...approved, ...others];
+        ordered.forEach((img: any) => {
+          const u = toPublicUrl(img.image_url);
+          if (u) priorityImages.push({ id: img.id, url: u, caption: img.caption || img.image_type || `${parkData.name} - 施設画像` });
         });
       }
       if (priorityImages.length === 0) {
