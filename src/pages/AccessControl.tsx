@@ -56,6 +56,8 @@ export function AccessControl() {
   const [currentAction, setCurrentAction] = useState<'entry' | 'exit'>('entry');
   const [occupancy, setOccupancy] = useState<{ current?: number; max?: number } | null>(null);
   const [parkIdFromStatus, setParkIdFromStatus] = useState<string | null>(null);
+  // アニメーションの最短表示時間（ms）
+  const MIN_ANIMATION_MS = 2000;
   const [dogsTimeout, setDogsTimeout] = useState(false);
   const { execute: executeRetry, state: retryState, reset: resetRetry } = useRetryWithRecovery(retryConfigs.api);
 
@@ -141,6 +143,9 @@ export function AccessControl() {
     } catch (err) {
       setError((err as Error).message);
     } finally {
+      // 押下後のアニメーションを最低数秒見せる
+      await new Promise(resolve => setTimeout(resolve, 300)); // 微小待機で描画反映
+      await new Promise(resolve => setTimeout(resolve, MIN_ANIMATION_MS));
       setIsGeneratingPin(false);
       setLastUnlockAt(Date.now());
     }
@@ -576,17 +581,7 @@ export function AccessControl() {
         <h1 className="text-2xl font-bold">ドッグラン入場管理</h1>
       </div>
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-6 p-4 bg-green-100 text-green-700 rounded-lg">
-          {success}
-        </div>
-      )}
+      {/* グローバルエラー/成功は非表示。解錠セクション側で表示します */}
 
       {/* 注意喚起（GPS必須） */}
       <Card className="p-4 mb-4 bg-yellow-50 border-yellow-200">
@@ -868,6 +863,17 @@ export function AccessControl() {
 
             {selectedPark && selectedDogs.length > 0 ? (
               <div className="space-y-5">
+                {/* 近接/GPS 警告や結果メッセージ（ボタンの近く） */}
+                {error && (
+                  <div className="p-3 bg-red-100 text-red-700 rounded border border-red-200 text-sm">
+                    {error}
+                  </div>
+                )}
+                {success && (
+                  <div className="p-3 bg-green-100 text-green-700 rounded border border-green-200 text-sm">
+                    {success}
+                  </div>
+                )}
                 {/* 混雑状況 */}
                 <div className="flex items-center justify-between text-sm bg-gray-50 border border-gray-200 rounded-md p-3">
                   <span className="text-gray-700">現在の入場者数</span>
@@ -913,12 +919,15 @@ export function AccessControl() {
                       <Unlock className="w-12 h-12 mx-auto" />
                     )}
                     {isGeneratingPin && (
-                      <span className={`absolute inset-0 rounded-full ring-4 animate-ping ${currentAction === 'entry' ? 'ring-blue-300' : 'ring-red-300'}`} />
+                      <>
+                        <span className={`pointer-events-none absolute inset-0 rounded-full ring-4 animate-ping ${currentAction === 'entry' ? 'ring-blue-300' : 'ring-red-300'}`} />
+                        <span className={`pointer-events-none absolute inset-0 rounded-full border-4 ${currentAction === 'entry' ? 'border-blue-200' : 'border-red-200'} animate-pulse`} />
+                      </>
                     )}
                   </button>
                   <div className="mt-3 text-sm text-gray-700">
                     {isGeneratingPin
-                      ? `${currentAction === 'entry' ? '入場' : '退場'}処理中...`
+                      ? `${currentAction === 'entry' ? '入場' : '退場'}処理中... 数秒お待ちください`
                       : cooldownRemain > 0
                       ? `再試行まで ${cooldownRemain}秒`
                       : `${currentAction === 'entry' ? '入場' : '退場'}（タップで解錠）`}
