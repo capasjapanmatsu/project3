@@ -786,7 +786,26 @@ export function ProfileSettings() {
           <div className="mt-3 text-sm text-orange-600">LINEと連携すると有効化できます。上部のLINE連携セクションから連携してください。</div>
         )}
         <div className="mt-4 text-right">
-          <Button onClick={() => void handleSubmit({ preventDefault: () => {} } as any)} isLoading={isSaving}>
+          <Button onClick={async () => {
+            // LINEセッションを優先して保存（未ログインのケース対策）
+            try {
+              const res = await fetch('/.netlify/functions/profile-notify-optin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ notifyOptIn })
+              });
+              if (res.ok) {
+                setSuccess('通知設定を保存しました');
+                setTimeout(() => setSuccess(''), 2000);
+              } else {
+                // フォールバック: Supabaseセッションで保存
+                await handleSubmit({ preventDefault: () => {} } as any);
+              }
+            } catch {
+              await handleSubmit({ preventDefault: () => {} } as any);
+            }
+          }} isLoading={isSaving}>
             <Save className="w-4 h-4 mr-1" /> 保存
           </Button>
         </div>
