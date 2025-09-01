@@ -28,6 +28,7 @@ import { ParkModal } from '../components/dashboard/ParkModal';
 import useAuth from '../context/AuthContext';
 import { useMe } from '../hooks/useMe';
 import { useSubscription } from '../hooks/useSubscription';
+import { ensureMinimalProfile } from '../lib/supabase/profiles';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import type { Dog, DogPark, NewsAnnouncement, Notification, Profile, Reservation } from '../types';
@@ -138,6 +139,9 @@ export function UserDashboard() {
         setGlobalLoading(false);
         return;
       }
+
+      // プロフィール最低限の行を確保（LINEのみでも機能）
+      try { await ensureMinimalProfile(supabase, { id: uid } as any); } catch {}
 
       // LINEユーザーの場合、profilesテーブルにエントリがない可能性があるので、エラーを無視
       const [profileResponse, dogsResponse] = await Promise.all([

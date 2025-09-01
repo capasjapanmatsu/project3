@@ -9,12 +9,13 @@ import { SEO } from '../components/SEO';
 import Select from '../components/Select';
 import useAuth from '../context/AuthContext';
 import { dogBreeds } from '../data/dogBreeds';
+import { ensureMinimalProfile } from '../lib/supabase/profiles';
 
 import { logger } from '../utils/logger';
 import { notify } from '../utils/notification';
 import { supabase } from '../utils/supabase';
 import { uploadVaccineImage, validateVaccineFile } from '../utils/vaccineUpload';
-import { uploadAndConvertToWebP, getOptimizedImageUrl } from '../utils/webpConverter';
+import { getOptimizedImageUrl, uploadAndConvertToWebP } from '../utils/webpConverter';
 
 export function DogRegistration() {
   const { user, lineUser, effectiveUserId } = useAuth();
@@ -149,6 +150,9 @@ export function DogRegistration() {
     isSubmittingRef.current = true;
     setIsLoading(true);
 
+    // 最低限のprofiles行を確保（LINEだけでプロフ未入力でも作成）
+    try { await ensureMinimalProfile(supabase, user as any, 'line'); } catch {}
+
     // dogs.owner_id は Supabase ユーザーID（profiles.id）にFK制約があるため、SupabaseのユーザーIDを必ず使用する
     const uid = await resolveOwnerUserId();
 
@@ -158,6 +162,9 @@ export function DogRegistration() {
       isSubmittingRef.current = false;
       return;
     }
+
+    // 取得した uid で確実に profiles を用意（user が null のケースに対応）
+    try { await ensureMinimalProfile(supabase, { id: uid } as any, 'line'); } catch {}
 
     // バリデーション
     if (!formData.name.trim()) {
