@@ -22,10 +22,11 @@ export default function ParkRegistrationAgreement() {
   const [error, setError] = useState('');
   const [isAgreementChecked, setIsAgreementChecked] = useState(false);
 
-  // Supabaseセッションを確実に用意して userId を返す（LINEのみログイン時のフォールバック含む）
+  // Supabaseセッションを確実に用意して userId を返す
   const resolveOwnerUserId = async (): Promise<string | null> => {
     if (user?.id) return user.id;
-    if (effectiveUserId) return effectiveUserId as string;
+
+    // 交換を優先
     try {
       const resp = await fetch('/line/exchange-supabase-session', { method: 'POST', credentials: 'include' });
       if (resp.ok) {
@@ -34,6 +35,18 @@ export default function ParkRegistrationAgreement() {
         if (data?.session?.user?.id) return data.session.user.id;
       }
     } catch {}
+
+    // profiles 存在確認付きでフォールバック
+    if (effectiveUserId) {
+      try {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', effectiveUserId as any)
+          .maybeSingle();
+        if (prof?.id) return effectiveUserId as string;
+      } catch {}
+    }
     return null;
   };
 

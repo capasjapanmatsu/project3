@@ -124,13 +124,13 @@ export function DogRegistration() {
     }
   };
 
-  // Supabaseセッションを確実に用意して userId を返す（LINEのみログイン時のフォールバック含む）
+  // Supabaseセッションを確実に用意して userId を返す
+  // 方針: 既存セッション → 交換で確立 → フォールバック(effectiveUserId)は profiles 存在確認付き
   const resolveOwnerUserId = async (): Promise<string | null> => {
-    // 既にSupabaseユーザーがいればそれを使う
+    // 1) 既にSupabaseユーザーがいればそれを使う
     if (user?.id) return user.id;
-    // AuthContextから推定ID（Supabaseユーザーのはず）
-    if (effectiveUserId) return effectiveUserId as string;
-    // LINEセッションがある場合は Supabase セッションを交換して確保
+
+    // 2) LINEセッションから Supabase セッションを交換して確保（最優先）
     try {
       const resp = await fetch('/line/exchange-supabase-session', { method: 'POST', credentials: 'include' });
       if (resp.ok) {
@@ -139,6 +139,19 @@ export function DogRegistration() {
         if (data?.session?.user?.id) return data.session.user.id;
       }
     } catch {}
+
+    // 3) フォールバック: effectiveUserId が profiles に存在する場合のみ採用
+    if (effectiveUserId) {
+      try {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', effectiveUserId as any)
+          .maybeSingle();
+        if (prof?.id) return effectiveUserId as string;
+      } catch {}
+    }
+
     return null;
   };
 
