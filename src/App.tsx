@@ -130,6 +130,7 @@ const Contact = React.lazy(() => import('./pages/Contact').then(module => ({ def
 const AccessControl = React.lazy(() => import('./pages/AccessControl').then(module => ({ default: module.AccessControl })));
 const SubscriptionIntro = React.lazy(() => import('./pages/SubscriptionIntro').then(module => ({ default: module.SubscriptionIntro })));
 const InviteUnlock = React.lazy(() => import('./pages/InviteUnlock'));
+const PaymentConfirmation = React.lazy(() => import('./pages/PaymentConfirmation'));
 
 // その他のページ
 const TermsOfService = React.lazy(() => import('./pages/TermsOfService').then(module => ({ default: module.TermsOfService })));
@@ -497,6 +498,11 @@ const App: React.FC = () => {
               <Route path="/subscription-intro" element={
                 <Suspense fallback={<PageSkeleton />}>
                   <SubscriptionIntro />
+                </Suspense>
+              } />
+              <Route path="/payment-confirmation" element={
+                <Suspense fallback={<PageSkeleton />}> 
+                  <PaymentConfirmation />
                 </Suspense>
               } />
               
