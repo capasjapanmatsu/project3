@@ -88,7 +88,7 @@ export function AccessControl() {
       const dist = calculateDistance(userLocation.latitude, userLocation.longitude, selectedPark.latitude, selectedPark.longitude);
       const allowed = (selectedPark as any).geofence_radius_km ?? 1;
       if (dist > allowed) {
-        setError(`この施設から${dist.toFixed(2)}km離れています。解錠は${allowed}km以内でのみ可能です（推奨1.0km）。`);
+        setError(`この施設から${dist.toFixed(2)}km離れています。解錠する為にはGPS機能をONにして施設のスマートロックにもう少し近づいてください。`);
         return;
       }
     }
