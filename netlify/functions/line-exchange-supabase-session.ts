@@ -64,7 +64,7 @@ export const handler: Handler = async (event) => {
     const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
     const { data: sessionData, error: verifyErr } = await anon.auth.verifyOtp({
       type: 'email',
-      email,
+      email: syntheticEmail,
       token: emailOtp
     });
     if (verifyErr || !sessionData?.session) {
