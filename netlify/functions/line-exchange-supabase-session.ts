@@ -31,12 +31,12 @@ export const handler: Handler = async (event) => {
       .eq('id', uid)
       .single();
     if (userErr) return { statusCode: 500, body: userErr.message };
-    let appUserId = userRow?.app_user_id as string | undefined;
+    // 常に合成メールを使用（既存ユーザーがいれば既存扱いでOK）
+    const syntheticEmail = `line-${uid}@line.local`;
 
-    // app_user_id がない場合は自動で Supabase Auth ユーザーを作成してリンク
-    if (!appUserId) {
-      const syntheticEmail = `line-${uid}@line.local`;
-      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+    // app_user_id がない場合は Supabase Auth ユーザーを作成（既存ならエラー無視）
+    if (!userRow?.app_user_id) {
+      const { error: createErr } = await admin.auth.admin.createUser({
         email: syntheticEmail,
         email_confirm: true,
         user_metadata: {
@@ -46,26 +46,15 @@ export const handler: Handler = async (event) => {
           provider: 'line'
         }
       });
-      if (createErr || !created?.user?.id) {
-        return { statusCode: 500, body: createErr?.message || 'failed_to_create_user' };
+      if (createErr && !String(createErr.message || '').toLowerCase().includes('already')) {
+        return { statusCode: 500, body: createErr.message };
       }
-      appUserId = created.user.id;
-      const { error: linkErr } = await admin.from('users').update({ app_user_id: appUserId }).eq('id', uid);
-      if (linkErr) return { statusCode: 500, body: linkErr.message };
-      // profiles レコードは存在しない前提でもアプリは継続できるため作成は任意
     }
 
-    // 3) Auth Admin でユーザーの email を取得
-    const { data: appUser, error: getUserErr } = await admin.auth.admin.getUserById(appUserId);
-    if (getUserErr || !appUser?.user?.email) {
-      return { statusCode: 500, body: 'app_user_email_not_found' };
-    }
-    const email = appUser.user.email as string;
-
-    // 4) Magic Link を発行し email_otp を取得
+    // 3) Magic Link を発行し email_otp を取得（既存/新規どちらでも同じメール）
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: 'magiclink',
-      email
+      email: syntheticEmail
     });
     if (linkErr) return { statusCode: 500, body: linkErr.message };
     const emailOtp = (linkData as any)?.properties?.email_otp as string | undefined;
@@ -82,7 +71,15 @@ export const handler: Handler = async (event) => {
       return { statusCode: 500, body: verifyErr?.message || 'verify_failed' };
     }
 
-    const { access_token, refresh_token } = sessionData.session;
+    const { access_token, refresh_token, user: sessionUser } = sessionData.session as any;
+
+    // users.app_user_id を最新のIDでリンク
+    try {
+      const sid = sessionUser?.id as string | undefined;
+      if (sid) {
+        await admin.from('users').update({ app_user_id: sid }).eq('id', uid);
+      }
+    } catch {}
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
