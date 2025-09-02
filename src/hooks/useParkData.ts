@@ -89,6 +89,20 @@ export function useParkData() {
         throw queryError;
       }
 
+      // Storageのパスを公開URLへ変換（httpで始まらない場合はbucket/pathとみなす）
+      const toPublicUrl = (maybePath?: string | null): string => {
+        if (!maybePath) return '';
+        if (/^https?:\/\//i.test(maybePath)) return maybePath;
+        try {
+          const [bucket, ...rest] = maybePath.split('/');
+          const path = rest.join('/');
+          const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+          return data.publicUrl || maybePath;
+        } catch {
+          return maybePath;
+        }
+      };
+
       // データの型安全性を確保
       const parksData: DogPark[] = (data || []).map((park: any) => {
         const profile = Array.isArray(park.profiles) ? park.profiles[0] : park.profiles;
@@ -142,7 +156,7 @@ export function useParkData() {
               .map(([key]) => key)
               .join(',') : park.facilities) : 
             park.facility_details || '',
-          image_url: displayImageUrl || PARK_PLACEHOLDER_SVG,
+          image_url: toPublicUrl(displayImageUrl) || PARK_PLACEHOLDER_SVG,
           average_rating: Number(park.average_rating) || 4.0,
           review_count: Number(park.review_count) || Math.floor(Math.random() * 50) + 5,
           created_at: park.created_at || '',
