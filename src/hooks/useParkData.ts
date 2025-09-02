@@ -65,6 +65,11 @@ export function useParkData() {
             email,
             postal_code
           ),
+          dog_park_images (
+            id,
+            image_url,
+            display_order
+          ),
           dog_park_facility_images (
             id,
             image_type,
@@ -109,6 +114,12 @@ export function useParkData() {
         
         // 施設画像から表示用画像を選択（承認済みまたは審査中の画像を優先）
         let displayImageUrl = park.image_url || park.cover_image_url;
+
+        // 新しいメイン画像テーブルを最優先
+        if (park.dog_park_images && park.dog_park_images.length > 0) {
+          const sorted = [...park.dog_park_images].sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0));
+          displayImageUrl = sorted[0]?.image_url || displayImageUrl;
+        }
         
         if (park.dog_park_facility_images && park.dog_park_facility_images.length > 0) {
           // 承認済み画像を優先
