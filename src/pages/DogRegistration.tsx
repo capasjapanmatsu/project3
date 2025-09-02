@@ -137,6 +137,12 @@ export function DogRegistration() {
         const { access_token, refresh_token } = await resp.json() as { access_token: string; refresh_token: string };
         const { data } = await supabase.auth.setSession({ access_token, refresh_token });
         if (data?.session?.user?.id) return data.session.user.id;
+      } else if (resp.status === 401 || resp.status === 500) {
+        // セッション不整合時はLIFFログインへ誘導してCookieを再発行
+        try {
+          const redirect = `/liff/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+          window.location.assign(redirect);
+        } catch {}
       }
     } catch {}
 
