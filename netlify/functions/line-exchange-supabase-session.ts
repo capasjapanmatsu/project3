@@ -73,11 +73,13 @@ export const handler: Handler = async (event) => {
 
     const { access_token, refresh_token, user: sessionUser } = sessionData.session as any;
 
-    // users.app_user_id を最新のIDでリンク
+    // users.app_user_id を最新のIDでリンクし、profilesを必ず用意
     try {
       const sid = sessionUser?.id as string | undefined;
       if (sid) {
         await admin.from('users').update({ app_user_id: sid }).eq('id', uid);
+        // profiles が無い場合に備えて Service Role で強制UPSERT（RLS非依存）
+        await admin.from('profiles').upsert({ id: sid, auth_type: 'line' } as any, { onConflict: 'id' });
       }
     } catch {}
     return {
