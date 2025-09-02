@@ -79,7 +79,8 @@ export const handler: Handler = async (event) => {
       if (sid) {
         await admin.from('users').update({ app_user_id: sid }).eq('id', uid);
         // profiles が無い場合に備えて Service Role で強制UPSERT（RLS非依存）
-        await admin.from('profiles').upsert({ id: sid, auth_type: 'line' } as any, { onConflict: 'id' });
+        // 必須カラム(user_type)だけ満たしてUPSERT（本番のNOT NULL制約に対応）
+        await admin.from('profiles').upsert({ id: sid, user_type: 'user' } as any, { onConflict: 'id' });
       }
     } catch {}
     return {
