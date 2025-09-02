@@ -21,6 +21,7 @@ import Input from '../components/Input';
 import useAuth from '../context/AuthContext';
 import type { DogPark, SmartLock } from '../types';
 import { supabase } from '../utils/supabase';
+import { uploadAndConvertToWebP, getOptimizedImageUrl } from '../utils/webpConverter';
 
 interface TaskStatus {
   smartLockTest: boolean;
@@ -194,19 +195,17 @@ export function ParkPublishingSetup() {
 
   const uploadImages = async () => {
     for (const file of newImages) {
-      const fileName = `${Date.now()}_${file.name}`;
-      const filePath = `${parkId}/${fileName}`;
+      const base = file.name.replace(/\.[^.]+$/, '');
+      const filePath = `${parkId}/${Date.now()}_${base}.jpg`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('dog-park-images')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      // Update park with new image URL
-      const imageUrl = supabase.storage
-        .from('dog-park-images')
-        .getPublicUrl(filePath).data.publicUrl;
+      const result = await uploadAndConvertToWebP(
+        'dog-park-images',
+        file,
+        filePath,
+        { quality: 85, generateThumbnail: false, keepOriginal: false }
+      );
+      if (!result.success) throw new Error(result.error || 'WebP変換に失敗しました');
+      const imageUrl = getOptimizedImageUrl(result.originalUrl, result.webpUrl);
 
       await supabase
         .from('dog_parks')

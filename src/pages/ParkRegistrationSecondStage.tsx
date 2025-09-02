@@ -8,6 +8,8 @@ import Input from '../components/Input';
 import useAuth from '../context/AuthContext';
 
 import { supabase } from '../utils/supabase';
+import { uploadAndConvertToWebP, getOptimizedImageUrl } from '../utils/webpConverter';
+import { sanitize as _unused } from 'dompurify';
 
 interface FacilityImage {
   id?: string;
@@ -385,21 +387,21 @@ export function ParkRegistrationSecondStage() {
           : img
       ));
 
-      // Upload to storage
-      const fileName = imageToUpload.file.name || 'image.jpg';
-      const fileExt = fileName.includes('.') ? fileName.split('.').pop() : 'jpg';
-      const uploadFileName = `${parkId}/${imageType}_${Date.now()}.${fileExt}`;
+      // WebP 変換して保存（オリジナルは保持しない）
+      const originalName = imageToUpload.file.name || 'image.jpg';
+      const ext = originalName.includes('.') ? (originalName.split('.').pop() || 'jpg') : 'jpg';
+      const baseName = originalName.replace(/\.[^.]+$/, '');
+      const uploadPath = `${parkId}/${imageType}_${Date.now()}_${baseName}.${ext}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('dog-park-images')
-        .upload(uploadFileName, imageToUpload.file);
+      const result = await uploadAndConvertToWebP(
+        'dog-park-images',
+        imageToUpload.file,
+        uploadPath,
+        { quality: 85, generateThumbnail: false, keepOriginal: false }
+      );
 
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('dog-park-images')
-        .getPublicUrl(uploadFileName);
+      if (!result.success) throw new Error(result.error || 'WebP変換に失敗しました');
+      const publicUrl = getOptimizedImageUrl(result.originalUrl, result.webpUrl);
 
       // Save to database
       if (imageToUpload.id) {
