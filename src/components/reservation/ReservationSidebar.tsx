@@ -82,7 +82,7 @@ export function ReservationSidebar({ hasSubscription }: ReservationSidebarProps)
         </div>
         <div className="space-y-1 text-sm text-green-800">
           <p>• 安全なクレジットカード決済</p>
-          <p>• 決済完了後、即座にPINコード発行</p>
+          <p>• 決済完了後、即座に解錠キーを発行</p>
           <p>• 入場時から24時間有効（1Dayパスの場合）</p>
           <p>• 全国のドッグランで利用可能</p>
           <p>• 最大3頭まで同時入場</p>
@@ -115,7 +115,7 @@ export function ReservationSidebar({ hasSubscription }: ReservationSidebarProps)
           <p>• 人数制限なし</p>
           <p>• 1時間単位での利用</p>
           <p>• 最大3頭まで同時入場</p>
-          <p>• 友達にPINコード共有可能</p>
+          <p>• 友達に解錠キー共有可能</p>
           <p>• 他の利用者を一切気にせず自由に遊べます</p>
           <p>• 大型犬・小型犬エリア両方利用可能</p>
           <p className="text-purple-700 font-medium">• サブスク会員は20%OFF！</p>
@@ -137,18 +137,18 @@ export function ReservationSidebar({ hasSubscription }: ReservationSidebarProps)
         </div>
       </Card>
 
-      {/* PINコード発行の説明 */}
+      {/* 解錠キー発行の説明 */}
       <Card className="p-4 bg-green-50 border-green-200">
         <div className="flex items-center space-x-2 mb-2">
           <Key className="w-4 h-4 text-green-600" />
           <span className="text-sm font-medium text-green-900">決済完了後の流れ</span>
         </div>
         <div className="text-xs text-green-800 space-y-1">
-          <p>1. 決済完了と同時に入場用PINコードが発行されます</p>
-          <p>2. マイページの「入退場」からPINコードを確認</p>
-          <p>3. 予約日時にドッグラン入口でPINコードを入力</p>
+          <p>1. 決済完了と同時に入場用の解錠キーが発行されます</p>
+          <p>2. マイページの「入退場」から解錠キーを確認</p>
+          <p>3. 予約日時にドッグラン入口で解錠キーを入力</p>
           <p>4. 選択した全ての犬と一緒に入場できます</p>
-          <p className="text-orange-700 font-medium">5. 施設貸し切りの場合、友達にPINコードを共有可能！</p>
+          <p className="text-orange-700 font-medium">5. 施設貸し切りの場合、友達に解錠キーを共有可能！</p>
         </div>
       </Card>
     </div>

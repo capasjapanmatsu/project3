@@ -110,7 +110,7 @@ export function ReservationForm({
             <p>• 施設貸し切りは1時間単位で予約可能です</p>
             <p>• <strong>2日前までの予約が必要です</strong>（当日・翌日の予約不可）</p>
             <p>• 貸し切り中は他のお客様は入場できません</p>
-            <p>• 友達にPINコードを共有して一緒に利用できます</p>
+            <p>• 友達に解錠キーを共有して一緒に利用できます</p>
           </div>
         </div>
       </div>
@@ -359,7 +359,7 @@ export function ReservationForm({
                   </span>
                 </div>
                 <p className="text-sm text-gray-600">
-                  施設全体を独占利用・人数制限なし・友達にPINコード共有可能
+                  施設全体を独占利用・人数制限なし・友達に解錠キー共有可能
                 </p>
                 {hasSubscription && (
                   <p className="text-sm text-purple-700 font-medium mt-1">
@@ -515,7 +515,7 @@ export function ReservationForm({
             {formData.paymentType === 'facility_rental' && (
               <div>
                 <p>施設貸し切り料金: ¥{calculateTotalPrice().toLocaleString()}</p>
-                <p className="text-xs">{formData.duration}時間利用・施設全体独占・友達にPINコード共有可能</p>
+                <p className="text-xs">{formData.duration}時間利用・施設全体独占・友達に解錠キー共有可能</p>
                 {hasSubscription && (
                   <p className="text-purple-700 font-medium text-xs">サブスク会員20%OFF適用済み</p>
                 )}
@@ -532,7 +532,7 @@ export function ReservationForm({
           
           <p className="text-sm mt-2 flex items-center">
             <CreditCard className="w-3 h-3 mr-1" />
-            決済完了後、入場用PINコードが発行されます
+            決済完了後、入場用の解錠キーが発行されます
           </p>
         </div>
         
@@ -553,7 +553,7 @@ export function ReservationForm({
           ) : (
             <>
               <CreditCard className="w-4 h-4 mr-2" />
-              {hasSubscription && formData.paymentType === 'subscription' ? 'PINコードを発行する' : '決済に進む'}
+              {hasSubscription && formData.paymentType === 'subscription' ? '解錠キーを発行する' : '決済に進む'}
             </>
           )}
           {selectedDogs.length > 0 && (

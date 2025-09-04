@@ -101,8 +101,8 @@ export function ParkManagementWalkthrough({
     },
     {
       id: 'pins-tab',
-      title: '🔑 PINコード管理へ',
-      message: '次に、スマートロックの設定を行います。「PINコード管理」タブをタップしてください。',
+      title: '🔑 解錠キー管理へ',
+      message: '次に、スマートロックの設定を行います。「解錠キー管理」タブをタップしてください。',
       targetSelector: '[data-walkthrough="pins-tab"]',
       position: 'bottom',
       showArrow: true,
