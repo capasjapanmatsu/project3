@@ -159,10 +159,13 @@ export const FloatingActionButton = () => {
             <motion.button
               variants={{ hidden: { x: 40, opacity: 0 }, visible: { x: 0, opacity: 1 }, exit: { x: 40, opacity: 0 } }}
               onClick={() => {
-                
-                // データを最新に更新してからナビゲート（ダイアログなし）
+                // データ更新後、クーポンを保有していない場合は parks?view=facilities に誘導
                 void fetchUserData().then(() => {
-                  navigate('/my-coupons');
+                  if (userCoupons.length === 0) {
+                    navigate('/parks?view=facilities');
+                  } else {
+                    navigate('/my-coupons');
+                  }
                 });
                 setIsOpen(false);
               }}

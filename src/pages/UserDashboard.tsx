@@ -817,12 +817,14 @@ export function UserDashboard() {
             >
               🔄
             </button>
-            <Link to="/my-coupons">
-              <Button size="sm" className="bg-pink-600 hover:bg-pink-700 text-white">
-                <Ticket className="w-4 h-4 mr-1" />
-                一覧表示
-              </Button>
-            </Link>
+            {validCouponsCount > 0 && (
+              <Link to="/my-coupons">
+                <Button size="sm" className="bg-pink-600 hover:bg-pink-700 text-white">
+                  <Ticket className="w-4 h-4 mr-1" />
+                  一覧表示
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
         
@@ -830,8 +832,8 @@ export function UserDashboard() {
           {userCoupons.length === 0 ? (
             <div className="col-span-full text-center py-8">
               <Gift className="w-12 h-12 text-pink-300 mx-auto mb-3" />
-              <p className="text-pink-600 font-medium mb-2">利用可能なクーポンがありません</p>
-              <p className="text-pink-500 text-sm">施設でクーポンを取得してみましょう</p>
+              <p className="text-pink-600 font-medium mb-2">保有クーポンがありません</p>
+              <p className="text-pink-500 text-sm">ワンちゃんと行ける施設でクーポンを取得してみましょう</p>
             </div>
           ) : (
             <>
