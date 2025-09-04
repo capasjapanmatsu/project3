@@ -980,7 +980,7 @@ export function AccessControl() {
             ) : (
               <div className="text-center py-8">
                 <Key className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-2">利用するには：</p>
+                <p className="text-gray-600 mb-2">解錠キーを利用するには：</p>
                 <ul className="text-sm text-gray-500 space-y-1">
                   <li>• ワンちゃんを1頭以上選択</li>
                   <li>• 施設を選択</li>

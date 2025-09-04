@@ -63,6 +63,8 @@ const getCategoryIcon = (categoryId: string): React.ReactNode => {
   return icons[categoryId] || <Building2 className={iconClass} />;
 };
 
+import { useLocation } from 'react-router-dom';
+
 export function DogParkList() {
   const [activeView, setActiveView] = useState<'dogparks' | 'facilities'>('dogparks');
   const [debugInfo, setDebugInfo] = useState<Record<string, unknown> | null>(null);
@@ -76,6 +78,19 @@ export function DogParkList() {
   // データ管理
   const { parks, isLoading: parksLoading, error: parksError, fetchParkData } = useParkData();
   const { facilities, facilitiesLoading, error: facilityError, fetchFacilities } = useFacilityData();
+
+  const location = useLocation();
+
+  // 初期タブ: クエリ `?view=facilities` が明示された場合のみ「その他施設」タブを初期表示
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const view = params.get('view');
+    if (view === 'facilities') {
+      setActiveView('facilities');
+    }
+    // それ以外はデフォルトのドッグランを維持
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 🚀 最適化された位置情報取得（非同期）
   useEffect(() => {

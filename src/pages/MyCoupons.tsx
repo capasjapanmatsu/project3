@@ -275,23 +275,13 @@ export function MyCoupons() {
           ) : filteredCoupons.length === 0 ? (
             <Card className="text-center py-16">
               <Ticket className="w-20 h-20 text-gray-300 mx-auto mb-6" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                {activeTab === 'available' && 'まだ利用可能なクーポンがありません'}
-                {activeTab === 'used' && '使用済みクーポンがありません'}
-                {activeTab === 'expired' && '期限切れクーポンがありません'}
-              </h3>
-              <p className="text-gray-600 mb-6">
-                {activeTab === 'available' && 'ドッグランや施設でクーポンを取得してみましょう！'}
-                {activeTab === 'used' && 'クーポンを使用すると、ここに履歴が表示されます'}
-                {activeTab === 'expired' && '期限切れのクーポンはありません'}
-              </p>
-              {activeTab === 'available' && (
-                <Link to="/parks">
-                  <Button className="bg-pink-500 hover:bg-pink-600">
-                    施設一覧を見る
-                  </Button>
-                </Link>
-              )}
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">保有クーポンがありません</h3>
+              <p className="text-gray-600 mb-6">ワンちゃんと行ける施設でクーポンを取得してみましょう！</p>
+              <Link to="/parks?view=facilities">
+                <Button className="bg-pink-500 hover:bg-pink-600">
+                  施設一覧へ（ワンちゃんと行ける施設）
+                </Button>
+              </Link>
             </Card>
           ) : (
             <div className="space-y-4">

@@ -211,7 +211,7 @@ export function DogEditModal({
                   
                   {dogImagePreview && !localHidePreview ? (
                     <>
-                    <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-300">
+                    <div className="relative w-full aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-300">
                       <img src={dogImagePreview} alt="プレビュー" className="w-full h-full object-cover" />
                       <button
                         type="button"
