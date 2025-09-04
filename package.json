@@ -22,7 +22,8 @@
     "geocode-facilities": "node scripts/geocode-facilities.js",
     "geocode-dog-parks": "node scripts/geocode-dog-parks.js",
     "geocode-test": "node scripts/geocode-facilities.js --test",
-    "analyze": "vite-bundle-visualizer"
+    "analyze": "vite-bundle-visualizer",
+    "build:icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.2",
@@ -87,6 +88,7 @@
     "postcss": "^8.4.32",
     "prettier": "^3.6.2",
     "rollup-plugin-visualizer": "^6.0.3",
+    "sharp": "^0.34.3",
     "tailwindcss": "^3.3.6",
     "tsx": "^4.20.3",
     "typescript": "^5.2.2",
