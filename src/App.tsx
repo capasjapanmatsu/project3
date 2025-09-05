@@ -138,6 +138,7 @@ const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy').then(modu
 const BusinessInformation = React.lazy(() => import('./pages/BusinessInformation').then(module => ({ default: module.BusinessInformation })));
 const SponsorApplication = React.lazy(() => import('./pages/SponsorApplication').then(module => ({ default: module.SponsorApplication })));
 const SponsorInquiry = React.lazy(() => import('./pages/SponsorInquiry'));
+const LegalTokushoho = React.lazy(() => import('./pages/LegalTokushoho'));
 const NotFound = React.lazy(() => import('./pages/NotFound').then(module => ({ default: module.NotFound })));
 
 // デバッグページ
