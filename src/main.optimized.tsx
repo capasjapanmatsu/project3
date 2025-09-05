@@ -18,18 +18,15 @@ const loadApp = () => {
   return import('./App');
 };
 
-// Service Workerの登録（PWA）
+// Service Workerの登録（PWA）: Lighthouseが「このページを制御している」ことを検出しやすいよう、load待ちしない
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(
-      (registration) => {
-        console.log('ServiceWorker registration successful:', registration.scope);
-      },
-      (err) => {
-        console.log('ServiceWorker registration failed:', err);
-      }
-    );
-  });
+  navigator.serviceWorker.register('/sw.js', { scope: '/' })
+    .then((registration) => {
+      console.log('ServiceWorker registration successful:', registration.scope);
+    })
+    .catch((err) => {
+      console.log('ServiceWorker registration failed:', err);
+    });
 }
 
 // Web Vitalsの計測（開発環境のみ）
