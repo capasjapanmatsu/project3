@@ -151,7 +151,7 @@ export function Footer() {
             <Link to="/terms" className="text-gray-400 hover:text-white transition-colors text-sm">
               利用規約
             </Link>
-            <Link to="/business-information" className="text-gray-400 hover:text-white transition-colors text-sm">
+            <Link to="/legal/tokushoho" className="text-gray-400 hover:text-white transition-colors text-sm">
               特定商取引法に基づく表記
             </Link>
             <Link to="/contact" className="text-gray-400 hover:text-white transition-colors text-sm">

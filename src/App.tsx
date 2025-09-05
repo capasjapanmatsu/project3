@@ -478,6 +478,11 @@ const App: React.FC = () => {
                   <PrivacyPolicy />
                 </Suspense>
               } />
+              <Route path="/legal/tokushoho" element={
+                <Suspense fallback={<PageSkeleton />}>
+                  <LegalTokushoho />
+                </Suspense>
+              } />
               <Route path="/business-information" element={
                 <Suspense fallback={<PageSkeleton />}>
                   <BusinessInformation />
