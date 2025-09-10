@@ -1,4 +1,4 @@
-import { Handshake, Mail, MapPin, PawPrint, Store } from 'lucide-react';
+import { Handshake, PawPrint, Store } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 
