@@ -15,7 +15,7 @@ export default function LegalTokushoho() {
         <Row label="販売業者" value={C.CORP_LEGAL_NAME} />
         <Row label="運営責任者" value={C.REPRESENTATIVE_NAME} />
         <Row label="所在地" value={C.CORP_ADDRESS} />
-        <Row label="電話番号" value={`${C.CORP_TEL}（非公開の場合：請求を受けた場合には遅滞なく開示いたします）`} />
+        <Row label="電話番号" value={C.CORP_TEL} />
         <Row label="メールアドレス" value={C.SUPPORT_EMAIL} />
         <Row label="URL" value={<a href="https://dogparkjp.com/" className="text-blue-600 underline">https://dogparkjp.com/</a>} />
 
