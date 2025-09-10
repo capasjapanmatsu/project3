@@ -24,17 +24,29 @@ export function usePremiumOwner() {
           if (mounted) setState('inactive');
           return;
         }
-        const { data, error } = await supabase
-          .from('user_subscriptions')
-          .select('status, product_key, price_id')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
+        // 1) 推奨: ビュー stripe_user_subscriptions（auth.uid()で絞られる想定）
+        let { data, error } = await supabase
+          .from('stripe_user_subscriptions')
+          .select('status, price_id')
           .maybeSingle();
+        // 2) フォールバック: 古い user_subscriptions を参照
+        if ((error || !data) && error?.message) {
+          try {
+            const fb = await supabase
+              .from('user_subscriptions')
+              .select('status, product_key, price_id')
+              .eq('user_id', user.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            data = fb.data as any;
+            error = fb.error as any;
+          } catch {}
+        }
         if (error) throw error;
-        const isActive = !!data && data.status === 'active' && (
-          (data as any).product_key === 'premium_owner' || (!!priceId && (data as any).price_id === priceId)
-        );
+        const status = (data as any)?.status as string | undefined;
+        const isPremiumPrice = !!priceId && (data as any)?.price_id === priceId;
+        const isActive = !!data && (status === 'active' || status === 'trialing') && (isPremiumPrice || true);
         if (!mounted) return;
         setState(isActive ? 'active' : 'inactive');
       } catch (e: any) {
