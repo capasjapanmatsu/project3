@@ -210,7 +210,7 @@ export interface Product {
   name: string;
   description: string;
   price: number;
-  category: 'food' | 'treats' | 'toys' | 'accessories' | 'health' | 'sheets';
+  category: 'food' | 'treats' | 'toys' | 'accessories' | 'health' | 'sheets' | 'business';
   image_url: string;
   stock_quantity: number;
   is_active: boolean;
