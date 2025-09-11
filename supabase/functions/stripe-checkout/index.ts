@@ -254,6 +254,19 @@ Deno.serve(async (req) => {
       }
     }
 
+    // サブスクの二重購入を防止（プレミアム会員/ドッグランのサブスク想定）
+    if (mode === 'subscription') {
+      const { data: existingSub } = await supabase
+        .from('stripe_subscriptions')
+        .select('status')
+        .eq('customer_id', customerId)
+        .maybeSingle();
+      const blockingStatuses = ['active', 'trialing', 'past_due', 'unpaid'];
+      if (existingSub && blockingStatuses.includes((existingSub as any).status)) {
+        return corsResponse({ error: 'すでに有効なサブスクリプションがあります。解約または期限終了後に再度お試しください。' }, 409);
+      }
+    }
+
     // Handle line items based on mode and custom parameters
     if (mode === 'subscription') {
       let effectivePriceId = price_id;
