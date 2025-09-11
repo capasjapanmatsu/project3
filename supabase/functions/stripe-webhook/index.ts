@@ -98,7 +98,21 @@ async function handleEvent(event: Stripe.Event) {
           .eq('customer_id', customerId)
           .maybeSingle();
         if (customerMap?.user_id) {
-          const amount_total = (session.amount_total ?? 0) / 100;
+          const isJPY = (session.currency || 'jpy').toLowerCase() === 'jpy';
+          const amount_total = typeof session.amount_total === 'number'
+            ? (isJPY ? session.amount_total : Math.round(session.amount_total / 100))
+            : 0;
+          const notesMeta = (session.metadata?.notes as string) || '';
+          const isPremiumOwner = /premium_owner/i.test(notesMeta);
+          const label = isPremiumOwner
+            ? '施設オーナー向けプレミアム会員（500円）'
+            : 'サブスクリプション（3800円）';
+          // プロファイルから氏名・住所・電話を推測
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('name, address, phone_number, postal_code, email')
+            .eq('id', customerMap.user_id)
+            .maybeSingle();
           const { error: orderErr } = await supabase.from('orders').insert({
             user_id: customerMap.user_id,
             order_number: `SUB${Date.now()}`,
@@ -109,13 +123,18 @@ async function handleEvent(event: Stripe.Event) {
             final_amount: amount_total,
             is_subscription: true,
             subscription_id: (session.subscription as string) || null,
+            shipping_name: profile?.name || profile?.email || customerMap.user_id,
+            shipping_postal_code: (profile as any)?.postal_code || '-',
+            shipping_address: (profile as any)?.address || '-',
+            shipping_phone: (profile as any)?.phone_number || '-',
+            notes: label,
           });
           if (orderErr) console.error('Failed to insert subscription order:', orderErr);
 
           // Notify user (App notification + LINE)
           try {
-            const notes = (session.metadata?.notes as string) || '';
-            const isPremiumOwner = /premium_owner/i.test(notes);
+            const notes = notesMeta;
+            const isPremiumOwner = /premium_owner/i.test(notesMeta);
             const title = isPremiumOwner ? 'プレミアムオーナー登録が完了しました' : 'サブスクリプションの登録が完了しました';
             const message = isPremiumOwner
               ? '予約管理・クーポン管理（プレミアム）がご利用いただけます。'
@@ -159,14 +178,19 @@ async function handleEvent(event: Stripe.Event) {
       }
     } else if (mode === 'payment' && payment_status === 'paid') {
       try {
-        // Extract the necessary information from the session
+        // 詳細（line_items 含む）を取得
+        const detailed = await stripe.checkout.sessions.retrieve(
+          (stripeData as Stripe.Checkout.Session).id as string,
+          { expand: ['line_items.data.price.product'] }
+        );
         const {
           id: checkout_session_id,
           payment_intent,
           amount_subtotal,
           amount_total,
           currency,
-        } = stripeData as Stripe.Checkout.Session;
+          line_items
+        } = detailed as Stripe.Checkout.Session;
 
         // Insert the order into the stripe_orders table
         const { error: orderError } = await supabase.from('stripe_orders').insert({
@@ -186,7 +210,7 @@ async function handleEvent(event: Stripe.Event) {
         }
         console.info(`Successfully processed one-time payment for session: ${checkout_session_id}`);
 
-        // Also create a minimal entry in orders for user history/admin views
+        // Also create a minimal entry in orders for user history/admin views（商品名も保存）
         try {
           // Lookup app user_id from stripe_customers
           const { data: customerMap2 } = await supabase
@@ -197,8 +221,38 @@ async function handleEvent(event: Stripe.Event) {
 
           if (customerMap2?.user_id) {
             const orderNumber = `SP${Date.now()}`;
-            const totalYen = typeof amount_subtotal === 'number' ? Math.round(amount_subtotal / 100) : 0;
-            const finalYen = typeof amount_total === 'number' ? Math.round(amount_total / 100) : totalYen;
+            const isJPY2 = (currency || 'jpy').toLowerCase() === 'jpy';
+            const totalYen = typeof amount_subtotal === 'number'
+              ? (isJPY2 ? amount_subtotal : Math.round(amount_subtotal / 100))
+              : 0;
+            const finalYen = typeof amount_total === 'number'
+              ? (isJPY2 ? amount_total : Math.round(amount_total / 100))
+              : totalYen;
+
+            // 商品名を抽出
+            let itemName = 'オンライン決済';
+            let itemThumb: string | null = null;
+            let orderItemsMeta: string | null = null;
+            try {
+              const meta: any = (detailed as any).metadata || {};
+              if (typeof meta.order_items === 'string') {
+                orderItemsMeta = meta.order_items;
+              }
+            } catch (_) {}
+            try {
+              const first = (line_items as any)?.data?.[0];
+              itemName =
+                first?.price?.product && typeof first.price.product !== 'string'
+                  ? (first.price.product as any).name || first?.description || itemName
+                  : first?.description || itemName;
+              // サムネイルURL
+              if (first?.price?.product && typeof first.price.product !== 'string') {
+                const prod: any = first.price.product;
+                if (Array.isArray(prod.images) && prod.images.length > 0) {
+                  itemThumb = prod.images[0];
+                }
+              }
+            } catch (_) {}
             await supabase.from('orders').insert({
               user_id: customerMap2.user_id,
               order_number: orderNumber,
@@ -207,13 +261,15 @@ async function handleEvent(event: Stripe.Event) {
               discount_amount: 0,
               shipping_fee: 0,
               final_amount: finalYen,
-              shipping_address: '-',
-              shipping_postal_code: '-',
-              shipping_phone: '-',
-              shipping_name: 'オンライン決済',
+              shipping_address: (detailed as any).customer_details?.address?.line1 || '-',
+              shipping_postal_code: (detailed as any).customer_details?.address?.postal_code || '-',
+              shipping_phone: (detailed as any).customer_details?.phone || '-',
+              shipping_name: itemName,
               payment_method: 'credit_card',
               payment_status: 'completed',
-              notes: 'Stripe決済(簡易記録)'
+              notes: orderItemsMeta || itemName,
+              // 画像URLをメモに格納（将来のUI表示用。専用カラムが無ければnotesにJSONで付与も可）
+              // 今回は簡易に notes にそのまま残し、画像は将来必要であれば別テーブル化
             });
           }
         } catch (e) {

@@ -223,6 +223,9 @@ Deno.serve(async (req) => {
       success_url: normalizedSuccessUrl,
       cancel_url: normalizedCancelUrl,
       metadata,
+      phone_number_collection: { enabled: true },
+      shipping_address_collection: { allowed_countries: ['JP'] },
+      customer_update: { address: 'auto', name: 'auto', shipping: 'auto' },
     };
 
     // サブスクリプションモードの場合、トライアル期間を設定
@@ -395,10 +398,18 @@ Deno.serve(async (req) => {
         }
 
         // 商品ごとの行アイテムを作成
+        const orderItems: Array<{ product_id: string; name: string; quantity: number; unit_price: number; image_url?: string }>=[];
         const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = cartData.map(item => {
           const price = hasSubscription 
             ? Math.round(item.product.price * 0.9) // サブスク会員は10%オフ
             : item.product.price;
+          orderItems.push({
+            product_id: item.product.id,
+            name: item.product.name,
+            quantity: item.quantity,
+            unit_price: price,
+            image_url: item.product.image_url || undefined,
+          });
           
           return {
             price_data: {
@@ -427,6 +438,10 @@ Deno.serve(async (req) => {
         }
 
         sessionParams.line_items = lineItems;
+        sessionParams.metadata = {
+          ...(sessionParams.metadata || {}),
+          order_items: JSON.stringify(orderItems),
+        } as Record<string,string>;
       } else if (reservation_data) {
         // 予約データがある場合（ドッグラン1日券）
         try {

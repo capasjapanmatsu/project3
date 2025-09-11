@@ -36,6 +36,7 @@ export function AdminShopManagement() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'orders' | 'products'>('orders');
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -92,11 +93,12 @@ export function AdminShopManagement() {
       setError('');
       
       if (activeTab === 'orders') {
-        // 注文一覧を取得
+        // 注文一覧を取得（顧客名用にprofilesを結合）
         const { data, error } = await supabase
           .from('orders')
           .select(`
             *,
+            profiles:profiles!orders_user_id_fkey(id, name, email),
             order_items (
               *,
               product:products(*)
@@ -777,8 +779,9 @@ export function AdminShopManagement() {
     return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
-  const downloadOrdersCSV = () => {
-    if (orders.length === 0) return;
+  const downloadOrdersCSV = (ids?: string[]) => {
+    const source = ids && ids.length > 0 ? orders.filter(o => ids.includes(o.id as any)) : orders;
+    if (source.length === 0) return;
     
     // CSVヘッダー
     const headers = [
@@ -802,7 +805,7 @@ export function AdminShopManagement() {
     ];
     
     // CSVデータ行
-    const rows = orders.map(order => [
+    const rows = source.map(order => [
       order.order_number,
       new Date(order.created_at).toLocaleDateString('ja-JP'),
       getStatusLabel(order.status),
@@ -980,11 +983,25 @@ export function AdminShopManagement() {
           </div>
 
           {/* CSV出力ボタン */}
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-3 text-sm text-gray-600">
+              <button
+                className="px-2 py-1 border rounded"
+                onClick={() => setSelectedIds(new Set(filteredOrders.map(o => o.id)))}
+              >
+                すべて選択
+              </button>
+              <button
+                className="px-2 py-1 border rounded"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                すべて解除
+              </button>
+            </div>
             <Button 
               variant="secondary" 
               size="sm"
-              onClick={downloadOrdersCSV}
+              onClick={() => downloadOrdersCSV(Array.from(selectedIds))}
               disabled={orders.length === 0}
             >
               <Download className="w-4 h-4 mr-2" />
@@ -1004,6 +1021,13 @@ export function AdminShopManagement() {
               <table className="min-w-full bg-white">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-3 py-3">
+                      <input type="checkbox" onChange={(e)=>{
+                        if(e.target.checked){
+                          setSelectedIds(new Set(filteredOrders.map(o=>o.id)));
+                        }else{ setSelectedIds(new Set()); }
+                      }} />
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">注文番号</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">注文日</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">顧客名</th>
@@ -1016,6 +1040,17 @@ export function AdminShopManagement() {
                 <tbody className="divide-y divide-gray-200">
                   {filteredOrders.map((order) => (
                     <tr key={order.id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(order.id)}
+                          onChange={(e)=>{
+                            const next = new Set(selectedIds);
+                            if(e.target.checked){ next.add(order.id);} else { next.delete(order.id); }
+                            setSelectedIds(next);
+                          }}
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {order.order_number}
                       </td>
@@ -1023,15 +1058,28 @@ export function AdminShopManagement() {
                         {new Date(order.created_at).toLocaleDateString('ja-JP')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {order.shipping_name}
+                        {(order as any).profiles?.name || (order as any).profiles?.email || (order as any).user_id?.slice(0,8)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         ¥{order.final_amount.toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                          {getStatusLabel(order.status)}
-                        </span>
+                        <select
+                          className="border rounded px-2 py-1 text-sm"
+                          value={order.status}
+                          onChange={async (e)=>{
+                            const next = e.target.value as any;
+                            await supabase.from('orders').update({ status: next, updated_at: new Date().toISOString() }).eq('id', order.id);
+                            await fetchData();
+                          }}
+                        >
+                          <option value="pending">注文受付中</option>
+                          <option value="confirmed">注文確定</option>
+                          <option value="processing">準備中</option>
+                          <option value="shipped">発送済み</option>
+                          <option value="delivered">配達完了</option>
+                          <option value="cancelled">キャンセル</option>
+                        </select>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col">

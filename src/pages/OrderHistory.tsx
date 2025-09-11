@@ -460,9 +460,7 @@ export function OrderHistory() {
                   <p className="text-2xl font-bold text-green-600">
                     ¥{order.final_amount.toLocaleString()}
                   </p>
-                  <p className="text-sm text-gray-500">
-                    {getPaymentMethodLabel(order.payment_method)}
-                  </p>
+                  {/* 一覧では決済方法は非表示（詳細で表示） */}
                 </div>
               </div>
 
@@ -495,15 +493,21 @@ export function OrderHistory() {
                 )}
               </div>
 
-              {/* 配送先情報 */}
+              {/* 一覧では配送先の詳細は非表示。商品名/プラン名のみ（shipping_name/notes） */}
               <div className="bg-blue-50 p-3 rounded-lg mb-4">
-                <h4 className="font-semibold text-blue-900 mb-1">配送先</h4>
-                <p className="text-sm text-blue-800">
-                  {order.shipping_name}<br />
-                  〒{order.shipping_postal_code}<br />
-                  {order.shipping_address}<br />
-                  {order.shipping_phone}
-                </p>
+                <h4 className="font-semibold text-blue-900 mb-1">内容</h4>
+                <div className="text-sm text-blue-800 break-words">
+                  {/* 商品名／プラン名（2行まで自然に折返し） */}
+                  <p className="font-medium whitespace-pre-line">
+                    {order.shipping_name || '—'}
+                  </p>
+                  {/* 注釈（商品タイトルなど） */}
+                  {order.notes && order.notes !== order.shipping_name && (
+                    <p className="mt-1 text-blue-700 whitespace-pre-line break-words">
+                      {order.notes}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* 追跡番号 */}
