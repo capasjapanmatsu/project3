@@ -186,6 +186,40 @@ async function handleEvent(event: Stripe.Event) {
         }
         console.info(`Successfully processed one-time payment for session: ${checkout_session_id}`);
 
+        // Also create a minimal entry in orders for user history/admin views
+        try {
+          // Lookup app user_id from stripe_customers
+          const { data: customerMap2 } = await supabase
+            .from('stripe_customers')
+            .select('user_id')
+            .eq('customer_id', customerId)
+            .maybeSingle();
+
+          if (customerMap2?.user_id) {
+            const orderNumber = `SP${Date.now()}`;
+            const totalYen = typeof amount_subtotal === 'number' ? Math.round(amount_subtotal / 100) : 0;
+            const finalYen = typeof amount_total === 'number' ? Math.round(amount_total / 100) : totalYen;
+            await supabase.from('orders').insert({
+              user_id: customerMap2.user_id,
+              order_number: orderNumber,
+              status: 'confirmed',
+              total_amount: totalYen,
+              discount_amount: 0,
+              shipping_fee: 0,
+              final_amount: finalYen,
+              shipping_address: '-',
+              shipping_postal_code: '-',
+              shipping_phone: '-',
+              shipping_name: 'オンライン決済',
+              payment_method: 'credit_card',
+              payment_status: 'completed',
+              notes: 'Stripe決済(簡易記録)'
+            });
+          }
+        } catch (e) {
+          console.error('Failed to create orders snapshot for history:', e);
+        }
+
         // Handle point usage (deduct) and award 10% back for shop purchases
         try {
           // Lookup app user_id from stripe_customers
