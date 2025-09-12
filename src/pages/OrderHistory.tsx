@@ -345,24 +345,6 @@ export function OrderHistory() {
       
       {/* クイックリンク */}
       <div className="flex flex-wrap gap-4 mb-6">
-        <Link to="/profile-settings">
-          <Button variant="secondary" size="sm">
-            <User className="w-4 h-4 mr-2" />
-            プロフィール編集
-          </Button>
-        </Link>
-        <Link to="/payment-method-settings">
-          <Button variant="secondary" size="sm">
-            <CreditCard className="w-4 h-4 mr-2" />
-            支払い方法
-          </Button>
-        </Link>
-        <Link to="/dogpark-history">
-          <Button variant="secondary" size="sm">
-            <History className="w-4 h-4 mr-2" />
-            ドッグラン利用履歴
-          </Button>
-        </Link>
         <Link to="/petshop">
           <Button variant="secondary" size="sm">
             <ShoppingBag className="w-4 h-4 mr-2" />

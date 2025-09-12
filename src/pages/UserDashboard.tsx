@@ -1110,6 +1110,14 @@ export function UserDashboard() {
               <p className="text-sm text-blue-700">近くのドッグランを探す</p>
             </div>
           </Link>
+
+          <Link to="/dogpark-history" className="group">
+            <div className="p-6 bg-gradient-to-br from-teal-50 to-emerald-50 rounded-xl hover:from-teal-100 hover:to-emerald-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-teal-200">
+              <History className="w-8 h-8 text-teal-600 mb-3" />
+              <h3 className="font-semibold text-teal-900 mb-1">ドッグラン利用履歴</h3>
+              <p className="text-sm text-teal-700">入退場履歴を確認</p>
+            </div>
+          </Link>
           
           <Link to="/community" className="group">
             <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl hover:from-green-100 hover:to-emerald-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-green-200">

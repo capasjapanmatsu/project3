@@ -17,10 +17,11 @@ import {
     Trash2,
     User,
     UserX,
-    X
+    X,
+    CreditCard
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
@@ -1030,6 +1031,18 @@ export function ProfileSettings() {
                 </span>
               )}
             </div>
+          </div>
+
+          {/* 支払い方法 管理への導線 */}
+          <div className="p-4 bg-white rounded-lg border border-gray-200">
+            <h3 className="font-semibold mb-2">支払い方法</h3>
+            <p className="text-sm text-gray-600 mb-3">登録済みのカードの確認・変更を行います。</p>
+            <Link to="/payment-method-settings">
+              <Button variant="secondary" size="sm">
+                <CreditCard className="w-4 h-4 mr-2" />
+                支払い方法を管理
+              </Button>
+            </Link>
           </div>
           {/* パスワード変更セクション（メールユーザーのみ表示） */}
           {user && (
