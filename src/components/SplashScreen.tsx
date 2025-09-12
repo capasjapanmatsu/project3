@@ -1,5 +1,5 @@
 import { AlertTriangle, ArrowRight, Dog, Eye, EyeOff, Lock, Mail, UserPlus } from 'lucide-react';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 import { logger } from '../utils/logger';
@@ -48,6 +48,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const [textOpacity, setTextOpacity] = useState(0.1); // 文字の濃さを制御
   const [imageOpacityFilter, setImageOpacityFilter] = useState(0.3); // 画像の濃さを制御
   const [whiteFlashOpacity, setWhiteFlashOpacity] = useState(0); // ホワイトフラッシュの透明度
+  const [underlineStart, setUnderlineStart] = useState(false); // タイピング後に下線描画
+  const headline1Ref = useRef<HTMLSpanElement | null>(null);
+  const headline2Ref = useRef<HTMLSpanElement | null>(null);
 
   // プリロード関連の状態
   const [preloadProgress, setPreloadProgress] = useState(0);
@@ -161,6 +164,11 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                 setTyped2(prev => { const b = [...prev]; b[j] = true; return b; });
                 j++;
                 setTimeout(type2, 60);
+              } else {
+                // すべてのタイピングが完了 → 下線アニメ開始
+                setTimeout(() => {
+                  setUnderlineStart(true);
+                }, 100);
               }
             };
             type2();
@@ -544,28 +552,72 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
               {/* 2行のメッセージ（背景なし、強い白縁） */}
               <div className="space-y-2 px-4">
                 <h2 
-                className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide`}
+                className={`text-3xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-wide`}
                 style={{ 
                   fontFamily: '"M PLUS Rounded 1c", Zen Maru Gothic, sans-serif',
                   textShadow: '0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.8), 0 0 30px rgba(255,255,255,0.6), 2px 2px 4px rgba(255,255,255,0.9), -2px -2px 4px rgba(255,255,255,0.9), 2px -2px 4px rgba(255,255,255,0.9), -2px 2px 4px rgba(255,255,255,0.9)',
                   color: '#355E3B'
                 }}
               >
-                {message1.split('').map((c, idx) => (
-                  <span key={idx} className={`inline-block transition-opacity duration-150 ${typed1[idx] ? 'opacity-100' : 'opacity-0'}`}>{c}</span>
-                ))}
+                <span ref={headline1Ref} className="relative inline-block">
+                  {message1.split('').map((c, idx) => (
+                    <span key={idx} className={`inline-block transition-opacity duration-150 ${typed1[idx] ? 'opacity-100' : 'opacity-0'}`}>{c}</span>
+                  ))}
+                  {/* 手書き風下線（左→右へ描画） */}
+                  <svg
+                    className="absolute left-0"
+                    style={{ bottom: '-0.15em' }}
+                    width={headline1Ref.current?.offsetWidth || 0}
+                    height={24}
+                  >
+                    <path
+                      d={`M0 12 Q ${(headline1Ref.current?.offsetWidth || 0) * 0.25} 24, ${(headline1Ref.current?.offsetWidth || 0) * 0.5} 12 Q ${(headline1Ref.current?.offsetWidth || 0) * 0.75} 0, ${(headline1Ref.current?.offsetWidth || 0)} 12`}
+                      fill="none"
+                      stroke="rgba(239, 68, 68, 0.5)" /* 赤系 with 透明度 */
+                      strokeWidth={12}
+                      strokeLinecap="round"
+                      style={{
+                        strokeDasharray: 1200,
+                        strokeDashoffset: underlineStart ? 0 : 1200,
+                        transition: 'stroke-dashoffset 700ms ease-out 80ms'
+                      }}
+                    />
+                  </svg>
+                </span>
                 </h2>
                 <h2 
-                className={`text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-wide`}
+                className={`text-3xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-wide`}
                 style={{ 
                   fontFamily: '"M PLUS Rounded 1c", Zen Maru Gothic, sans-serif',
                   textShadow: '0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.8), 0 0 30px rgba(255,255,255,0.6), 2px 2px 4px rgba(255,255,255,0.9), -2px -2px 4px rgba(255,255,255,0.9), 2px -2px 4px rgba(255,255,255,0.9), -2px 2px 4px rgba(255,255,255,0.9)',
                   color: '#3C6E47'
                 }}
               >
-                {message2.split('').map((c, idx) => (
-                  <span key={idx} className={`inline-block transition-opacity duration-150 ${typed2[idx] ? 'opacity-100' : 'opacity-0'}`}>{c}</span>
-                ))}
+                <span ref={headline2Ref} className="relative inline-block">
+                  {message2.split('').map((c, idx) => (
+                    <span key={idx} className={`inline-block transition-opacity duration-150 ${typed2[idx] ? 'opacity-100' : 'opacity-0'}`}>{c}</span>
+                  ))}
+                  {/* 手書き風下線（左→右へ描画） */}
+                  <svg
+                    className="absolute left-0"
+                    style={{ bottom: '-0.15em' }}
+                    width={headline2Ref.current?.offsetWidth || 0}
+                    height={24}
+                  >
+                    <path
+                      d={`M0 12 Q ${(headline2Ref.current?.offsetWidth || 0) * 0.25} 24, ${(headline2Ref.current?.offsetWidth || 0) * 0.5} 12 Q ${(headline2Ref.current?.offsetWidth || 0) * 0.75} 0, ${(headline2Ref.current?.offsetWidth || 0)} 12`}
+                      fill="none"
+                      stroke="rgba(239, 68, 68, 0.5)"
+                      strokeWidth={12}
+                      strokeLinecap="round"
+                      style={{
+                        strokeDasharray: 1200,
+                        strokeDashoffset: underlineStart ? 0 : 1200,
+                        transition: 'stroke-dashoffset 700ms ease-out 220ms'
+                      }}
+                    />
+                  </svg>
+                </span>
                 </h2>
               </div>
             </div>

@@ -189,7 +189,9 @@ async function handleEvent(event: Stripe.Event) {
           amount_subtotal,
           amount_total,
           currency,
-          line_items
+          line_items,
+          metadata,
+          customer_details,
         } = detailed as Stripe.Checkout.Session;
 
         // Insert the order into the stripe_orders table
@@ -210,7 +212,7 @@ async function handleEvent(event: Stripe.Event) {
         }
         console.info(`Successfully processed one-time payment for session: ${checkout_session_id}`);
 
-        // Also create a minimal entry in orders for user history/admin views（商品名も保存）
+        // Also create a minimal entry in orders for user history/admin views（商品名・明細・送料・ポイントを保存）
         try {
           // Lookup app user_id from stripe_customers
           const { data: customerMap2 } = await supabase
@@ -233,6 +235,8 @@ async function handleEvent(event: Stripe.Event) {
             let itemName = 'オンライン決済';
             let itemThumb: string | null = null;
             let orderItemsMeta: string | null = null;
+            let shippingFeeYen = 0;
+            const usedPoints = Math.max(0, parseInt(((metadata as any)?.points_use as string) || '0', 10) || 0);
             try {
               const meta: any = (detailed as any).metadata || {};
               if (typeof meta.order_items === 'string') {
@@ -240,7 +244,8 @@ async function handleEvent(event: Stripe.Event) {
               }
             } catch (_) {}
             try {
-              const first = (line_items as any)?.data?.[0];
+              const liData = (line_items as any)?.data || [];
+              const first = liData?.[0];
               itemName =
                 first?.price?.product && typeof first.price.product !== 'string'
                   ? (first.price.product as any).name || first?.description || itemName
@@ -252,25 +257,65 @@ async function handleEvent(event: Stripe.Event) {
                   itemThumb = prod.images[0];
                 }
               }
+              // 送料行（名称が"送料"）を集計
+              for (const it of liData) {
+                const name = (it?.price?.product && typeof it.price.product !== 'string')
+                  ? (it.price.product as any).name || it?.description || ''
+                  : it?.description || '';
+                if (String(name).includes('送料')) {
+                  const unit = (it?.price?.unit_amount ?? 0) as number;
+                  const qty = (it?.quantity ?? 1) as number;
+                  shippingFeeYen += (isJPY2 ? unit : Math.round(unit / 100)) * qty;
+                }
+              }
             } catch (_) {}
-            await supabase.from('orders').insert({
+            const orderInsert = {
               user_id: customerMap2.user_id,
               order_number: orderNumber,
               status: 'confirmed',
               total_amount: totalYen,
-              discount_amount: 0,
-              shipping_fee: 0,
+              discount_amount: usedPoints,
+              shipping_fee: shippingFeeYen,
               final_amount: finalYen,
-              shipping_address: (detailed as any).customer_details?.address?.line1 || '-',
-              shipping_postal_code: (detailed as any).customer_details?.address?.postal_code || '-',
-              shipping_phone: (detailed as any).customer_details?.phone || '-',
+              shipping_address: customer_details?.address?.line1 || '-',
+              shipping_postal_code: customer_details?.address?.postal_code || '-',
+              shipping_phone: customer_details?.phone || '-',
               shipping_name: itemName,
               payment_method: 'credit_card',
               payment_status: 'completed',
               notes: orderItemsMeta || itemName,
               // 画像URLをメモに格納（将来のUI表示用。専用カラムが無ければnotesにJSONで付与も可）
               // 今回は簡易に notes にそのまま残し、画像は将来必要であれば別テーブル化
-            });
+            } as any;
+
+            // 注文を作成しIDを回収
+            const { data: createdOrder, error: createOrderErr } = await supabase
+              .from('orders')
+              .insert(orderInsert)
+              .select('id')
+              .single();
+            if (createOrderErr) throw createOrderErr;
+
+            // 明細を保存（メタデータから）
+            try {
+              if (orderItemsMeta && createdOrder?.id) {
+                const parsed: Array<{ product_id: string; name: string; quantity: number; unit_price: number; image_url?: string }>
+                  = JSON.parse(orderItemsMeta);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  const rows = parsed.map(it => ({
+                    order_id: createdOrder.id,
+                    product_id: it.product_id,
+                    quantity: it.quantity,
+                    unit_price: it.unit_price,
+                    total_price: it.unit_price * it.quantity,
+                  }));
+                  const { error: oiErr } = await supabase.from('order_items').insert(rows);
+                  if (oiErr) console.error('Failed to insert order_items:', oiErr);
+                }
+              }
+            } catch (e) {
+              console.error('Failed parsing/inserting order_items metadata:', e);
+            }
           }
         } catch (e) {
           console.error('Failed to create orders snapshot for history:', e);
@@ -300,7 +345,7 @@ async function handleEvent(event: Stripe.Event) {
             }
 
             if (typeof amount_total === 'number') {
-              const points = Math.round((amount_total / 100) * 0.10); // amount_total in yen
+              const points = Math.round(amount_total * 0.10); // JPYは0桁通貨のため、そのまま10%
               if (points > 0) {
                 await supabase.rpc('fn_add_points', {
                   p_user: customerMap.user_id,
