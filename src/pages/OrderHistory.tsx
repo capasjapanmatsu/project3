@@ -3,15 +3,12 @@ import {
     ArrowLeft,
     CheckCircle,
     Clock,
-    CreditCard,
     Download,
     Eye,
-    History,
     Package,
     ShoppingBag,
     Star,
     Truck,
-    User,
     X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -444,6 +441,34 @@ export function OrderHistory() {
                   </p>
                   {/* 一覧では決済方法は非表示（詳細で表示） */}
                 </div>
+              </div>
+
+              {/* 一覧サマリー（先頭の商品サムネ・名称・他点数） */}
+              <div className="flex items-center space-x-4 mb-3">
+                {(() => {
+                  const first = order.order_items && order.order_items.length > 0 ? order.order_items[0] : null;
+                  const image = first?.product?.image_url || 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
+                  const title = first?.product?.name || order.shipping_name || '商品';
+                  const rest = Math.max(0, (order.order_items?.length || 0) - 1);
+                  return (
+                    <>
+                      <img
+                        src={image}
+                        alt={title}
+                        className="w-16 h-16 object-cover rounded"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg';
+                        }}
+                      />
+                      <div className="flex-1">
+                        <h4 className="font-medium line-clamp-2">{title}</h4>
+                        {rest > 0 && (
+                          <p className="text-xs text-gray-500">他 {rest} 点</p>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
 
               {/* 注文商品一覧（最初の3つのみ表示） */}
