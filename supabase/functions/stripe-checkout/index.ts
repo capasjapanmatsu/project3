@@ -545,6 +545,25 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Stripeの最小決済額（JPY=¥50）を事前チェック
+    if (mode === 'payment' && (sessionParams.line_items || []).length > 0) {
+      const calcTotal = () => {
+        let total = 0;
+        for (const li of (sessionParams.line_items as any[])) {
+          const unit = li?.price_data?.unit_amount || 0;
+          const qty = li?.quantity || 1;
+          total += unit * qty;
+        }
+        return total;
+      };
+      const totalAfterAdjust = calcTotal();
+      if (totalAfterAdjust > 0 && totalAfterAdjust <= 50) {
+        return corsResponse({
+          error: '合計が¥51以上必要です。ポイント利用を減らすか、数量を増やしてください。'
+        }, 400);
+      }
+    }
+
     // Create the checkout session
     let session: Stripe.Checkout.Session;
     try {
