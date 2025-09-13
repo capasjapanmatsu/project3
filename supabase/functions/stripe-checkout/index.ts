@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     }
 
     const requestData = await req.json();
-    const { price_id, success_url, cancel_url, mode, custom_amount, custom_name, cart_items, reservation_data, trial_period_days, points_use, subscription, ...customParams } = requestData;
+    const { price_id, success_url, cancel_url, mode, custom_amount, custom_name, cart_items, reservation_data, trial_period_days, points_use, subscription, payment_method = 'card', ...customParams } = requestData;
 
     if (!success_url || !cancel_url || !mode) {
       return corsResponse({ error: 'Missing required parameters' }, 400);
@@ -225,8 +225,14 @@ Deno.serve(async (req) => {
       metadata,
       phone_number_collection: { enabled: true },
       shipping_address_collection: { allowed_countries: ['JP'] },
-      customer_update: { address: 'auto', name: 'auto', shipping: 'auto' },
+      customer_update: { address: 'auto', name: 'auto', shipping: 'auto', email: 'auto' },
+      customer_creation: 'always',
     };
+
+    // 既知のメールがあれば事前入力
+    if (user?.email) {
+      (sessionParams as any).customer_email = user.email;
+    }
 
     // サブスクリプションモードの場合、トライアル期間を設定
     if (mode === 'subscription' && trial_period_days && trial_period_days > 0) {
@@ -254,6 +260,27 @@ Deno.serve(async (req) => {
         if (defaultMethod) {
           sessionParams.payment_method = defaultMethod.id;
         }
+      }
+    }
+
+    // 支払い手段の切替（モード: payment のみ）
+    if (mode === 'payment') {
+      if (payment_method === 'konbini') {
+        sessionParams.payment_method_types = ['konbini'];
+      } else if (payment_method === 'bank_transfer') {
+        sessionParams.payment_method_types = ['customer_balance'];
+        sessionParams.payment_intent_data = {
+          ...(sessionParams.payment_intent_data || {}),
+          setup_future_usage: 'off_session',
+        };
+        (sessionParams as any).payment_method_options = {
+          customer_balance: {
+            funding_type: 'bank_transfer',
+            bank_transfer: { type: 'jp_bank_transfer' },
+          },
+        };
+      } else {
+        sessionParams.payment_method_types = ['card'];
       }
     }
 

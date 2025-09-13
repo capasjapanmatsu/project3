@@ -405,6 +405,94 @@ async function handleEvent(event: Stripe.Event) {
         console.error('Error processing one-time payment:', error);
       }
     }
+
+    // 非即時決済（例: コンビニ/銀行振込）の支払い手順保存
+    if (event.type === 'checkout.session.completed') {
+      try {
+        const s = (await stripe.checkout.sessions.retrieve(
+          (stripeData as Stripe.Checkout.Session).id as string,
+          { expand: ['payment_intent'] }
+        )) as any;
+        const pmType = s?.payment_method_types?.[0];
+        if (pmType === 'konbini' || pmType === 'customer_balance') {
+          const pi = s?.payment_intent;
+          const next = pi?.next_action;
+
+          let instructions: any = null;
+          if (pmType === 'konbini' && next?.konbini_display_details) {
+            const d = next.konbini_display_details;
+            instructions = {
+              type: 'konbini',
+              store: d.store || null,
+              number: d.number || null,
+              expires_at: d.expires_at || null,
+            };
+          }
+          if (pmType === 'customer_balance' && next?.display_bank_transfer_instructions) {
+            const d = next.display_bank_transfer_instructions;
+            instructions = {
+              type: 'jp_bank_transfer',
+              bank_name: d.bank_name,
+              account_number: d.account_number,
+              account_holder_name: d.account_holder_name,
+              branch_name: d.bank_branch,
+              iban: d.iban || null,
+              swift: d.swift || null,
+            };
+          }
+
+          if (instructions) {
+            // 注文スナップショットの作成（未入金）
+            const { data: map } = await supabase
+              .from('stripe_customers')
+              .select('user_id')
+              .eq('customer_id', String(s.customer))
+              .maybeSingle();
+            if (map?.user_id) {
+              await supabase.from('orders').insert({
+                user_id: map.user_id,
+                order_number: `SP${Date.now()}`,
+                status: 'pending',
+                total_amount: s.amount_subtotal || 0,
+                discount_amount: 0,
+                shipping_fee: 0,
+                final_amount: s.amount_total || 0,
+                payment_method: pmType === 'konbini' ? 'konbini' : 'bank_transfer',
+                payment_status: 'pending',
+                notes: JSON.stringify({ payment_instructions: instructions }),
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to persist async payment instructions:', e);
+      }
+    }
+
+    // 入金確定/失敗イベントに応じた更新
+    if (event.type === 'checkout.session.async_payment_succeeded') {
+      try {
+        // 注文を確定状態に更新
+        // ここでは最も近い pending 注文を final_amount で特定（簡易）
+        const s = event.data.object as any;
+        const { data: latest } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('payment_status', 'pending')
+          .eq('final_amount', s.amount_total || 0)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (latest?.id) {
+          await supabase
+            .from('orders')
+            .update({ status: 'confirmed', payment_status: 'completed' })
+            .eq('id', latest.id);
+        }
+      } catch (e) {
+        console.error('Failed to update order on async_payment_succeeded:', e);
+      }
+    }
   }
 }
 
