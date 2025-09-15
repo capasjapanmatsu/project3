@@ -35,7 +35,7 @@ export const UsageRulesSection: React.FC = () => {
             <p className="text-gray-600 mb-4">1回の利用料金</p>
             <ul className="text-sm text-gray-600 space-y-1">
               <li>• 24時間利用可能（1施設に限ります）</li>
-              <li>• 愛犬3頭まで</li>
+              <li>• 2頭目以降半額（愛犬最大3頭まで同時入場可）</li>
               <li>• 全国の提携施設で利用可能</li>
             </ul>
           </div>
