@@ -34,7 +34,8 @@ export default function LegalTokushoho() {
           ・予約サービス：各施設のキャンセルポリシーに準拠（詳細は予約ページに記載）
         </Section>
         <Section title="返品・不良品">該当なし（デジタル/役務のため）</Section>
-        <Section title="営業時間">{C.BUSINESS_HOURS}</Section>
+        {/* 明示的に16:00までと表示（環境変数の影響を受けないように固定） */}
+        <Section title="営業時間">平日10:00〜16:00</Section>
         <Section title="動作環境">特に指定なし</Section>
       </div>
     </div>
