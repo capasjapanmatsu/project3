@@ -226,7 +226,6 @@ Deno.serve(async (req) => {
       phone_number_collection: { enabled: true },
       shipping_address_collection: { allowed_countries: ['JP'] },
       customer_update: { address: 'auto', name: 'auto', shipping: 'auto', email: 'auto' },
-      customer_creation: 'always',
     };
 
     // 注意: customer と customer_email は同時に指定不可。
