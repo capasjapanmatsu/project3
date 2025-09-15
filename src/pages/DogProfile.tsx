@@ -193,6 +193,11 @@ export function DogProfile() {
         setIsLiked(true);
         setLikeCount(prev => prev + 1);
         setSuccess('いいねしました');
+        
+        // いいねボーナス（1P、1ワンちゃん1回）を付与
+        try {
+          supabase.rpc('rpc_award_dog_like', { p_user: user.id, p_dog_id: dog.id }).catch(console.warn);
+        } catch {}
       }
 
       setTimeout(() => setSuccess(''), 2000);

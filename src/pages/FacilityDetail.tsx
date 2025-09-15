@@ -1102,6 +1102,11 @@ export function FacilityDetail() {
 
                       if (error) throw error;
 
+                      // 施設レビューボーナス（10P、1施設1回）を付与
+                      try {
+                        supabase.rpc('rpc_award_facility_review', { p_user: user.id, p_facility_id: facilityId }).catch(console.warn);
+                      } catch {}
+
                       // フォームをリセット
                       setNewReview({
                         rating: 5,

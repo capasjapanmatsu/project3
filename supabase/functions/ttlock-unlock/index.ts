@@ -141,6 +141,13 @@ serve(async (req) => {
       ticket_type: hasSubscription ? "subscription" : null,
     });
 
+    // ドッグラン利用ボーナス（30P、1日1回）を付与
+    try {
+      await supabase.rpc('rpc_award_park_usage', { p_user: user.id });
+    } catch (e) {
+      console.warn('Failed to award park usage points:', e);
+    }
+
     return ok({ success: true });
   } catch (error) {
     console.error("Unlock function error:", error);

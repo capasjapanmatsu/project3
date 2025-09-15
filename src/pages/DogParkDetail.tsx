@@ -392,6 +392,13 @@ export function DogParkDetail() {
           }]);
 
         if (error) throw error;
+        
+        // 新規レビューの場合、ドッグランレビューボーナス（50P、1施設1回）を付与
+        if (!userReview) {
+          try {
+            supabase.rpc('rpc_award_park_review', { p_user: user.id, p_facility_id: parkId }).catch(console.warn);
+          } catch {}
+        }
       }
 
       // データを再取得

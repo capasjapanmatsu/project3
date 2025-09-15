@@ -186,6 +186,11 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAdmin(session.user.email === 'capasjapan@gmail.com');
         setEffectiveUserId(session.user.id);
         setLoading(false);
+        
+        // 毎日ログインボーナス（3P）を付与
+        try {
+          supabase.rpc('rpc_daily_login_bonus', { p_user: session.user.id }).catch(console.warn);
+        } catch {}
       } else if (event === 'TOKEN_REFRESHED' && session) {
         // トークン更新時
         setSession(session);
