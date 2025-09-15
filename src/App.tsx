@@ -159,6 +159,7 @@ const MyCoupons = React.lazy(() => import('./pages/MyCoupons').then(module => ({
 const MyReservations = React.lazy(() => import('./pages/MyReservations'));
 const OrderHistory = React.lazy(() => import('./pages/OrderHistory').then(module => ({ default: module.OrderHistory })));
 const PointsHistory = React.lazy(() => import('./pages/PointsHistory'));
+const PhotoGallery = React.lazy(() => import('./pages/PhotoGallery'));
 const ParkReservation = React.lazy(() => import('./pages/ParkReservation').then(module => ({ default: module.ParkReservation })));
 const ParkRegistration = React.lazy(() => import('./pages/ParkRegistration'));
 const ParkRegistrationAgreement = React.lazy(() => import('./pages/ParkRegistrationAgreement'));
@@ -624,6 +625,13 @@ const App: React.FC = () => {
                 <ProtectedRoute>
                   <Suspense fallback={<DashboardSkeleton />}>
                     <OrderHistory />
+                  </Suspense>
+                </ProtectedRoute>
+              } />
+              <Route path="/photos" element={
+                <ProtectedRoute>
+                  <Suspense fallback={<DashboardSkeleton />}>
+                    <PhotoGallery />
                   </Suspense>
                 </ProtectedRoute>
               } />

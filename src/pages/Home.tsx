@@ -264,6 +264,22 @@ export function Home() {
                 <DogInfoCorner />
               </AnimatedElement>
             </section>
+
+            {/* 写真投稿コーナー */}
+            <section
+              id="photo-post-section"
+              aria-labelledby="photo-post-heading"
+              className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg"
+              tabIndex={-1}
+            >
+              <AnimatedElement animation="slide" duration={isMobile ? 200 : 300} delay={staggerDelay * 8}>
+                <h2 id="photo-post-heading" className="sr-only">写真投稿</h2>
+                {/* 簡易版：別ページに遷移（実装は次コミットで追加） */}
+                <div className="bg-white p-6 rounded-lg shadow-sm text-center">
+                  <a href="/photos" className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">写真を投稿・閲覧する</a>
+                </div>
+              </AnimatedElement>
+            </section>
           </main>
         </div>
       </div>
