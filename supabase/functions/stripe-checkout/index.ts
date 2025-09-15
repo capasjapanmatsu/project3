@@ -229,10 +229,8 @@ Deno.serve(async (req) => {
       customer_creation: 'always',
     };
 
-    // 既知のメールがあれば事前入力
-    if (user?.email) {
-      (sessionParams as any).customer_email = user.email;
-    }
+    // 注意: customer と customer_email は同時に指定不可。
+    // 現在は必ず customerId を使用するため、customer_email は設定しない。
 
     // サブスクリプションモードの場合、トライアル期間を設定
     if (mode === 'subscription' && trial_period_days && trial_period_days > 0) {
