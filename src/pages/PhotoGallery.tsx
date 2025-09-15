@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Heart, ImagePlus, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -135,6 +135,7 @@ export default function PhotoGallery() {
       // 1P 付与
       try {
         await supabase.rpc('rpc_award_photo_like', { p_user: user.id, p_photo_id: photoId });
+        await supabase.rpc('rpc_award_photo_receive_like', { p_photo_id: photoId, p_liker: user.id });
       } catch (e) { console.warn('award photo like failed', e); }
       setPosts(prev => prev.map(p => p.id === photoId ? { ...p, like_count: (p.like_count || 0) + 1 } : p));
     } catch (e) {

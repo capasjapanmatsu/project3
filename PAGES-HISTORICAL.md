@@ -111,6 +111,7 @@
 | ページ名（画面） | ファイルパス | ルーティング | 説明・備考 |
 |---|---|---|---|
 | コミュニティ | `src/pages/Community.tsx` | `/community` | 🔐 ユーザー間交流・フォーラム |
+| 写真投稿 | `src/pages/PhotoGallery.tsx` | `/photos` | 🔐 写真投稿・1:1 WebP変換・一覧・いいね(+ポイント) |
 | お問い合わせ | `src/pages/Contact.tsx` | `/contact` | サポート・問い合わせフォーム |
 | 利用規約 | `src/pages/TermsOfService.tsx` | `/terms` | サービス利用規約 |
 | プライバシーポリシー | `src/pages/PrivacyPolicy.tsx` | `/privacy` | 個人情報保護方針 |
