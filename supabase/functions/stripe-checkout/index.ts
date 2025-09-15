@@ -588,6 +588,10 @@ Deno.serve(async (req) => {
       }
     }
 
+    // 念のための安全策: 衝突する可能性のあるフィールドを確実に除去
+    delete (sessionParams as any).customer_email;
+    delete (sessionParams as any).customer_creation;
+
     // Create the checkout session
     let session: Stripe.Checkout.Session;
     try {
