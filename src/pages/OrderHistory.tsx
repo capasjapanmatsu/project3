@@ -500,22 +500,7 @@ export function OrderHistory() {
                 )}
               </div>
 
-              {/* 一覧では配送先の詳細は非表示。商品名/プラン名のみ（shipping_name/notes） */}
-              <div className="bg-blue-50 p-3 rounded-lg mb-4">
-                <h4 className="font-semibold text-blue-900 mb-1">内容</h4>
-                <div className="text-sm text-blue-800 break-words">
-                  {/* 商品名／プラン名（2行まで自然に折返し） */}
-                  <p className="font-medium whitespace-pre-line">
-                    {order.shipping_name || '—'}
-                  </p>
-                  {/* 注釈（商品タイトルなど） */}
-                  {order.notes && order.notes !== order.shipping_name && (
-                    <p className="mt-1 text-blue-700 whitespace-pre-line break-words">
-                      {order.notes}
-                    </p>
-                  )}
-                </div>
-              </div>
+              {/* 一覧の簡素化: 内容ボックスは非表示（詳細画面で表示） */}
 
               {/* 追跡番号 */}
               {order.tracking_number && (
