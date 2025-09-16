@@ -69,6 +69,14 @@ export default function PrefThread() {
         <h1 className="font-bold text-xl">{thread.title}</h1>
         {thread.dog_name && <p className="text-sm text-gray-600 mt-1">{thread.dog_name} の飼い主さん</p>}
         {thread.content && <p className="mt-2 whitespace-pre-line">{thread.content}</p>}
+        {user?.email === 'capasjapan@gmail.com' && (
+          <div className="mt-3">
+            <button
+              className="text-red-600 hover:text-red-700 underline text-sm"
+              onClick={async ()=>{ if(!confirm('このスレッドを削除しますか？')) return; const { error } = await supabase.from('pref_threads').delete().eq('id', thread.id); if(!error) nav(`/community/boards?pref=${encodeURIComponent(thread.prefecture)}`); }}
+            >スレッドを削除</button>
+          </div>
+        )}
         {thread.allow_dm && user && user.id !== thread.author_id && (
           <div className="mt-3">
             <button
@@ -90,6 +98,11 @@ export default function PrefThread() {
               </div>
             )}
             <p className="mt-2 whitespace-pre-line">{r.content}</p>
+            {user?.email === 'capasjapan@gmail.com' && (
+              <div className="mt-2">
+                <button className="text-red-600 hover:text-red-700 underline text-sm" onClick={async ()=>{ if(!confirm('この返信を削除しますか？')) return; const { error } = await supabase.from('pref_replies').delete().eq('id', r.id); if(!error) setReplies(prev=>prev.filter(x=>x.id!==r.id)); }}>返信を削除</button>
+              </div>
+            )}
           </Card>
         ))}
       </div>

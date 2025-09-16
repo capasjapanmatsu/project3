@@ -12,6 +12,10 @@ create table if not exists public.pref_threads (
 alter table public.pref_threads enable row level security;
 create policy pref_threads_select on public.pref_threads for select using (true);
 create policy pref_threads_insert on public.pref_threads for insert to authenticated with check (author_id = auth.uid());
+-- 削除: 投稿者本人 または 管理メール（capasjapan@gmail.com）
+create policy pref_threads_delete on public.pref_threads for delete to authenticated using (
+  author_id = auth.uid() OR (auth.jwt() ->> 'email') = 'capasjapan@gmail.com'
+);
 
 create table if not exists public.pref_replies (
   id uuid primary key default gen_random_uuid(),
@@ -24,4 +28,7 @@ create table if not exists public.pref_replies (
 alter table public.pref_replies enable row level security;
 create policy pref_replies_select on public.pref_replies for select using (true);
 create policy pref_replies_insert on public.pref_replies for insert to authenticated with check (author_id = auth.uid());
+create policy pref_replies_delete on public.pref_replies for delete to authenticated using (
+  author_id = auth.uid() OR (auth.jwt() ->> 'email') = 'capasjapan@gmail.com'
+);
 

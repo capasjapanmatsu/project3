@@ -122,6 +122,16 @@ export default function PrefBoard() {
                 <div className="text-sm text-gray-500">{new Date(t.created_at).toLocaleString('ja-JP')}</div>
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <div>{t.allow_dm ? 'DM受付中' : 'DM不可'}</div>
+                  {user?.email === 'capasjapan@gmail.com' && (
+                    <button
+                      className="text-red-600 hover:text-red-700 underline"
+                      onClick={async () => {
+                        if (!confirm('このスレッドを削除しますか？返信も削除されます。')) return;
+                        const { error } = await supabase.from('pref_threads').delete().eq('id', t.id);
+                        if (!error) setThreads(prev => prev.filter(x => x.id !== t.id));
+                      }}
+                    >削除</button>
+                  )}
                   {t.allow_dm && user && user.id !== t.author_id && (
                     <button
                       className="text-blue-600 hover:text-blue-800 underline"
