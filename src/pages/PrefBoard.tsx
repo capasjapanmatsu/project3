@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Loader2, MapPin, Send } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Camera, Heart, Loader2, MapPin, MessageCircle, Send } from 'lucide-react';
-import Card from '../components/Card';
 import Button from '../components/Button';
+import Card from '../components/Card';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 
@@ -127,8 +127,18 @@ export default function PrefBoard() {
                       className="text-red-600 hover:text-red-700 underline"
                       onClick={async () => {
                         if (!confirm('このスレッドを削除しますか？返信も削除されます。')) return;
-                        const { error } = await supabase.from('pref_threads').delete().eq('id', t.id);
-                        if (!error) setThreads(prev => prev.filter(x => x.id !== t.id));
+                        const { data, error } = await supabase
+                          .from('pref_threads')
+                          .delete()
+                          .eq('id', t.id)
+                          .select('id');
+                        if (error || !data || data.length === 0) {
+                          alert(`削除に失敗しました: ${error?.message || '権限がないか、対象が存在しません'}`);
+                          return;
+                        }
+                        setThreads(prev => prev.filter(x => x.id !== t.id));
+                        // 念のため再取得
+                        await fetchThreads(pref);
                       }}
                     >削除</button>
                   )}

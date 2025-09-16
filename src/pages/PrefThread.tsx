@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ImagePlus, Loader2, Send } from 'lucide-react';
-import Card from '../components/Card';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
-import { supabase } from '../utils/supabase';
+import Card from '../components/Card';
 import useAuth from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
 
 export default function PrefThread() {
   const { id } = useParams();
@@ -16,6 +16,7 @@ export default function PrefThread() {
   const [text, setText] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [posting, setPosting] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => { if (id) { void fetchAll(id); } }, [id]);
 
@@ -60,6 +61,17 @@ export default function PrefThread() {
     } finally { setPosting(false); }
   };
 
+  // ファイル選択時のプレビュー表示
+  useEffect(() => {
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [file]);
+
   if (!thread) return <div className="max-w-3xl mx-auto px-4 py-6"><Card className="p-4 text-center text-gray-500">読み込み中...</Card></div>;
 
   return (
@@ -73,7 +85,7 @@ export default function PrefThread() {
           <div className="mt-3">
             <button
               className="text-red-600 hover:text-red-700 underline text-sm"
-              onClick={async ()=>{ if(!confirm('このスレッドを削除しますか？')) return; const { error } = await supabase.from('pref_threads').delete().eq('id', thread.id); if(!error) nav(`/community/boards?pref=${encodeURIComponent(thread.prefecture)}`); }}
+              onClick={async ()=>{ if(!confirm('このスレッドを削除しますか？')) return; const { error } = await supabase.from('pref_threads').delete().eq('id', thread.id); if(error){ alert(`削除に失敗しました: ${error.message}`); return;} nav(`/community/boards?pref=${encodeURIComponent(thread.prefecture)}`); }}
             >スレッドを削除</button>
           </div>
         )}
@@ -111,10 +123,16 @@ export default function PrefThread() {
         <h2 className="font-semibold mb-2">返信を書く</h2>
         <textarea value={text} onChange={(e)=>setText(e.target.value)} className="w-full border rounded px-3 py-2" rows={3} placeholder="返信内容" />
         <div className="mt-2 flex items-center gap-3 text-sm">
-          <label className="inline-flex items-center gap-2 cursor-pointer">
+          <label className="inline-flex items-center gap-2 cursor-pointer px-3 py-2 rounded border hover:bg-gray-50 transition">
             <input type="file" accept="image/*" className="hidden" onChange={(e)=>setFile(e.target.files?.[0]||null)} />
-            <ImagePlus className="w-4 h-4" /> 画像を添付（自動で1:1 WebP化）
+            <ImagePlus className="w-4 h-4" /> 画像を添付
           </label>
+          {previewUrl && (
+            <div className="flex items-center gap-2">
+              <img src={previewUrl} alt="preview" className="w-10 h-10 object-cover rounded border" />
+              <button className="text-xs text-red-600 underline" onClick={()=>setFile(null)}>取り消す</button>
+            </div>
+          )}
         </div>
         <div className="mt-3">
           <Button onClick={handleReply} disabled={posting || !text.trim()}>{posting ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Send className="w-4 h-4 mr-2"/>} 返信する</Button>
