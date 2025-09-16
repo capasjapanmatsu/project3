@@ -24,6 +24,7 @@ export default function PointsHistory() {
   const [balance, setBalance] = useState<number>(0);
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [monthOffset, setMonthOffset] = useState(0); // 0: 今月, -1: 先月, +1: 来月
+  const [showCalendar, setShowCalendar] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -86,13 +87,28 @@ export default function PointsHistory() {
         </div>
       </Card>
 
-      {/* ログインスタンプカレンダー */}
-      <LoginStampCalendar
-        rows={rows}
-        monthOffset={monthOffset}
-        onPrevMonth={() => setMonthOffset((v) => v - 1)}
-        onNextMonth={() => setMonthOffset((v) => v + 1)}
-      />
+      {/* ログインスタンプカレンダー（折りたたみ） */}
+      <Card className="p-4">
+        <button
+          className="w-full text-left flex items-center justify-between"
+          onClick={() => setShowCalendar((v) => !v)}
+          aria-expanded={showCalendar}
+          aria-controls="login-stamp-calendar"
+        >
+          <span className="font-semibold">ログインカレンダー（+3P）</span>
+          <span className="text-sm text-gray-500">{showCalendar ? '閉じる' : '開く'}</span>
+        </button>
+        {showCalendar && (
+          <div id="login-stamp-calendar" className="mt-3">
+            <LoginStampCalendar
+              rows={rows}
+              monthOffset={monthOffset}
+              onPrevMonth={() => setMonthOffset((v) => v - 1)}
+              onNextMonth={() => setMonthOffset((v) => v + 1)}
+            />
+          </div>
+        )}
+      </Card>
 
       {/* スマホ対応：カード形式の履歴表示 */}
       <div className="space-y-3">
