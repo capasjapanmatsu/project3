@@ -13,6 +13,7 @@ import useAuth from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
 import type { Dog, NewsAnnouncement } from '../types';
 import { supabase } from '../utils/supabase';
+import { Link } from 'react-router-dom';
 
 export function Home() {
   const { user } = useAuth();
@@ -265,7 +266,7 @@ export function Home() {
               </AnimatedElement>
             </section>
 
-            {/* 写真投稿コーナー */}
+            {/* ワンちゃん画像投稿コーナー */}
             <section
               id="photo-post-section"
               aria-labelledby="photo-post-heading"
@@ -273,10 +274,12 @@ export function Home() {
               tabIndex={-1}
             >
               <AnimatedElement animation="slide" duration={isMobile ? 200 : 300} delay={staggerDelay * 8}>
-                <h2 id="photo-post-heading" className="sr-only">写真投稿</h2>
-                {/* 簡易版：別ページに遷移（実装は次コミットで追加） */}
+                <h2 id="photo-post-heading" className="text-2xl font-bold text-center text-gray-900 mb-4">ワンちゃん画像投稿コーナー</h2>
                 <div className="bg-white p-6 rounded-lg shadow-sm text-center">
-                  <a href="/photos" className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">写真を投稿・閲覧する</a>
+                  <LatestPhotos />
+                  <div className="mt-4">
+                    <a href="/photos" className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">全ての画像を見る・投稿する</a>
+                  </div>
                 </div>
               </AnimatedElement>
             </section>
@@ -305,5 +308,45 @@ export function Home() {
       >
       </div>
     </>
+  );
+}
+
+function LatestPhotos() {
+  const [photos, setPhotos] = useState<Array<{ id: string; image_url: string }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLatest = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from('photo_posts')
+        .select('id, image_url')
+        .order('created_at', { ascending: false })
+        .limit(5);
+      setPhotos((data as any) || []);
+      setLoading(false);
+    };
+    void fetchLatest();
+  }, []);
+
+  if (loading) {
+    return <div className="text-gray-500">読み込み中...</div>;
+  }
+  if (!photos.length) {
+    return (
+      <div className="text-gray-600">
+        まだ投稿がありません。<Link to="/photos" className="text-blue-600 underline">最初の写真を投稿する</Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+      {photos.map(p => (
+        <Link to={`/photos`} key={p.id} className="block">
+          <img src={p.image_url} alt="dog" className="w-full aspect-square object-cover rounded" />
+        </Link>
+      ))}
+    </div>
   );
 }
