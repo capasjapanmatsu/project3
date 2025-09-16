@@ -1,4 +1,4 @@
-import { ArrowLeft, Coins } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Coins, PawPrint } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Card from '../components/Card';
@@ -23,6 +23,7 @@ export default function PointsHistory() {
   const [error, setError] = useState<string | null>(null);
   const [balance, setBalance] = useState<number>(0);
   const [rows, setRows] = useState<LedgerRow[]>([]);
+  const [monthOffset, setMonthOffset] = useState(0); // 0: 今月, -1: 先月, +1: 来月
 
   useEffect(() => {
     const fetchData = async () => {
@@ -85,6 +86,14 @@ export default function PointsHistory() {
         </div>
       </Card>
 
+      {/* ログインスタンプカレンダー */}
+      <LoginStampCalendar
+        rows={rows}
+        monthOffset={monthOffset}
+        onPrevMonth={() => setMonthOffset((v) => v - 1)}
+        onNextMonth={() => setMonthOffset((v) => v + 1)}
+      />
+
       {/* スマホ対応：カード形式の履歴表示 */}
       <div className="space-y-3">
         {loading ? (
@@ -122,6 +131,95 @@ export default function PointsHistory() {
         )}
       </div>
     </div>
+  );
+}
+
+// ログインスタンプカレンダー
+function LoginStampCalendar({ rows, monthOffset, onPrevMonth, onNextMonth }: {
+  rows: LedgerRow[];
+  monthOffset: number;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+}) {
+  // ログイン履歴の抽出（sourceやdescriptionにloginを含む、もしくは+3P）
+  const loginDates = new Set(
+    rows
+      .filter((r) => {
+        const s = (r.source || '').toLowerCase();
+        const desc = (r.description || '').toLowerCase();
+        return (
+          (r.entry_type === 'earn' && r.points >= 3 && (s.includes('login') || desc.includes('login') || desc.includes('ログイン'))) ||
+          (r.entry_type === 'earn' && s.includes('daily_login'))
+        );
+      })
+      .map((r) => r.occurred_at.slice(0, 10))
+  );
+
+  const base = new Date();
+  const view = new Date(base.getFullYear(), base.getMonth() + monthOffset, 1);
+  const year = view.getFullYear();
+  const month = view.getMonth();
+  const monthLabel = `${year}年${month + 1}月`;
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startIndex = firstDay.getDay(); // 0(日)〜6(土)
+  const daysInMonth = lastDay.getDate();
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const cells: Array<{ dateStr: string; inMonth: boolean } | null> = [];
+  // 前方の空白
+  for (let i = 0; i < startIndex; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month, d);
+    const dateStr = date.toISOString().slice(0, 10);
+    cells.push({ dateStr, inMonth: true });
+  }
+  // 後方の空白で6行に揃える
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  return (
+    <Card className="p-4">
+      <style>
+        {`
+          @keyframes stampPop { 0% { transform: scale(0) rotate(-20deg); opacity: 0; } 60% { transform: scale(1.2) rotate(8deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+        `}
+      </style>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-semibold">ログインカレンダー（+3P）</h2>
+        <div className="flex items-center gap-1">
+          <button aria-label="前の月" onClick={onPrevMonth} className="p-1 rounded hover:bg-gray-100">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <div className="text-sm font-medium w-28 text-center">{monthLabel}</div>
+          <button aria-label="次の月" onClick={onNextMonth} className="p-1 rounded hover:bg-gray-100">
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+      <div className="grid grid-cols-7 gap-2 text-xs text-gray-600 mb-1">
+        {['日','月','火','水','木','金','土'].map((w) => (
+          <div key={w} className="text-center">{w}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-2">
+        {cells.map((c, idx) => {
+          if (!c) return <div key={idx} className="h-16 bg-transparent" />;
+          const stamped = loginDates.has(c.dateStr);
+          const isToday = c.dateStr === todayStr;
+          const d = Number(c.dateStr.slice(8, 10));
+          return (
+            <div key={idx} className={`h-16 rounded border ${isToday ? 'border-blue-400' : 'border-gray-200'} relative flex items-center justify-center bg-white`}>
+              <span className="absolute top-1 left-1 text-[10px] text-gray-500">{d}</span>
+              {stamped ? (
+                <PawPrint className={`w-7 h-7 text-blue-600 opacity-90 ${isToday ? 'animate-[stampPop_400ms_ease]' : ''}`} />
+              ) : (
+                <PawPrint className="w-7 h-7 text-gray-200" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 }
 
