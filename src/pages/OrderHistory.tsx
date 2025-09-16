@@ -618,7 +618,7 @@ export function OrderHistory() {
                   </div>
                   {selectedOrder.discount_amount > 0 && (
                     <div className="flex justify-between text-purple-600">
-                      <span>割引</span>
+                      <span>{selectedOrder.discount_label || 'ポイント利用'}</span>
                       <span>-¥{selectedOrder.discount_amount.toLocaleString()}</span>
                     </div>
                   )}

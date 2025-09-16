@@ -336,12 +336,23 @@ async function handleEvent(event: Stripe.Event) {
             const usedPointsRaw = (checkout.metadata?.points_use as string) || '0';
             const usedPoints = Math.max(0, parseInt(usedPointsRaw, 10) || 0);
             if (usedPoints > 0) {
-              await supabase.rpc('rpc_use_points', {
+              const { error: useErr } = await supabase.rpc('rpc_use_points', {
                 p_user: customerMap.user_id,
                 p_points: usedPoints,
                 p_reference: 'order',
                 p_reference_id: checkout_session_id,
               });
+              if (useErr) {
+                console.error('Failed to deduct points via rpc_use_points:', useErr);
+              } else {
+                // ordersテーブル側の表示名称を「ポイント利用」に統一
+                try {
+                  await supabase
+                    .from('orders')
+                    .update({ discount_label: 'ポイント利用' })
+                    .eq('order_number', orderNumber);
+                } catch (_) {}
+              }
             }
 
             if (typeof amount_total === 'number') {
