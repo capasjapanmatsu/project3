@@ -38,6 +38,11 @@ export default function PointsHistory() {
           return;
         }
 
+        // 当日ログインボーナスを先に付与（既に付与済みなら無視されます）
+        try {
+          await supabase.rpc('rpc_daily_login_bonus', { p_user: uid });
+        } catch {}
+
         const [{ data: bal }, { data: ledger, error: ledgerError }] = await Promise.all([
           supabase
             .from('points_balances')
