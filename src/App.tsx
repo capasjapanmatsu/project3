@@ -160,6 +160,8 @@ const MyReservations = React.lazy(() => import('./pages/MyReservations'));
 const OrderHistory = React.lazy(() => import('./pages/OrderHistory').then(module => ({ default: module.OrderHistory })));
 const PointsHistory = React.lazy(() => import('./pages/PointsHistory'));
 const PhotoGallery = React.lazy(() => import('./pages/PhotoGallery'));
+const PrefBoard = React.lazy(() => import('./pages/PrefBoard'));
+const PrefThread = React.lazy(() => import('./pages/PrefThread'));
 const ParkReservation = React.lazy(() => import('./pages/ParkReservation').then(module => ({ default: module.ParkReservation })));
 const ParkRegistration = React.lazy(() => import('./pages/ParkRegistration'));
 const ParkRegistrationAgreement = React.lazy(() => import('./pages/ParkRegistrationAgreement'));
@@ -632,6 +634,20 @@ const App: React.FC = () => {
                 <ProtectedRoute>
                   <Suspense fallback={<DashboardSkeleton />}>
                     <PhotoGallery />
+                  </Suspense>
+                </ProtectedRoute>
+              } />
+              <Route path="/community/boards" element={
+                <ProtectedRoute>
+                  <Suspense fallback={<DashboardSkeleton />}>
+                    <PrefBoard />
+                  </Suspense>
+                </ProtectedRoute>
+              } />
+              <Route path="/community/boards/:id" element={
+                <ProtectedRoute>
+                  <Suspense fallback={<DashboardSkeleton />}>
+                    <PrefThread />
                   </Suspense>
                 </ProtectedRoute>
               } />

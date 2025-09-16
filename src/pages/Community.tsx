@@ -1408,7 +1408,7 @@ export function Community() {
               <MapPin className="w-5 h-5 text-blue-600 mr-2" />
               地域掲示板
             </h2>
-            <p className="text-sm text-gray-600 mb-3">都道府県を選ぶと、その地域の掲示板を開きます。設定は次回以降も保存されます。</p>
+            <p className="text-sm text-gray-600 mb-3">地域別の情報発信、意見交換をしましょう。</p>
             <div className="flex gap-2 items-center">
               <select
                 value={selectedPref}
