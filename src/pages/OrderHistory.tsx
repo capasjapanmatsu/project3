@@ -363,26 +363,7 @@ export function OrderHistory() {
         </div>
       )}
 
-      {/* キャンセル成功メッセージ */}
-      {cancelSuccess && (
-        <div className="mb-6 p-4 bg-green-100 border border-green-300 rounded-lg">
-          <div className="flex items-center space-x-2">
-            <CheckCircle className="w-5 h-5 text-green-600" />
-            <span className="font-semibold text-green-800">{cancelSuccess}</span>
-          </div>
-        </div>
-      )}
-
-      {/* キャンセルエラーメッセージ */}
-      {cancelError && (
-        <div className="mb-6 p-4 bg-red-100 border border-red-300 rounded-lg">
-          <div className="flex items-center space-x-2">
-            <AlertTriangle className="w-5 h-5 text-red-600" />
-            <span className="font-semibold text-red-800">エラー</span>
-          </div>
-          <p className="text-red-700 mt-1">{cancelError}</p>
-        </div>
-      )}
+      {/* 注文キャンセル機能は無効化（UI非表示） */}
 
       {orders.length === 0 ? (
         <Card className="text-center py-12">
@@ -418,13 +399,7 @@ export function OrderHistory() {
                       <span>{getStatusLabel(order.status)}</span>
                     </div>
                     
-                    {/* キャンセル可能時間の表示 */}
-                    {order.can_cancel && (
-                      <div className="text-xs text-orange-600 flex items-center">
-                        <Clock className="w-3 h-3 mr-1" />
-                        キャンセル可能: あと{order.time_left}
-                      </div>
-                    )}
+                    {/* キャンセル可能時間の表示を非表示 */}
                   </div>
                   <p className="text-gray-600 text-sm">
                     注文日: {new Date(order.created_at).toLocaleDateString('ja-JP')}
@@ -513,18 +488,7 @@ export function OrderHistory() {
                   )}
                 </div>
 
-                {/* キャンセルボタン - 注文から15分以内かつ pending/confirmed 状態の場合のみ表示 */}
-                {order.can_cancel && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="text-red-600 hover:text-red-700"
-                    onClick={() => setShowCancelConfirm(order.id)}
-                  >
-                    <X className="w-4 h-4 mr-1" />
-                    キャンセル
-                  </Button>
-                )}
+                {/* キャンセルボタンは非表示 */}
               </div>
             </Card>
           ))}
@@ -559,18 +523,7 @@ export function OrderHistory() {
                       <p><span className="font-medium">お届け予定日:</span> {new Date(selectedOrder.estimated_delivery_date).toLocaleDateString('ja-JP')}</p>
                     )}
                     
-                    {/* キャンセル可能時間の表示 */}
-                    {selectedOrder.can_cancel && (
-                      <div className="mt-2 p-2 bg-orange-50 rounded-lg">
-                        <p className="text-orange-800 flex items-center">
-                          <Clock className="w-4 h-4 mr-1" />
-                          <span>キャンセル可能時間: あと{selectedOrder.time_left}</span>
-                        </p>
-                        <p className="text-xs text-orange-700 mt-1">
-                          注文から15分以内はキャンセル可能です
-                        </p>
-                      </div>
-                    )}
+                    {/* キャンセル可能時間の表示を非表示 */}
                   </div>
                 </div>
 
@@ -636,27 +589,13 @@ export function OrderHistory() {
                 </div>
               </div>
               
-              {/* キャンセルボタン */}
-              <div className="mt-6 flex justify-between">
+              <div className="mt-6 flex justify-end">
                 <Button
                   variant="secondary"
                   onClick={() => setSelectedOrder(null)}
                 >
                   閉じる
                 </Button>
-                
-                {selectedOrder.can_cancel && (
-                  <Button
-                    className="bg-red-600 hover:bg-red-700"
-                    onClick={() => {
-                      setSelectedOrder(null);
-                      setShowCancelConfirm(selectedOrder.id);
-                    }}
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    注文をキャンセル
-                  </Button>
-                )}
               </div>
             </div>
           </div>

@@ -336,16 +336,36 @@ async function handleEvent(event: Stripe.Event) {
             const usedPointsRaw = (checkout.metadata?.points_use as string) || '0';
             const usedPoints = Math.max(0, parseInt(usedPointsRaw, 10) || 0);
             if (usedPoints > 0) {
-              const { error: useErr } = await supabase.rpc('rpc_use_points', {
-                p_user: customerMap.user_id,
-                p_points: usedPoints,
-                p_reference: 'order',
-                p_reference_id: checkout_session_id,
-              });
-              if (useErr) {
-                console.error('Failed to deduct points via rpc_use_points:', useErr);
-              } else {
-                // ordersテーブル側の表示名称を「ポイント利用」に統一
+              let deducted = false;
+              try {
+                const { error: useErr } = await supabase.rpc('rpc_use_points', {
+                  p_user: customerMap.user_id,
+                  p_points: usedPoints,
+                  p_reference: 'order',
+                  p_reference_id: checkout_session_id,
+                });
+                if (!useErr) deducted = true; else console.error('rpc_use_points failed:', useErr);
+              } catch (e) {
+                console.error('rpc_use_points threw:', e);
+              }
+              if (!deducted) {
+                // フォールバック: 直接レジャーに記録（サービスロールで可）
+                try {
+                  await supabase.rpc('fn_add_points', {
+                    p_user: customerMap.user_id,
+                    p_points: -usedPoints,
+                    p_entry_type: 'use',
+                    p_source: 'shop',
+                    p_description: 'ポイント利用',
+                    p_reference: 'order',
+                    p_reference_id: checkout_session_id,
+                  } as any);
+                  deducted = true;
+                } catch (e2) {
+                  console.error('Fallback fn_add_points for deduction failed:', e2);
+                }
+              }
+              if (deducted) {
                 try {
                   await supabase
                     .from('orders')
