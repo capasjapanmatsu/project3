@@ -380,11 +380,11 @@ export const Navbar = memo(function Navbar() {
                   
                   {/* カートアイコン */}
                   <Link 
-                    to="/cart" 
+                    to="/petshop" 
                     className="relative text-gray-600 hover:text-green-600 transition-colors no-underline hover:no-underline"
                     aria-label={`カート ${cartItemCount > 0 ? `${cartItemCount}点の商品があります` : ''}`}
                   >
-                    <ShoppingCart className="h-5 w-5" aria-hidden="true" />
+                    <ShoppingCart className="h-5 w-5" aria-hidden="true" data-cart-target="true" />
                     {cartItemCount > 0 && (
                       <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center" aria-hidden="true">
                         {cartItemCount > 9 ? '9+' : cartItemCount}
