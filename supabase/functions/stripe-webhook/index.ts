@@ -356,14 +356,14 @@ async function handleEvent(event: Stripe.Event) {
             }
 
             if (typeof amount_total === 'number') {
-              const points = Math.round(amount_total * 0.10); // JPYは0桁通貨のため、そのまま10%
+              const points = Math.round(amount_total * 0.01); // 1% 還元（JPYは0桁通貨）
               if (points > 0) {
                 await supabase.rpc('fn_add_points', {
                   p_user: customerMap.user_id,
                   p_points: points,
                   p_entry_type: 'earn',
                   p_source: 'shop',
-                  p_description: 'ショップ購入10%還元',
+                  p_description: 'ショップ購入1%還元',
                   p_reference: 'stripe_checkout',
                   p_reference_id: checkout_session_id,
                 });
