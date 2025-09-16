@@ -120,7 +120,23 @@ export default function PrefBoard() {
             <Card key={t.id} className="p-4">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-500">{new Date(t.created_at).toLocaleString('ja-JP')}</div>
-                <div className="text-xs text-gray-500">{t.allow_dm ? 'DM受付中' : 'DM不可'}</div>
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <div>{t.allow_dm ? 'DM受付中' : 'DM不可'}</div>
+                  {t.allow_dm && user && user.id !== t.author_id && (
+                    <button
+                      className="text-blue-600 hover:text-blue-800 underline"
+                      onClick={() => {
+                        try {
+                          sessionStorage.setItem('communityActiveTab', 'messages');
+                          sessionStorage.setItem('communityOpenPartnerId', t.author_id);
+                        } catch {}
+                        nav('/community');
+                      }}
+                    >
+                      DMを送る
+                    </button>
+                  )}
+                </div>
               </div>
               <h3 className="font-semibold text-lg mt-1">{t.title}</h3>
               {t.dog_name && <p className="text-sm text-gray-600 mt-1">{t.dog_name} の飼い主さん</p>}

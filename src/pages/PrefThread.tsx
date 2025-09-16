@@ -69,6 +69,16 @@ export default function PrefThread() {
         <h1 className="font-bold text-xl">{thread.title}</h1>
         {thread.dog_name && <p className="text-sm text-gray-600 mt-1">{thread.dog_name} の飼い主さん</p>}
         {thread.content && <p className="mt-2 whitespace-pre-line">{thread.content}</p>}
+        {thread.allow_dm && user && user.id !== thread.author_id && (
+          <div className="mt-3">
+            <button
+              className="text-blue-600 hover:text-blue-800 underline text-sm"
+              onClick={()=>{ try { sessionStorage.setItem('communityActiveTab','messages'); sessionStorage.setItem('communityOpenPartnerId', thread.author_id); } catch {}; nav('/community'); }}
+            >
+              この投稿者にDMを送る
+            </button>
+          </div>
+        )}
       </Card>
       <div className="space-y-3">
         {replies.map(r => (
