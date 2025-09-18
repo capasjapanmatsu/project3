@@ -1,0 +1,72 @@
+workflows:
+  ios-release:
+    name: iOS App Store (Capacitor/Ionic)
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      xcode: latest
+      cocoapods: default
+      node: 20
+      vars:
+        BUNDLE_ID: com.dogparkjp.app
+        APP_NAME: DogPark Japan
+      groups:
+        # Create these groups in Codemagic UI and add variables there
+        # app_store_connect: APP_STORE_CONNECT_PRIVATE_KEY, APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_ISSUER_ID
+        - app_store_connect
+        # supabase: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+        - supabase
+    cache:
+      cache_default_paths: false
+      cocoapods: true
+      node: true
+      paths:
+        - $CM_BUILD_DIR/ios/Pods
+    scripts:
+      - name: Show versions
+        script: |
+          echo "Node: $(node -v)"
+          echo "NPM:  $(npm -v)"
+      - name: Install dependencies
+        script: |
+          npm ci
+      - name: Build web assets (Vite)
+        script: |
+          npm run build
+      - name: Ensure iOS platform exists
+        script: |
+          if [ ! -d "ios" ]; then
+            npx cap add ios --yes
+          fi
+      - name: Sync Capacitor iOS
+        script: |
+          npx cap sync ios
+      - name: Install CocoaPods
+        script: |
+          cd ios/App
+          pod repo update
+          pod install
+      - name: Fetch signing files and configure keychain
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          keychain add-certificates
+          xcode-project use-profiles
+      - name: Build IPA with Xcode
+        script: |
+          xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App" --archive-flags="-destination 'generic/platform=iOS'"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - $HOME/Library/Logs/gym/*.log
+      - $CM_BUILD_DIR/ios/App/build/**/*.log
+    publishing:
+      app_store_connect:
+        auth: api_key
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
+        # beta_groups:
+        #   - Internal Testers
+
+
