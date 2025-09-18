@@ -60,10 +60,8 @@ workflows:
       - $CM_BUILD_DIR/ios/App/build/**/*.log
     publishing:
       app_store_connect:
-        auth: api_key
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        auth: integration
+        # Configure App Store Connect API key in Codemagic UI and link integration
         submit_to_testflight: true
         # beta_groups:
         #   - Internal Testers
