@@ -17,11 +17,10 @@ workflows:
         # supabase: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
         - supabase
     cache:
-      cache_default_paths: false
-      cocoapods: true
-      node: true
-      paths:
-        - $CM_BUILD_DIR/ios/Pods
+      cache_paths:
+        - $HOME/Library/Caches/CocoaPods
+        - ios/App/Pods
+        - ~/.npm
     scripts:
       - name: Show versions
         script: |
