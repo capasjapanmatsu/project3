@@ -56,7 +56,7 @@ workflows:
           xcode-project use-profiles --workspace "ios/App/App.xcworkspace" --scheme "App" || xcode-project use-profiles
       - name: Show signing settings (debug)
         script: |
-          xcode-project show-signing-settings || true
+          xcode-project show-build-settings --workspace "ios/App/App.xcworkspace" --scheme "App" | grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
       - name: Build IPA with Xcode
         script: |
           xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App" --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM -destination 'generic/platform=iOS'"
