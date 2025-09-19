@@ -14,8 +14,7 @@ workflows:
         APP_NAME: DogPark Japan
       groups:
         # Create these groups in Codemagic UI and add variables there
-        # app_store_connect: APP_STORE_CONNECT_PRIVATE_KEY, APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_ISSUER_ID
-        - app_store_connect
+        # app_store_connect: handled via integrations.app_store_connect
         # supabase: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
         - supabase
     cache:
