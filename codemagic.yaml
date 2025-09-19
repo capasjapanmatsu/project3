@@ -52,8 +52,7 @@ workflows:
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
-          # Apply provisioning profiles to the Xcode project explicitly
-          xcode-project use-profiles --workspace "ios/App/App.xcworkspace" --scheme "App" || xcode-project use-profiles
+          # Rely on automatic signing with fetched profiles
       - name: Show signing settings (debug)
         script: |
           xcode-project show-build-settings --workspace "ios/App/App.xcworkspace" --scheme "App" | grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
