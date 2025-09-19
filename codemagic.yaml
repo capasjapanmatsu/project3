@@ -51,7 +51,11 @@ workflows:
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
-          xcode-project use-profiles
+          # Apply provisioning profiles to the Xcode project explicitly
+          xcode-project use-profiles --workspace "ios/App/App.xcworkspace" --scheme "App" || xcode-project use-profiles
+      - name: Show signing settings (debug)
+        script: |
+          xcode-project show-signing-settings || true
       - name: Build IPA with Xcode
         script: |
           xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App" --archive-flags="-destination 'generic/platform=iOS'"
