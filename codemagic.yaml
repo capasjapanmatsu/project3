@@ -36,7 +36,7 @@ workflows:
       - name: Ensure iOS platform exists
         script: |
           if [ ! -d "ios" ]; then
-            npx cap add ios --yes
+            npx cap add ios
           fi
       - name: Sync Capacitor iOS
         script: |
