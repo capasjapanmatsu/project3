@@ -12,6 +12,7 @@ workflows:
       vars:
         BUNDLE_ID: com.dogparkjp.app
         APP_NAME: DogPark Japan
+        DEVELOPMENT_TEAM: 9HT7A6UF4K
       groups:
         # Create these groups in Codemagic UI and add variables there
         # app_store_connect: handled via integrations.app_store_connect
@@ -58,7 +59,11 @@ workflows:
           xcode-project show-signing-settings || true
       - name: Build IPA with Xcode
         script: |
-          xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App" --archive-flags="-destination 'generic/platform=iOS'"
+          xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App" --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM -destination 'generic/platform=iOS'"
+      - name: Show effective build settings (provisioning)
+        script: |
+          set -o pipefail
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -showBuildSettings | grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
     artifacts:
       - build/ios/ipa/*.ipa
       - $HOME/Library/Logs/gym/*.log
