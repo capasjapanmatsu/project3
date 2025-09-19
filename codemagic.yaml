@@ -29,7 +29,7 @@ workflows:
           echo "NPM:  $(npm -v)"
       - name: Install dependencies
         script: |
-          npm ci
+          npm ci --legacy-peer-deps
       - name: Build web assets (Vite)
         script: |
           npm run build
