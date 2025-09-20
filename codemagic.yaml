@@ -18,6 +18,8 @@ workflows:
         # app_store_connect: handled via integrations.app_store_connect
         # supabase: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
         - supabase
+        # codesign variables (CM_CERTIFICATE, CM_CERTIFICATE_PASSWORD)
+        - codesign
     cache:
       cache_paths:
         - $HOME/Library/Caches/CocoaPods
