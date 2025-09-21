@@ -48,15 +48,19 @@ workflows:
       - name: Fetch signing files and configure keychain
         script: |
           keychain initialize
+          # プロビジョニングプロファイルを取得（必要なら自動作成）
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          # p12 をキーチェーンへ
           keychain add-certificates
-          xcode-project use-profiles
       - name: Show signing settings (debug)
         script: |
           xcode-project show-build-settings --workspace "ios/App/App.xcworkspace" --scheme "App" | grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
-      - name: Build IPA with Xcode
+      - name: Build IPA with Xcode (force Automatic signing)
         script: |
-          xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App"
+          xcode-project build-ipa \
+            --workspace "ios/App/App.xcworkspace" \
+            --scheme "App" \
+            --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM CODE_SIGN_STYLE=Automatic -destination 'generic/platform=iOS'"
       - name: Show effective build settings (provisioning)
         script: |
           set -o pipefail
