@@ -14,11 +14,7 @@ workflows:
         APP_NAME: DogPark Japan
         DEVELOPMENT_TEAM: 9HT7A6UF4K
       groups:
-        # Create these groups in Codemagic UI and add variables there
-        # app_store_connect: handled via integrations.app_store_connect
-        # supabase: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
         - supabase
-        # codesign variables (CM_CERTIFICATE, CM_CERTIFICATE_PASSWORD)
         - codesign
     cache:
       cache_paths:
@@ -49,12 +45,11 @@ workflows:
           cd ios/App
           pod repo update
           pod install
-      - name: Fetch signing files and configure keychain
+      - name: Configure signing with team identities
         script: |
           keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
-          # Rely on automatic signing with fetched profiles
+          xcode-project use-profiles
       - name: Show signing settings (debug)
         script: |
           xcode-project show-build-settings --workspace "ios/App/App.xcworkspace" --scheme "App" | grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
@@ -72,9 +67,4 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        # Configure App Store Connect API key in Codemagic UI and link integration
         submit_to_testflight: true
-        # beta_groups:
-        #   - Internal Testers
-
-
