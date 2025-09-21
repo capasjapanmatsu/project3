@@ -45,17 +45,20 @@ workflows:
           cd ios/App
           pod repo update
           pod install
-      - name: Fetch signing files and configure keychain
+      - name: Install provisioning profiles and certificates
         script: |
+          # キーチェーン初期化
           keychain initialize
-          # プロビジョニングプロファイルを取得（必要なら自動作成）
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
-          # p12 をキーチェーンへ
+          # プロファイルだけ取得（証明書は取得しない）
+          app-store-connect fetch-profiles --type IOS_APP_STORE --bundle-id "$BUNDLE_ID" --create
+          # 環境変数 CM_KEYCHAIN_CERTIFICATES に登録した p12 を取り込み
           keychain add-certificates
+          # 取得したプロファイルを Xcode プロジェクトへ適用
+          xcode-project use-profiles
       - name: Show signing settings (debug)
         script: |
           xcode-project show-build-settings --workspace "ios/App/App.xcworkspace" --scheme "App" | grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
-      - name: Build IPA with Xcode (force Automatic signing)
+      - name: Build IPA with Xcode (Automatic signing)
         script: |
           xcode-project build-ipa \
             --workspace "ios/App/App.xcworkspace" \
