@@ -45,33 +45,46 @@ workflows:
           cd ios/App
           pod repo update
           pod install
-      - name: Install provisioning profiles and certificates
+
+      # 署名まわり（証明書は環境変数の p12、プロファイルは自動作成）
+      - name: Prepare signing (certs + automatic signing)
         script: |
-          # キーチェーン初期化
+          set -e
           keychain initialize
-          # プロファイルだけ取得（証明書は取得しない）
-          app-store-connect fetch-profiles --type IOS_APP_STORE --bundle-id "$BUNDLE_ID" --create
-          # 環境変数 CM_KEYCHAIN_CERTIFICATES に登録した p12 を取り込み
+          # p12（CM_KEYCHAIN_CERTIFICATES）の取り込み
           keychain add-certificates
-          # 取得したプロファイルを Xcode プロジェクトへ適用
-          xcode-project use-profiles
+          # App Store Connect APIキーで自動署名を有効化（ターゲット「App」に適用）
+          xcode-project automatic-signing \
+            --team-id "$DEVELOPMENT_TEAM" \
+            --bundle-id "$BUNDLE_ID" \
+            --signing-style automatic \
+            --workspace "ios/App/App.xcworkspace" \
+            --scheme "App"
+          # 参考: 取得済みプロファイルを表示
+          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles" || true
+
       - name: Show signing settings (debug)
         script: |
           xcode-project show-build-settings --workspace "ios/App/App.xcworkspace" --scheme "App" | grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
-      - name: Build IPA with Xcode (Automatic signing)
+
+      - name: Build IPA with Xcode
         script: |
+          # 署名スタイルはプロジェクト側の“Automatic”に任せる（Manualを強制しない）
           xcode-project build-ipa \
             --workspace "ios/App/App.xcworkspace" \
             --scheme "App" \
-            --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM CODE_SIGN_STYLE=Automatic -destination 'generic/platform=iOS'"
+            --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM -destination 'generic/platform=iOS'"
+
       - name: Show effective build settings (provisioning)
         script: |
           set -o pipefail
           xcodebuild -workspace ios/App/App.xcworkspace -scheme App -showBuildSettings | grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
+
     artifacts:
       - build/ios/ipa/*.ipa
       - $HOME/Library/Logs/gym/*.log
       - $CM_BUILD_DIR/ios/App/build/**/*.log
+
     publishing:
       app_store_connect:
         auth: integration
