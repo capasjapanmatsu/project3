@@ -3,8 +3,10 @@ workflows:
     name: iOS App Store (Capacitor/Ionic)
     max_build_duration: 60
     instance_type: mac_mini_m1
+
     integrations:
       app_store_connect: "DogParkJP API Key"
+
     environment:
       xcode: latest
       cocoapods: default
@@ -16,56 +18,74 @@ workflows:
       groups:
         - supabase
         - codesign
+
     cache:
       cache_paths:
         - $HOME/Library/Caches/CocoaPods
         - ios/App/Pods
         - ~/.npm
+
     scripts:
       - name: Show versions
         script: |
           echo "Node: $(node -v)"
           echo "NPM:  $(npm -v)"
+
       - name: Install dependencies
         script: |
           npm ci --legacy-peer-deps
+
       - name: Build web assets (Vite)
         script: |
           npm run build
+
       - name: Ensure iOS platform exists
         script: |
           if [ ! -d "ios" ]; then
             npx cap add ios
           fi
+
       - name: Sync Capacitor iOS
         script: |
           npx cap sync ios
+
       - name: Install CocoaPods
         script: |
           cd ios/App
           pod repo update
           pod install
-      # ここから自動署名
+
+      # ---- Code signing (automatic) ----
       - name: Prepare signing (automatic)
         script: |
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
           xcode-project use-profiles
+
       - name: Show signing settings (debug)
         script: |
-          xcode-project show-build-settings --workspace "ios/App/App.xcworkspace" --scheme "App" | grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
+          xcode-project show-build-settings --workspace "ios/App/App.xcworkspace" --scheme "App" | \
+            grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
+
       - name: Build IPA with Xcode (Automatic signing)
         script: |
-          xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App" --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM -destination 'generic/platform=iOS'"
+          xcode-project build-ipa \
+            --workspace "ios/App/App.xcworkspace" \
+            --scheme "App" \
+            --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM -destination 'generic/platform=iOS'"
+
       - name: Show effective build settings (provisioning)
         script: |
           set -o pipefail
-          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -showBuildSettings | grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -showBuildSettings | \
+            grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
+
     artifacts:
       - build/ios/ipa/*.ipa
       - $HOME/Library/Logs/gym/*.log
       - $CM_BUILD_DIR/ios/App/build/**/*.log
+
     publishing:
       app_store_connect:
         auth: integration
