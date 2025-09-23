@@ -15,7 +15,7 @@ workflows:
         DEVELOPMENT_TEAM: 9HT7A6UF4K
       groups:
         - supabase
-        - codesign
+        - codesign   # ← CM_CERTIFICATE / CM_CERTIFICATE_PASSWORDS を読む
     cache:
       cache_paths:
         - $HOME/Library/Caches/CocoaPods
@@ -52,20 +52,28 @@ workflows:
           pod repo update
           pod install
 
-      - name: Configure signing (automatic)
+      # ---- Signing (direct-embed: CM_CERTIFICATE / CM_CERTIFICATE_PASSWORDS) ----
+      - name: Configure signing (direct embed)
         script: |
           set -e
+          # 1) Keychain 初期化
           keychain initialize
-          # p12 をキーチェーンへ（CM_KEYCHAIN_CERTIFICATES / CM_CERTIFICATE_PASSWORDS を使用）
+          # 2) 直埋めの p12 を取り込み（CM_CERTIFICATE / CM_CERTIFICATE_PASSWORDS を使用）
           keychain add-certificates
-          # Xcode プロジェクトへ適用（自動で app_store プロファイルを解決）
+          # 3) 必要ならプロファイルを取得（app store）
+          app-store-connect fetch-profiles --type IOS_APP_STORE --bundle-id "$BUNDLE_ID" --create
+          # 4) 取得したプロファイルを Xcode へ適用（ターゲット App に差し込み）
           xcode-project use-profiles
 
       - name: Debug certificates / profiles
         script: |
-          echo "CM_KEYCHAIN_CERTIFICATES=${CM_KEYCHAIN_CERTIFICATES}"
+          echo "CM_CERTIFICATE (set?): $([ -n "$CM_CERTIFICATE" ] && echo YES || echo NO)"
+          echo "CM_CERTIFICATE_PASSWORDS (set?): $([ -n "$CM_CERTIFICATE_PASSWORDS" ] && echo YES || echo NO)"
+          echo "Listing imported certificates:"
           keychain list-certificates || true
+          echo "Local certificate files:"
           ls -la "$HOME/Library/MobileDevice/Certificates" || true
+          echo "Local provisioning profiles:"
           ls -la "$HOME/Library/MobileDevice/Provisioning Profiles" || true
 
       - name: Show signing settings (debug)
@@ -73,12 +81,13 @@ workflows:
           xcode-project show-build-settings --workspace "ios/App/App.xcworkspace" --scheme "App" | \
           grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
 
-      - name: Build IPA with Xcode (Automatic signing)
+      - name: Build IPA with Xcode
         script: |
+          # プロジェクト側の設定（use-profiles適用後）に任せてアーカイブ
           xcode-project build-ipa \
             --workspace "ios/App/App.xcworkspace" \
             --scheme "App" \
-            --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM CODE_SIGN_STYLE=Automatic -destination 'generic/platform=iOS'"
+            --archive-flags="-destination 'generic/platform=iOS'"
 
       - name: Show effective build settings (provisioning)
         script: |
