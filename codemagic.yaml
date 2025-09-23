@@ -15,8 +15,6 @@ workflows:
         BUNDLE_ID: com.dogparkjp.app
         APP_NAME: DogPark Japan
         DEVELOPMENT_TEAM: 9HT7A6UF4K
-        # Codemagic > Signing identities > iOS provisioning profiles に表示されている
-        # プロファイル名（拡張子なし）を指定
         PROFILE_NAME: dogparkjp_app_store_v2
       groups:
         - supabase
@@ -58,32 +56,29 @@ workflows:
           pod repo update
           pod install
 
-      # --- デバッグ用表示（任意） ---
+      # Debug: show identities & installed provisioning profiles
       - name: Inspect installed certs & profiles
         script: |
-          echo "== Identities =="
-          security find-identity -v -p codesigning || true
-          echo "== Provisioning Profiles =="
-          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" || true
+          echo "== Identities ==" && security find-identity -v -p codesigning || true
+          echo "== Provisioning Profiles ==" && ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" || true
 
-      # --- プロファイル/証明書を Apple から取得（無ければ作成） ---
+      # Fetch (or create) App Store provisioning profile + import certs
       - name: Fetch profiles & import certs
         script: |
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
 
-      # --- プロファイル名を固定し、App Store 用に書き出し ---
+      # Build with the specified provisioning profile name
       - name: Build IPA with Xcode (profile pinned)
         script: |
           echo "Using PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME"
           xcode-project build-ipa \
             --workspace "ios/App/App.xcworkspace" \
             --scheme "App" \
-            --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME CODE_SIGN_STYLE=Manual -destination 'generic/platform=iOS'" \
-            --export-method app-store
+            --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME CODE_SIGN_STYLE=Manual -destination 'generic/platform=iOS'"
 
-      # --- 実際に効いているビルド設定を確認 ---
+      # Verify effective build settings
       - name: Show effective build settings (provisioning)
         script: |
           set -o pipefail
