@@ -15,10 +15,12 @@ workflows:
         BUNDLE_ID: com.dogparkjp.app
         APP_NAME: DogPark Japan
         DEVELOPMENT_TEAM: 9HT7A6UF4K
+        # Codemagic > Signing identities > iOS provisioning profiles に表示されている
+        # プロファイル名（拡張子なし）を指定
         PROFILE_NAME: dogparkjp_app_store_v2
       groups:
         - supabase
-        - codesign   # ← CERTIFICATE_PRIVATE_KEY はこのグループに入っている前提
+        - codesign
 
     cache:
       cache_paths:
@@ -56,37 +58,32 @@ workflows:
           pod repo update
           pod install
 
-      # --- Debug: what’s on the machine ---
+      # --- デバッグ用表示（任意） ---
       - name: Inspect installed certs & profiles
         script: |
           echo "== Identities =="
           security find-identity -v -p codesigning || true
           echo "== Provisioning Profiles =="
           ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" || true
-          echo "== Certificates dir =="
-          ls -la "$HOME/Library/MobileDevice/Certificates/" || true
 
-      # --- Fetch profile/cert from App Store Connect (reads CERTIFICATE_PRIVATE_KEY from env) ---
+      # --- プロファイル/証明書を Apple から取得（無ければ作成） ---
       - name: Fetch profiles & import certs
         script: |
           keychain initialize
-          # フラグは付けずに実行（CERTIFICATE_PRIVATE_KEY を自動で使用）
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
-          echo "== After fetch =="
-          ls -la "$HOME/Library/MobileDevice/Certificates/" || true
-          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" || true
 
-      # --- Build with explicit profile (Manual signing) ---
+      # --- プロファイル名を固定し、App Store 用に書き出し ---
       - name: Build IPA with Xcode (profile pinned)
         script: |
           echo "Using PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME"
           xcode-project build-ipa \
             --workspace "ios/App/App.xcworkspace" \
             --scheme "App" \
-            --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME CODE_SIGN_STYLE=Manual -destination 'generic/platform=iOS'"
+            --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME CODE_SIGN_STYLE=Manual -destination 'generic/platform=iOS'" \
+            --export-method app-store
 
-      # --- Verify settings ---
+      # --- 実際に効いているビルド設定を確認 ---
       - name: Show effective build settings (provisioning)
         script: |
           set -o pipefail
