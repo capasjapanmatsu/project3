@@ -15,6 +15,8 @@ workflows:
         BUNDLE_ID: com.dogparkjp.app
         APP_NAME: DogPark Japan
         DEVELOPMENT_TEAM: 9HT7A6UF4K
+        # ← ここを自分のプロファイル表示名に合わせる（末尾に .mobileprovision は付けない）
+        PROFILE_NAME: dogparkjp_app_store_v2
       groups:
         - supabase
         - codesign
@@ -55,26 +57,31 @@ workflows:
           pod repo update
           pod install
 
-      # ---- Code signing (automatic) ----
-      - name: Prepare signing (automatic)
+      # --- Provisioning/cert debug (見える化) ---
+      - name: Inspect installed certs & profiles
+        script: |
+          echo "== Identities =="
+          security find-identity -v -p codesigning || true
+          echo "== Provisioning Profiles =="
+          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" || true
+
+      # --- App Store Connect からプロファイル取得（足りなければ作成）---
+      - name: Fetch profiles & import certs
         script: |
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
-          xcode-project use-profiles
 
-      - name: Show signing settings (debug)
+      # --- Xcode にプロファイル名を明示してアーカイブ ---
+      - name: Build IPA with Xcode (profile pinned)
         script: |
-          xcode-project show-build-settings --workspace "ios/App/App.xcworkspace" --scheme "App" | \
-            grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
-
-      - name: Build IPA with Xcode (Automatic signing)
-        script: |
+          echo "Using PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME"
           xcode-project build-ipa \
             --workspace "ios/App/App.xcworkspace" \
             --scheme "App" \
-            --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM -destination 'generic/platform=iOS'"
+            --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME CODE_SIGN_STYLE=Manual -destination 'generic/platform=iOS'"
 
+      # --- 反映されたビルド設定を確認 ---
       - name: Show effective build settings (provisioning)
         script: |
           set -o pipefail
