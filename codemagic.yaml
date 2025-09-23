@@ -15,7 +15,6 @@ workflows:
         BUNDLE_ID: com.dogparkjp.app
         APP_NAME: DogPark Japan
         DEVELOPMENT_TEAM: 9HT7A6UF4K
-        # ← ここを自分のプロファイル表示名に合わせる（末尾に .mobileprovision は付けない）
         PROFILE_NAME: dogparkjp_app_store_v2
       groups:
         - supabase
@@ -57,7 +56,7 @@ workflows:
           pod repo update
           pod install
 
-      # --- Provisioning/cert debug (見える化) ---
+      # --- Debug: what certs/profiles are on the machine ---
       - name: Inspect installed certs & profiles
         script: |
           echo "== Identities =="
@@ -65,14 +64,17 @@ workflows:
           echo "== Provisioning Profiles =="
           ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" || true
 
-      # --- App Store Connect からプロファイル取得（足りなければ作成）---
+      # --- Fetch/ensure correct App Store profile & cert (uses private key Base64) ---
       - name: Fetch profiles & import certs
         script: |
           keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create \
+            --certificate-key-base64 "$CERTIFICATE_PRIVATE_KEY_BASE64"
           keychain add-certificates
 
-      # --- Xcode にプロファイル名を明示してアーカイブ ---
+      # --- Build with explicit profile name (Manual signing) ---
       - name: Build IPA with Xcode (profile pinned)
         script: |
           echo "Using PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME"
@@ -81,7 +83,7 @@ workflows:
             --scheme "App" \
             --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME CODE_SIGN_STYLE=Manual -destination 'generic/platform=iOS'"
 
-      # --- 反映されたビルド設定を確認 ---
+      # --- Verify effective build settings ---
       - name: Show effective build settings (provisioning)
         script: |
           set -o pipefail
