@@ -15,7 +15,7 @@ workflows:
         BUNDLE_ID: com.dogparkjp.app
         APP_NAME: DogPark Japan
         DEVELOPMENT_TEAM: 9HT7A6UF4K
-        PROFILE_NAME: dogparkjp_app_store_v2
+        CODE_SIGN_IDENTITY: "Apple Distribution"
       groups:
         - supabase
         - codesign
@@ -30,7 +30,7 @@ workflows:
       - name: Show versions
         script: |
           echo "Node: $(node -v)"
-          echo "NPM:  $(npm -v)"
+          echo "NPM : $(npm -v)"
 
       - name: Install dependencies
         script: |
@@ -56,96 +56,118 @@ workflows:
           pod repo update
           pod install
 
-      # ---- デバッグ: いま入っている証明書/プロファイルの見える化 ----
-      - name: Inspect installed certs & profiles
-        script: |
-          echo "== Identities =="
-          security find-identity -v -p codesigning || true
-          echo "== Provisioning Profiles =="
-          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" || true
-
-      # ---- App Store Connect から必要なプロファイル/証明書を取得（無ければ作成）----
+      # ============= サイン用ファイルを取得し、実際にあるプロファイルを検出 =============
       - name: Fetch profiles & import certs
         script: |
-          set -euo pipefail
+          set -e
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
 
-      # ---- ExportOptions.plist を作成（App Store 用）----
+          echo "== Installed Provisioning Profiles =="
+          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" || true
+
+          # プロファイル一覧から Bundle ID が一致するものを検出して UUID と Name を取得
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          FOUND_UUID=""
+          FOUND_NAME=""
+          for f in "$PROFILE_DIR"/*.mobileprovision; do
+            [ -f "$f" ] || continue
+            PLIST=$(/usr/bin/security cms -D -i "$f")
+            APPID=$(echo "$PLIST" | /usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" /dev/stdin 2>/dev/null || true)
+            UUID=$( echo "$PLIST" | /usr/libexec/PlistBuddy -c "Print :UUID"    /dev/stdin 2>/dev/null || true)
+            NAME=$( echo "$PLIST" | /usr/libexec/PlistBuddy -c "Print :Name"    /dev/stdin 2>/dev/null || true)
+
+            if echo "$APPID" | grep -q "^${DEVELOPMENT_TEAM}\.${BUNDLE_ID}$"; then
+              FOUND_UUID="$UUID"
+              FOUND_NAME="$NAME"
+              echo "Matched profile: $NAME ($UUID)"
+              break
+            fi
+          done
+
+          if [ -z "$FOUND_UUID" ]; then
+            echo "ERROR: Provisioning profile for ${BUNDLE_ID} not found on the builder."
+            echo "Profiles present:"
+            for f in "$PROFILE_DIR"/*.mobileprovision; do
+              [ -f "$f" ] || continue
+              PLIST=$(/usr/bin/security cms -D -i "$f")
+              NAME=$(echo "$PLIST" | /usr/libexec/PlistBuddy -c "Print :Name" /dev/stdin 2>/dev/null || true)
+              APPID=$(echo "$PLIST" | /usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" /dev/stdin 2>/dev/null || true)
+              echo " - $NAME => $APPID"
+            done
+            exit 1
+          fi
+
+          # 後続ステップで使えるよう環境変数化
+          echo "PROFILE_UUID=$FOUND_UUID" >> $CM_ENV
+          echo "PROFILE_NAME=$FOUND_NAME" >> $CM_ENV
+
+      # ============= ExportOptions.plist を作成（App Store 用） =============
       - name: Create ExportOptions.plist
         script: |
-          cat > "$CM_BUILD_DIR/export_options.plist" <<'EOF'
+          cat > $CM_BUILD_DIR/ExportOptions.plist << 'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
             <key>method</key>
             <string>app-store</string>
-            <key>uploadBitcode</key>
-            <false/>
-            <key>compileBitcode</key>
-            <false/>
+            <key>manageAppVersionAndBuildNumber</key>
+            <true/>
             <key>signingStyle</key>
             <string>manual</string>
-            <key>stripSwiftSymbols</key>
-            <true/>
-            <key>destination</key>
-            <string>export</string>
             <key>provisioningProfiles</key>
             <dict>
               <key>com.dogparkjp.app</key>
-              <string>dogparkjp_app_store_v2</string>
+              <string>$PROFILE_NAME</string>
             </dict>
           </dict>
           </plist>
           EOF
-          echo "=== ExportOptions.plist ==="
-          cat "$CM_BUILD_DIR/export_options.plist"
+          echo "ExportOptions.plist created."
 
-      # ---- アーカイブ（詳細ログ保存＆エラー抽出つき）----
-      - name: Archive with xcodebuild (Manual signing)
+      # ============= アーカイブ（UUID と Name の両方を明示） =============
+      - name: Archive with xcodebuild (Manual signing, verbose errors)
         script: |
           set -euo pipefail
           ARCHIVE_PATH="$CM_BUILD_DIR/build/ios/App.xcarchive"
           LOG_PATH="$CM_BUILD_DIR/xcode_archive.log"
 
-          echo "== Schemes =="
-          xcodebuild -list -workspace ios/App/App.xcworkspace || true
-
-          echo "== Start archive =="
+          echo "Using profile: NAME='$PROFILE_NAME' UUID='$PROFILE_UUID'"
           xcodebuild \
             -workspace ios/App/App.xcworkspace \
             -scheme App \
             -configuration Release \
             -archivePath "$ARCHIVE_PATH" \
             -destination 'generic/platform=iOS' \
-            DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
             CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            PROVISIONING_PROFILE="$PROFILE_UUID" \
             archive | tee "$LOG_PATH"
 
-          echo "== First error lines =="
-          (grep -n " error: " "$LOG_PATH" || true) | head -n 20
+          # 典型的なエラーパターン抽出（参考表示）
+          (grep -nE " error: | fatal error: | clang: error: | ld: (warning|error)| Command .* failed|No profile" "$LOG_PATH" || true) | head -n 120
 
-      # ---- IPA 書き出し ----
       - name: Export IPA
         script: |
           set -euo pipefail
           ARCHIVE_PATH="$CM_BUILD_DIR/build/ios/App.xcarchive"
-          OUTPUT_DIR="$CM_BUILD_DIR/build/ios/ipa"
-          mkdir -p "$OUTPUT_DIR"
-          xcodebuild -exportArchive \
+          EXPORT_PATH="$CM_BUILD_DIR/build/ios/ipa"
+          /usr/bin/xcodebuild \
+            -exportArchive \
             -archivePath "$ARCHIVE_PATH" \
-            -exportOptionsPlist "$CM_BUILD_DIR/export_options.plist" \
-            -exportPath "$OUTPUT_DIR"
+            -exportOptionsPlist "$CM_BUILD_DIR/ExportOptions.plist" \
+            -exportPath "$EXPORT_PATH"
+          ls -la "$EXPORT_PATH"
 
-      # ---- 反映されたビルド設定を確認 ----
       - name: Show effective build settings (provisioning)
         script: |
           set -o pipefail
           xcodebuild -workspace ios/App/App.xcworkspace -scheme App -showBuildSettings | \
-            grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
+            grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE|CODE_SIGN_IDENTITY" || true
 
     artifacts:
       - build/ios/ipa/*.ipa
