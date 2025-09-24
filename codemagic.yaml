@@ -15,7 +15,7 @@ workflows:
         BUNDLE_ID: com.dogparkjp.app
         APP_NAME: DogPark Japan
         DEVELOPMENT_TEAM: 9HT7A6UF4K
-        PROFILE_NAME: dogparkjp_app_store_v2   # Codemagicにあるプロファイル表示名（拡張子なし）
+        PROFILE_NAME: dogparkjp_app_store_v2
       groups:
         - supabase
         - codesign
@@ -56,13 +56,11 @@ workflows:
           pod repo update
           pod install
 
-      # 署名ファイルを取得＆キーチェーンへ反映（自動）
       - name: Prepare signing (automatic)
         script: |
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
-          # Xcode プロジェクトへプロファイルを適用
           xcode-project use-profiles
 
       - name: Show signing settings (debug)
@@ -70,7 +68,6 @@ workflows:
           xcode-project show-build-settings --workspace "ios/App/App.xcworkspace" --scheme "App" | \
             grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
 
-      # ExportOptions.plist を生成（--export-method は使わない）
       - name: Create ExportOptions.plist
         script: |
           cat > $CM_BUILD_DIR/export_options.plist <<'PLIST'
@@ -78,16 +75,12 @@ workflows:
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
             <dict>
-              <key>method</key>
-              <string>app-store</string>
-              <key>teamID</key>
-              <string>9HT7A6UF4K</string>
-              <key>signingStyle</key>
-              <string>manual</string>
+              <key>method</key><string>app-store</string>
+              <key>teamID</key><string>9HT7A6UF4K</string>
+              <key>signingStyle</key><string>manual</string>
               <key>provisioningProfiles</key>
               <dict>
-                <key>com.dogparkjp.app</key>
-                <string>dogparkjp_app_store_v2</string>
+                <key>com.dogparkjp.app</key><string>dogparkjp_app_store_v2</string>
               </dict>
               <key>uploadBitcode</key><false/>
               <key>compileBitcode</key><false/>
@@ -96,7 +89,6 @@ workflows:
           </plist>
           PLIST
 
-      # IPA を作成（ExportOptions.plist を渡す）
       - name: Build IPA with Xcode (automatic after use-profiles)
         script: |
           xcode-project build-ipa \
