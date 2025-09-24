@@ -15,6 +15,7 @@ workflows:
         BUNDLE_ID: com.dogparkjp.app
         APP_NAME: DogPark Japan
         DEVELOPMENT_TEAM: 9HT7A6UF4K
+        PROFILE_NAME: dogparkjp_app_store_v2   # Codemagicにあるプロファイル表示名（拡張子なし）
       groups:
         - supabase
         - codesign
@@ -55,41 +56,55 @@ workflows:
           pod repo update
           pod install
 
-      # --- (Optional) Inspect what is on the machine ---
-      - name: Inspect installed certs & profiles
-        script: |
-          echo "== Identities =="
-          security find-identity -v -p codesigning || true
-          echo "== Provisioning Profiles =="
-          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" || true
-
-      # --- Fetch/create signing assets from App Store Connect and import certs ---
-      - name: Fetch profiles & import certs
+      # 署名ファイルを取得＆キーチェーンへ反映（自動）
+      - name: Prepare signing (automatic)
         script: |
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
-
-      # --- Apply fetched provisioning profiles to the Xcode project ---
-      - name: Apply provisioning profiles to project
-        script: |
+          # Xcode プロジェクトへプロファイルを適用
           xcode-project use-profiles
 
-      # --- (Debug) show the effective signing values Xcode will use ---
       - name: Show signing settings (debug)
         script: |
           xcode-project show-build-settings --workspace "ios/App/App.xcworkspace" --scheme "App" | \
             grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
 
-      # --- Build IPA (let use-profiles drive signing; no conflicting flags) ---
+      # ExportOptions.plist を生成（--export-method は使わない）
+      - name: Create ExportOptions.plist
+        script: |
+          cat > $CM_BUILD_DIR/export_options.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+            <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>9HT7A6UF4K</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                <key>com.dogparkjp.app</key>
+                <string>dogparkjp_app_store_v2</string>
+              </dict>
+              <key>uploadBitcode</key><false/>
+              <key>compileBitcode</key><false/>
+              <key>manageAppVersionAndBuildNumber</key><false/>
+            </dict>
+          </plist>
+          PLIST
+
+      # IPA を作成（ExportOptions.plist を渡す）
       - name: Build IPA with Xcode (automatic after use-profiles)
         script: |
           xcode-project build-ipa \
             --workspace "ios/App/App.xcworkspace" \
             --scheme "App" \
-            --export-method app-store
+            --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME -destination 'generic/platform=iOS'" \
+            --export-options-plist "$CM_BUILD_DIR/export_options.plist"
 
-      # --- Final check of the effective settings ---
       - name: Show effective build settings (provisioning)
         script: |
           set -o pipefail
