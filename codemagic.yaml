@@ -15,7 +15,7 @@ workflows:
         BUNDLE_ID: com.dogparkjp.app
         APP_NAME: DogPark Japan
         DEVELOPMENT_TEAM: 9HT7A6UF4K
-        PROFILE_NAME: dogparkjp_app_store_v2
+        PROFILE_NAME: dogparkjp_app_store_v2   # ← プロファイル名（拡張子なし）
       groups:
         - supabase
         - codesign
@@ -56,50 +56,85 @@ workflows:
           pod repo update
           pod install
 
-      - name: Prepare signing (automatic)
+      # --- 証明書/プロファイル取得（無ければ作成） ---
+      - name: Fetch profiles & import certs
         script: |
+          set -euo pipefail
           keychain initialize
+          # Apple から App Store 用プロファイル取得 or 作成（CERTIFICATE_PRIVATE_KEY を使って配下で証明書も用意）
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          # Codemagic のキーチェーンへ取り込み（Signing identities > iOS certificates にある p12 も含む）
           keychain add-certificates
-          xcode-project use-profiles
+          # Xcode プロジェクトへプロファイルを適用（自動検出）
+          xcode-project use-profiles || true
 
-      - name: Show signing settings (debug)
+      # --- 署名状況の確認（見える化） ---
+      - name: Inspect identities & profiles
         script: |
-          xcode-project show-build-settings --workspace "ios/App/App.xcworkspace" --scheme "App" | \
-            grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
+          echo "== Identities =="
+          security find-identity -v -p codesigning || true
+          echo "== Provisioning Profiles =="
+          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" || true
 
+      # --- ExportOptions.plist を用意（App Store 用） ---
       - name: Create ExportOptions.plist
         script: |
-          cat > $CM_BUILD_DIR/export_options.plist <<'PLIST'
+          cat > $CM_BUILD_DIR/export_options.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
             <dict>
-              <key>method</key><string>app-store</string>
-              <key>teamID</key><string>9HT7A6UF4K</string>
-              <key>signingStyle</key><string>manual</string>
-              <key>provisioningProfiles</key>
-              <dict>
-                <key>com.dogparkjp.app</key><string>dogparkjp_app_store_v2</string>
-              </dict>
-              <key>uploadBitcode</key><false/>
-              <key>compileBitcode</key><false/>
-              <key>manageAppVersionAndBuildNumber</key><false/>
+              <key>com.dogparkjp.app</key>
+              <string>${PROFILE_NAME}</string>
             </dict>
+            <key>destination</key>
+            <string>export</string>
+            <key>compileBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
           </plist>
-          PLIST
+          EOF
+          cat $CM_BUILD_DIR/export_options.plist
 
-      - name: Build IPA with Xcode (automatic after use-profiles)
+      # --- 手動署名でアーカイブ（プロファイル名を固定） ---
+      - name: Archive with xcodebuild (Manual signing)
         script: |
-          xcode-project build-ipa \
-            --workspace "ios/App/App.xcworkspace" \
-            --scheme "App" \
-            --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME -destination 'generic/platform=iOS'" \
-            --export-options-plist "$CM_BUILD_DIR/export_options.plist"
+          set -euo pipefail
+          ARCHIVE_PATH="$CM_BUILD_DIR/build/ios/App.xcarchive"
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -archivePath "$ARCHIVE_PATH" \
+            -destination 'generic/platform=iOS' \
+            DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            CODE_SIGN_STYLE=Manual \
+            archive
 
+      # --- IPA 書き出し ---
+      - name: Export IPA
+        script: |
+          set -euo pipefail
+          ARCHIVE_PATH="$CM_BUILD_DIR/build/ios/App.xcarchive"
+          OUTPUT_DIR="$CM_BUILD_DIR/build/ios/ipa"
+          mkdir -p "$OUTPUT_DIR"
+          xcodebuild -exportArchive \
+            -archivePath "$ARCHIVE_PATH" \
+            -exportOptionsPlist "$CM_BUILD_DIR/export_options.plist" \
+            -exportPath "$OUTPUT_DIR"
+
+      # --- 実際のビルド設定を確認 ---
       - name: Show effective build settings (provisioning)
         script: |
-          set -o pipefail
           xcodebuild -workspace ios/App/App.xcworkspace -scheme App -showBuildSettings | \
             grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
 
@@ -107,6 +142,7 @@ workflows:
       - build/ios/ipa/*.ipa
       - $HOME/Library/Logs/gym/*.log
       - $CM_BUILD_DIR/ios/App/build/**/*.log
+      - build/ios/App.xcarchive/**
 
     publishing:
       app_store_connect:
