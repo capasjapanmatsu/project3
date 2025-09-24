@@ -55,82 +55,40 @@ workflows:
           pod repo update
           pod install
 
-      # 現在インストール済みの証明書 / プロファイルを可視化
+      # （確認用）現在の証明書／プロファイルの可視化
       - name: Inspect installed certs & profiles
         script: |
           echo "== Identities =="
           security find-identity -v -p codesigning || true
-          echo "== Provisioning Profiles(before) =="
+          echo "== Provisioning Profiles (before) =="
           ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" || true
 
-      # App Store Connect から必要なプロファイルを取得（無ければ作成）し、p12 を取り込む
+      # App Store Connect から必要なプロファイルを取得（無ければ作成）＋ p12 取込み
       - name: Fetch profiles & import certs
         script: |
           set -e
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
-          echo "== Provisioning Profiles(after fetch) =="
+          echo "== Provisioning Profiles (after fetch) =="
           ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" || true
 
-      # Xcode プロジェクトへ取得済みプロファイルを適用（ターゲット毎に設定してくれる）
+      # 取得したプロファイルを Xcode プロジェクトへ反映
       - name: Apply profiles to Xcode project
         script: |
           set -e
           xcode-project use-profiles
 
-      # App Store 用の ExportOptions.plist を作成
-      - name: Create ExportOptions.plist
-        script: |
-          cat > $CM_BUILD_DIR/ExportOptions.plist << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>manageAppVersionAndBuildNumber</key>
-            <true/>
-            <key>signingStyle</key>
-            <string>manual</string>
-          </dict>
-          </plist>
-          EOF
-
-      # 署名は use-profiles に任せ、手動署名モードでアーカイブ
-      - name: Archive with xcodebuild (manual signing, verbose)
+      # サポートの提案：archive-flags だけ指定。export-method は付けない
+      - name: Build IPA with Xcode (after use-profiles)
         script: |
           set -euo pipefail
-          ARCHIVE_PATH="$CM_BUILD_DIR/build/ios/App.xcarchive"
-          LOG_PATH="$CM_BUILD_DIR/xcode_archive.log"
+          xcode-project build-ipa \
+            --workspace "ios/App/App.xcworkspace" \
+            --scheme "App" \
+            --archive-flags="-destination 'generic/platform=iOS'"
 
-          xcodebuild \
-            -workspace ios/App/App.xcworkspace \
-            -scheme App \
-            -configuration Release \
-            -archivePath "$ARCHIVE_PATH" \
-            -destination 'generic/platform=iOS' \
-            CODE_SIGN_STYLE=Manual \
-            DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM \
-            archive | tee "$LOG_PATH"
-
-          # 失敗解析用にエラー行を抽出
-          (grep -nE " error: | fatal error: | clang: error: | ld: (warning|error)| Command .* failed|No profile" "$LOG_PATH" || true) | head -n 120
-
-          test -d "$ARCHIVE_PATH"
-
-      - name: Export IPA
-        script: |
-          set -euo pipefail
-          ARCHIVE_PATH="$CM_BUILD_DIR/build/ios/App.xcarchive"
-          EXPORT_PATH="$CM_BUILD_DIR/build/ios/ipa"
-          /usr/bin/xcodebuild \
-            -exportArchive \
-            -archivePath "$ARCHIVE_PATH" \
-            -exportOptionsPlist "$CM_BUILD_DIR/ExportOptions.plist" \
-            -exportPath "$EXPORT_PATH"
-          ls -la "$EXPORT_PATH"
-
+      # 実際のビルド設定確認
       - name: Show effective build settings (provisioning)
         script: |
           set -o pipefail
@@ -139,7 +97,6 @@ workflows:
 
     artifacts:
       - build/ios/ipa/*.ipa
-      - $CM_BUILD_DIR/xcode_archive.log
       - $HOME/Library/Logs/gym/*.log
       - $CM_BUILD_DIR/ios/App/build/**/*.log
 
