@@ -56,29 +56,51 @@ workflows:
           pod repo update
           pod install
 
-      # Debug: show identities & installed provisioning profiles
       - name: Inspect installed certs & profiles
         script: |
           echo "== Identities ==" && security find-identity -v -p codesigning || true
           echo "== Provisioning Profiles ==" && ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" || true
 
-      # Fetch (or create) App Store provisioning profile + import certs
       - name: Fetch profiles & import certs
         script: |
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
 
-      # Build with the specified provisioning profile name
+      - name: Create ExportOptions.plist
+        script: |
+          cat > export_options.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store</string>
+            <key>teamID</key><string>9HT7A6UF4K</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.dogparkjp.app</key><string>dogparkjp_app_store_v2</string>
+            </dict>
+            <key>compileBitcode</key><false/>
+            <key>destination</key><string>export</string>
+            <key>stripSwiftSymbols</key><true/>
+            <key>uploadBitcode</key><false/>
+            <key>uploadSymbols</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          echo "ExportOptions.plist created at: $(pwd)/export_options.plist"
+          /usr/libexec/PlistBuddy -c "Print" export_options.plist || true
+
       - name: Build IPA with Xcode (profile pinned)
         script: |
           echo "Using PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME"
           xcode-project build-ipa \
             --workspace "ios/App/App.xcworkspace" \
             --scheme "App" \
-            --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME CODE_SIGN_STYLE=Manual -destination 'generic/platform=iOS'"
+            --archive-flags="DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME CODE_SIGN_STYLE=Manual -destination 'generic/platform=iOS'" \
+            --export-options-plist "$(pwd)/export_options.plist"
 
-      # Verify effective build settings
       - name: Show effective build settings (provisioning)
         script: |
           set -o pipefail
