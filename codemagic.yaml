@@ -5,18 +5,18 @@ workflows:
     instance_type: mac_mini_m1
 
     integrations:
-      app_store_connect: "DogParkJP API Key"
+      app_store_connect: "DogParkJP API Key"   # ← Codemagic に作成済みの統合名
 
     environment:
       xcode: latest
       cocoapods: default
       node: 20
       vars:
-        BUNDLE_ID: com.dogparkjp.app
-        APP_NAME: DogPark Japan
-        DEVELOPMENT_TEAM: 9HT7A6UF4K
-        # Codemagic > Signing identities > iOS provisioning profiles の表示名（拡張子なし）
-        PROFILE_NAME: dogparkjp_app_store_v2
+        APP_NAME: "DogPark JP"
+        BUNDLE_ID: "com.dogparkjp.app"
+        DEVELOPMENT_TEAM: "9HT7A6UF4K"
+        # Codemagic > Signing identities > iOS provisioning profiles にあるプロファイル名（拡張子なし）
+        PROFILE_NAME: "dogparkjp_app_store_v2"
       groups:
         - supabase
         - codesign
@@ -32,12 +32,13 @@ workflows:
         script: |
           echo "Node: $(node -v)"
           echo "NPM:  $(npm -v)"
+          echo "Xcode: $(xcodebuild -version)"
 
       - name: Install dependencies
         script: |
           npm ci --legacy-peer-deps
 
-      - name: Build web assets (Vite)
+      - name: Build web assets (Vite/React etc.)
         script: |
           npm run build
 
@@ -57,54 +58,61 @@ workflows:
           pod repo update
           pod install
 
-      # --- 証明書/プロファイル取得 → Xcode へ適用 ---
+      - name: Inspect installed certs & profiles (debug)
+        script: |
+          echo "== Identities ==" && security find-identity -v -p codesigning || true
+          echo "== Provisioning Profiles ==" && ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" || true
+
       - name: Fetch profiles & import certs
         script: |
-          set -e
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
 
-      - name: Apply profiles to Xcode project
+      - name: Bump iOS build number (CFBundleVersion +1)
         script: |
-          xcode-project use-profiles
+          PLIST="ios/App/App/Info.plist"
+          CUR=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" "$PLIST" 2>/dev/null || echo 0)
+          NEW=$((CUR+1))
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEW" "$PLIST"
+          echo "New CFBundleVersion: $NEW"
 
-      # 反映状況の確認（任意）
-      - name: Show signing settings (debug)
+      - name: Apply profile to project (manual pin)
         script: |
-          xcode-project show-build-settings --workspace "ios/App/App.xcworkspace" --scheme "App" | \
-          grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
+          xcode-project use-profiles --project "ios/App/App.xcodeproj" \
+            --scheme "App" \
+            --profile "$PROFILE_NAME" \
+            --code-sign-style "Manual" \
+            --team-id "$DEVELOPMENT_TEAM"
 
-      # --- アーカイブ & IPA 作成（サポート推奨フラグを使用）---
-      - name: Build IPA with Xcode (after use-profiles)
+      - name: Build IPA with Xcode (recommended flags)
         script: |
+          echo "Using PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME"
+          # サポートからの推奨に従い export-method は指定しない
           xcode-project build-ipa \
             --workspace "ios/App/App.xcworkspace" \
             --scheme "App" \
             --archive-flags="-destination 'generic/platform=iOS'"
 
-      # 実際のビルド設定を再確認（任意）
       - name: Show effective build settings (provisioning)
         script: |
           set -o pipefail
           xcodebuild -workspace ios/App/App.xcworkspace -scheme App -showBuildSettings | \
             grep -E "PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|CODE_SIGN_STYLE|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE" || true
 
-      # --- App Store Connect へアップロード（詳細ログ付き）---
-      - name: Publish to App Store Connect (verbose)
-        script: |
-          set -e
-          app-store-connect publish --path build/ios/ipa/App.ipa --verbose || true
-          echo "Transporter logs (if any):"
-          ls -la "$HOME/Library/Logs/Transporter" || true
-
     artifacts:
       - build/ios/ipa/*.ipa
       - $HOME/Library/Logs/gym/*.log
       - $CM_BUILD_DIR/ios/App/build/**/*.log
-      - $HOME/Library/Logs/Transporter/*
 
     publishing:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
+        submit_to_app_store: false
+      scripts:
+        - name: Publish to App Store Connect (verbose)
+          script: |
+            IPA_PATH="$(ls -1 build/ios/ipa/*.ipa | head -n 1)"
+            echo "Uploading: $IPA_PATH"
+            app-store-connect publish --path "$IPA_PATH" --verbose
