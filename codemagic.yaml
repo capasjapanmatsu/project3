@@ -15,7 +15,7 @@ workflows:
         APP_NAME: "DogPark JP"
         BUNDLE_ID: "com.dogparkjp.app"
         DEVELOPMENT_TEAM: "9HT7A6UF4K"
-        PROFILE_NAME: "dogparkjp_app_store_v2"   # 取得に使うだけ
+        PROFILE_NAME: "dogparkjp_app_store_v2"
       groups:
         - supabase
         - codesign
@@ -73,14 +73,13 @@ workflows:
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEW" "$PLIST"
           echo "New CFBundleVersion: $NEW"
 
-      # ★ 手動ピンのステップは削除し、ビルド時に --use-profiles で適用
+      # ====== ここを修正：Automatic 署名でアーカイブ ======
       - name: Build IPA with Xcode (recommended flags)
         script: |
           xcode-project build-ipa \
             --workspace "ios/App/App.xcworkspace" \
             --scheme "App" \
-            --archive-flags="-destination 'generic/platform=iOS'" \
-            --use-profiles
+            --archive-flags="-destination 'generic/platform=iOS' CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM"
 
       - name: Show effective build settings (provisioning)
         script: |
