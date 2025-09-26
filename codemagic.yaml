@@ -8,63 +8,42 @@ workflows:
       xcode: 15.4
       node: 20.11.1
       cocoapods: default
+      # ここに App Store Connect の3変数を入れたグループ名を指定
+      # （既に作成済みの appstore_connect をそのまま利用）
       groups:
-        - appstore_connect   # ← ここで環境変数グループを読み込み
+        - appstore_connect
       vars:
         BUNDLE_ID: com.dogparkjp.app
         APPLE_TEAM_ID: 9HT7A6UF4K
         IOS_SCHEME: App
 
-    cache:
-      cache_paths:
-        - ~/.npm
-        - ~/Library/Caches/CocoaPods
-        - ios/Pods
-
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: main
-          include: true
-          source: true
+    # App Store 提出のための認証（APIキー直書き方式）
+    publishing:
+      app_store_connect:
+        auth: api_key
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY      # .p8 を Base64 化した値
+        key_id: $APP_STORE_CONNECT_KEY_ID             # 例: JJVYI33PUOYU
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID       # 例: d5ac3012-7133-4adb-afbf-b204d7abc83c
 
     scripts:
       - name: Install JS deps
         script: |
           npm ci --legacy-peer-deps
 
-      - name: Build web
-        script: |
-          npm run build
-
-      - name: Add/Sync Capacitor iOS platform
+      - name: Sync Capacitor iOS platform
         script: |
           npx cap sync ios
 
-      - name: Install CocoaPods
+      - name: Bump iOS build number (CFBundleVersion)
         script: |
-          cd ios/App
-          pod repo update
-          pod install
+          agvtool new-version -all $BUILD_NUMBER
 
-      - name: Bump build number (must be > previous one)
-        script: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(date +%s)" "ios/App/App/Info.plist"
-
-      - name: Build archive & IPA
+      - name: Build IPA with Xcode
         script: |
           xcode-project build-ipa \
             --workspace ios/App/App.xcworkspace \
-            --scheme "$IOS_SCHEME" \
-            --config Release \
-            --export-method app-store
+            --scheme "$IOS_SCHEME"
 
-    publishing:
-      app_store_connect:
-        auth: api_key
-        key_id: $APP_STORE_CONNECT_KEY_ID
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        private_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        submit_to_testflight: true
-        submit_to_app_store: false
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - ~/Library/Developer/Xcode/Archives/**/*
