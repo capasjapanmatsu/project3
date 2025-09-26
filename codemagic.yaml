@@ -4,33 +4,30 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 60
 
+    # ← ここで App Store Connect の Integration を紐づけます
+    integrations:
+      app_store_connect: d5ac3012-7133-4adb-afbf-b204d7abc83c
+
     environment:
       xcode: 15.4
       node: 20.11.1
       cocoapods: default
-      # ここに App Store Connect の3変数を入れたグループ名を指定
-      # （既に作成済みの appstore_connect をそのまま利用）
-      groups:
-        - appstore_connect
       vars:
         BUNDLE_ID: com.dogparkjp.app
         APPLE_TEAM_ID: 9HT7A6UF4K
         IOS_SCHEME: App
 
-    # App Store 提出のための認証（APIキー直書き方式）
+    # Integration 認証を使うのがポイント（api_key ではない）
     publishing:
       app_store_connect:
-        auth: api_key
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY      # .p8 を Base64 化した値
-        key_id: $APP_STORE_CONNECT_KEY_ID             # 例: JJVYI33PUOYU
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID       # 例: d5ac3012-7133-4adb-afbf-b204d7abc83c
+        auth: integration
 
     scripts:
       - name: Install JS deps
         script: |
           npm ci --legacy-peer-deps
 
-      - name: Sync Capacitor iOS platform
+      - name: Sync Capacitor iOS
         script: |
           npx cap sync ios
 
