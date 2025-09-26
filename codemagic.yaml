@@ -1,82 +1,90 @@
 workflows:
   ios-release:
-    name: iOS App Store Release
+    name: iOS App Store Release (Capacitor)
 
     environment:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.dogparkjp.app
+
       vars:
         XCODE_SCHEME: App
         DEVELOPMENT_TEAM: $DEVELOPMENT_TEAM
         PROVISIONING_PROFILE_SPECIFIER: dogparkjp_app_store_v2
+
+        # Web ビルドコマンド（package.json に合わせて必要なら変更）
+        WEB_BUILD_CMD: "npm run build"
+
+        # App Store Connect API Keys
         APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
         APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_ID
         APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
 
     scripts:
-      - name: Install node deps
+      - name: Show tool versions
         script: |
-          if [ -f package-lock.json ]; then npm ci; else npm i; fi
+          node -v || true
+          npm -v || true
+          xcodebuild -version
+          pod --version || true
 
-      - name: Ensure Capacitor iOS platform exists & sync
+      - name: Install JS deps & build web
         script: |
-          set -e
-          if grep -q '"@capacitor/core"' package.json 2>/dev/null; then
-            npx cap sync
-            if [ ! -d ios ]; then
-              npx cap add ios
-              npx cap sync ios
-            else
-              npx cap sync ios
-            fi
-          else
-            echo "Capacitor not detected; skipping cap sync."
+          # JS 依存関係
+          if [ -f "package-lock.json" ]; then npm ci; else npm i; fi
+          # web アセットをビルド（例: React/Vite= npm run build / Ionic= ionic build）
+          echo "Running: $WEB_BUILD_CMD"
+          eval "$WEB_BUILD_CMD"
+
+      - name: Add/Sync Capacitor iOS platform
+        script: |
+          npx cap --version
+          # iOS プラットフォームが無ければ追加
+          if [ ! -d "ios" ]; then
+            echo "Capacitor iOS platform not found -> adding"
+            npx cap add ios
           fi
+          # web アセットとネイティブを同期
+          npx cap sync ios
+          ls -la ios || true
+          ls -la ios/App || true
 
-      - name: Install CocoaPods when Podfile exists
+      - name: Install CocoaPods in ios/App (if Podfile exists)
         script: |
-          if [ -f "ios/Podfile" ]; then
-            cd ios
-            pod repo update --silent || true
-            pod install --silent
-            cd "$CM_BUILD_DIR"
-          elif [ -f "ios/App/Podfile" ]; then
+          if [ -f "ios/App/Podfile" ]; then
             cd ios/App
             pod repo update --silent || true
-            pod install --silent
+            pod install
             cd "$CM_BUILD_DIR"
           else
-            echo "No Podfile found; skipping pod install."
+            echo "No Podfile at ios/App/Podfile"
           fi
 
-      - name: Sync iOS signing (profiles & certs)
-        script: |
-          xcode-project use-profiles
+      - name: Sync iOS signing (fetch profiles & certs)
+        script: xcode-project use-profiles
 
       - name: Bump build number
         script: |
           BUILD_NO=${CM_BUILD_NUMBER:-1}
+          INFO_PLIST="ios/App/App/Info.plist"
+          if [ -f "$INFO_PLIST" ]; then
+            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NO" "$INFO_PLIST" 2>/dev/null || true
+          fi
           agvtool new-version -all $BUILD_NO || true
-          echo "CFBundleVersion -> $BUILD_NO"
+          echo "Set CFBundleVersion=$BUILD_NO"
 
       - name: Build archive & IPA (auto-detect workspace/project)
         script: |
           set -euo pipefail
 
-          echo "Search for Xcode workspaces/projects…"
-          WORKSPACE=$(find . -maxdepth 4 -type f -name "*.xcworkspace" | head -n1 || true)
-          PROJECT=$(find . -maxdepth 4 -type d -name "*.xcodeproj" | head -n1 || true)
-
-          if [ -n "$WORKSPACE" ]; then
-            echo "Using workspace: $WORKSPACE"
-            BUILD_FLAG="--workspace $WORKSPACE"
-          elif [ -n "$PROJECT" ]; then
-            echo "Using project: $PROJECT"
-            BUILD_FLAG="--project $PROJECT"
+          if [ -d "ios/App/App.xcworkspace" ] || [ -f "ios/App/App.xcworkspace/contents.xcworkspacedata" ]; then
+            BUILD_FLAG="--workspace ios/App/App.xcworkspace"
+          elif [ -d "ios/App/App.xcodeproj" ]; then
+            BUILD_FLAG="--project ios/App/App.xcodeproj"
           else
-            echo "No .xcworkspace or .xcodeproj found in repo."
-            find . -maxdepth 4 -type d -name "ios" -print
+            echo "Neither workspace nor project found under ios/App/"
+            ls -la ios || true
+            ls -la ios/App || true
             exit 1
           fi
 
@@ -88,21 +96,19 @@ workflows:
             PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_SPECIFIER" \
             CODE_SIGN_STYLE=Manual
 
-      - name: Upload to App Store Connect (verbose)
+      - name: Publish to App Store Connect (verbose)
         script: |
-          set -e
-          IPA=$(ls -1 build/ios/ipa/*.ipa 2>/dev/null || true)
-          if [ -z "$IPA" ]; then
+          IPA_PATH=$(ls -1 build/ios/ipa/*.ipa 2>/dev/null || true)
+          if [ -z "$IPA_PATH" ]; then
             echo "IPA not found under build/ios/ipa"
             find build -maxdepth 3 -type f | sed 's/^/FOUND: /'
             exit 1
           fi
-          echo "Uploading: $IPA"
           app-store-connect publish \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
             --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" \
-            --path "$IPA" \
+            --path "$IPA_PATH" \
             --verbose
 
     artifacts:
