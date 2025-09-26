@@ -3,9 +3,8 @@ workflows:
     name: iOS App Store Release
 
     environment:
-      # ← ここが「distribution type と bundle identifier が必要」という検証を通す肝です
       ios_signing:
-        distribution_type: app-store
+        distribution_type: app_store          # ← ここを app_store に修正
         bundle_identifier: com.dogparkjp.app
 
       vars:
@@ -14,14 +13,9 @@ workflows:
         DEVELOPMENT_TEAM: $DEVELOPMENT_TEAM
         PROVISIONING_PROFILE_SPECIFIER: dogparkjp_app_store_v2
 
-        # App Store Connect API key（Codemagic の Environment variables に入れておく）
         APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
         APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_ID
         APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
-
-    cache:
-      cache_default_paths: true
-      cocoapods: true
 
     scripts:
       - name: Show Xcode version
@@ -35,22 +29,18 @@ workflows:
 
       - name: Sync iOS signing (fetch profiles & certs)
         script: |
-          # Codemagic が API 経由で app-store 用の署名情報を取得して Keychain/プロジェクトへ適用します
           xcode-project use-profiles
 
       - name: Set build number (must be > previous)
         script: |
-          # Codemagic の連番をそのまま CFBundleVersion に設定
           BUILD_NO=${CM_BUILD_NUMBER:-1}
           INFO_PLIST="ios/App/App/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NO" "$INFO_PLIST" 2>/dev/null || true
-          # 念のため agvtool でも更新
           agvtool new-version -all $BUILD_NO || true
           echo "Set CFBundleVersion = $BUILD_NO"
 
-      - name: Build archive & IPA (no export_options.plist)
+      - name: Build archive & IPA (generic destination)
         script: |
-          # サポートからの指示どおり destination を generic に固定し、--export-method は使わない
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
             --scheme "$XCODE_SCHEME" \
@@ -59,22 +49,13 @@ workflows:
             PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_SPECIFIER" \
             CODE_SIGN_STYLE=Manual
 
-      - name: List build artifacts
-        script: |
-          echo "=== IPA(s) ==="
-          ls -alh build/ios/ipa || true
-          echo "=== Archive ==="
-          ls -alh build/ios || true
-
       - name: Publish to App Store Connect (verbose)
         script: |
-          # 生成された IPA を検出してアップロード
           IPA_PATH=$(echo build/ios/ipa/*.ipa)
           if [ ! -f "$IPA_PATH" ]; then
             echo "IPA not found under build/ios/ipa"
             exit 1
           fi
-
           app-store-connect publish \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
