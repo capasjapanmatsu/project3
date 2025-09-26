@@ -8,30 +8,35 @@ workflows:
       xcode: 15.4
       node: 20.11.1
       cocoapods: default
-      groups:
-        - appstore_connect   # APP_STORE_CONNECT_PRIVATE_KEY / KEY_ID / ISSUER_ID が入っているグループ
-        # - codesign         # p12やmobileprovisionをCodemagicに置いている場合は有効化
-
       vars:
         BUNDLE_ID: com.dogparkjp.app
         APPLE_TEAM_ID: 9HT7A6UF4K
         IOS_SCHEME: App
 
-    scripts:
-      - name: Show tool versions
-        script: |
-          node -v
-          npm -v
-          pod --version
-          xcodebuild -version
+    cache:
+      cache_paths:
+        - ~/.npm
+        - ~/Library/Caches/CocoaPods
+        - ios/Pods
 
-      - name: Install JS deps & build web
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+
+    scripts:
+      - name: Install JS deps
         script: |
           npm ci --legacy-peer-deps
-          chmod +x ./node_modules/.bin/* || true
-          npm run build || npx vite build
 
-      - name: Capacitor sync iOS
+      - name: Build web (Vite/Angular/React など)
+        script: |
+          npm run build
+
+      - name: Add/Sync Capacitor iOS platform
         script: |
           npx cap sync ios
 
@@ -40,48 +45,21 @@ workflows:
           cd ios/App
           pod repo update
           pod install
-          cd ../../
 
-      - name: Fetch signing files (profiles) from App Store Connect
+      - name: Bump build number (must be > previous one)
         script: |
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --create
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(date +%s)" "ios/App/App/Info.plist"
 
-      - name: Import certificates to keychain (if any uploaded)
-        script: |
-          keychain add-certificates || true
-          xcode-project use-profiles || true
-
-      - name: Bump build number (CFBundleVersion +1)
-        script: |
-          set -e
-          cd ios/App
-          CURRENT=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" Info.plist || echo 0)
-          NEXT=$((CURRENT+1))
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEXT" Info.plist
-          cd ../../
-
-      - name: Build IPA with Xcode (App Store)
+      - name: Build archive & IPA
         script: |
           xcode-project build-ipa \
-            --workspace "ios/App/App.xcworkspace" \
+            --workspace ios/App/App.xcworkspace \
             --scheme "$IOS_SCHEME" \
-            --archive-flags="-destination generic/platform=iOS" \
-            --archive-path build/App.xcarchive \
-            --export-method app-store \
-            --team-id "$APPLE_TEAM_ID"
-
-    artifacts:
-      - build/ios/ipa/*.ipa
-      - $CM_EXPORT_DIR/*.ipa
-      - ios/App/build/**/*.log
+            --config Release \
+            --export-method app-store
 
     publishing:
       app_store_connect:
-        auth: api_key
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY     # Base64化した .p8
-        key_id: $APP_STORE_CONNECT_KEY_ID            # 例: JJVYI33PUOYU
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID      # 例: d5ac3012-7133-4adb-afbf-b204d7abc83c
+        auth: integration        # ← Developer Portal integration を利用
         submit_to_testflight: true
         submit_to_app_store: false
