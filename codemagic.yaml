@@ -4,14 +4,12 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 60
 
-    # ← ここで “どの App Store Connect 接続を使うか” を指定します
-    integrations:
-      app_store_connect: __PASTE_INTEGRATION_ID__
-
     environment:
       xcode: 15.4
       node: 20.11.1
       cocoapods: default
+      groups:
+        - appstore_connect   # ← ここで環境変数グループを読み込み
       vars:
         BUNDLE_ID: com.dogparkjp.app
         APPLE_TEAM_ID: 9HT7A6UF4K
@@ -64,6 +62,9 @@ workflows:
 
     publishing:
       app_store_connect:
-        auth: integration
+        auth: api_key
+        key_id: $APP_STORE_CONNECT_KEY_ID
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        private_key: $APP_STORE_CONNECT_PRIVATE_KEY
         submit_to_testflight: true
         submit_to_app_store: false
