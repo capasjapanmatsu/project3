@@ -1,5 +1,5 @@
 workflows:
-  ios-release:                              # ← ワークフロー名を Codemagic が探している名前に統一
+  ios-release:
     name: iOS App Store Release
 
     environment:
@@ -8,7 +8,6 @@ workflows:
         bundle_identifier: com.dogparkjp.app
 
       vars:
-        XCODE_WORKSPACE: ios/App/App.xcworkspace
         XCODE_SCHEME: App
         DEVELOPMENT_TEAM: $DEVELOPMENT_TEAM
         PROVISIONING_PROFILE_SPECIFIER: dogparkjp_app_store_v2
@@ -18,31 +17,58 @@ workflows:
         APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
 
     scripts:
-      - name: Show Xcode version
-        script: xcodebuild -version
-
-      - name: Install CocoaPods (if needed)
+      - name: Show Xcode/CocoaPods
         script: |
-          cd ios/App
-          pod install
-          cd $CM_BUILD_DIR
+          xcodebuild -version
+          pod --version || true
+
+      - name: Install CocoaPods (if Podfile exists)
+        script: |
+          if [ -f "ios/App/Podfile" ]; then
+            cd ios/App
+            pod repo update --silent || true
+            pod install --silent
+            cd "$CM_BUILD_DIR"
+          else
+            echo "No Podfile found at ios/App/Podfile (skipping pod install)"
+          fi
 
       - name: Sync iOS signing (fetch profiles & certs)
         script: |
           xcode-project use-profiles
 
-      - name: Set build number (must be > previous)
+      - name: Bump build number (must be > previous)
         script: |
           BUILD_NO=${CM_BUILD_NUMBER:-1}
           INFO_PLIST="ios/App/App/Info.plist"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NO" "$INFO_PLIST" 2>/dev/null || true
+          if [ -f "$INFO_PLIST" ]; then
+            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NO" "$INFO_PLIST" 2>/dev/null || true
+          fi
           agvtool new-version -all $BUILD_NO || true
-          echo "Set CFBundleVersion = $BUILD_NO"
+          echo "Set CFBundleVersion=$BUILD_NO"
 
-      - name: Build archive & IPA (generic destination)
+      - name: Build archive & IPA (auto-detect workspace/project)
         script: |
+          set -euo pipefail
+
+          # 判定：workspace があればそれを使用、なければ xcodeproj
+          BUILD_FLAG=""
+          if [ -d "ios/App/App.xcworkspace" ] || [ -f "ios/App/App.xcworkspace/contents.xcworkspacedata" ]; then
+            echo "Using workspace ios/App/App.xcworkspace"
+            BUILD_FLAG="--workspace ios/App/App.xcworkspace"
+          elif [ -d "ios/App/App.xcodeproj" ]; then
+            echo "Using project ios/App/App.xcodeproj"
+            BUILD_FLAG="--project ios/App/App.xcodeproj"
+          else
+            echo "Neither workspace nor project found under ios/App/"
+            ls -la ios || true
+            ls -la ios/App || true
+            exit 1
+          fi
+
+          # ビルド（Generic iOS Device でアーカイブ）
           xcode-project build-ipa \
-            --workspace "$XCODE_WORKSPACE" \
+            $BUILD_FLAG \
             --scheme "$XCODE_SCHEME" \
             --archive-flags="-destination 'generic/platform=iOS'" \
             DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
@@ -51,11 +77,14 @@ workflows:
 
       - name: Publish to App Store Connect (verbose)
         script: |
-          IPA_PATH=$(echo build/ios/ipa/*.ipa)
-          if [ ! -f "$IPA_PATH" ]; then
+          set -e
+          IPA_PATH=$(ls -1 build/ios/ipa/*.ipa 2>/dev/null || true)
+          if [ -z "$IPA_PATH" ]; then
             echo "IPA not found under build/ios/ipa"
+            find build -maxdepth 3 -type f | sed 's/^/FOUND: /'
             exit 1
           fi
+          echo "Uploading: $IPA_PATH"
           app-store-connect publish \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
@@ -66,6 +95,7 @@ workflows:
     artifacts:
       - build/ios/ipa/*.ipa
       - build/ios/*.xcarchive
+      - $HOME/Library/Logs/gym/*.log
 
     publishing:
       email:
