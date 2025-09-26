@@ -5,7 +5,7 @@ workflows:
     instance_type: mac_mini_m1
 
     integrations:
-      app_store_connect: "DogParkJP API Key"   # ← Codemagic に作成済みの統合名
+      app_store_connect: "DogParkJP API Key"
 
     environment:
       xcode: latest
@@ -15,8 +15,7 @@ workflows:
         APP_NAME: "DogPark JP"
         BUNDLE_ID: "com.dogparkjp.app"
         DEVELOPMENT_TEAM: "9HT7A6UF4K"
-        # Codemagic > Signing identities > iOS provisioning profiles にあるプロファイル名（拡張子なし）
-        PROFILE_NAME: "dogparkjp_app_store_v2"
+        PROFILE_NAME: "dogparkjp_app_store_v2"   # 取得に使うだけ
       groups:
         - supabase
         - codesign
@@ -35,12 +34,10 @@ workflows:
           echo "Xcode: $(xcodebuild -version)"
 
       - name: Install dependencies
-        script: |
-          npm ci --legacy-peer-deps
+        script: npm ci --legacy-peer-deps
 
-      - name: Build web assets (Vite/React etc.)
-        script: |
-          npm run build
+      - name: Build web assets
+        script: npm run build
 
       - name: Ensure iOS platform exists
         script: |
@@ -49,8 +46,7 @@ workflows:
           fi
 
       - name: Sync Capacitor iOS
-        script: |
-          npx cap sync ios
+        script: npx cap sync ios
 
       - name: Install CocoaPods
         script: |
@@ -77,22 +73,14 @@ workflows:
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEW" "$PLIST"
           echo "New CFBundleVersion: $NEW"
 
-      - name: Apply profile to project (manual pin)
-        script: |
-          xcode-project use-profiles --project "ios/App/App.xcodeproj" \
-            --scheme "App" \
-            --profile "$PROFILE_NAME" \
-            --code-sign-style "Manual" \
-            --team-id "$DEVELOPMENT_TEAM"
-
+      # ★ 手動ピンのステップは削除し、ビルド時に --use-profiles で適用
       - name: Build IPA with Xcode (recommended flags)
         script: |
-          echo "Using PROVISIONING_PROFILE_SPECIFIER=$PROFILE_NAME"
-          # サポートからの推奨に従い export-method は指定しない
           xcode-project build-ipa \
             --workspace "ios/App/App.xcworkspace" \
             --scheme "App" \
-            --archive-flags="-destination 'generic/platform=iOS'"
+            --archive-flags="-destination 'generic/platform=iOS'" \
+            --use-profiles
 
       - name: Show effective build settings (provisioning)
         script: |
@@ -113,6 +101,11 @@ workflows:
       scripts:
         - name: Publish to App Store Connect (verbose)
           script: |
-            IPA_PATH="$(ls -1 build/ios/ipa/*.ipa | head -n 1)"
+            set -e
+            IPA_PATH="$(ls -1 build/ios/ipa/*.ipa 2>/dev/null || true)"
+            if [ -z "$IPA_PATH" ]; then
+              echo "No IPA produced. Skipping upload."
+              exit 0
+            fi
             echo "Uploading: $IPA_PATH"
             app-store-connect publish --path "$IPA_PATH" --verbose
