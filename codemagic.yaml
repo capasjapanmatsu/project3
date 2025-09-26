@@ -1,117 +1,86 @@
 workflows:
   ios-release:
-    name: iOS Release (Capacitor)
+    name: iOS Release
     max_build_duration: 60
-    instance_type: mac_pro
+    instance_type: mac_mini_m2
 
     environment:
       vars:
-        # ====== あなたのアプリ設定（必要に応じて変更OK）======
-        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
-        XCODE_SCHEME: "App"
-        BUNDLE_ID: "com.dogparkjp.app"
-        DEVELOPMENT_TEAM: "9HT7A6UF4K"
-        PROVISIONING_PROFILE_SPECIFIER: "dogparkjp_app_store_v2"
-        # ================================================
-      xcode: 16.4
+        # Xcode/Capacitor の基本情報
+        IOS_WORKSPACE: "ios/App/App.xcworkspace"   # ← 違う場合は変更
+        IOS_SCHEME: "App"                           # ← Xcode の Scheme 名
+        BUNDLE_ID: "com.dogparkjp.app"              # ← 実際の Bundle ID
+        # 手動署名を使う場合に参照する（Codemagic 側に証明書&プロファイルを登録しておく）
+        DEVELOPMENT_TEAM_PROD: "9HT7A6UF4K"         # ← Apple Developer Team ID
+        IOS_PROVISIONING_PROFILE: "dogparkjp_app_store_v2"  # ← プロファイル名
+      xcode: latest
       cocoapods: default
-      node: 20.11.1
-      npm: 10.5.0
+      node: 20
+      npm: 10
 
     triggering:
       events:
         - push
       branch_patterns:
-        - pattern: "main"
+        - pattern: main
           include: true
           source: true
 
-    cache:
-      cache_paths:
-        - ~/.npm
-        - ~/.gradle
-        - ~/Library/Caches/CocoaPods
-        - ios/App/Pods
-        - node_modules
-
     scripts:
-      # 0) ソース確認（任意）
-      - name: Show tool versions
-        script: |
-          node -v
-          npm -v
-          pod --version
-          xcodebuild -version
-
-      # 1) JS 依存解決（peer依存衝突とVite権限の対策込み）
+      # 1) Node 依存の解決 & Webビルド
       - name: Install JS deps & build web
         script: |
-          set -e
-          # 依存衝突（openai が zod@^3 を要求）を CI だけで緩和
-          export NPM_CONFIG_LEGACY_PEER_DEPS=true
-          if [ -f package-lock.json ]; then
-            npm ci --no-audit --no-fund || npm ci --force --no-audit --no-fund
-          else
-            npm i  --no-audit --no-fund  || npm i --force --no-audit --no-fund
-          fi
-
-          # openai の peerOptional を満たすための暫定（lock は汚さない）
-          npm i --no-save zod@^3 || true
-
-          # bin 権限の念のため付与
-          chmod +x node_modules/.bin/* 2>/dev/null || true
-
-          # Web ビルド（scripts に build が無くても確実に実行）
+          npm ci --legacy-peer-deps
           npx vite build
 
-      # 2) Capacitor を iOS と同期
-      - name: Add/Sync Capacitor iOS platform
+      # 2) Capacitor 同期（iOS プロジェクト生成/更新）
+      - name: Sync Capacitor iOS platform
         script: |
           npx cap sync ios
 
-      # 3) CocoaPods
-      - name: Install CocoaPods in ios/App
+      # 3) CocoaPods インストール
+      - name: Install CocoaPods
         script: |
           cd ios/App
-          pod repo update || true
-          pod install --repo-update
+          pod repo update
+          pod install
+          cd "$CM_BUILD_DIR"
 
-      # 4) ビルド番号(CFBundleVersion) をユニークに更新
-      - name: Bump iOS build number (CFBundleVersion)
+      # 4) （任意）ビルド番号を自動で +1
+      - name: Bump iOS build number (CFBundleVersion +1)
         script: |
-          BUILD_NUMBER=$(date +%s)
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "ios/App/App/Info.plist"
-          echo "CFBundleVersion = $BUILD_NUMBER"
+          plist="ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(($(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist") + 1))" "$plist"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$plist"
 
-      # 5) Xcode でアーカイブ & IPA 作成
-      #    Manual Signing をプロジェクトで設定済み前提（指定の Profile 名で署名）
+      # 5) 署名プロファイルをプロジェクトへ適用（手動署名）
+      - name: Apply profiles (manual signing)
+        script: |
+          xcode-project use-profiles \
+            --code-signing-style Manual \
+            --team-id "$DEVELOPMENT_TEAM_PROD"
+
+      # 6) アーカイブ & IPA 作成（Xcodeが見つけられるよう generic iOS Destination 指定）
       - name: Build archive & IPA
         script: |
           xcode-project build-ipa \
-            --workspace "$XCODE_WORKSPACE" \
-            --scheme "$XCODE_SCHEME" \
-            --archive-flags="-destination 'generic/platform=iOS'" \
-            --export-method app-store \
-            --team-id "$DEVELOPMENT_TEAM" \
-            --verbose
-
-      # 6) 生成物の確認
-      - name: List IPA artifacts
-        script: |
-          ls -al build/ios/ipa || true
-
-    # （Codemagic の “Code signing” で登録済みの証明書/プロビジョニングを使います）
-    # 追加のカスタム keychain 操作は不要です
+            --workspace "$IOS_WORKSPACE" \
+            --scheme "$IOS_SCHEME" \
+            --archive-flags="-destination 'generic/platform=iOS'"
 
     artifacts:
       - build/ios/ipa/*.ipa
-      - build/ios/xcarchive/*.xcarchive
-      - ios/App/Pods/**/*.log
+      - /tmp/xcodebuild_logs/*.log
 
     publishing:
       app_store_connect:
-        api_key: $APP_STORE_CONNECT_API_KEY   # ← Codemagic の “Environment variables” に JSON を保存
-        # 審査提出は後で手動にするなら false のまま
+        # ← Codemagic の Environment variables に登録しておく
+        key_id: $APP_STORE_CONNECT_KEY_ID
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        private_key: $APP_STORE_CONNECT_PRIVATE_KEY
+
+        # まずはアップロードのみ（後からTestFlight/審査提出に切替可）
         submit_to_app_store: false
         submit_to_testflight: false
+
         ipa_path: "build/ios/ipa/*.ipa"
