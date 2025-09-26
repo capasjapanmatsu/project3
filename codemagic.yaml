@@ -4,6 +4,10 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 60
 
+    # ← ここで “どの App Store Connect 接続を使うか” を指定します
+    integrations:
+      app_store_connect: __PASTE_INTEGRATION_ID__
+
     environment:
       xcode: 15.4
       node: 20.11.1
@@ -32,7 +36,7 @@ workflows:
         script: |
           npm ci --legacy-peer-deps
 
-      - name: Build web (Vite/Angular/React など)
+      - name: Build web
         script: |
           npm run build
 
@@ -60,6 +64,6 @@ workflows:
 
     publishing:
       app_store_connect:
-        auth: integration        # ← Developer Portal integration を利用
+        auth: integration
         submit_to_testflight: true
         submit_to_app_store: false
