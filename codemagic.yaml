@@ -1,94 +1,87 @@
 workflows:
   ios-release:
-    name: iOS Release
-    max_build_duration: 120
+    name: iOS Release (DogPark JP)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+
     environment:
-      groups:
-        - appstore_connect        # ← 既に作成したグループ名
-      vars:
-        # ====== TODO: あなたの値に変更してください ======
-        BUNDLE_ID: com.dogparkjp.app        # 例: あなたのバンドルID
-        APPLE_TEAM_ID: ABCDE12345            # 例: Apple Developer の Team ID
-        IOS_SCHEME: App                      # 例: Xcode の Scheme 名（通常 Capacitor は "App"）
-        # ================================================
-        IOS_WORKSPACE: ios/App/App.xcworkspace
-        CONFIGURATION: Release
       xcode: 15.4
-      cocoapods: default
       node: 20.11.1
+      cocoapods: default
+      groups:
+        - appstore_connect   # APP_STORE_CONNECT_PRIVATE_KEY / KEY_ID / ISSUER_ID が入っているグループ
+        # - codesign         # p12やmobileprovisionをCodemagicに置いている場合は有効化
+
+      vars:
+        BUNDLE_ID: com.dogparkjp.app
+        APPLE_TEAM_ID: 9HT7A6UF4K
+        IOS_SCHEME: App
+
     scripts:
-      # 1) JS 依存関係インストール ＆ Webビルド（peer依存の衝突を回避）
+      - name: Show tool versions
+        script: |
+          node -v
+          npm -v
+          pod --version
+          xcodebuild -version
+
       - name: Install JS deps & build web
         script: |
           npm ci --legacy-peer-deps
-          # Vite の権限問題を避けるため npx で実行
-          npx vite build || npm run build
+          chmod +x ./node_modules/.bin/* || true
+          npm run build || npx vite build
 
-      # 2) Capacitor iOS 同期
-      - name: Add/Sync Capacitor iOS platform
+      - name: Capacitor sync iOS
         script: |
           npx cap sync ios
 
-      # 3) CocoaPods をインストール
-      - name: Install CocoaPods in ios/App
+      - name: Install CocoaPods
         script: |
           cd ios/App
-          pod install --repo-update
+          pod repo update
+          pod install
+          cd ../../
 
-      # 4) App Store Connect API キーで署名ファイルを自動取得
-      #    （プロビジョニングプロファイル/証明書を用意 & Xcode へ適用）
-      - name: Sync iOS signing (fetch profiles & certs)
+      - name: Fetch signing files (profiles) from App Store Connect
         script: |
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
-          keychain initialize
-          keychain add-certificates
-          xcode-project use-profiles --bundle-id "$BUNDLE_ID"
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
 
-      # 5) ビルド番号を連番で更新（CFBundleVersion）
-      - name: Bump iOS build number (CFBundleVersion +1)
+      - name: Import certificates to keychain (if any uploaded)
         script: |
-          NEW_BUILD=$(( ${CM_BUILD_NUMBER:-0} + 1 ))
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEW_BUILD" "ios/App/App/Info.plist"
-          echo "Bumped build to $NEW_BUILD"
+          keychain add-certificates || true
+          xcode-project use-profiles || true
 
-      # 6) アーカイブ & IPA 作成（自動署名 / App Store エクスポート）
-      - name: Build archive & IPA
+      - name: Bump build number (CFBundleVersion +1)
         script: |
-          cat > export_options.plist <<'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key><string>app-store</string>
-            <key>signingStyle</key><string>automatic</string>
-            <key>destination</key><string>export</string>
-            <key>manageAppVersionAndBuildNumber</key><true/>
-            <key>uploadBitcode</key><false/>
-            <key>compileBitcode</key><false/>
-          </dict>
-          </plist>
-          PLIST
+          set -e
+          cd ios/App
+          CURRENT=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" Info.plist || echo 0)
+          NEXT=$((CURRENT+1))
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEXT" Info.plist
+          cd ../../
 
+      - name: Build IPA with Xcode (App Store)
+        script: |
           xcode-project build-ipa \
-            --workspace "$IOS_WORKSPACE" \
+            --workspace "ios/App/App.xcworkspace" \
             --scheme "$IOS_SCHEME" \
-            --configuration "$CONFIGURATION" \
-            --archive-flags "-allowProvisioningUpdates" \
-            --export-options-plist export_options.plist
+            --archive-flags="-destination generic/platform=iOS" \
+            --archive-path build/App.xcarchive \
+            --export-method app-store \
+            --team-id "$APPLE_TEAM_ID"
 
     artifacts:
       - build/ios/ipa/*.ipa
-      - ios/build/**/Build/Products/**/App.app
-      - ios/App/Pods/Manifest.lock
-      - $HOME/Library/Logs/gym/*.log
+      - $CM_EXPORT_DIR/*.ipa
+      - ios/App/build/**/*.log
 
     publishing:
       app_store_connect:
-        api_key: $APP_STORE_CONNECT_KEY_ID
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        key: $APP_STORE_CONNECT_PRIVATE_KEY
+        auth: api_key
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY     # Base64化した .p8
+        key_id: $APP_STORE_CONNECT_KEY_ID            # 例: JJVYI33PUOYU
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID      # 例: d5ac3012-7133-4adb-afbf-b204d7abc83c
         submit_to_testflight: true
-        # 必要に応じてベータグループ名を調整
-        beta_groups:
-          - External Testers
         submit_to_app_store: false
