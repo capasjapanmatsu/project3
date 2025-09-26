@@ -1,10 +1,10 @@
 workflows:
-  ios_appstore_release:
+  ios-release:                              # ← ワークフロー名を Codemagic が探している名前に統一
     name: iOS App Store Release
 
     environment:
       ios_signing:
-        distribution_type: app_store          # ← ここを app_store に修正
+        distribution_type: app_store
         bundle_identifier: com.dogparkjp.app
 
       vars:
