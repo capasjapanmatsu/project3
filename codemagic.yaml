@@ -1,64 +1,117 @@
+# codemagic.yaml ーーー完全置き換え版（iOS App Store 用）
+# 必要に応じて先頭の変数だけ書き換えてください
+
 workflows:
-  ios-release:
-    name: iOS App Store (Capacitor/Ionic)
-    max_build_duration: 60
-    instance_type: mac_mini_m1
-
-    integrations:
-      app_store_connect: "DogParkJP API Key"
-
+  ios_appstore_release:
+    name: iOS App Store Release
+    max_build_duration: 120
+    instance_type: mac_mini_m2
     environment:
-      xcode: latest
-      cocoapods: default
-      node: 20
+      xcode: 16.4
+      ios_signing:
+        distribution_type: app_store   # 自動で App Store 用プロファイル/証明書を取得
       vars:
-        APP_NAME: "DogPark JP"
-        BUNDLE_ID: "com.dogparkjp.app"
-        DEVELOPMENT_TEAM: "9HT7A6UF4K"
-        PROFILE_NAME: "dogparkjp_app_store_v2"
-      groups:
-        - supabase
-        - codesign
-
+        BUNDLE_ID: "com.dogparkjp.app"         # <-- 実際の Bundle ID
+        APP_SCHEME: "App"                       # Xcode の Scheme 名
+        IOS_WORKSPACE: "ios/App/App.xcworkspace"
+        APPLE_TEAM_ID: "9HT7A6UF4K"             # <-- 実際の Team ID
     cache:
       cache_paths:
-        - $HOME/Library/Caches/CocoaPods
-        - ios/App/Pods
-        - ~/.npm
+        - ~/.gradle/caches
+        - ~/.gradle/wrapper
+        - ~/Library/Caches/CocoaPods
+        - ios/Pods
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: "*"
+          include: true
+          source: true
 
     scripts:
-      - name: Show versions
+      # 0) セットアップ
+      - name: Print tools
         script: |
-          echo "Node: $(node -v)"
-          echo "NPM:  $(npm -v)"
-          echo "Xcode: $(xcodebuild -version)"
+          set -euo pipefail
+          /usr/bin/swift --version
+          /usr/bin/xcodebuild -version
+          /usr/local/bin/app-store-connect --version || true
+          /usr/local/bin/keychain --version || true
 
-      - name: Install dependencies
-        script: npm ci --legacy-peer-deps
-
-      - name: Build web assets
-        script: npm run build
-
-      - name: Ensure iOS platform exists
-        script: |
-          if [ ! -d "ios" ]; then
-            npx cap add ios
-          fi
-
-      - name: Sync Capacitor iOS
-        script: npx cap sync ios
-
+      # 1) 依存解決（Capacitor/CocoaPods）
       - name: Install CocoaPods
         script: |
+          set -euo pipefail
           cd ios/App
           pod repo update
           pod install
+          cd -
 
-      - name: Inspect installed certs & profiles (debug)
+      # 2) ビルド番号を Codemagic の連番に更新（CFBundleVersion）
+      - name: Bump CFBundleVersion
         script: |
-          echo "== Identities ==" && security find-identity -v -p codesigning || true
-          echo "== Provisioning Profiles ==" && ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" || true
+          set -euo pipefail
+          PLIST="ios/App/App/Info.plist"
+          echo "Setting CFBundleVersion to $BUILD_NUMBER in $PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$PLIST" || \
+          /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $BUILD_NUMBER" "$PLIST"
 
+      # 3) サイン用ファイルを取得（App Store Connect API キー連携が必要）
       - name: Fetch profiles & import certs
         script: |
-          keychain i
+          set -euo pipefail
+          /usr/local/bin/keychain initialize
+          /usr/local/bin/app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE --create --download-entitlements
+          /usr/local/bin/keychain add-certificates
+
+      # 4) Xcode プロジェクトへ取得したプロファイルを適用（手動サインにしない）
+      - name: Apply profiles to Xcode project (automatic)
+        script: |
+          set -euo pipefail
+          /usr/local/bin/xcode-project use-profiles --bundle-id "$BUNDLE_ID"
+
+      # 5) アーカイブ & IPA 作成（サポートの提案どおり）
+      - name: Build IPA with Xcode (archive flags applied)
+        script: |
+          set -euo pipefail
+          /usr/local/bin/xcode-project build-ipa \
+            --workspace "$IOS_WORKSPACE" \
+            --scheme "$APP_SCHEME" \
+            --archive-flags="-destination 'generic/platform=iOS'" \
+            --team-id "$APPLE_TEAM_ID"
+
+      # 6) 生成物の確認
+      - name: List build artifacts
+        script: |
+          set -euo pipefail
+          ls -lah build/ios/ipa || true
+          IPA_PATH="$(/usr/bin/find build/ios/ipa -maxdepth 1 -name '*.ipa' -print -quit)"
+          if [ -z "${IPA_PATH:-}" ]; then
+            echo "No IPA produced!"; exit 1
+          fi
+          echo "IPA_PATH=$IPA_PATH" >> $CM_ENV
+
+      # 7) App Store Connect へアップロード（Transporter 相当）
+      - name: Publish to App Store Connect (verbose)
+        script: |
+          set -euo pipefail
+          if [ -z "${IPA_PATH:-}" ]; then
+            IPA_PATH="$(/usr/bin/find build/ios/ipa -maxdepth 1 -name '*.ipa' -print -quit)"
+          fi
+          echo "Uploading $IPA_PATH"
+          /usr/local/bin/app-store-connect publish --path "$IPA_PATH" --verbose
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - build/ios/xcarchive/*.xcarchive
+      - ~/Library/Logs/gym/*.log
+
+    publishing:
+      email:
+        recipients:
+          - you@example.com
+        notify:
+          success: true
+          failure: true
