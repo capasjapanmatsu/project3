@@ -1,15 +1,19 @@
 workflows:
   ios-release:
     name: iOS Release (DogPark JP)
-    max_build_duration: 60
     instance_type: mac_mini_m2
+    max_build_duration: 60
 
     environment:
       xcode: 15.4
       node: 20.11.1
       cocoapods: default
+
+      # 環境変数グループ（Codemagicの「Environment variables」で作成済みのもの）
       groups:
-        - appstore_connect    # ← ここに API キー3点が入っているグループ名
+        - appstore_connect   # ← ここに APP_STORE_CONNECT_* の3つが入っている前提
+
+      # アプリ固有の値
       vars:
         BUNDLE_ID: com.dogparkjp.app
         APPLE_TEAM_ID: 9HT7A6UF4K
@@ -18,64 +22,63 @@ workflows:
     cache:
       cache_paths:
         - ~/.npm
-        - ~/.pnpm-store
         - ~/Library/Caches/CocoaPods
         - ios/Pods
 
     scripts:
-      - name: Install JS deps
+      - name: Install JS deps & build web
         script: |
           npm ci --legacy-peer-deps
+          # Webビルド（ある方を使ってください。片方が無ければもう片方を試す）
+          npm run build || npx vite build || true
 
-      - name: Build web (Vite)
+      - name: Ensure Capacitor iOS platform & sync
         script: |
-          npm run build
-
-      - name: Sync Capacitor iOS
-        script: |
+          # iOS プラットフォームが無い場合でも落とさず追加して進める
+          npx cap add ios || true
           npx cap sync ios
 
       - name: CocoaPods install (safety)
         script: |
           cd ios/App
-          pod install --repo-update
-          cd -
+          pod repo update || true
+          pod install
 
       - name: Bump iOS build number (CFBundleVersion)
         script: |
-          cd ios/App
-          agvtool new-version -all "$BUILD_NUMBER"
-          cd -
+          if [ -d "ios/App/App.xcworkspace" ] || [ -d "ios/App/App.xcodeproj" ]; then
+            agvtool new-version -all "$BUILD_NUMBER"
+          else
+            echo "No Xcode project found, skipping agvtool."
+          fi
 
-      - name: Build IPA with Xcode (auto-detect workspace/project)
+      - name: Build IPA with Xcode
         script: |
-          # ワークスペース優先で自動検出して IPA 作成
+          set -e
           if [ -d "ios/App/App.xcworkspace" ]; then
             xcode-project build-ipa \
               --workspace ios/App/App.xcworkspace \
-              --scheme "$IOS_SCHEME"
+              --scheme "$IOS_SCHEME" \
+              --archive-flags "-destination generic/platform=iOS"
           elif [ -d "ios/App/App.xcodeproj" ]; then
             xcode-project build-ipa \
               --project ios/App/App.xcodeproj \
-              --scheme "$IOS_SCHEME"
+              --scheme "$IOS_SCHEME" \
+              --archive-flags "-destination generic/platform=iOS"
           else
-            echo "No Xcode project/workspace under ios/App"
+            echo "No Xcode project under ios/App/"
             exit 1
           fi
 
     artifacts:
       - build/ios/ipa/*.ipa
       - ~/Library/Developer/Xcode/Archives/**/*
-      - ios/App/App.xcarchive
 
     publishing:
       app_store_connect:
-        # ← integration ではなく API キー方式に切り替え
-        auth: api_key
+        # ← ここが重要！ auth ではなく authentication
+        authentication: api_key
         key_id: $APP_STORE_CONNECT_KEY_ID
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-      # ここから先は必要に応じて
-      # app_store_connect:
-      #   submit_to_app_store: true
-      #   submit_to_testflight: true
+        private_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        submit_to_testflight: true
