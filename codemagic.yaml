@@ -13,11 +13,9 @@ workflows:
         APPLE_TEAM_ID: 9HT7A6UF4K
         IOS_SCHEME: App
 
-    # ※ まずはビルドを通すため、公開(アップロード)設定は後で追加します
-    # publishing:
-    #   app_store_connect:
-    #     auth: integration
-    #     integration: YOUR_INTEGRATION_ID  # ← 後で差し込む
+    # App Store Connect の「Integration ID」を使った認証
+    integrations:
+      app_store_connect: d5ac3012-7133-4adb-afbf-b204d7abc83c
 
     scripts:
       - name: Install JS deps
@@ -31,26 +29,32 @@ workflows:
       - name: CocoaPods install (safety)
         script: |
           cd ios/App
-          pod install --repo-update
+          pod repo update
+          pod install
           cd ../..
 
       - name: Bump iOS build number (CFBundleVersion)
         script: |
-          agvtool new-version -all $BUILD_NUMBER
+          cd ios/App
+          xcrun agvtool new-version -all $BUILD_NUMBER
+          cd ../..
 
       - name: Build IPA with Xcode (auto-detect workspace/project)
         script: |
-          # ワークスペース/プロジェクト自動検出して IPA を作成
-          if ls ios/App/*.xcworkspace 1> /dev/null 2>&1; then
-            xcode-project build-ipa \
-              --workspace ios/App/*.xcworkspace \
-              --scheme "$IOS_SCHEME"
-          else
-            xcode-project build-ipa \
-              --project ios/App/*.xcodeproj \
-              --scheme "$IOS_SCHEME"
-          fi
+          # ios/App 配下の .xcworkspace / .xcodeproj を自動検出して IPA を作成
+          xcode-project build-ipa \
+            --project-directory ios/App \
+            --scheme "$IOS_SCHEME" \
+            --allow-provisioning-updates
 
     artifacts:
       - build/ios/ipa/*.ipa
       - ~/Library/Developer/Xcode/Archives/**/*
+      - ios/App/build/*.log
+
+    publishing:
+      app_store_connect:
+        # TestFlight へアップロード（App Store 提出は off）
+        submit_to_testflight: true
+        submit_to_app_store: false
+        cancel_previous_submissions: true
