@@ -1,4 +1,3 @@
-# codemagic.yaml  ——  そのまま置き換えOK
 workflows:
   ios-release:
     name: iOS Release (DogPark JP)
@@ -10,38 +9,16 @@ workflows:
       node: 20.11.1
       cocoapods: default
       vars:
-        # プロジェクト固有
         BUNDLE_ID: com.dogparkjp.app
         APPLE_TEAM_ID: 9HT7A6UF4K
         IOS_SCHEME: App
 
-    # ← ここは “統合の表示名” を書く（IDやAPIキーは不要）
-    integrations:
-      app_store_connect: "DogParkJP API Key"
-<<<<<<< HEAD
+    # ※ まずはビルドを通すため、公開(アップロード)設定は後で追加します
+    # publishing:
+    #   app_store_connect:
+    #     auth: integration
+    #     integration: YOUR_INTEGRATION_ID  # ← 後で差し込む
 
-=======
-    environment:
-      xcode: latest
-      cocoapods: default
-      node: 20
-      vars:
-        BUNDLE_ID: com.dogparkjp.app
-        APP_NAME: ドッグパークJP
-        DEVELOPMENT_TEAM: 9HT7A6UF4K
-      groups:
-        # Create these groups in Codemagic UI and add variables there
-        # app_store_connect: handled via integrations.app_store_connect
-        # supabase: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
-        - supabase
-        # codesign variables (CM_CERTIFICATE, CM_CERTIFICATE_PASSWORD)
-        - codesign
-    cache:
-      cache_paths:
-        - $HOME/Library/Caches/CocoaPods
-        - ios/App/Pods
-        - ~/.npm
->>>>>>> 00ece978 (Add iOS platform with Capacitor and sync web assets)
     scripts:
       - name: Install JS deps
         script: |
@@ -53,26 +30,27 @@ workflows:
 
       - name: CocoaPods install (safety)
         script: |
-          cd ios/App && pod install --repo-update || pod install
-          cd ../../
+          cd ios/App
+          pod install --repo-update
+          cd ../..
 
       - name: Bump iOS build number (CFBundleVersion)
         script: |
-          agvtool new-version -all "$BUILD_NUMBER"
+          agvtool new-version -all $BUILD_NUMBER
 
-      - name: Build IPA with Xcode
+      - name: Build IPA with Xcode (auto-detect workspace/project)
         script: |
-          xcode-project build-ipa \
-            --workspace ios/App/App.xcworkspace \
-            --scheme "$IOS_SCHEME"
+          # ワークスペース/プロジェクト自動検出して IPA を作成
+          if ls ios/App/*.xcworkspace 1> /dev/null 2>&1; then
+            xcode-project build-ipa \
+              --workspace ios/App/*.xcworkspace \
+              --scheme "$IOS_SCHEME"
+          else
+            xcode-project build-ipa \
+              --project ios/App/*.xcodeproj \
+              --scheme "$IOS_SCHEME"
+          fi
 
     artifacts:
       - build/ios/ipa/*.ipa
       - ~/Library/Developer/Xcode/Archives/**/*
-
-    publishing:
-      app_store_connect:
-        auth: integration          # ← 必ず integration にする
-        submit_to_testflight: true # TestFlight へ自動アップロード
-        # beta_groups:
-        #   - "Internal Testers"   # 必要ならグループ名を指定
