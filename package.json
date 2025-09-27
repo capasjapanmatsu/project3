@@ -23,7 +23,8 @@
     "geocode-dog-parks": "node scripts/geocode-dog-parks.js",
     "geocode-test": "node scripts/geocode-facilities.js --test",
     "analyze": "vite-bundle-visualizer",
-    "build:icons": "node scripts/generate-icons.mjs"
+    "build:icons": "node scripts/generate-icons.mjs",
+    "android:icons": "node scripts/update-android-icons.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.2",

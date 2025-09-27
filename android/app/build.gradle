@@ -2,18 +2,68 @@ apply plugin: 'com.android.application'
 
 android {
     namespace "com.dogparkjp.app"
-    compileSdk rootProject.ext.compileSdkVersion
+    compileSdk 35
     defaultConfig {
         applicationId "com.dogparkjp.app"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "1.0.1"
+        minSdkVersion 23
+        targetSdkVersion 35
+        versionCode 3
+        versionName "1.0.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        aaptOptions {
+    aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
-            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~:!*#.html:!*#.css:!*#.js'
+        }
+
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // Packaging rules for assets/resources to avoid duplicate entries during merge
+    packaging {
+        resources {
+            // ignore pre-compressed files
+            excludes += ["**/*.gz", "**/*.br"]
+            // if duplicates still occur for site assets, pick the first occurrence
+            pickFirsts += [
+                "**/*.html",
+                "**/*.css",
+                "**/*.js",
+                "**/*.map",
+                "**/*.svg",
+                "**/*.png",
+                "**/*.webp",
+                "**/*.json"
+            ]
+        }
+    }
+
+    // Exclude pre-compressed assets from merge step to avoid duplicate assets
+    sourceSets {
+        main {
+            assets {
+                exclude "**/*.gz"
+                exclude "**/*.br"
+            }
+        }
+    }
+
+    // Define signingConfigs BEFORE buildTypes so it exists when referenced
+    signingConfigs {
+        release {
+            def ksPath = System.getenv('ANDROID_KEYSTORE_PATH') ?: (project.hasProperty('ANDROID_KEYSTORE_PATH') ? project.property('ANDROID_KEYSTORE_PATH') : '../../keystores/release.keystore')
+            def ksPass = System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: (project.hasProperty('ANDROID_KEYSTORE_PASSWORD') ? project.property('ANDROID_KEYSTORE_PASSWORD') : null)
+            def kAlias = System.getenv('ANDROID_KEY_ALIAS') ?: (project.hasProperty('ANDROID_KEY_ALIAS') ? project.property('ANDROID_KEY_ALIAS') : 'dogparkjp')
+            def kPass = System.getenv('ANDROID_KEY_ALIAS_PASSWORD') ?: (project.hasProperty('ANDROID_KEY_ALIAS_PASSWORD') ? project.property('ANDROID_KEY_ALIAS_PASSWORD') : null)
+
+            storeFile file(ksPath)
+            if (ksPass != null) storePassword ksPass
+            keyAlias kAlias
+            if (kPass != null) keyPassword kPass
         }
     }
     buildTypes {
@@ -21,18 +71,9 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             // Sign if keystore is present
-            if (System.getenv('ANDROID_KEYSTORE_PATH') || file('../../keystores/release.keystore').exists()) {
+            if ((System.getenv('ANDROID_KEYSTORE_PASSWORD') || project.hasProperty('ANDROID_KEYSTORE_PASSWORD')) && (System.getenv('ANDROID_KEY_ALIAS_PASSWORD') || project.hasProperty('ANDROID_KEY_ALIAS_PASSWORD'))) {
                 signingConfig signingConfigs.release
             }
-        }
-    }
-
-    signingConfigs {
-        release {
-            storeFile System.getenv('ANDROID_KEYSTORE_PATH') ? file(System.getenv('ANDROID_KEYSTORE_PATH')) : file('../../keystores/release.keystore')
-            storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: 'CHANGE_ME'
-            keyAlias System.getenv('ANDROID_KEY_ALIAS') ?: 'dogparkjp'
-            keyPassword System.getenv('ANDROID_KEY_ALIAS_PASSWORD') ?: 'CHANGE_ME'
         }
     }
 }
@@ -52,7 +93,9 @@ dependencies {
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
-    implementation project(':capacitor-cordova-android-plugins')
+    if (project.findProject(':capacitor-cordova-android-plugins') != null) {
+        implementation project(':capacitor-cordova-android-plugins')
+    }
 }
 
 apply from: 'capacitor.build.gradle'

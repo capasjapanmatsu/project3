@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.dogparkjp.app',
-  appName: 'DogPark Japan',
+  appName: 'ドッグパークJP',
   webDir: 'dist',
   server: {
     androidScheme: 'https',
@@ -76,7 +76,7 @@ const config: CapacitorConfig = {
     ]
   },
   ios: {
-    scheme: 'DogPark Japan',
+    scheme: 'ドッグパークJP',
     contentInset: 'automatic'
   }
 };

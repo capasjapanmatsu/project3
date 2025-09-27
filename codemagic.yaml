@@ -18,7 +18,30 @@ workflows:
     # ← ここは “統合の表示名” を書く（IDやAPIキーは不要）
     integrations:
       app_store_connect: "DogParkJP API Key"
+<<<<<<< HEAD
 
+=======
+    environment:
+      xcode: latest
+      cocoapods: default
+      node: 20
+      vars:
+        BUNDLE_ID: com.dogparkjp.app
+        APP_NAME: ドッグパークJP
+        DEVELOPMENT_TEAM: 9HT7A6UF4K
+      groups:
+        # Create these groups in Codemagic UI and add variables there
+        # app_store_connect: handled via integrations.app_store_connect
+        # supabase: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+        - supabase
+        # codesign variables (CM_CERTIFICATE, CM_CERTIFICATE_PASSWORD)
+        - codesign
+    cache:
+      cache_paths:
+        - $HOME/Library/Caches/CocoaPods
+        - ios/App/Pods
+        - ~/.npm
+>>>>>>> 00ece978 (Add iOS platform with Capacitor and sync web assets)
     scripts:
       - name: Install JS deps
         script: |

@@ -1,0 +1,1 @@
+async function i(i,e,t){if(e?.id)try{const{data:t}=await i.from("profiles").select("id").eq("id",e.id).maybeSingle();if(t?.id)return;await i.from("profiles").insert({id:e.id,user_type:"user"})}catch(r){}}export{i as e};

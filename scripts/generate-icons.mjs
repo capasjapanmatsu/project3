@@ -9,13 +9,18 @@ import sharp from 'sharp';
 
 const projectRoot = path.resolve(process.cwd());
 // Prefer favicon.svg (exists in repo). Fallback to png 192.
-const srcSvg = path.join(projectRoot, 'public', 'favicon.svg');
+const srcSvg = path.join(projectRoot, 'public', 'icons', 'icon.svg');
 const fallbackPng = path.join(projectRoot, 'public', 'icons', 'icon_android_192x192.png');
 const outDir = path.join(projectRoot, 'public', 'icons');
 
 const targets = [
-  { size: 512, name: 'icon_android_512x512.png' },
+  { size: 48, name: 'icon_android_48x48.png' },
+  { size: 72, name: 'icon_android_72x72.png' },
+  { size: 96, name: 'icon_android_96x96.png' },
+  { size: 144, name: 'icon_android_144x144.png' },
+  { size: 192, name: 'icon_android_192x192.png' },
   { size: 384, name: 'icon_android_384x384.png' },
+  { size: 512, name: 'icon_android_512x512.png' },
 ];
 
 async function main() {
