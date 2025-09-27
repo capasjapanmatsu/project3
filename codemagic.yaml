@@ -1,26 +1,23 @@
+# codemagic.yaml  ——  そのまま置き換えOK
 workflows:
   ios-release:
     name: iOS Release (DogPark JP)
     instance_type: mac_mini_m2
     max_build_duration: 60
 
-    # ← ここで App Store Connect の Integration を紐づけます
-    integrations:
-      app_store_connect: d5ac3012-7133-4adb-afbf-b204d7abc83c
-
     environment:
       xcode: 15.4
       node: 20.11.1
       cocoapods: default
       vars:
+        # プロジェクト固有
         BUNDLE_ID: com.dogparkjp.app
         APPLE_TEAM_ID: 9HT7A6UF4K
         IOS_SCHEME: App
 
-    # Integration 認証を使うのがポイント（api_key ではない）
-    publishing:
-      app_store_connect:
-        auth: integration
+    # ← ここは “統合の表示名” を書く（IDやAPIキーは不要）
+    integrations:
+      app_store_connect: "DogParkJP API Key"
 
     scripts:
       - name: Install JS deps
@@ -31,9 +28,14 @@ workflows:
         script: |
           npx cap sync ios
 
+      - name: CocoaPods install (safety)
+        script: |
+          cd ios/App && pod install --repo-update || pod install
+          cd ../../
+
       - name: Bump iOS build number (CFBundleVersion)
         script: |
-          agvtool new-version -all $BUILD_NUMBER
+          agvtool new-version -all "$BUILD_NUMBER"
 
       - name: Build IPA with Xcode
         script: |
@@ -44,3 +46,10 @@ workflows:
     artifacts:
       - build/ios/ipa/*.ipa
       - ~/Library/Developer/Xcode/Archives/**/*
+
+    publishing:
+      app_store_connect:
+        auth: integration          # ← 必ず integration にする
+        submit_to_testflight: true # TestFlight へ自動アップロード
+        # beta_groups:
+        #   - "Internal Testers"   # 必要ならグループ名を指定
