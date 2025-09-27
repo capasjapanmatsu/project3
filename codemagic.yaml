@@ -9,11 +9,9 @@ workflows:
       node: 20.11.1
       cocoapods: default
 
-      # 環境変数グループ（Codemagicの「Environment variables」で作成済みのもの）
       groups:
-        - appstore_connect   # ← ここに APP_STORE_CONNECT_* の3つが入っている前提
+        - appstore_connect   # ← APP_STORE_CONNECT_* の3つが入っているグループ
 
-      # アプリ固有の値
       vars:
         BUNDLE_ID: com.dogparkjp.app
         APPLE_TEAM_ID: 9HT7A6UF4K
@@ -29,12 +27,10 @@ workflows:
       - name: Install JS deps & build web
         script: |
           npm ci --legacy-peer-deps
-          # Webビルド（ある方を使ってください。片方が無ければもう片方を試す）
           npm run build || npx vite build || true
 
       - name: Ensure Capacitor iOS platform & sync
         script: |
-          # iOS プラットフォームが無い場合でも落とさず追加して進める
           npx cap add ios || true
           npx cap sync ios
 
@@ -76,9 +72,9 @@ workflows:
 
     publishing:
       app_store_connect:
-        # ← ここが重要！ auth ではなく authentication
-        authentication: api_key
-        key_id: $APP_STORE_CONNECT_KEY_ID
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        private_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        # ← ここが決定打：フィールド名は api_key / key_id / issuer_id
+        auth: api_key
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY   # .p8 を Base64 化した文字列
+        key_id: $APP_STORE_CONNECT_KEY_ID         # 例: JJVYI33PUOYU
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID   # 例: d5ac3012-7133-4adb-afbf-b204d7abc83c
         submit_to_testflight: true
