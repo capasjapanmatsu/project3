@@ -12,10 +12,11 @@ workflows:
         BUNDLE_ID: com.dogparkjp.app
         APPLE_TEAM_ID: 9HT7A6UF4K
         IOS_SCHEME: App
-
-    # App Store Connect の「Integration ID」を使った認証
-    integrations:
-      app_store_connect: d5ac3012-7133-4adb-afbf-b204d7abc83c
+      # ← ここが重要：APIキーを入れてある “appstore_connect” グループを読み込む
+      groups:
+        - appstore_connect
+        # 証明書/p12等を使う場合は codesign グループも（無ければこの行は消してOK）
+        - codesign
 
     scripts:
       - name: Install JS deps
@@ -26,35 +27,31 @@ workflows:
         script: |
           npx cap sync ios
 
-      - name: CocoaPods install (safety)
-        script: |
-          cd ios/App
-          pod repo update
-          pod install
-          cd ../..
-
       - name: Bump iOS build number (CFBundleVersion)
         script: |
-          cd ios/App
-          xcrun agvtool new-version -all $BUILD_NUMBER
-          cd ../..
+          if [ -d "ios/App" ]; then
+            agvtool new-version -all $BUILD_NUMBER
+          else
+            echo "iOS project not found, skip agvtool"
+          fi
 
-      - name: Build IPA with Xcode (auto-detect workspace/project)
+      - name: Build IPA with Xcode
         script: |
-          # ios/App 配下の .xcworkspace / .xcodeproj を自動検出して IPA を作成
           xcode-project build-ipa \
-            --project-directory ios/App \
-            --scheme "$IOS_SCHEME" \
-            --allow-provisioning-updates
+            --workspace ios/App/App.xcworkspace \
+            --scheme "$IOS_SCHEME"
 
     artifacts:
       - build/ios/ipa/*.ipa
       - ~/Library/Developer/Xcode/Archives/**/*
-      - ios/App/build/*.log
 
     publishing:
       app_store_connect:
-        # TestFlight へアップロード（App Store 提出は off）
+        # ← ここが重要：integration ではなく APIキー方式を明示
+        auth: api_key
+        key_id: $APP_STORE_CONNECT_KEY_ID
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        private_key: $APP_STORE_CONNECT_PRIVATE_KEY
         submit_to_testflight: true
-        submit_to_app_store: false
-        cancel_previous_submissions: true
+        beta_groups:
+          - Internal Testing
