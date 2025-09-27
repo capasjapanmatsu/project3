@@ -1,52 +1,81 @@
 workflows:
   ios-release:
     name: iOS Release (DogPark JP)
-    instance_type: mac_mini_m2
     max_build_duration: 60
-
-    # ★ auth: integration を使うために必要
-    integrations:
-      app_store_connect: d5ac3012-7133-4adb-afbf-b204d7abc83c
+    instance_type: mac_mini_m2
 
     environment:
       xcode: 15.4
       node: 20.11.1
       cocoapods: default
+      groups:
+        - appstore_connect    # ← ここに API キー3点が入っているグループ名
       vars:
         BUNDLE_ID: com.dogparkjp.app
         APPLE_TEAM_ID: 9HT7A6UF4K
         IOS_SCHEME: App
+
+    cache:
+      cache_paths:
+        - ~/.npm
+        - ~/.pnpm-store
+        - ~/Library/Caches/CocoaPods
+        - ios/Pods
 
     scripts:
       - name: Install JS deps
         script: |
           npm ci --legacy-peer-deps
 
+      - name: Build web (Vite)
+        script: |
+          npm run build
+
       - name: Sync Capacitor iOS
         script: |
           npx cap sync ios
 
+      - name: CocoaPods install (safety)
+        script: |
+          cd ios/App
+          pod install --repo-update
+          cd -
+
       - name: Bump iOS build number (CFBundleVersion)
         script: |
-          if [ -d "ios/App" ]; then
-            agvtool new-version -all $BUILD_NUMBER
-          else
-            echo "iOS project not found, skip agvtool"
-          fi
+          cd ios/App
+          agvtool new-version -all "$BUILD_NUMBER"
+          cd -
 
-      - name: Build IPA with Xcode
+      - name: Build IPA with Xcode (auto-detect workspace/project)
         script: |
-          xcode-project build-ipa \
-            --workspace ios/App/App.xcworkspace \
-            --scheme "$IOS_SCHEME"
+          # ワークスペース優先で自動検出して IPA 作成
+          if [ -d "ios/App/App.xcworkspace" ]; then
+            xcode-project build-ipa \
+              --workspace ios/App/App.xcworkspace \
+              --scheme "$IOS_SCHEME"
+          elif [ -d "ios/App/App.xcodeproj" ]; then
+            xcode-project build-ipa \
+              --project ios/App/App.xcodeproj \
+              --scheme "$IOS_SCHEME"
+          else
+            echo "No Xcode project/workspace under ios/App"
+            exit 1
+          fi
 
     artifacts:
       - build/ios/ipa/*.ipa
       - ~/Library/Developer/Xcode/Archives/**/*
+      - ios/App/App.xcarchive
 
     publishing:
       app_store_connect:
-        auth: integration        # ← ここは integration 固定
-        submit_to_testflight: true
-        beta_groups:
-          - Internal Testing
+        # ← integration ではなく API キー方式に切り替え
+        auth: api_key
+        key_id: $APP_STORE_CONNECT_KEY_ID
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+      # ここから先は必要に応じて
+      # app_store_connect:
+      #   submit_to_app_store: true
+      #   submit_to_testflight: true
