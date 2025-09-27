@@ -12,10 +12,8 @@ workflows:
         BUNDLE_ID: com.dogparkjp.app
         APPLE_TEAM_ID: 9HT7A6UF4K
         IOS_SCHEME: App
-      # ← ここが重要：APIキーを入れてある “appstore_connect” グループを読み込む
+      # （証明書等を変数グループで管理しているなら必要。無ければこの行は消してOK）
       groups:
-        - appstore_connect
-        # 証明書/p12等を使う場合は codesign グループも（無ければこの行は消してOK）
         - codesign
 
     scripts:
@@ -47,11 +45,10 @@ workflows:
 
     publishing:
       app_store_connect:
-        # ← ここが重要：integration ではなく APIキー方式を明示
-        auth: api_key
-        key_id: $APP_STORE_CONNECT_KEY_ID
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        private_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        # ★ここを integration にする（必須）
+        auth: integration
+        # integration が複数ある場合だけ、id を明示：
+        # id: aac5c4e1-a936-4ca0-b679-214a7fa20e20   # ←複数キーがある場合のみ設定。1つなら書かない。
         submit_to_testflight: true
         beta_groups:
           - Internal Testing
