@@ -16,7 +16,7 @@ workflows:
         - supabase
         - codesign
 
-    # Codemagic側に追加したApp Store Connectの統合名
+    # Codemagic の「Integrations」で作成した表示名を記載
     integrations:
       app_store_connect: "DogParkJP API Key"
 
@@ -42,22 +42,33 @@ workflows:
           cd ios/App
           pod repo update || true
           pod install
+          cd -
 
       - name: Bump iOS build number (CFBundleVersion)
         script: |
-          if [ -d "ios/App/App.xcworkspace" ] || [ -d "ios/App/App.xcodeproj" ]; then
-            agvtool new-version -all "$BUILD_NUMBER"
+          set -e
+          INFO_PLIST="ios/App/App/Info.plist"
+          if [ -f "$INFO_PLIST" ]; then
+            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$INFO_PLIST" \
+            || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $BUILD_NUMBER" "$INFO_PLIST"
+            echo "Set CFBundleVersion to $BUILD_NUMBER in $INFO_PLIST"
           else
-            echo "No Xcode project found, skipping agvtool."
+            echo "Info.plist not found at $INFO_PLIST. Skipping bump."
           fi
 
       - name: Build IPA with Xcode
         script: |
           set -e
           if [ -d "ios/App/App.xcworkspace" ]; then
-            xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme "$IOS_SCHEME" --archive-flags "-destination generic/platform=iOS"
+            xcode-project build-ipa \
+              --workspace ios/App/App.xcworkspace \
+              --scheme "$IOS_SCHEME" \
+              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID"
           elif [ -d "ios/App/App.xcodeproj" ]; then
-            xcode-project build-ipa --project ios/App/App.xcodeproj --scheme "$IOS_SCHEME" --archive-flags "-destination generic/platform=iOS"
+            xcode-project build-ipa \
+              --project ios/App/App.xcodeproj \
+              --scheme "$IOS_SCHEME" \
+              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID"
           else
             echo "No Xcode project under ios/App/"
             exit 1
