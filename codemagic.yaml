@@ -1,84 +1,37 @@
-workflows:
-  ios-release:
-    name: iOS Release (DogPark JP)
-    instance_type: mac_mini_m2
-    max_build_duration: 60
-
-    environment:
-      xcode: 15.4
-      node: 20.11.1
-      cocoapods: default
-      vars:
-        BUNDLE_ID: com.dogparkjp.app
-        APPLE_TEAM_ID: 9HT7A6UF4K
-        IOS_SCHEME: App
-      groups:
-        - supabase
-        - codesign
-
-    # Codemagic の「Integrations」で作成した表示名を記載
-    integrations:
-      app_store_connect: "DogParkJP API Key"
-
-    cache:
-      cache_paths:
-        - ~/.npm
-        - ~/Library/Caches/CocoaPods
-        - ios/Pods
-
-    scripts:
-      - name: Install JS deps & build web
-        script: |
-          npm ci --legacy-peer-deps
-          npm run build || npx vite build || true
-
-      - name: Ensure Capacitor iOS platform & sync
-        script: |
-          npx cap add ios || true
-          npx cap sync ios
-
-      - name: CocoaPods install (safety)
-        script: |
-          cd ios/App
-          pod repo update || true
-          pod install
-          cd -
-
-      - name: Bump iOS build number (CFBundleVersion)
-        script: |
-          set -e
-          INFO_PLIST="ios/App/App/Info.plist"
-          if [ -f "$INFO_PLIST" ]; then
-            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$INFO_PLIST" \
-            || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $BUILD_NUMBER" "$INFO_PLIST"
-            echo "Set CFBundleVersion to $BUILD_NUMBER in $INFO_PLIST"
-          else
-            echo "Info.plist not found at $INFO_PLIST. Skipping bump."
-          fi
-
       - name: Build IPA with Xcode
         script: |
           set -e
+          EXPORT_PLIST="$HOME/export_options.plist"
+          cat > "$EXPORT_PLIST" <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>uploadBitcode</key>
+            <false/>
+          </dict>
+          </plist>
+          EOF
+
           if [ -d "ios/App/App.xcworkspace" ]; then
             xcode-project build-ipa \
               --workspace ios/App/App.xcworkspace \
               --scheme "$IOS_SCHEME" \
-              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID"
+              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID" \
+              --export-options-plist "$EXPORT_PLIST"
           elif [ -d "ios/App/App.xcodeproj" ]; then
             xcode-project build-ipa \
               --project ios/App/App.xcodeproj \
               --scheme "$IOS_SCHEME" \
-              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID"
+              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID" \
+              --export-options-plist "$EXPORT_PLIST"
           else
             echo "No Xcode project under ios/App/"
             exit 1
           fi
-
-    artifacts:
-      - build/ios/ipa/*.ipa
-      - ~/Library/Developer/Xcode/Archives/**/*
-
-    publishing:
-      app_store_connect:
-        auth: integration
-        submit_to_testflight: true
