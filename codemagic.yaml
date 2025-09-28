@@ -16,7 +16,7 @@ workflows:
         - supabase
         - codesign
 
-    # Codemagicの「Integrations」で作成した表示名を記載（APIキー文字列ではなく統合名）
+    # Codemagic の Integrations で作成した表示名（APIキー文字列ではありません）
     integrations:
       app_store_connect: "DogParkJP API Key"
 
@@ -55,6 +55,16 @@ workflows:
           else
             echo "Info.plist not found at $INFO_PLIST. Skipping bump."
           fi
+
+      - name: Fetch signing files & configure keychain
+        script: |
+          set -e
+          keychain initialize
+          # 自動で証明書/プロファイルを取得（なければ作成）
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          keychain add-certificates
+          # Xcode プロジェクトへ取得したプロファイルを反映
+          xcode-project use-profiles
 
       - name: Build IPA with Xcode
         script: |
