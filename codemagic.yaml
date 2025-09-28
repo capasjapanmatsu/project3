@@ -16,7 +16,6 @@ workflows:
         - supabase
         - codesign
 
-    # Codemagic の Integrations で作成した表示名（APIキー文字列ではありません）
     integrations:
       app_store_connect: "DogParkJP API Key"
 
@@ -60,45 +59,25 @@ workflows:
         script: |
           set -e
           keychain initialize
-          # 自動で証明書/プロファイルを取得（なければ作成）
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
-          # Xcode プロジェクトへ取得したプロファイルを反映
           xcode-project use-profiles
 
       - name: Build IPA with Xcode
         script: |
           set -e
-          EXPORT_PLIST="$HOME/export_options.plist"
-          cat > "$EXPORT_PLIST" <<'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>signingStyle</key>
-            <string>automatic</string>
-            <key>uploadSymbols</key>
-            <true/>
-            <key>uploadBitcode</key>
-            <false/>
-          </dict>
-          </plist>
-          EOF
-
           if [ -d "ios/App/App.xcworkspace" ]; then
             xcode-project build-ipa \
               --workspace ios/App/App.xcworkspace \
               --scheme "$IOS_SCHEME" \
-              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID" \
-              --export-options-plist "$EXPORT_PLIST"
+              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID CODE_SIGN_STYLE=Automatic" \
+              --export-method app-store
           elif [ -d "ios/App/App.xcodeproj" ]; then
             xcode-project build-ipa \
               --project ios/App/App.xcodeproj \
               --scheme "$IOS_SCHEME" \
-              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID" \
-              --export-options-plist "$EXPORT_PLIST"
+              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID CODE_SIGN_STYLE=Automatic" \
+              --export-method app-store
           else
             echo "No Xcode project under ios/App/"
             exit 1
