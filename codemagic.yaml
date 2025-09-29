@@ -16,8 +16,8 @@ workflows:
         - supabase
         - codesign
 
-    # Codemagic側に追加したApp Store Connectの統合名
     integrations:
+      # Codemagicの「Integrations」に登録した表示名
       app_store_connect: "DogParkJP API Key"
 
     cache:
@@ -50,19 +50,57 @@ workflows:
           INFO_PLIST="ios/App/App/Info.plist"
           if [ -f "$INFO_PLIST" ]; then
             /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$INFO_PLIST" \
-              || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $BUILD_NUMBER" "$INFO_PLIST"
+            || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $BUILD_NUMBER" "$INFO_PLIST"
             echo "Set CFBundleVersion to $BUILD_NUMBER in $INFO_PLIST"
           else
             echo "Info.plist not found at $INFO_PLIST. Skipping bump."
           fi
 
+      - name: Fetch signing files & configure keychain
+        script: |
+          set -e
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          keychain add-certificates
+          xcode-project use-profiles
+          xcode-project automatic-signing --team-id "$APPLE_TEAM_ID"
+
       - name: Build IPA with Xcode
         script: |
           set -e
+          # 明示的にビルドディレクトリ配下に書き出す（$HOMEが環境で変わるケースを回避）
+          EXPORT_PLIST="$CM_BUILD_DIR/export_options.plist"
+          cat > "$EXPORT_PLIST" <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>uploadBitcode</key>
+            <false/>
+          </dict>
+          </plist>
+          EOF
+          echo "Export options plist created at: $EXPORT_PLIST"
+          ls -l "$CM_BUILD_DIR" | sed -n '1,200p'
+
           if [ -d "ios/App/App.xcworkspace" ]; then
-            xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme "$IOS_SCHEME" --archive-flags "-destination generic/platform=iOS"
+            xcode-project build-ipa \
+              --workspace ios/App/App.xcworkspace \
+              --scheme "$IOS_SCHEME" \
+              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID CODE_SIGN_STYLE=Automatic" \
+              --export-options-plist "$EXPORT_PLIST"
           elif [ -d "ios/App/App.xcodeproj" ]; then
-            xcode-project build-ipa --project ios/App/App.xcodeproj --scheme "$IOS_SCHEME" --archive-flags "-destination generic/platform=iOS"
+            xcode-project build-ipa \
+              --project ios/App/App.xcodeproj \
+              --scheme "$IOS_SCHEME" \
+              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID CODE_SIGN_STYLE=Automatic" \
+              --export-options-plist "$EXPORT_PLIST"
           else
             echo "No Xcode project under ios/App/"
             exit 1
