@@ -98,7 +98,7 @@ workflows:
             PROVISIONING_PROFILE_SPECIFIER="DogParkJP ios_app_store 1758647685" \
             CODE_SIGN_STYLE=Manual \
             "CODE_SIGN_IDENTITY=Apple Distribution" \
-            OTHER_CODE_SIGN_FLAGS="--keychain $CM_KEYCHAIN_PATH" \
+            ${CM_KEYCHAIN_PATH:+OTHER_CODE_SIGN_FLAGS="--keychain $CM_KEYCHAIN_PATH"} \
             archive | tee "$CM_BUILD_DIR/archive.log"
           status=${PIPESTATUS[0]}
           set -e
