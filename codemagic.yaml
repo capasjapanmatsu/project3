@@ -12,13 +12,13 @@ workflows:
         BUNDLE_ID: com.dogparkjp.app
         APPLE_TEAM_ID: 9HT7A6UF4K
         IOS_SCHEME: App
-        # Codemagic の Environment variables に Secret として保存しておく
+        # Codemagic の Environment variables で Secret として保存しておく
         APP_STORE_CONNECT_INTEGRATION_ID: $APP_STORE_CONNECT_INTEGRATION_ID
       groups:
         - supabase
         - codesign
 
-    # （任意）Codemagic Integrations の表示名を登録している場合
+    #（任意）Codemagic Integrations で作成した表示名
     integrations:
       app_store_connect: "DogParkJP API Key"
 
@@ -120,5 +120,4 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        integration: $APP_STORE_CONNECT_INTEGRATION_ID
         submit_to_testflight: true
