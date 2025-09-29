@@ -12,13 +12,11 @@ workflows:
         BUNDLE_ID: com.dogparkjp.app
         APPLE_TEAM_ID: 9HT7A6UF4K
         IOS_SCHEME: App
-        # Codemagic の Environment variables で Secret として保存しておく
-        APP_STORE_CONNECT_INTEGRATION_ID: $APP_STORE_CONNECT_INTEGRATION_ID
       groups:
         - supabase
         - codesign
 
-    #（任意）Codemagic Integrations で作成した表示名
+    # 任意: CodemagicのIntegrationsで作成した表示名（なくてもOK）
     integrations:
       app_store_connect: "DogParkJP API Key"
 
@@ -61,11 +59,12 @@ workflows:
       - name: Fetch signing files & configure keychain
         script: |
           set -e
+          # App Store Connect から必要な証明書/プロビジョニングを取得（--integration は使いません）
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
-            --create \
-            --integration "$APP_STORE_CONNECT_INTEGRATION_ID"
+            --create
           keychain initialize
+          # 取得したプロファイル/証明書をXcodeプロジェクトへ適用
           xcode-project use-profiles
 
       - name: Build IPA with Xcode (export app-store)
