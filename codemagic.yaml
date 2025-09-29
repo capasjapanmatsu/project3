@@ -12,9 +12,15 @@ workflows:
         BUNDLE_ID: com.dogparkjp.app
         APPLE_TEAM_ID: 9HT7A6UF4K
         IOS_SCHEME: App
-        # ← ここに App Store Connect Integration の ID を必ず登録しておく
-        # Codemagic の「Environment variables」で APP_STORE_CONNECT_INTEGRATION_ID を Secret として保存済みであること
-        # APP_STORE_CONNECT_INTEGRATION_ID: <保存済みの環境変数を使用>
+        # Codemagic の Environment variables に Secret として保存しておく
+        APP_STORE_CONNECT_INTEGRATION_ID: $APP_STORE_CONNECT_INTEGRATION_ID
+      groups:
+        - supabase
+        - codesign
+
+    # （任意）Codemagic Integrations の表示名を登録している場合
+    integrations:
+      app_store_connect: "DogParkJP API Key"
 
     cache:
       cache_paths:
@@ -33,54 +39,78 @@ workflows:
           npx cap add ios || true
           npx cap sync ios
 
-      - name: CocoaPods install
+      - name: CocoaPods install (safety)
         script: |
           cd ios/App
           pod repo update || true
           pod install
+          cd -
 
-      # 署名ファイルを App Store Connect から取得（Integration 方式）
+      - name: Bump iOS build number (CFBundleVersion)
+        script: |
+          set -e
+          INFO_PLIST="ios/App/App/Info.plist"
+          if [ -f "$INFO_PLIST" ]; then
+            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$INFO_PLIST" \
+            || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $BUILD_NUMBER" "$INFO_PLIST"
+            echo "Set CFBundleVersion to $BUILD_NUMBER in $INFO_PLIST"
+          else
+            echo "Info.plist not found at $INFO_PLIST. Skipping bump."
+          fi
+
       - name: Fetch signing files & configure keychain
         script: |
+          set -e
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create \
             --integration "$APP_STORE_CONNECT_INTEGRATION_ID"
           keychain initialize
+          xcode-project use-profiles
 
-      # 取得したプロファイル/証明書を Xcode プロジェクトへ適用
-      - name: Apply signing settings to Xcode project
-        script: |
-          xcode-project use-profiles \
-            --warn-provisioning-updates \
-            --target "App" || xcode-project use-profiles --warn-provisioning-updates
-
-      - name: Bump iOS build number (CFBundleVersion)
-        script: |
-          if [ -d "ios/App/App.xcworkspace" ] || [ -d "ios/App/App.xcodeproj" ]; then
-            agvtool new-version -all "$BUILD_NUMBER"
-          else
-            echo "No Xcode project found, skipping agvtool."
-          fi
-
-      - name: Build IPA with Xcode (app-store export)
+      - name: Build IPA with Xcode (export app-store)
         script: |
           set -e
+          EXPORT_PLIST="$CM_BUILD_DIR/export_options.plist"
+          cat > "$EXPORT_PLIST" <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>teamID</key>
+            <string>9HT7A6UF4K</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.dogparkjp.app</key>
+              <string>DogParkJP ios_app_store 1758647685</string>
+            </dict>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>uploadBitcode</key>
+            <false/>
+          </dict>
+          </plist>
+          EOF
+          echo "Export options plist created at: $EXPORT_PLIST"
+
           if [ -d "ios/App/App.xcworkspace" ]; then
             xcode-project build-ipa \
               --workspace ios/App/App.xcworkspace \
               --scheme "$IOS_SCHEME" \
-              --archive-flags "-destination generic/platform=iOS" \
-              --export-method app-store
-          elif [ -d "ios/App/App.xcodeproj" ]; then
+              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID CODE_SIGN_STYLE=Manual" \
+              --export-options-plist "$EXPORT_PLIST"
+          else
             xcode-project build-ipa \
               --project ios/App/App.xcodeproj \
               --scheme "$IOS_SCHEME" \
-              --archive-flags "-destination generic/platform=iOS" \
-              --export-method app-store
-          else
-            echo "No Xcode project under ios/App/"
-            exit 1
+              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID CODE_SIGN_STYLE=Manual" \
+              --export-options-plist "$EXPORT_PLIST"
           fi
 
     artifacts:
