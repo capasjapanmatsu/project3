@@ -16,6 +16,7 @@ workflows:
         - supabase
         - codesign
 
+    # Codemagic側に追加したApp Store Connectの統合名
     integrations:
       app_store_connect: "DogParkJP API Key"
 
@@ -49,35 +50,19 @@ workflows:
           INFO_PLIST="ios/App/App/Info.plist"
           if [ -f "$INFO_PLIST" ]; then
             /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$INFO_PLIST" \
-            || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $BUILD_NUMBER" "$INFO_PLIST"
+              || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $BUILD_NUMBER" "$INFO_PLIST"
             echo "Set CFBundleVersion to $BUILD_NUMBER in $INFO_PLIST"
           else
             echo "Info.plist not found at $INFO_PLIST. Skipping bump."
           fi
 
-      - name: Fetch signing files & configure keychain
-        script: |
-          set -e
-          keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
-          keychain add-certificates
-          xcode-project use-profiles
-
       - name: Build IPA with Xcode
         script: |
           set -e
           if [ -d "ios/App/App.xcworkspace" ]; then
-            xcode-project build-ipa \
-              --workspace ios/App/App.xcworkspace \
-              --scheme "$IOS_SCHEME" \
-              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID CODE_SIGN_STYLE=Automatic" \
-              --export-method app-store
+            xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme "$IOS_SCHEME" --archive-flags "-destination generic/platform=iOS"
           elif [ -d "ios/App/App.xcodeproj" ]; then
-            xcode-project build-ipa \
-              --project ios/App/App.xcodeproj \
-              --scheme "$IOS_SCHEME" \
-              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID CODE_SIGN_STYLE=Automatic" \
-              --export-method app-store
+            xcode-project build-ipa --project ios/App/App.xcodeproj --scheme "$IOS_SCHEME" --archive-flags "-destination generic/platform=iOS"
           else
             echo "No Xcode project under ios/App/"
             exit 1
