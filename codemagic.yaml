@@ -16,7 +16,7 @@ workflows:
         - supabase
         - codesign
 
-    # 任意: CodemagicのIntegrationsで作成した表示名（なくてもOK）
+    # 任意（ある場合のみ有効）: Codemagic Integrations の表示名
     integrations:
       app_store_connect: "DogParkJP API Key"
 
@@ -59,15 +59,15 @@ workflows:
       - name: Fetch signing files & configure keychain
         script: |
           set -e
-          # App Store Connect から必要な証明書/プロビジョニングを取得（--integration は使いません）
+          # App Store Connect から証明書/プロビジョニングを取得（--integration は不要）
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create
           keychain initialize
-          # 取得したプロファイル/証明書をXcodeプロジェクトへ適用
+          # 取得したプロファイル/証明書をプロジェクトへ適用
           xcode-project use-profiles
 
-      - name: Build IPA with Xcode (export app-store)
+      - name: Build IPA with Xcode (export app-store, verbose logs)
         script: |
           set -e
           EXPORT_PLIST="$CM_BUILD_DIR/export_options.plist"
@@ -103,13 +103,17 @@ workflows:
               --workspace ios/App/App.xcworkspace \
               --scheme "$IOS_SCHEME" \
               --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID CODE_SIGN_STYLE=Manual" \
-              --export-options-plist "$EXPORT_PLIST"
+              --export-options-plist "$EXPORT_PLIST" \
+              --log-stream stdout \
+              --verbose
           else
             xcode-project build-ipa \
               --project ios/App/App.xcodeproj \
               --scheme "$IOS_SCHEME" \
               --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID CODE_SIGN_STYLE=Manual" \
-              --export-options-plist "$EXPORT_PLIST"
+              --export-options-plist "$EXPORT_PLIST" \
+              --log-stream stdout \
+              --verbose
           fi
 
     artifacts:
