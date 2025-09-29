@@ -16,7 +16,6 @@ workflows:
         - supabase
         - codesign
 
-    # 任意（ある場合のみ有効）: Codemagic Integrations の表示名
     integrations:
       app_store_connect: "DogParkJP API Key"
 
@@ -37,84 +36,94 @@ workflows:
           npx cap add ios || true
           npx cap sync ios
 
-      - name: CocoaPods install (safety)
+      - name: CocoaPods install
         script: |
           cd ios/App
           pod repo update || true
           pod install
           cd -
 
-      - name: Bump iOS build number (CFBundleVersion)
-        script: |
-          set -e
-          INFO_PLIST="ios/App/App/Info.plist"
-          if [ -f "$INFO_PLIST" ]; then
-            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$INFO_PLIST" \
-            || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $BUILD_NUMBER" "$INFO_PLIST"
-            echo "Set CFBundleVersion to $BUILD_NUMBER in $INFO_PLIST"
-          else
-            echo "Info.plist not found at $INFO_PLIST. Skipping bump."
-          fi
-
       - name: Fetch signing files & configure keychain
         script: |
           set -e
-          # App Store Connect から証明書/プロビジョニングを取得（--integration は不要）
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --create
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain initialize
-          # 取得したプロファイル/証明書をプロジェクトへ適用
           xcode-project use-profiles
 
-      - name: Build IPA with Xcode (export app-store, verbose logs)
+      - name: Build & Export with raw xcodebuild (print full errors)
         script: |
-          set -e
+          set -euo pipefail
+
           EXPORT_PLIST="$CM_BUILD_DIR/export_options.plist"
           cat > "$EXPORT_PLIST" <<'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>teamID</key>
-            <string>9HT7A6UF4K</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>signingCertificate</key>
-            <string>Apple Distribution</string>
+            <key>method</key><string>app-store</string>
+            <key>teamID</key><string>9HT7A6UF4K</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>signingCertificate</key><string>Apple Distribution</string>
             <key>provisioningProfiles</key>
             <dict>
               <key>com.dogparkjp.app</key>
               <string>DogParkJP ios_app_store 1758647685</string>
             </dict>
-            <key>uploadSymbols</key>
-            <true/>
-            <key>uploadBitcode</key>
-            <false/>
+            <key>uploadSymbols</key><true/>
+            <key>uploadBitcode</key><false/>
           </dict>
           </plist>
           EOF
-          echo "Export options plist created at: $EXPORT_PLIST"
+          echo "Export options: $EXPORT_PLIST"
 
-          if [ -d "ios/App/App.xcworkspace" ]; then
-            xcode-project build-ipa \
-              --workspace ios/App/App.xcworkspace \
-              --scheme "$IOS_SCHEME" \
-              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID CODE_SIGN_STYLE=Manual" \
-              --export-options-plist "$EXPORT_PLIST" \
-              --log-stream stdout \
-              --verbose
-          else
-            xcode-project build-ipa \
-              --project ios/App/App.xcodeproj \
-              --scheme "$IOS_SCHEME" \
-              --archive-flags "-destination generic/platform=iOS DEVELOPMENT_TEAM=$APPLE_TEAM_ID CODE_SIGN_STYLE=Manual" \
-              --export-options-plist "$EXPORT_PLIST" \
-              --log-stream stdout \
-              --verbose
+          ARCHIVE_PATH="$CM_BUILD_DIR/App.xcarchive"
+          IPA_DIR="$CM_BUILD_DIR/ipa"
+          mkdir -p "$IPA_DIR"
+
+          echo "== Clean =="
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme "$IOS_SCHEME" \
+            -configuration Release \
+            clean | tee "$CM_BUILD_DIR/clean.log"
+
+          echo "== Archive =="
+          set +e
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme "$IOS_SCHEME" \
+            -configuration Release \
+            -archivePath "$ARCHIVE_PATH" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            PROVISIONING_PROFILE_SPECIFIER="DogParkJP ios_app_store 1758647685" \
+            CODE_SIGN_STYLE=Manual \
+            "CODE_SIGN_IDENTITY=Apple Distribution" \
+            OTHER_CODE_SIGN_FLAGS="--keychain $CM_KEYCHAIN_PATH" \
+            archive | tee "$CM_BUILD_DIR/archive.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ $status -ne 0 ]; then
+            echo "---- tail archive.log (last 200 lines) ----"
+            tail -n 200 "$CM_BUILD_DIR/archive.log"
+            exit $status
           fi
+
+          echo "== Export =="
+          set +e
+          xcodebuild \
+            -exportArchive \
+            -archivePath "$ARCHIVE_PATH" \
+            -exportPath "$IPA_DIR" \
+            -exportOptionsPlist "$EXPORT_PLIST" | tee "$CM_BUILD_DIR/export.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ $status -ne 0 ]; then
+            echo "---- tail export.log (last 200 lines) ----"
+            tail -n 200 "$CM_BUILD_DIR/export.log"
+            exit $status
+          fi
+
+          echo "IPA output: $IPA_DIR"
 
     artifacts:
       - build/ios/ipa/*.ipa
