@@ -48,6 +48,8 @@ workflows:
           set -e
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain initialize
+          # 証明書(p12)をキーチェーンへ確実にインポート
+          keychain add-certificates
           xcode-project use-profiles
 
       - name: Build & Export with raw xcodebuild (print full errors)
