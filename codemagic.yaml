@@ -5,7 +5,7 @@ workflows:
     max_build_duration: 60
 
     environment:
-      xcode: 15.4
+      xcode: 16.0
       node: 20.11.1
       cocoapods: default
       vars:
@@ -35,7 +35,6 @@ workflows:
           else
             npm install --legacy-peer-deps
           fi
-          # OK時の挙動を踏襲（フロント失敗でも続行）
           npm run build || npx vite build || true
 
       - name: Ensure Capacitor iOS platform & sync
@@ -73,16 +72,10 @@ workflows:
             <key>method</key><string>app-store-connect</string>
             <key>teamID</key><string>9HT7A6UF4K</string>
             <key>signingStyle</key><string>manual</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>com.dogparkjp.app</key>
-              <string>DogParkJP ios_app_store 1758647685</string>
-            </dict>
             <key>uploadSymbols</key><true/>
           </dict>
           </plist>
           EOF
-          echo "Export options: $EXPORT_PLIST"
 
           ARCHIVE_PATH="$CM_BUILD_DIR/App.xcarchive"
           IPA_DIR="build/ios/ipa"
@@ -111,7 +104,6 @@ workflows:
           status=${PIPESTATUS[0]}
           set -e
           if [ $status -ne 0 ]; then
-            echo "---- tail archive.log (last 200 lines) ----"
             tail -n 200 "$CM_BUILD_DIR/archive.log"
             exit $status
           fi
@@ -126,7 +118,6 @@ workflows:
           status=${PIPESTATUS[0]}
           set -e
           if [ $status -ne 0 ]; then
-            echo "---- tail export.log (last 200 lines) ----"
             tail -n 200 "$CM_BUILD_DIR/export.log"
             exit $status
           fi
