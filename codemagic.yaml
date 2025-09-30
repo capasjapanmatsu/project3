@@ -23,21 +23,29 @@ workflows:
       cache_paths:
         - ~/.npm
         - ~/Library/Caches/CocoaPods
-        - ios/Pods
+        - ios/App/Pods
 
     scripts:
       - name: Install JS deps & build web
         script: |
-          npm ci --legacy-peer-deps
-          npm run build || npx vite build || true
+          set -e
+          if [ -f package-lock.json ]; then
+            npm ci --legacy-peer-deps
+          else
+            npm install --legacy-peer-deps
+          fi
+          # buildスクリプトがあれば実行、なければVite直接
+          npm run build || npx vite build
 
       - name: Ensure Capacitor iOS platform & sync
         script: |
+          set -e
           npx cap add ios || true
           npx cap sync ios
 
       - name: CocoaPods install
         script: |
+          set -e
           cd ios/App
           pod repo update || true
           pod install
@@ -48,11 +56,10 @@ workflows:
           set -e
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain initialize
-          # 証明書(p12)をキーチェーンへ確実にインポート
           keychain add-certificates
           xcode-project use-profiles
 
-      - name: Build & Export with raw xcodebuild (print full errors)
+      - name: Build & Export with xcodebuild
         script: |
           set -euo pipefail
 
@@ -65,12 +72,6 @@ workflows:
             <key>method</key><string>app-store</string>
             <key>teamID</key><string>9HT7A6UF4K</string>
             <key>signingStyle</key><string>manual</string>
-            <key>signingCertificate</key><string>Apple Distribution</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>com.dogparkjp.app</key>
-              <string>DogParkJP ios_app_store 1758647685</string>
-            </dict>
             <key>uploadSymbols</key><true/>
             <key>uploadBitcode</key><false/>
           </dict>
@@ -79,7 +80,7 @@ workflows:
           echo "Export options: $EXPORT_PLIST"
 
           ARCHIVE_PATH="$CM_BUILD_DIR/App.xcarchive"
-          IPA_DIR="$CM_BUILD_DIR/ipa"
+          IPA_DIR="build/ios/ipa"
           mkdir -p "$IPA_DIR"
 
           echo "== Clean =="
@@ -96,11 +97,8 @@ workflows:
             -scheme "$IOS_SCHEME" \
             -configuration Release \
             -archivePath "$ARCHIVE_PATH" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            PROVISIONING_PROFILE_SPECIFIER="DogParkJP ios_app_store 1758647685" \
-            CODE_SIGN_STYLE=Manual \
-            "CODE_SIGN_IDENTITY=Apple Distribution" \
-            ${CM_KEYCHAIN_PATH:+OTHER_CODE_SIGN_FLAGS="--keychain $CM_KEYCHAIN_PATH"} \
             archive | tee "$CM_BUILD_DIR/archive.log"
           status=${PIPESTATUS[0]}
           set -e
