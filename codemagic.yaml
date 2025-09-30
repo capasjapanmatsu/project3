@@ -58,71 +58,18 @@ workflows:
           keychain add-certificates
           xcode-project use-profiles
 
-      - name: Build & Export with xcodebuild
+      - name: Build IPA (app-store-connect)
         script: |
           set -euo pipefail
-
-          EXPORT_PLIST="$CM_BUILD_DIR/export_options.plist"
-          cat > "$EXPORT_PLIST" <<'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key><string>app-store</string>
-            <key>teamID</key><string>9HT7A6UF4K</string>
-            <key>signingStyle</key><string>manual</string>
-            <key>uploadSymbols</key><true/>
-            <key>uploadBitcode</key><false/>
-          </dict>
-          </plist>
-          EOF
-          echo "Export options: $EXPORT_PLIST"
-
-          ARCHIVE_PATH="$CM_BUILD_DIR/App.xcarchive"
           IPA_DIR="build/ios/ipa"
           mkdir -p "$IPA_DIR"
+          rm -rf ~/Library/Developer/Xcode/DerivedData/* || true
 
-          echo "== Clean =="
-          xcodebuild \
-            -workspace ios/App/App.xcworkspace \
-            -scheme "$IOS_SCHEME" \
-            -configuration Release \
-            clean | tee "$CM_BUILD_DIR/clean.log"
-
-          echo "== Archive =="
-          set +e
-          xcodebuild \
-            -workspace ios/App/App.xcworkspace \
-            -scheme "$IOS_SCHEME" \
-            -configuration Release \
-            -archivePath "$ARCHIVE_PATH" \
-            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            archive | tee "$CM_BUILD_DIR/archive.log"
-          status=${PIPESTATUS[0]}
-          set -e
-          if [ $status -ne 0 ]; then
-            echo "---- tail archive.log (last 200 lines) ----"
-            tail -n 200 "$CM_BUILD_DIR/archive.log"
-            exit $status
-          fi
-
-          echo "== Export =="
-          set +e
-          xcodebuild \
-            -exportArchive \
-            -archivePath "$ARCHIVE_PATH" \
-            -exportPath "$IPA_DIR" \
-            -exportOptionsPlist "$EXPORT_PLIST" | tee "$CM_BUILD_DIR/export.log"
-          status=${PIPESTATUS[0]}
-          set -e
-          if [ $status -ne 0 ]; then
-            echo "---- tail export.log (last 200 lines) ----"
-            tail -n 200 "$CM_BUILD_DIR/export.log"
-            exit $status
-          fi
-
-          echo "IPA output: $IPA_DIR"
+          xcode-project build-ipa \
+            --workspace ios/App/App.xcworkspace \
+            --scheme "$IOS_SCHEME" \
+            --archive-flags "CURRENT_PROJECT_VERSION=$BUILD_NUMBER DEVELOPMENT_TEAM=$APPLE_TEAM_ID" \
+            --export-method app-store-connect
 
     artifacts:
       - build/ios/ipa/*.ipa
