@@ -7,8 +7,8 @@ android {
         applicationId "com.dogparkjp.app"
         minSdkVersion 23
         targetSdkVersion 35
-        versionCode 3
-        versionName "1.0.2"
+        versionCode 5
+        versionName "1.0.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -26,18 +26,18 @@ android {
     // Packaging rules for assets/resources to avoid duplicate entries during merge
     packaging {
         resources {
-            // ignore pre-compressed files
+            // ignore pre-compressed files only (keep html entrypoints!)
             excludes += ["**/*.gz", "**/*.br"]
             // if duplicates still occur for site assets, pick the first occurrence
             pickFirsts += [
-                "**/*.html",
-                "**/*.css",
-                "**/*.js",
-                "**/*.map",
-                "**/*.svg",
-                "**/*.png",
-                "**/*.webp",
-                "**/*.json"
+                "assets/public/**/index.html",
+                "assets/public/**/404.html",
+                "assets/public/**/assets/css/*.css",
+                "assets/public/**/assets/js/*.js",
+                "assets/public/**/assets/js/*.map",
+                "assets/public/**/icons/*.svg",
+                "assets/public/**/images/*",
+                "assets/public/**/manifest.json"
             ]
         }
     }

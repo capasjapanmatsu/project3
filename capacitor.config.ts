@@ -4,9 +4,10 @@ const config: CapacitorConfig = {
   appId: 'com.dogparkjp.app',
   appName: 'ドッグパークJP',
   webDir: 'dist',
+  // Use default local scheme (http://localhost) for Capacitor's embedded server
   server: {
-    androidScheme: 'https',
-    iosScheme: 'https'
+    androidScheme: 'http',
+    iosScheme: 'http'
   },
   plugins: {
     SplashScreen: {
