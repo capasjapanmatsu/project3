@@ -34,7 +34,6 @@ workflows:
           else
             npm install --legacy-peer-deps
           fi
-          # buildスクリプトがあれば実行、なければVite直接
           npm run build || npx vite build
 
       - name: Ensure Capacitor iOS platform & sync
