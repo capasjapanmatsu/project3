@@ -1,18 +1,18 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.dogparkjp.app"
+    namespace "com.dogparkjp.app2"
     compileSdk 35
     defaultConfig {
-        applicationId "com.dogparkjp.app"
+        applicationId "com.dogparkjp.app2"
         minSdkVersion 23
         targetSdkVersion 35
-        versionCode 6
-        versionName "1.0.5"
+        versionCode 2
+        versionName "1.0.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-    aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+        aaptOptions {
+            // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+            // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~:!*#.html:!*#.css:!*#.js'
         }
 
@@ -30,14 +30,14 @@ android {
             excludes += ["**/*.gz", "**/*.br"]
             // if duplicates still occur for site assets, pick the first occurrence
             pickFirsts += [
-                "assets/public/**/index.html",
-                "assets/public/**/404.html",
-                "assets/public/**/assets/css/*.css",
-                "assets/public/**/assets/js/*.js",
-                "assets/public/**/assets/js/*.map",
-                "assets/public/**/icons/*.svg",
-                "assets/public/**/images/*",
-                "assets/public/**/manifest.json"
+                    "assets/public/**/index.html",
+                    "assets/public/**/404.html",
+                    "assets/public/**/assets/css/*.css",
+                    "assets/public/**/assets/js/*.js",
+                    "assets/public/**/assets/js/*.map",
+                    "assets/public/**/icons/*.svg",
+                    "assets/public/**/images/*",
+                    "assets/public/**/manifest.json"
             ]
         }
     }
