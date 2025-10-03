@@ -6,6 +6,10 @@
       <certificates src="user"/>
     </trust-anchors>
   </base-config>
+  <!-- Allow cleartext only for localhost to enable embedded dev server access -->
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="false">localhost</domain>
+  </domain-config>
 </network-security-config>
 
 

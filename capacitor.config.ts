@@ -1,13 +1,13 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.dogparkjp.app',
+  appId: 'com.dogparkjp.app2',
   appName: 'ドッグパークJP',
   webDir: 'dist',
   // Use HTTPS scheme for embedded server to avoid cleartext policy issues
   server: {
-    androidScheme: 'https',
-    iosScheme: 'https'
+    androidScheme: 'http',
+    iosScheme: 'http'
   },
   plugins: {
     SplashScreen: {
