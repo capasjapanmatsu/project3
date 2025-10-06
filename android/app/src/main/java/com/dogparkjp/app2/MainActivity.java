@@ -31,23 +31,7 @@ public class MainActivity extends BridgeActivity {
     // Allow http app content to load https resources
     settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
 
-    // Keep Stripe checkout inside the app (avoid external Chrome)
-    webView.setWebViewClient(
-      new WebViewClient() {
-        @Override
-        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-          Uri uri = request.getUrl();
-          if (uri != null) {
-            String scheme = uri.getScheme();
-            // Keep all http/https links inside the WebView (avoid external Chrome)
-            if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
-              return false;
-            }
-          }
-          return super.shouldOverrideUrlLoading(view, request);
-        }
-      }
-    );
+    // Keep default Capacitor WebViewClient to serve local assets correctly.
 
     // Handle target="_blank" / window.open by loading into the same WebView
     webView.setWebChromeClient(new WebChromeClient() {
