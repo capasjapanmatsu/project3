@@ -9,6 +9,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView.WebViewTransport;
+import android.webkit.CookieManager;
 import androidx.annotation.Nullable;
 import com.getcapacitor.BridgeActivity;
 
@@ -30,6 +31,11 @@ public class MainActivity extends BridgeActivity {
     settings.setSupportMultipleWindows(true);
     // Allow http app content to load https resources
     settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+
+    // Ensure cookies work for Stripe and other third-party domains
+    CookieManager cookieManager = CookieManager.getInstance();
+    cookieManager.setAcceptCookie(true);
+    cookieManager.setAcceptThirdPartyCookies(webView, true);
 
     // Keep default Capacitor WebViewClient to serve local assets correctly.
 

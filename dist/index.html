@@ -93,8 +93,8 @@
     script-src-elem 'self' 'unsafe-inline' https://js.stripe.com https://maps.googleapis.com https://maps.gstatic.com https://pagead2.googlesyndication.com https://securepubads.g.doubleclick.net https://www.googletagservices.com https://www.googletagmanager.com;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com data: blob:;
     style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com data: blob:;
-    font-src 'self' https://fonts.gstatic.com data: blob:;
-    img-src 'self' data: https: blob:;
+    font-src 'self' https://fonts.gstatic.com https://maps.gstatic.com data: blob:;
+    img-src 'self' data: https: blob: https://maps.gstatic.com;
     connect-src 'self' https: wss: https://api.stripe.com https://*.supabase.co https://maps.googleapis.com https://maps.gstatic.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://securepubads.g.doubleclick.net;
     frame-src https://js.stripe.com https://hooks.stripe.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com;
     object-src 'none';

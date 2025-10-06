@@ -13,11 +13,14 @@ const config: CapacitorConfig = {
       'https://buy.stripe.com',
       'https://payments.stripe.com',
       'https://api.stripe.com',
-      'https://hooks.stripe.com'
+      'https://hooks.stripe.com',
+      'https://dogparkjp.com',
+      'https://*.dogparkjp.com'
     ],
     captureLinks: [
       'https://checkout.stripe.com/*',
-      'https://buy.stripe.com/*'
+      'https://buy.stripe.com/*',
+      'https://dogparkjp.com/*'
     ]
   },
   plugins: {
