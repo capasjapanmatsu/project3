@@ -1,3 +1,4 @@
+import { App as CapacitorApp } from '@capacitor/app';
 import React, { Suspense, useEffect, useState } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -235,6 +236,26 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, user } = useAuth();
+
+  // Deep link/Universal link handling (Stripe success/cancel, etc.)
+  useEffect(() => {
+    const sub = CapacitorApp.addListener('appUrlOpen', ({ url }) => {
+      try {
+        const incoming = new URL(url);
+        // Accept only our domain
+        if (incoming.host === 'dogparkjp.com') {
+          const nextPath = `${incoming.pathname}${incoming.search}`;
+          navigate(nextPath, { replace: true });
+        }
+      } catch {
+        // ignore
+      }
+    });
+
+    return () => {
+      void sub.remove();
+    };
+  }, [navigate]);
   
   // スプラッシュ画面の制御（Hooksはコンポーネントの最上部で宣言）
   const [showSplash, setShowSplash] = useState(() => {

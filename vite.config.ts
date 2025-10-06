@@ -17,17 +17,21 @@ export default defineConfig({
       // 開発時のランタイムエラー表示強化
       jsxRuntime: 'automatic',
     }),
-    viteCompression({
-      algorithm: 'gzip',
-      ext: '.gz',
-      threshold: 1024,
-    }),
-    // 追加：Brotli圧縮（より高効率）
-    viteCompression({
-      algorithm: 'brotliCompress',
-      ext: '.br',
-      threshold: 1024,
-    }),
+    ...(process.env.WEB_COMPRESSION === 'true'
+      ? [
+          viteCompression({
+            algorithm: 'gzip',
+            ext: '.gz',
+            threshold: 1024,
+          }),
+          // 追加：Brotli圧縮（より高効率）
+          viteCompression({
+            algorithm: 'brotliCompress',
+            ext: '.br',
+            threshold: 1024,
+          }),
+        ]
+      : []),
     // カスタムプラグイン：ビルド時間監視
     {
       name: 'performance-monitor',

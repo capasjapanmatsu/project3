@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "dev:safe": "node scripts/start-dev-safe.cjs",
-    "build": "vite build",
+    "build": "cross-env WEB_COMPRESSION=false vite build",
+    "build:native": "cross-env WEB_COMPRESSION=false vite build",
+    "build:web": "cross-env WEB_COMPRESSION=true vite build",
     "build:unsafe": "vite build",
     "build:analyze": "ANALYZE=true vite build --config vite.config.optimized.ts",
     "build:optimized": "vite build --config vite.config.optimized.ts",
@@ -28,6 +30,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^7.4.2",
+    "@capacitor/app": "^7.0.1",
     "@capacitor/camera": "^7.0.1",
     "@capacitor/cli": "^7.4.2",
     "@capacitor/core": "^7.4.2",
@@ -81,6 +84,7 @@
     "autoprefixer": "^10.4.16",
     "babel-plugin-transform-remove-console": "^6.9.4",
     "babel-plugin-transform-remove-debugger": "^6.9.4",
+    "cross-env": "^10.1.0",
     "eslint": "^8.55.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.3",

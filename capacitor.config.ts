@@ -7,7 +7,18 @@ const config: CapacitorConfig = {
   // Use HTTPS scheme for embedded server to avoid cleartext policy issues
   server: {
     androidScheme: 'http',
-    iosScheme: 'http'
+    iosScheme: 'http',
+    allowNavigation: [
+      'https://checkout.stripe.com',
+      'https://buy.stripe.com',
+      'https://payments.stripe.com',
+      'https://api.stripe.com',
+      'https://hooks.stripe.com'
+    ],
+    captureLinks: [
+      'https://checkout.stripe.com/*',
+      'https://buy.stripe.com/*'
+    ]
   },
   plugins: {
     SplashScreen: {
