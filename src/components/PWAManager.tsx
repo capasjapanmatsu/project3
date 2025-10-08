@@ -212,7 +212,7 @@ const PWAManager: React.FC = () => {
   return (
     <>
       {/* PWA状態インジケーター */}
-      <div className="fixed bottom-4 right-4 z-50 space-y-2">
+      <div className="fixed bottom-4 right-4 z-[40] space-y-2 pointer-events-none" aria-hidden="true">
         {/* PWAインストール状態 */}
         {pwaStatus.isInstalled && (
           <motion.div
@@ -231,7 +231,7 @@ const PWAManager: React.FC = () => {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]"
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
@@ -296,7 +296,7 @@ const PWAManager: React.FC = () => {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]"
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}

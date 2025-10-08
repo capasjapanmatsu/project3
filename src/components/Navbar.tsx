@@ -296,7 +296,10 @@ export const Navbar = memo(function Navbar() {
         }
         `}
       </style>
-      <nav className="bg-white shadow-lg sticky top-0 z-50">
+      <nav
+        className="bg-white shadow-lg fixed top-0 left-0 right-0 z-[80] pb-1"
+        style={{ pointerEvents: 'auto', transform: 'translateZ(0)', willChange: 'transform' as any }}
+      >
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center h-16">
             <Link 
@@ -367,12 +370,12 @@ export const Navbar = memo(function Navbar() {
                   {/* 通知アイコン */}
                   <Link 
                     to="/community" 
-                    className="relative text-gray-600 hover:text-blue-600 transition-colors no-underline hover:no-underline"
+                    className="relative inline-flex items-center justify-center w-10 h-10 rounded-md text-gray-600 hover:text-blue-600 active:opacity-70 transition-colors no-underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-blue-500 z-[60]"
                     aria-label={`通知 ${unreadNotifications > 0 ? `${unreadNotifications}件の未読通知があります` : ''}`}
                   >
-                    <Bell className="h-5 w-5" aria-hidden="true" />
+                    <Bell className="h-5 w-5 pointer-events-none" aria-hidden="true" />
                     {unreadNotifications > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" aria-hidden="true">
+                      <span className="pointer-events-none absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" aria-hidden="true">
                         {unreadNotifications > 9 ? '9+' : unreadNotifications}
                       </span>
                     )}
@@ -381,12 +384,12 @@ export const Navbar = memo(function Navbar() {
                   {/* カートアイコン */}
                   <Link 
                     to="/petshop" 
-                    className="relative text-gray-600 hover:text-green-600 transition-colors no-underline hover:no-underline"
+                    className="relative inline-flex items-center justify-center w-10 h-10 rounded-md text-gray-600 hover:text-green-600 active:opacity-70 transition-colors no-underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-green-500 z-[60]"
                     aria-label={`カート ${cartItemCount > 0 ? `${cartItemCount}点の商品があります` : ''}`}
                   >
-                    <ShoppingCart className="h-5 w-5" aria-hidden="true" data-cart-target="true" />
+                    <ShoppingCart className="h-5 w-5 pointer-events-none" aria-hidden="true" data-cart-target="true" />
                     {cartItemCount > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center" aria-hidden="true">
+                      <span className="pointer-events-none absolute -top-2 -right-2 bg-red-500 text-white text-[10px] rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center" aria-hidden="true">
                         {cartItemCount > 9 ? '9+' : cartItemCount}
                       </span>
                     )}
@@ -438,14 +441,12 @@ export const Navbar = memo(function Navbar() {
                   
                   {/* ログアウトボタン（LIFFセッションも含めてログアウト） */}
                   <button
-                    onClick={() => {
-                      void handleLogout();
-                    }}
-                    className="flex items-center space-x-1 text-gray-600 hover:text-red-600 transition-colors"
+                    onClick={() => { void handleLogout(); }}
+                    className="inline-flex items-center justify-center w-10 h-10 rounded-md text-gray-600 hover:text-red-600 active:opacity-70 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 z-[60]"
                     aria-label="ログアウト"
                   >
-                    <LogOut className="h-4 w-4" aria-hidden="true" />
-                    <span className="hidden md:inline">ログアウト</span>
+                    <LogOut className="h-4 w-4 pointer-events-none" aria-hidden="true" />
+                    <span className="hidden md:inline ml-1">ログアウト</span>
                   </button>
                 </>
               ) : (

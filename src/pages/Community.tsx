@@ -70,6 +70,24 @@ export function Community() {
   const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
   const [shareComment, setShareComment] = useState('');
 
+  // 横パン禁止用（指を置いたまま左右に動かすときのページはみ出しを防止）
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const t = e.touches && e.touches[0];
+    if (t) touchStart.current = { x: t.clientX, y: t.clientY };
+  };
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!touchStart.current) return;
+    const t = e.touches && e.touches[0];
+    if (!t) return;
+    const dx = Math.abs(t.clientX - touchStart.current.x);
+    const dy = Math.abs(t.clientY - touchStart.current.y);
+    if (dx > dy) {
+      // 横方向のパン操作はキャンセル（上下スクロールは許可）
+      e.preventDefault();
+    }
+  };
+
   // 管理画面から遷移したときに即座にスレッドを開く（データ取得前でも仮スレッドを作ってモーダルを開く）
   useEffect(() => {
     const partnerId = openPartnerPreset;
@@ -689,7 +707,18 @@ export function Community() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div
+      className="max-w-6xl mx-auto w-full"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      style={{
+        paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
+        overscrollBehavior: 'none' as any,
+        touchAction: 'pan-y',
+        overflowX: 'clip',
+        position: 'relative'
+      }}
+    >
       <h1 className="text-2xl font-bold mb-8 flex items-center">
         <Users className="w-8 h-8 text-blue-600 mr-3" />
         コミュニティ
@@ -713,7 +742,7 @@ export function Community() {
         {/* メインコンテンツ */}
         <div className="lg:col-span-2">
           {/* タブナビゲーション */}
-          <div className="bg-white border-b mb-6 -mx-4 px-4 md:mx-0 md:px-0">
+          <div className="bg-white border-b mb-6 px-4 md:px-0">
             <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
             <button
               className={`px-2 py-3 font-medium relative flex flex-col items-center space-y-1 rounded-lg transition-colors ${
@@ -1504,6 +1533,7 @@ export function Community() {
           </Card>
         </div>
       </div>
+      {/* 余白は不要になったため削除 */}
     </div>
   );
 }

@@ -3,9 +3,9 @@ import { HelmetProvider } from 'react-helmet-async';
 import { useLocation } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 import { useMaintenance } from '../context/MaintenanceContext';
+import AIChatPortal from './AIChatPortal';
 import { BottomNavigation } from './BottomNavigation';
 import FloatingActionButton from './FloatingActionButton';
-import AIChatPortal from './AIChatPortal';
 import { Footer } from './Footer';
 import MaintenanceScreen from './MaintenanceScreen';
 import { Navbar } from './Navbar';
@@ -29,6 +29,26 @@ const Layout = ({ children }: LayoutProps) => {
     }
     window.scrollTo(0, 0);
   }, [location.pathname]);
+
+  // Enforce no-horizontal-scroll at document level (mobile browsers)
+  useEffect(() => {
+    const root = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflowX = root.style.overflowX;
+    const prevBodyOverflowX = body.style.overflowX;
+    const prevHtmlOverscroll = (root.style as any).overscrollBehaviorX;
+    const prevBodyOverscroll = (body.style as any).overscrollBehaviorX;
+    root.style.overflowX = 'hidden';
+    body.style.overflowX = 'hidden';
+    (root.style as any).overscrollBehaviorX = 'none';
+    (body.style as any).overscrollBehaviorX = 'none';
+    return () => {
+      root.style.overflowX = prevHtmlOverflowX;
+      body.style.overflowX = prevBodyOverflowX;
+      (root.style as any).overscrollBehaviorX = prevHtmlOverscroll;
+      (body.style as any).overscrollBehaviorX = prevBodyOverscroll;
+    };
+  }, []);
 
   // メンテナンス状態のチェック中は何も表示しない
   if (loading) {
@@ -67,10 +87,10 @@ const Layout = ({ children }: LayoutProps) => {
   
   return (
     <HelmetProvider>
-      <div className="min-h-screen bg-gray-50 flex flex-col relative">
+      <div className="min-h-screen bg-gray-50 flex flex-col relative" style={{overscrollBehaviorY:'none' as any}}>
         <SEO />
         <Navbar />
-        <main id="main-content" className="flex-1 container mx-auto px-4 py-8" tabIndex={-1}>
+        <main id="main-content" className="flex-1 container mx-auto px-4 py-8 pt-20" tabIndex={-1}>
           {children}
         </main>
         

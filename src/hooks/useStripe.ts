@@ -98,11 +98,10 @@ export function useStripe() {
         is_line_user: !!lineUser
       }));
 
-      // Stripeの成功/キャンセルURL: localhost時は本番ドメインにフォールバック（StripeのURL検証対策）
+      // 成功/キャンセルURL: 常に現在のオリジンへ戻す（Capacitorでは http://localhost を維持）
       const baseForStripe = successUrl && cancelUrl
         ? null
-        : (import.meta.env.VITE_PUBLIC_BASE_URL as string | undefined) ||
-          (window.location.hostname === 'localhost' ? 'https://dogparkjp.com' : window.location.origin);
+        : window.location.origin;
 
       const requestBody: Record<string, unknown> = {
         mode,

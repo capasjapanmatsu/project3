@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global scroll behavior to prevent elastic/bounce on Android WebView */
+html, body {
+  overscroll-behavior: none; /* stop scroll chaining & bounce */
+  overflow-x: hidden;        /* prevent horizontal jitter */
+  touch-action: pan-y;       /* only vertical panning */
+  height: 100%;
+}
+
+#root { min-height: 100%; }
+
 /* カスタムアニメーション */
 @keyframes progress-bar {
   from { width: 0%; }

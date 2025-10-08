@@ -1,5 +1,6 @@
 import { Home, Key, MapPin, User, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
@@ -85,6 +86,9 @@ export function BottomNavigation() {
     return activeTab.startsWith(path);
   };
   
+  // ページ別挙動（コミュニティのみ、下部の余白を広めに確保）
+  const isCommunityPage = location.pathname.startsWith('/community');
+  
   const navItems = [
     { path: '/', label: 'ホーム', icon: Home, badge: 0 },
     { path: '/parks', label: 'ドッグラン', icon: MapPin, badge: 0 },
@@ -93,9 +97,17 @@ export function BottomNavigation() {
     { path: '/dashboard', label: 'マイページ', icon: User, badge: 0 },
   ];
 
-  return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 md:hidden">
-      <div className="flex justify-around items-center h-16">
+  const navUI = (
+    <div
+      className="fixed left-0 right-0 z-[70] md:hidden"
+      style={{
+        bottom: 0,
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        transform: 'translateZ(0)',
+        pointerEvents: 'none'
+      }}
+    >
+      <div className="flex justify-around items-center h-16 bg-white border-t border-gray-200 pointer-events-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
@@ -122,8 +134,22 @@ export function BottomNavigation() {
         })}
       </div>
       
-      {/* Safe area for iOS devices */}
-      <div className="h-safe-bottom bg-white" />
+      {/* Safe area for iOS devices（コミュニティ以外は極小にしてアイコンを少し下げる）*/}
+      {/* no extra spacer inside the fixed bar; paddingBottom handles safe area */}
     </div>
   );
+
+  // Portal化して親要素のtransform/overflowの影響を受けないようにする
+  // Note: community jitter may be caused by page transforms; Portal keeps it viewport-based
+  if (typeof document !== 'undefined') {
+    const containerId = 'global-bottom-nav-root';
+    let container = document.getElementById(containerId);
+    if (!container) {
+      container = document.createElement('div');
+      container.id = containerId;
+      document.body.appendChild(container);
+    }
+    return createPortal(navUI, container);
+  }
+  return navUI;
 }

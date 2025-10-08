@@ -120,7 +120,7 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
 
   return (
     <section 
-      className="w-full mb-8 relative"
+      className="w-full mb-8 relative pt-2"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       aria-label="スポンサー募集カルーセル"

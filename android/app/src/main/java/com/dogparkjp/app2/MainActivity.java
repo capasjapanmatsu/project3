@@ -12,6 +12,8 @@ import android.webkit.WebView.WebViewTransport;
 import android.webkit.CookieManager;
 import androidx.annotation.Nullable;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebViewClient;
+import com.getcapacitor.Bridge;
 
 public class MainActivity extends BridgeActivity {
 
@@ -52,6 +54,20 @@ public class MainActivity extends BridgeActivity {
         transport.setWebView(view);
         resultMsg.sendToTarget();
         return true;
+      }
+    });
+
+    // Keep Capacitor's default behavior but force Stripe/dogpark links to stay in WebView
+    webView.setWebViewClient(new BridgeWebViewClient(getBridge()) {
+      @Override
+      public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+        Uri uri = request.getUrl();
+        String host = uri.getHost() != null ? uri.getHost() : "";
+        if (host.endsWith("stripe.com") || host.equals("dogparkjp.com") || host.endsWith(".dogparkjp.com")) {
+          // Allow WebView to handle navigation (stay in-app)
+          return false;
+        }
+        return super.shouldOverrideUrlLoading(view, request);
       }
     });
   }
