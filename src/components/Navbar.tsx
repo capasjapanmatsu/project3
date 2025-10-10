@@ -297,8 +297,13 @@ export const Navbar = memo(function Navbar() {
         `}
       </style>
       <nav
-        className="bg-white shadow-lg fixed top-0 left-0 right-0 z-[80] pb-1"
-        style={{ pointerEvents: 'auto', transform: 'translateZ(0)', willChange: 'transform' as any }}
+        className="bg-white shadow-lg fixed top-0 left-0 right-0 z-[80] pb-0"
+        style={{
+          pointerEvents: 'auto',
+          transform: 'translateZ(0)',
+          willChange: 'transform' as any,
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 6px)'
+        }}
       >
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center h-16">

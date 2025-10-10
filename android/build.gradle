@@ -26,19 +26,36 @@ task clean(type: Delete) {
 
 // Force Java toolchain/source level 17 for all Java compilation tasks
 subprojects { sub ->
+    // Use JDK 21 toolchain when requested by some modules (e.g., capacitor-android)
+    try {
+        sub.extensions.configure(org.gradle.api.plugins.JavaPluginExtension) { ext ->
+            ext.toolchain.languageVersion = JavaLanguageVersion.of(21)
+        }
+    } catch(Exception ignored) {}
     sub.plugins.withId('com.android.application') {
-        sub.android {
-            compileOptions {
-                sourceCompatibility JavaVersion.VERSION_17
-                targetCompatibility JavaVersion.VERSION_17
+        sub.afterEvaluate {
+            if (sub.hasProperty('android')) {
+                sub.android {
+                    compileOptions {
+                        sourceCompatibility JavaVersion.VERSION_17
+                        targetCompatibility JavaVersion.VERSION_17
+                    }
+                }
             }
         }
     }
     sub.plugins.withId('com.android.library') {
-        sub.android {
-            compileOptions {
-                sourceCompatibility JavaVersion.VERSION_17
-                targetCompatibility JavaVersion.VERSION_17
+        sub.afterEvaluate {
+            if (sub.hasProperty('android')) {
+                sub.android {
+                    compileOptions {
+                        sourceCompatibility JavaVersion.VERSION_17
+                        targetCompatibility JavaVersion.VERSION_17
+                    }
+                    try {
+                        kotlinOptions { jvmTarget = '17' }
+                    } catch(Exception ignored) {}
+                }
             }
         }
     }

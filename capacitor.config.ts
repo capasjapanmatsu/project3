@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.dogparkjp.app2',
+  appId: 'com.dogparkjp.app',
   appName: 'ドッグパークJP',
   webDir: 'dist',
   // Use HTTPS scheme for embedded server to avoid cleartext policy issues

@@ -60,7 +60,7 @@ workflows:
           keychain add-certificates
           xcode-project use-profiles
 
-      - name: Build & Export with xcodebuild (App Store Connect)
+      - name: Build & Export with xcodebuild (App Store)
         script: |
           set -euo pipefail
 
@@ -70,7 +70,7 @@ workflows:
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
-            <key>method</key><string>app-store-connect</string>
+            <key>method</key><string>app-store</string>
             <key>teamID</key><string>${APPLE_TEAM_ID}</string>
             <key>signingStyle</key><string>manual</string>
             <key>provisioningProfiles</key>
