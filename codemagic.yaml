@@ -131,6 +131,13 @@ workflows:
 
           echo "IPA output: $IPA_DIR"
 
+      - name: Upload IPA to App Store Connect (explicit)
+        script: |
+          set -euo pipefail
+          IPA_PATH=$(ls -t build/ios/ipa/*.ipa | head -n1)
+          echo "Uploading $IPA_PATH"
+          app-store-connect publish --path "$IPA_PATH" --verbose
+
     artifacts:
       - build/ios/ipa/*.ipa
       - ~/Library/Developer/Xcode/Archives/**/*
@@ -138,4 +145,4 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        submit_to_testflight: true
+        submit_to_testflight: false
