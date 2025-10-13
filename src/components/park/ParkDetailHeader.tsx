@@ -1,5 +1,6 @@
-import { PARK_PLACEHOLDER_SVG } from '../../utils/placeholders';
 import type { DogPark, Reservation } from '../../types';
+import { PARK_PLACEHOLDER_SVG } from '../../utils/placeholders';
+import BlurUpImage from '../BlurUpImage';
 
 interface ParkDetailHeaderProps {
   park: DogPark;
@@ -16,14 +17,23 @@ export function ParkDetailHeader({ park, parkImages, todayRentals, onImageClick 
       {/* ヘッダー画像 */}
       {parkImages.length > 0 && (
         <div className="relative h-64 rounded-lg overflow-hidden">
-          <img
+          {/* @ts-ignore */}
+          <BlurUpImage
             src={parkImages[0].url || PARK_PLACEHOLDER_SVG}
             alt={park.name}
             className="w-full h-full object-cover cursor-pointer"
-            onClick={() => onImageClick(0)}
+            width={1280}
+            height={720}
             onError={(e) => {
-              e.currentTarget.src = PARK_PLACEHOLDER_SVG;
+              (e.currentTarget as HTMLImageElement).setAttribute('src', PARK_PLACEHOLDER_SVG);
             }}
+            fill
+          />
+          <button
+            type="button"
+            className="absolute inset-0"
+            aria-label={`${park.name} の画像を拡大`}
+            onClick={() => onImageClick(0)}
           />
           <div className="absolute top-4 right-4">
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${status.color}`}>
