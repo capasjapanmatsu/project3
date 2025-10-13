@@ -199,19 +199,19 @@
   <!-- Critical path: Load app immediately -->
   <script type="module" src="/src/main.tsx"></script>
   
-  <!-- Service Worker registration -->
+  <!-- Non-critical: Service Worker registration (一時的に無効化) -->
   <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' })
-          .then(function(registration) {
-            console.log('SW registered: ', registration.scope);
-          })
-          .catch(function(err) {
-            console.log('SW registration failed: ', err);
-          });
-      });
-    }
+    // if ('serviceWorker' in navigator) {
+    //   window.addEventListener('load', function() {
+    //     navigator.serviceWorker.register('/sw.js')
+    //       .then(function(registration) {
+    //         console.log('SW registered: ', registration);
+    //       })
+    //       .catch(function(registrationError) {
+    //         console.log('SW registration failed: ', registrationError);
+    //       });
+    //   });
+    // }
   </script>
 </body>
 </html>

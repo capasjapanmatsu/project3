@@ -11,7 +11,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { log, safeSupabaseQuery } from '../utils/helpers';
-import { attachPrefetchHandlers } from '../utils/routePrefetcher';
 import { fetchSessionUser, logoutSession, type SessionUser } from '../utils/sessionClient';
 import { supabase } from '../utils/supabase';
 
@@ -312,7 +311,6 @@ export const Navbar = memo(function Navbar() {
               to="/" 
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer group no-underline hover:no-underline"
               aria-label="ドッグパークJP ホーム"
-              {...attachPrefetchHandlers('/')}
             >
               <div className="navbar-logo-icon">
                 <img
@@ -358,21 +356,18 @@ export const Navbar = memo(function Navbar() {
                   <Link 
                     to="/dashboard" 
                     className="text-gray-600 hover:text-blue-600 transition-colors hidden md:inline-block no-underline hover:no-underline"
-                    {...attachPrefetchHandlers('/dashboard')}
                   >
                     マイページ
                   </Link>
                   <Link 
                     to="/parks" 
                     className="text-gray-600 hover:text-blue-600 transition-colors hidden md:inline-block no-underline hover:no-underline"
-                    {...attachPrefetchHandlers('/parks')}
                   >
                     ドッグラン一覧
                   </Link>
                   <Link 
                     to="/petshop" 
                     className="text-gray-600 hover:text-green-600 transition-colors hidden md:inline-block no-underline hover:no-underline"
-                    {...attachPrefetchHandlers('/petshop')}
                   >
                     ペットショップ
                   </Link>
@@ -382,7 +377,6 @@ export const Navbar = memo(function Navbar() {
                     to="/community" 
                     className="relative inline-flex items-center justify-center w-10 h-10 rounded-md text-gray-600 hover:text-blue-600 active:opacity-70 transition-colors no-underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-blue-500 z-[60]"
                     aria-label={`通知 ${unreadNotifications > 0 ? `${unreadNotifications}件の未読通知があります` : ''}`}
-                    {...attachPrefetchHandlers('/community')}
                   >
                     <Bell className="h-5 w-5 pointer-events-none" aria-hidden="true" />
                     {unreadNotifications > 0 && (
@@ -397,7 +391,6 @@ export const Navbar = memo(function Navbar() {
                     to="/petshop" 
                     className="relative inline-flex items-center justify-center w-10 h-10 rounded-md text-gray-600 hover:text-green-600 active:opacity-70 transition-colors no-underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-green-500 z-[60]"
                     aria-label={`カート ${cartItemCount > 0 ? `${cartItemCount}点の商品があります` : ''}`}
-                    {...attachPrefetchHandlers('/petshop')}
                   >
                     <ShoppingCart className="h-5 w-5 pointer-events-none" aria-hidden="true" data-cart-target="true" />
                     {cartItemCount > 0 && (
@@ -445,7 +438,6 @@ export const Navbar = memo(function Navbar() {
                       to="/admin" 
                       className="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors no-underline hover:no-underline"
                       aria-label="管理者ページ"
-                      {...attachPrefetchHandlers('/admin')}
                     >
                       <Shield className="h-4 w-4" aria-hidden="true" />
                       <span className="hidden md:inline">管理者</span>

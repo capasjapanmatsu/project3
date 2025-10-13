@@ -1,24 +1,23 @@
 import {
-    Award,
-    Calendar,
-    Camera,
-    Coffee,
-    Dog,
-    Instagram,
-    Lock,
-    MapPin,
-    MessageCircle,
-    Search,
-    Shield,
-    Smartphone,
-    Star,
-    Twitter,
-    Users,
-    Zap
+  Award,
+  Calendar,
+  Camera,
+  Coffee,
+  Dog,
+  Instagram,
+  Lock,
+  MapPin,
+  MessageCircle,
+  Search,
+  Shield,
+  Smartphone,
+  Star,
+  Twitter,
+  Users,
+  Zap
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import BlurUpImage from '../components/BlurUpImage';
 import Button from '../components/Button';
 import '../index.css';
 
@@ -88,20 +87,18 @@ export default function Landing() {
 
       {/* ヒーローセクション（背景画像＋グラデーション） */}
       <section className="relative min-h-[70vh] md:min-h-[80vh] flex items-center justify-center overflow-hidden">
-        {/* LQIP ブラーアップ */}
-        <div className="absolute inset-0">
-          {/* @ts-ignore */}
-          <BlurUpImage
-            src="/images/splash-dog-running.webp"
-            alt="走るワンちゃん"
-            className={`object-cover transition-transform duration-[2500ms] ${heroReady ? 'scale-100' : 'scale-110'}`}
-            style={{ filter: 'brightness(0.7)' }}
-            width={1920}
-            height={1080}
-            sizes="100vw"
-            fill
-          />
-        </div>
+        <img
+          src="/images/splash-dog-running.webp"
+          alt="走るワンちゃん"
+          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-[2500ms] ${heroReady ? 'scale-100' : 'scale-110'}`}
+          style={{ filter: 'brightness(0.7)' }}
+          loading="eager"
+          decoding="async"
+          fetchpriority="high"
+          width={1920}
+          height={1080}
+          sizes="100vw"
+        />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-transparent" />
         <div className={`relative z-10 container mx-auto px-4 text-center max-w-4xl transition-all duration-700 ${heroReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
           <div className="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur rounded-full text-sm font-medium mb-4 text-white">
@@ -294,15 +291,16 @@ export default function Landing() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-white overflow-hidden shadow-lg rounded-xl">
               <div className="aspect-video relative bg-gray-200">
-                {/* @ts-ignore */}
-                <BlurUpImage
+                <img
                   src="/images/facility-dogrun.webp"
                   alt="スマートドッグラン"
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
                   width={1280}
                   height={720}
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).setAttribute('src', 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=400&h=300&fit=crop&crop=center');
+                    (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=400&h=300&fit=crop&crop=center';
                   }}
                 />
               </div>
@@ -319,15 +317,16 @@ export default function Landing() {
 
             <div className="bg-white overflow-hidden shadow-lg rounded-xl">
               <div className="aspect-video relative bg-gray-200">
-                {/* @ts-ignore */}
-                <BlurUpImage
+                <img
                   src="/images/facility-cafe.webp"
                   alt="ペット同伴カフェ"
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
                   width={1280}
                   height={720}
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).setAttribute('src', 'https://images.unsplash.com/photo-1581888227599-779811939961?w=400&h=300&fit=crop&crop=center');
+                    (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1581888227599-779811939961?w=400&h=300&fit=crop&crop=center';
                   }}
                 />
               </div>
@@ -344,15 +343,16 @@ export default function Landing() {
 
             <div className="bg-white overflow-hidden shadow-lg rounded-xl">
               <div className="aspect-video relative bg-gray-200">
-                {/* @ts-ignore */}
-                <BlurUpImage
+                <img
                   src="/images/facility-hotel.webp"
                   alt="ペットホテル"
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
                   width={1280}
                   height={720}
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).setAttribute('src', 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=300&fit=crop&crop=center');
+                    (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=300&fit=crop&crop=center';
                   }}
                 />
               </div>
@@ -369,15 +369,16 @@ export default function Landing() {
 
             <div className="bg-white overflow-hidden shadow-lg rounded-xl">
               <div className="aspect-video relative bg-gray-200">
-                {/* @ts-ignore */}
-                <BlurUpImage
+                <img
                   src="/images/facility-training.webp"
                   alt="ドッグトレーニング"
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
                   width={1280}
                   height={720}
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).setAttribute('src', 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop&crop=center');
+                    (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop&crop=center';
                   }}
                 />
               </div>
@@ -510,30 +511,6 @@ export default function Landing() {
                 愛犬と飼い主さんの笑顔のために。<br />
                 全国の愛犬家コミュニティプラットフォーム。
               </p>
-
-              {/* ストアQRコード */}
-              <div className="mt-5">
-                <h5 className="font-semibold text-sm mb-2 text-white">アプリダウンロード</h5>
-                <div className="flex items-center gap-4">
-                  <a
-                    href="https://play.google.com/store/apps/details?id=com.dogparkjp.app2"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block"
-                    aria-label="Google Play で入手"
-                    title="Google Play で入手"
-                  >
-                    <img
-                      src="/qr/google-play-qr-300.png"
-                      alt="Google Play QRコード"
-                      className="w-28 h-28 rounded bg-white p-1"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </a>
-                </div>
-                <p className="text-xs text-gray-400 mt-2">スマホでQRを読み取ってインストール</p>
-              </div>
             </div>
             
             <div>
