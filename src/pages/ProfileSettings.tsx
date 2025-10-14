@@ -968,7 +968,7 @@ export function ProfileSettings() {
                     try {
                       if (!hasLineSession) {
                         setLinking(false);
-                        window.location.assign('/liff/login?redirect=/profile-settings');
+                        window.location.assign('/login?redirect=/profile-settings');
                         return;
                       }
                       const res = await fetch('/line/unlink-user', {
@@ -1007,7 +1007,7 @@ export function ProfileSettings() {
                         // LINEセッションが無い場合は LIFF ログインへ誘導し、戻ってきたら再実行してもらう
                         setLinking(false);
                         setError('LINEログインの同意が必要です。画面の案内に従って再度お試しください。');
-                        window.location.assign('/liff/login?redirect=/profile-settings');
+                        window.location.assign('/login?redirect=/profile-settings');
                         return;
                       }
                       if (!res.ok) throw new Error(await res.text());

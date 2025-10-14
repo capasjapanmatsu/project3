@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Loader } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import { createContext, useContext, useEffect, useState } from 'react';
 
 // Google Maps API の簡単な型定義
@@ -55,7 +56,7 @@ export function GoogleMapsProvider({
     const initializeGoogleMaps = async () => {
       try {
         // APIキーの確認
-        const isCapacitor = typeof window !== 'undefined' && window.location?.protocol === 'capacitor:';
+        const isCapacitor = Capacitor.isNativePlatform() || (typeof window !== 'undefined' && (window as any).Capacitor !== undefined) || (typeof window !== 'undefined' && window.location?.protocol === 'capacitor:');
         const key = apiKey 
           || (isCapacitor ? (import.meta.env.VITE_GOOGLE_MAPS_API_KEY_MOBILE || import.meta.env.VITE_GOOGLE_MAPS_API_KEY) 
                            : import.meta.env.VITE_GOOGLE_MAPS_API_KEY);

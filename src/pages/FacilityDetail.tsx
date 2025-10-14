@@ -303,7 +303,7 @@ export function FacilityDetail() {
 
   const handleObtainCoupon = async (couponId: string) => {
     if (!user) {
-      navigate('/liff/login');
+      navigate('/login');
       return;
     }
 
@@ -751,7 +751,7 @@ export function FacilityDetail() {
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                   <Button
                     onClick={async () => {
-                      if (!user) { navigate('/liff/login'); return; }
+                      if (!user) { navigate('/login'); return; }
                       try {
                         // 施設のオーナーID取得
                         const { data: owner } = await supabase

@@ -69,7 +69,7 @@ export function ParkReservation() {
 
   useEffect(() => {
     if (!user && !effectiveUserId) {
-    navigate('/liff/login');
+      navigate('/login');
       return;
     }
 

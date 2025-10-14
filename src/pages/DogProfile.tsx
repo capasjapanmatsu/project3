@@ -377,7 +377,7 @@ export function DogProfile() {
                        <span className="text-lg font-medium text-gray-700">{likeCount}件のいいね</span>
                      </div>
                      <button
-                      onClick={user ? handleLike : () => navigate('/liff/login?redirect=' + location.pathname)}
+                      onClick={user ? handleLike : () => navigate('/login?redirect=' + location.pathname)}
                        disabled={isLikeLoading}
                        className={`px-6 py-3 rounded-lg font-medium shadow-md transition-all transform hover:scale-105 flex items-center ${
                          isLiked 

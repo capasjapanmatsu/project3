@@ -818,7 +818,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                         localStorage.setItem('skipSplashOnce', '1');
                         localStorage.setItem('hasSeenSplash', 'true');
                       } catch {}
-                      window.location.assign('/liff/login');
+                      window.location.assign('/login');
                     }}
                     className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md transition-all flex items-center justify-center"
                     aria-label="LINEでログイン（スプラッシュをスキップ）"

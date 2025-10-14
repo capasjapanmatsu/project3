@@ -443,7 +443,7 @@ export function MyParksManagement() {
                 className="bg-blue-600 hover:bg-blue-700"
                 disabled={sending || !inquiryText.trim()}
                 onClick={async () => {
-                  if (!user) { navigate('/liff/login'); return; }
+                  if (!user) { navigate('/login'); return; }
                   setSending(true);
                   try {
                     const { data: admin } = await supabase

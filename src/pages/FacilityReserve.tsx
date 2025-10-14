@@ -105,7 +105,7 @@ export default function FacilityReserve() {
   }, [slots, date, isClosedDay]);
 
   const handleReserve = async () => {
-    if (!user) { navigate('/liff/login'); return; }
+    if (!user) { navigate('/login'); return; }
     if (isClosedDay) { alert('本日は定休日のため予約できません'); return; }
     if (!slot) { alert('時間を選択してください'); return; }
     if (!customerName.trim()) { alert('予約者名を入力してください'); return; }

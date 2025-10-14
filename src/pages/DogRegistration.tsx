@@ -140,7 +140,7 @@ export function DogRegistration() {
       } else if (resp.status === 401 || resp.status === 500) {
         // セッション不整合時はLIFFログインへ誘導してCookieを再発行
         try {
-          const redirect = `/liff/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+          const redirect = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
           window.location.assign(redirect);
         } catch {}
       }

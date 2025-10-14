@@ -12,8 +12,7 @@ interface Props {
  */
 export const LineLoginButton: React.FC<Props> = ({ full = false }) => {
   const handleClick = () => {
-    // Send to LIFF login in the same window so the session cookie is set for this browser
-    window.location.assign('/liff/login');
+    window.location.assign('/login');
   };
 
   return (

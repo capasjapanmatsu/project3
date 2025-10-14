@@ -28,7 +28,7 @@ export default function Inquiry() {
 
   useEffect(() => {
     if (!user && !lineUser && !effectiveUserId) {
-      navigate('/liff/login');
+      navigate('/login');
     }
   }, [user, lineUser, effectiveUserId, navigate]);
 

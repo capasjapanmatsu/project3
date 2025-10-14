@@ -258,7 +258,14 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       if (data?.url) {
         try {
-          const isCapacitor = (window as any)?.Capacitor?.isNativePlatform?.() || window.location.protocol === 'capacitor:';
+          const isCapacitor = (() => {
+            try {
+              const { Capacitor } = require('@capacitor/core');
+              return Capacitor.isNativePlatform();
+            } catch {
+              return (window as any)?.Capacitor !== undefined || window.location.protocol === 'capacitor:';
+            }
+          })();
           if (isCapacitor) {
             const { Browser } = await import('@capacitor/browser');
             await Browser.open({ url: data.url, presentationStyle: 'popover' });
@@ -291,7 +298,14 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       if (data?.url) {
         try {
-          const isCapacitor = (window as any)?.Capacitor?.isNativePlatform?.() || window.location.protocol === 'capacitor:';
+          const isCapacitor = (() => {
+            try {
+              const { Capacitor } = require('@capacitor/core');
+              return Capacitor.isNativePlatform();
+            } catch {
+              return (window as any)?.Capacitor !== undefined || window.location.protocol === 'capacitor:';
+            }
+          })();
           if (isCapacitor) {
             const { Browser } = await import('@capacitor/browser');
             await Browser.open({ url: data.url, presentationStyle: 'popover' });
