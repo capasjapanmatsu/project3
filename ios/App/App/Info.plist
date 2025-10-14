@@ -48,5 +48,13 @@
 	<!-- 明示的に暗号化を使用しないことを宣言（App Store Connect の処理高速化） -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+
+	<!-- Protected resources purpose strings (required by Apple) -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>近くのドッグランを表示し、地図上で現在地を利用するために位置情報を使用します。</string>
+	<key>NSCameraUsageDescription</key>
+	<string>写真を撮影してフォトギャラリーやプロフィールにアップロードするためにカメラを使用します。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>フォトライブラリから写真を選択してアップロードするためにアクセスします。</string>
 </dict>
 </plist>
