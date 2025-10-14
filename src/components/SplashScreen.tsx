@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 import { logger } from '../utils/logger';
+import { queryClient } from '../utils/queryClient';
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -269,7 +270,32 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       // 事前にprefetchリンク（ブラウザに任せる）
       ['/login'].forEach((p) => prefetchLink(p));
 
-      const tasks = [...routeTasks, ...componentTasks, ...imageTasks];
+      // API先読み（安全な軽量クエリのみ）
+      const apiTasks: { name: string; loader: () => Promise<unknown> }[] = [
+        {
+          name: 'PrefetchFacilities',
+          loader: async () => {
+            const key = ['facilities'];
+            if (!queryClient.getQueryData(key)) {
+              // 失敗してもUXを阻害しない
+              try {
+                const mod = await import('../hooks/useFacilityQueries');
+                // fetch関数を直接呼び出せないため、クエリ関数を再定義
+                const { supabase } = await import('../utils/supabase');
+                const { data, error } = await supabase
+                  .from('pet_facilities')
+                  .select('*')
+                  .limit(20);
+                if (!error && data) {
+                  queryClient.setQueryData(key, data);
+                }
+              } catch {}
+            }
+          },
+        },
+      ];
+
+      const tasks = [...routeTasks, ...componentTasks, ...imageTasks, ...apiTasks];
       setLoadingTasks(tasks.map((t) => t.name));
 
       let lastPercent = 0;

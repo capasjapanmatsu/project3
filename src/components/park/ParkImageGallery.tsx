@@ -1,5 +1,5 @@
-import React from 'react';
 import { PARK_PLACEHOLDER_SVG } from '../../utils/placeholders';
+import BlurUpImage from '../BlurUpImage';
 
 interface ParkImageGalleryProps {
   parkImages: { id: string; url: string; caption?: string }[];
@@ -19,12 +19,15 @@ export function ParkImageGallery({ parkImages, onImageClick }: ParkImageGalleryP
           className="h-20 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
           onClick={() => onImageClick(index + 1)}
         >
-          <img
+          {/* @ts-ignore */}
+          <BlurUpImage
             src={image.url || PARK_PLACEHOLDER_SVG}
             alt={image.caption || `画像 ${index + 2}`}
             className="w-full h-full object-cover"
+            width={320}
+            height={180}
             onError={(e) => {
-              e.currentTarget.src = PARK_PLACEHOLDER_SVG;
+              (e.currentTarget as HTMLImageElement).setAttribute('src', PARK_PLACEHOLDER_SVG);
             }}
           />
         </div>
@@ -37,11 +40,14 @@ export function ParkImageGallery({ parkImages, onImageClick }: ParkImageGalleryP
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
             <span className="text-white font-medium">+{parkImages.length - 6}</span>
           </div>
-          <img
+          {/* @ts-ignore */}
+          <BlurUpImage
             src={parkImages[6].url || PARK_PLACEHOLDER_SVG}
             alt={`その他の画像`}
             className="w-full h-full object-cover opacity-60"
-            onError={(e) => { e.currentTarget.src = PARK_PLACEHOLDER_SVG; }}
+            width={320}
+            height={180}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).setAttribute('src', PARK_PLACEHOLDER_SVG); }}
           />
         </div>
       )}
