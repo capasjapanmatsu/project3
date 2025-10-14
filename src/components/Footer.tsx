@@ -5,6 +5,7 @@ import useAuth from '../context/AuthContext';
 export function Footer() {
   const { isAuthenticated } = useAuth();
   const currentYear = new Date().getFullYear();
+  const isStandalone = typeof window !== 'undefined' && (window.matchMedia?.('(display-mode: standalone)').matches || (navigator as any).standalone);
   
   return (
     <footer className="bg-gray-900 text-white py-16 pb-28 md:pb-16">
@@ -31,6 +32,43 @@ export function Footer() {
                 公式LINEに登録
               </a>
             </div>
+
+            {/* ブラウザ閲覧時のみアプリ誘導（iOS未完成でも表示可） */}
+            {!isStandalone && (
+              <div className="mt-5 p-4 rounded-lg bg-gray-800/60 border border-gray-700">
+                <h4 className="font-semibold text-sm mb-2">アプリでもっと快適に</h4>
+                <div className="flex items-center gap-4">
+                  <a
+                    href="https://play.google.com/store/apps/details?id=com.dogparkjp.app2"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                    aria-label="Google Play で入手"
+                    title="Google Play で入手"
+                  >
+                    <img
+                      src="/qr/google-play-qr-300.png"
+                      alt="Google Play QRコード"
+                      className="w-24 h-24 rounded bg-white p-1"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </a>
+                  <div className="text-xs text-gray-300">
+                    <p className="mb-1">スマホでQRを読み取ってインストール</p>
+                    <a
+                      href="https://play.google.com/store/apps/details?id=com.dogparkjp.app2"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-1 underline text-blue-300 hover:text-blue-200"
+                    >
+                      Google Playで開く
+                    </a>
+                    <p className="mt-2 opacity-80">iOS版は準備中です</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Navigation Links */}
