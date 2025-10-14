@@ -2,6 +2,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { SessionUser, fetchSessionUser } from '../utils/sessionClient';
 import { supabase } from '../utils/supabase';
+import isCapacitorNative from '../utils/isCapacitorNative';
 
 interface UserProfile {
   id: string;
@@ -258,15 +259,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       if (data?.url) {
         try {
-          const isCapacitor = (() => {
-            try {
-              const { Capacitor } = require('@capacitor/core');
-              return Capacitor.isNativePlatform();
-            } catch {
-              return (window as any)?.Capacitor !== undefined || window.location.protocol === 'capacitor:';
-            }
-          })();
-          if (isCapacitor) {
+          if (isCapacitorNative()) {
             const { Browser } = await import('@capacitor/browser');
             await Browser.open({ url: data.url, presentationStyle: 'popover' });
           } else {
@@ -298,15 +291,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       if (data?.url) {
         try {
-          const isCapacitor = (() => {
-            try {
-              const { Capacitor } = require('@capacitor/core');
-              return Capacitor.isNativePlatform();
-            } catch {
-              return (window as any)?.Capacitor !== undefined || window.location.protocol === 'capacitor:';
-            }
-          })();
-          if (isCapacitor) {
+          if (isCapacitorNative()) {
             const { Browser } = await import('@capacitor/browser');
             await Browser.open({ url: data.url, presentationStyle: 'popover' });
           } else {

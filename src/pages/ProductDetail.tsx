@@ -21,6 +21,7 @@ import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import type { CartItem, Product } from '../types';
 import { logger } from '../utils/logger';
+import isCapacitorNative from '../utils/isCapacitorNative';
 import { notify } from '../utils/notification';
 import { supabase } from '../utils/supabase';
 
@@ -300,15 +301,7 @@ export function ProductDetail() {
       if (!resp.ok) throw new Error(data.error || '定期購入の開始に失敗しました');
       if (data.url) {
         try {
-          const isCapacitor = (() => {
-            try {
-              const { Capacitor } = require('@capacitor/core');
-              return Capacitor.isNativePlatform();
-            } catch {
-              return (window as any)?.Capacitor !== undefined || window.location.protocol === 'capacitor:';
-            }
-          })();
-          if (isCapacitor) {
+          if (isCapacitorNative()) {
             const { Browser } = await import('@capacitor/browser');
             await Browser.open({ url: data.url, presentationStyle: 'popover' });
           } else {

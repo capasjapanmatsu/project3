@@ -2,6 +2,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { useCallback, useState } from 'react';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
+import isCapacitorNative from '../utils/isCapacitorNative';
 
 interface CheckoutParams {
   priceId?: string;
@@ -160,15 +161,7 @@ export function useStripe() {
       
       if (url) {
         try {
-          const isCapacitor = (() => {
-            try {
-              const { Capacitor } = require('@capacitor/core');
-              return Capacitor.isNativePlatform();
-            } catch {
-              return (window as any)?.Capacitor !== undefined || window.location.protocol === 'capacitor:';
-            }
-          })();
-          if (isCapacitor) {
+          if (isCapacitorNative()) {
             const { Browser } = await import('@capacitor/browser');
             await Browser.open({ url, presentationStyle: 'popover' });
           } else {

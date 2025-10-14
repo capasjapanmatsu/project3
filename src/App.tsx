@@ -216,8 +216,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         <div className="min-h-screen bg-gray-50 flex flex-col">
             <SEO />
             <Navbar />
-            {/* Fixed Navbar の下にスペーサーを入れて、最上部のバナーが隠れないようにする（少し余裕を追加） */}
-            <div aria-hidden="true" style={{ height: 'calc(72px + env(safe-area-inset-top, 0px))' }} />
+            {/* Fixed Navbar の下にスペーサーを入れて、最上部のバナーが隠れないようにする（さらに余裕を追加） */}
+            <div aria-hidden="true" style={{ height: 'calc(84px + env(safe-area-inset-top, 0px))' }} />
             <main className="flex-1">
               {children}
             </main>
@@ -336,6 +336,8 @@ const App: React.FC = () => {
                 />
               </Suspense>
               <Routes>
+              {/* 互換: /liff/login を /login にリダイレクト（外部から古いURLで来た場合の404回避） */}
+              <Route path="/liff/login" element={<Navigate to="/login" replace />} />
               {/* 🏠 公開ページ（高速表示） */}
               <Route path="/" element={
                 <Suspense fallback={<PageSkeleton />}>

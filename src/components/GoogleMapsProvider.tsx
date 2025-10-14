@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Capacitor } from '@capacitor/core';
+import isCapacitorNative from '../utils/isCapacitorNative';
 import { Loader } from 'lucide-react';
 import { createContext, useContext, useEffect, useState } from 'react';
 
@@ -56,7 +57,7 @@ export function GoogleMapsProvider({
     const initializeGoogleMaps = async () => {
       try {
         // APIキーの確認
-        const isCapacitor = Capacitor.isNativePlatform() || (typeof window !== 'undefined' && (window as any).Capacitor !== undefined) || (typeof window !== 'undefined' && window.location?.protocol === 'capacitor:');
+        const isCapacitor = isCapacitorNative();
         const key = apiKey 
           || (isCapacitor ? (import.meta.env.VITE_GOOGLE_MAPS_API_KEY_MOBILE || import.meta.env.VITE_GOOGLE_MAPS_API_KEY) 
                            : import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
@@ -122,7 +123,7 @@ export function GoogleMapsProvider({
         // Google Maps API スクリプトを動的に読み込み
         const script = document.createElement('script');
         const librariesParam = libraries.length > 0 ? `&libraries=${libraries.join(',')}` : '';
-        const scriptUrl = `https://maps.googleapis.com/maps/api/js?key=${key}${librariesParam}`;
+        let scriptUrl = `https://maps.googleapis.com/maps/api/js?key=${key}${librariesParam}`;
         script.src = scriptUrl;
         script.async = true;
         script.defer = true;
@@ -153,6 +154,42 @@ export function GoogleMapsProvider({
           script.onerror = (event) => {
             console.error('Google Maps スクリプト読み込みエラー:', event);
             (window as any)._googleMapsLoading = false;
+            // フォールバック: モバイル/共通キーの切替を再試行
+            try {
+              const fallbackKey = isCapacitor
+                ? import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
+                : (import.meta.env.VITE_GOOGLE_MAPS_API_KEY_MOBILE || '');
+              if (fallbackKey && fallbackKey !== key) {
+                console.warn('Google Maps フォールバックキーで再試行');
+                const fallbackScript = document.createElement('script');
+                const fallbackUrl = `https://maps.googleapis.com/maps/api/js?key=${fallbackKey}${librariesParam}`;
+                fallbackScript.src = fallbackUrl;
+                fallbackScript.async = true;
+                fallbackScript.defer = true;
+                fallbackScript.onload = () => {
+                  (window as any)._googleMapsLoading = false;
+                  if (window.google?.maps) {
+                    setGoogleInstance(window.google);
+                    setIsLoaded(true);
+                    setIsLoading(false);
+                    resolve();
+                  } else {
+                    const errorMsg = 'Google Maps APIの初期化に失敗しました（フォールバック）';
+                    setError(errorMsg);
+                    setIsLoading(false);
+                    reject(new Error(errorMsg));
+                  }
+                };
+                fallbackScript.onerror = () => {
+                  const errorMsg = 'Google Maps API の読み込みに失敗しました（フォールバックも失敗）';
+                  setError(errorMsg);
+                  setIsLoading(false);
+                  reject(new Error(errorMsg));
+                };
+                document.head.appendChild(fallbackScript);
+                return;
+              }
+            } catch {}
             const errorMsg = 'Google Maps API の読み込みに失敗しました - ネットワークエラーまたはAPIキーが無効です';
             setError(errorMsg);
             setIsLoading(false);
