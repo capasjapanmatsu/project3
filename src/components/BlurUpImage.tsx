@@ -38,7 +38,7 @@ export const BlurUpImage: React.FC<Props> = ({
   const baseClasses = fill ? 'absolute inset-0 w-full h-full object-cover' : '';
 
   return (
-    <div className={`relative ${fill ? '' : ''}`} style={style}>
+    <div className={`relative ${fill ? 'block w-full h-full' : ''}`} style={style}>
       {/* placeholder */}
       <img
         src={placeholder}
