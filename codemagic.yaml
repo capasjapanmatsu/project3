@@ -64,6 +64,12 @@ workflows:
         script: |
           set -euo pipefail
 
+          # Ensure BUILD_NUMBER monotonically increases to avoid Redundant Binary Upload
+          if [ -z "${BUILD_NUMBER:-}" ]; then
+            BUILD_NUMBER=$(date +%Y%m%d%H%M)
+          fi
+          echo "Using BUILD_NUMBER=$BUILD_NUMBER"
+
           EXPORT_PLIST="$CM_BUILD_DIR/export_options.plist"
           cat > "$EXPORT_PLIST" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
