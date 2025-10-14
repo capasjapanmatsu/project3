@@ -249,16 +249,26 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
-          queryParams: {
-            // 追加のスコープが必要ならここに指定
-          },
+          skipBrowserRedirect: true,
         },
       });
       if (error) {
         console.error('Google sign in error:', error);
         return { success: false, error: error.message };
       }
-      // OAuthは外部リダイレクトされるため、ここでは結果を待たず成功を返す
+      if (data?.url) {
+        try {
+          const isCapacitor = (window as any)?.Capacitor?.isNativePlatform?.() || window.location.protocol === 'capacitor:';
+          if (isCapacitor) {
+            const { Browser } = await import('@capacitor/browser');
+            await Browser.open({ url: data.url, presentationStyle: 'popover' });
+          } else {
+            window.location.href = data.url;
+          }
+        } catch (_) {
+          window.location.href = data.url as string;
+        }
+      }
       return { success: true };
     } catch (error) {
       console.error('Google sign in exception:', error);
@@ -272,11 +282,25 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         provider: 'twitter',
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
+          skipBrowserRedirect: true,
         },
       });
       if (error) {
         console.error('Twitter sign in error:', error);
         return { success: false, error: error.message };
+      }
+      if (data?.url) {
+        try {
+          const isCapacitor = (window as any)?.Capacitor?.isNativePlatform?.() || window.location.protocol === 'capacitor:';
+          if (isCapacitor) {
+            const { Browser } = await import('@capacitor/browser');
+            await Browser.open({ url: data.url, presentationStyle: 'popover' });
+          } else {
+            window.location.href = data.url;
+          }
+        } catch (_) {
+          window.location.href = data.url as string;
+        }
       }
       return { success: true };
     } catch (error) {
