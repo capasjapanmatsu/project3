@@ -120,7 +120,7 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
 
   return (
     <section 
-      className="w-full mb-8 relative pt-2"
+      className="w-full mb-8 relative pt-2 marquee-allow"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       aria-label="スポンサー募集カルーセル"
@@ -166,7 +166,7 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
             return (
               <div
                 key={`${banner.id}-${index}`}
-                className={`absolute transition-all duration-700 ease-in-out cursor-pointer ${
+                className={`absolute transition-all duration-700 ease-in-out cursor-pointer marquee-allow ${
                   isCenter ? 'w-[28rem] h-28' : isAdjacent ? 'w-96 h-24' : 'w-[28rem] h-28'
                 }`}
                 style={{

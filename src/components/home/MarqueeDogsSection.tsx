@@ -35,7 +35,7 @@ export const MarqueeDogsSection: React.FC<MarqueeDogsSectionProps> = React.memo(
         </div>
       </div>
       
-      <div className="overflow-hidden w-full relative" style={{height: 140}}>
+      <div className="overflow-hidden w-full relative marquee-allow" style={{height: 140}}>
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="flex items-center space-x-2">
@@ -45,12 +45,11 @@ export const MarqueeDogsSection: React.FC<MarqueeDogsSectionProps> = React.memo(
           </div>
         ) : hasRecentDogs ? (
           <div
-            className="flex items-center whitespace-nowrap"
+            className="flex items-center whitespace-nowrap marquee-allow"
             style={{
               width: 'max-content',
               animation: 'marquee 45s linear infinite',
-              willChange: 'transform',
-              transform: 'translateZ(0)', // GPUアクセラレーション
+              willChange: 'transform'
             }}
           >
             {duplicatedDogs.map((dog, index) => (
