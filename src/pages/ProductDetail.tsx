@@ -299,7 +299,17 @@ export function ProductDetail() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || '定期購入の開始に失敗しました');
       if (data.url) {
-        window.location.href = data.url;
+        try {
+          const isCapacitor = (window as any)?.Capacitor?.isNativePlatform?.() || window.location.protocol === 'capacitor:';
+          if (isCapacitor) {
+            const { Browser } = await import('@capacitor/browser');
+            await Browser.open({ url: data.url, presentationStyle: 'popover' });
+          } else {
+            window.location.href = data.url;
+          }
+        } catch (_) {
+          window.location.href = data.url;
+        }
       } else {
         notify.error('チェックアウトURLの取得に失敗しました');
       }

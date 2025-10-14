@@ -159,8 +159,17 @@ export function useStripe() {
       const { sessionId, url } = await response.json();
       
       if (url) {
-        // Redirect directly to the URL if provided
-        window.location.href = url;
+        try {
+          const isCapacitor = (window as any)?.Capacitor?.isNativePlatform?.() || window.location.protocol === 'capacitor:';
+          if (isCapacitor) {
+            const { Browser } = await import('@capacitor/browser');
+            await Browser.open({ url, presentationStyle: 'popover' });
+          } else {
+            window.location.href = url;
+          }
+        } catch (_) {
+          window.location.href = url;
+        }
         return;
       } else if (sessionId) {
         // Stripe.jsをロード

@@ -55,12 +55,17 @@ export function GoogleMapsProvider({
     const initializeGoogleMaps = async () => {
       try {
         // APIキーの確認
-        const key = apiKey || import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        const isCapacitor = typeof window !== 'undefined' && window.location?.protocol === 'capacitor:';
+        const key = apiKey 
+          || (isCapacitor ? (import.meta.env.VITE_GOOGLE_MAPS_API_KEY_MOBILE || import.meta.env.VITE_GOOGLE_MAPS_API_KEY) 
+                           : import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
         
         // デバッグ用ログ（本番環境でも表示）
         console.log('Google Maps 初期化開始:', {
           hasPropsApiKey: !!apiKey,
           hasEnvApiKey: !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+          hasMobileKey: !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY_MOBILE,
+          isCapacitor,
           finalKey: key ? `${key.substring(0, 6)}...` : 'なし',
           windowGoogle: !!window.google,
           windowGoogleMaps: !!window.google?.maps
