@@ -216,8 +216,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         <div className="min-h-screen bg-gray-50 flex flex-col">
             <SEO />
             <Navbar />
-            {/* Fixed Navbar の下にスペーサーを入れて、最上部のバナーが隠れないようにする */}
-            <div aria-hidden="true" style={{ height: 'calc(64px + env(safe-area-inset-top, 0px))' }} />
+            {/* Fixed Navbar の下にスペーサーを入れて、最上部のバナーが隠れないようにする（少し余裕を追加） */}
+            <div aria-hidden="true" style={{ height: 'calc(72px + env(safe-area-inset-top, 0px))' }} />
             <main className="flex-1">
               {children}
             </main>
