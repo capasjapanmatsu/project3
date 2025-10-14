@@ -71,7 +71,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   if (!user || !isAuthenticated) {
-    return <Navigate to="/liff/login" replace />;
+    return <Navigate to="/login" replace />;
   }
   
   if (!isAdmin) {
