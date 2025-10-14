@@ -52,6 +52,10 @@
 	<!-- Protected resources purpose strings (required by Apple) -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>近くのドッグランを表示し、地図上で現在地を利用するために位置情報を使用します。</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>ドッグランの現在地表示や近くの検索など位置情報機能のためにアクセスを許可してください。</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>ドッグランの現在地表示や近くの検索など位置情報機能のためにアクセスを許可してください。</string>
 	<key>NSCameraUsageDescription</key>
 	<string>写真を撮影してフォトギャラリーやプロフィールにアップロードするためにカメラを使用します。</string>
 	<key>NSPhotoLibraryUsageDescription</key>

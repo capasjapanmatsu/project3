@@ -1,5 +1,7 @@
 /* English localized purpose strings */
 "NSLocationWhenInUseUsageDescription" = "We use your location to show nearby dog parks and display your position on the map.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Please allow location access so we can show nearby dog parks and your current position.";
+"NSLocationAlwaysUsageDescription" = "Please allow location access so we can show nearby dog parks and your current position.";
 "NSCameraUsageDescription" = "We use the camera to take photos for the photo gallery and your profile.";
 "NSPhotoLibraryUsageDescription" = "We access your photo library to select photos to upload.";
 

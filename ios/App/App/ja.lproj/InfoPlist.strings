@@ -1,5 +1,7 @@
 /* Japanese localized purpose strings */
 "NSLocationWhenInUseUsageDescription" = "近くのドッグランを表示し、地図上で現在地を利用するために位置情報を使用します。";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "ドッグランの現在地表示や近くの検索など位置情報機能のためにアクセスを許可してください。";
+"NSLocationAlwaysUsageDescription" = "ドッグランの現在地表示や近くの検索など位置情報機能のためにアクセスを許可してください。";
 "NSCameraUsageDescription" = "写真を撮影してフォトギャラリーやプロフィールにアップロードするためにカメラを使用します。";
 "NSPhotoLibraryUsageDescription" = "フォトライブラリから写真を選択してアップロードするためにアクセスします。";
 
