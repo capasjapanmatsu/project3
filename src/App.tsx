@@ -217,7 +217,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             <SEO />
             <Navbar />
             {/* Fixed Navbar 下のスペーサーは最小限に（実ヘッダー高に追随） */}
-            <div aria-hidden="true" style={{ height: 'calc(64px + env(safe-area-inset-top, 0px))' }} />
+            <div aria-hidden="true" style={{ height: 'calc(60px + env(safe-area-inset-top, 0px))' }} />
             <main className="flex-1">
               {children}
             </main>
