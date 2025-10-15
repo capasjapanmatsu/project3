@@ -775,58 +775,8 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
               {/* フォーム共通コンテナ（高さ統一） */}
               <div className="min-h-[220px] flex flex-col justify-between">
-                {/* OAuthボタン群 */}
-                <div className="space-y-2 mb-2">
-                  {/* Googleログイン */}
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        localStorage.setItem('skipSplashOnce', '1');
-                        localStorage.setItem('hasSeenSplash', 'true');
-                      } catch {}
-                      await signInWithGoogle();
-                    }}
-                    className="w-full py-2 px-4 bg-white border border-gray-300 hover:bg-gray-50 text-gray-900 font-medium rounded-md transition-all flex items-center justify-center"
-                    aria-label="Googleアカウントでログイン"
-                  >
-                    <img src="/icons/google.svg" alt="" className="w-5 h-5 mr-2" />
-                    <span className="text-gray-900 font-semibold">Googleアカウントでログイン</span>
-                  </button>
-                  {/* X(Twitter)ログイン */}
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        localStorage.setItem('skipSplashOnce', '1');
-                        localStorage.setItem('hasSeenSplash', 'true');
-                      } catch {}
-                      await signInWithTwitter();
-                    }}
-                    className="w-full py-2 px-4 bg-black hover:bg-gray-900 text-white font-medium rounded-md transition-all flex items-center justify-center"
-                    aria-label="X (Twitter) でログイン"
-                  >
-                    <img src="/icons/x.svg" alt="" className="w-5 h-5 mr-2" />
-                    X (Twitter) でログイン
-                  </button>
-                  {/* LINEログイン（ロゴ付き） */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      try {
-                        // LIFF後のワンタイムスキップと、当面の再表示抑止の両方
-                        localStorage.setItem('skipSplashOnce', '1');
-                        localStorage.setItem('hasSeenSplash', 'true');
-                      } catch {}
-                      window.location.assign('/login');
-                    }}
-                    className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md transition-all flex items-center justify-center"
-                    aria-label="LINEでログイン（スプラッシュをスキップ）"
-                  >
-                    <img src="/icons/line.svg" alt="" className="w-5 h-5 mr-2" />
-                    LINEアカウントでログイン
-                  </button>
-                </div>
+                {/* OAuthボタン群（現在は非表示） */}
+                <div className="space-y-2 mb-2 hidden"></div>
                 {/* 画面内で確実に見えるスキップ導線（カード内） */}
                 <div className="mb-4 text-center">
                   <button
