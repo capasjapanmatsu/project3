@@ -1,6 +1,6 @@
+import { MapPin, User } from 'lucide-react';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, User } from 'lucide-react';
 import { SponsorBanner } from './SponsorBanner';
 
 interface HeroSectionProps {
@@ -9,7 +9,7 @@ interface HeroSectionProps {
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ isLoggedIn }) => {
   return (
-    <section className="pt-6 pb-4">
+    <section className="pt-6 pb-2">
       {/* スポンサーバナー（ログイン状態に関係なく表示） */}
       <SponsorBanner />
       

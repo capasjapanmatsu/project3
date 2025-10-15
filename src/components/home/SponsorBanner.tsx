@@ -239,32 +239,10 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
           })}
         </div>
 
-        {/* スライド方向インジケーター */}
-        <div className="absolute top-1/2 right-4 transform -translate-y-1/2 pointer-events-none">
-          <div className="flex items-center space-x-1 text-white opacity-50">
-            <svg className="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <svg className="w-4 h-4 animate-pulse" style={{ animationDelay: '0.2s' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        </div>
+        {/* スライド方向インジケーターは非表示にして高さを節約 */}
       </div>
 
-      {/* 現在位置表示（小さく） */}
-      <div className="flex justify-center mt-3">
-        <div className="flex space-x-1">
-          {banners.map((_, index) => (
-            <div
-              key={index}
-              className={`w-1.5 h-1.5 rounded-full transition-colors duration-200 ${
-                index === currentIndex ? 'bg-blue-600' : 'bg-gray-300'
-              }`}
-            />
-          ))}
-        </div>
-      </div>
+      {/* インジケーターはモバイルで視認性が低く高さを圧迫するため非表示 */}
     </section>
   );
 };
