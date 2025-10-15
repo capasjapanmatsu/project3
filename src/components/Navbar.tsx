@@ -307,7 +307,7 @@ export const Navbar = memo(function Navbar() {
         }}
       >
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center h-12" style={{minHeight: '48px'}}>
+          <div className="flex justify-between items-center h-12" style={{minHeight: '44px'}}>
             <Link 
               to="/" 
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer group no-underline hover:no-underline"
@@ -318,7 +318,7 @@ export const Navbar = memo(function Navbar() {
                 <img
                   src="/icons/icon_android_48x48.png"
                   alt="ドッグパーク"
-                  className="w-8 h-8"
+                  className="w-7 h-7"
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
                     const parent = (e.target as HTMLElement).parentElement;
