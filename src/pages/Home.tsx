@@ -151,11 +151,13 @@ export function Home() {
         )}
 
         <div className="w-full">
+          {/* ヒーローバナー上に少し余白を追加（ヘッダーは据え置き） */}
+          <div aria-hidden="true" className="h-3 md:h-4" />
           {/* ヒーローセクション */}
           <section
             id="hero-section"
             aria-label="メインヒーロー"
-            className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg mt-6"
+            className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg mt-12"
             tabIndex={-1}
           >
             <AnimatedElement animation="slide" duration={isMobile ? 200 : 300} delay={staggerDelay * 0}>
