@@ -10,17 +10,9 @@ interface Props {
  * Reusable LINE login button that sends users to the LIFF login entrypoint.
  * The LIFF page embeds a fixed LIFF_ID and sets the dpjp_session cookie on success.
  */
-export const LineLoginButton: React.FC<Props> = ({ full = false }) => {
-  const handleClick = () => {
-    window.location.assign('/login');
-  };
-
-  return (
-    <Button onClick={handleClick} className={`${full ? 'w-full' : ''} bg-green-600 hover:bg-green-700`}>
-      <MessageCircle className="w-4 h-4 mr-2" />
-      LINEアカウントでログイン
-    </Button>
-  );
+export const LineLoginButton: React.FC<Props> = () => {
+  // 外部SNSログインは一時停止中
+  return null;
 };
 
 export default LineLoginButton;
