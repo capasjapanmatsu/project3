@@ -106,7 +106,7 @@ export function BottomNavigation() {
         pointerEvents: 'none'
       }}
     >
-      <div className="flex justify-around items-center h-16 bg-white border-t border-gray-200 pointer-events-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <div className="flex justify-around items-center h-16 bg-white border-t border-gray-200 pointer-events-auto" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 4px)' }}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
@@ -133,8 +133,7 @@ export function BottomNavigation() {
         })}
       </div>
       
-      {/* Safe area for iOS devices（コミュニティ以外は極小にしてアイコンを少し下げる）*/}
-      {/* no extra spacer inside the fixed bar; paddingBottom handles safe area */}
+      {/* safe-area は内側paddingのみで処理。外側余白は作らない */}
     </div>
   );
 
