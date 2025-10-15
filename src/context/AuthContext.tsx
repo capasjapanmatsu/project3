@@ -261,7 +261,8 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           if (isCapacitorNative()) {
             const { Browser } = await import('@capacitor/browser');
-            await Browser.open({ url: data.url, presentationStyle: 'popover' });
+            // Open in the in-app browser and rely on appUrlOpen to capture the redirect
+            await Browser.open({ url: data.url, presentationStyle: 'popover', windowName: '_self' });
           } else {
             window.location.href = data.url;
           }

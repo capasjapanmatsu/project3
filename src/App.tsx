@@ -240,15 +240,20 @@ const App: React.FC = () => {
   const location = useLocation();
   const { isAuthenticated, user } = useAuth();
 
-  // Deep link/Universal link handling (Stripe success/cancel, etc.)
+  // Deep link/Universal link handling (Stripe/Google OAuth etc.)
   useEffect(() => {
-    const sub = CapacitorApp.addListener('appUrlOpen', ({ url }) => {
+    const sub = CapacitorApp.addListener('appUrlOpen', async ({ url }) => {
       try {
         const incoming = new URL(url);
-        // Accept only our domain
-        if (incoming.host === 'dogparkjp.com') {
+        // Close any in-app browser overlays if present
+        try { const { Browser } = await import('@capacitor/browser'); await Browser.close(); } catch {}
+
+        // Accept our domain or the Capacitor localhost scheme
+        const isWebHost = incoming.host === 'dogparkjp.com' || incoming.host.endsWith('.dogparkjp.com');
+        const isCapacitorLocal = incoming.protocol === 'capacitor:';
+        if (isWebHost || isCapacitorLocal) {
           const nextPath = `${incoming.pathname}${incoming.search}`;
-          navigate(nextPath, { replace: true });
+          navigate(nextPath === '/' ? '/dashboard' : nextPath, { replace: true });
         }
       } catch {
         // ignore
