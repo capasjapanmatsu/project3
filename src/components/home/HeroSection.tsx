@@ -9,7 +9,7 @@ interface HeroSectionProps {
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ isLoggedIn }) => {
   return (
-    <section className="py-4">
+    <section className="pt-6 pb-4">
       {/* スポンサーバナー（ログイン状態に関係なく表示） */}
       <SponsorBanner />
       
