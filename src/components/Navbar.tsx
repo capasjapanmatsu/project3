@@ -303,11 +303,11 @@ export const Navbar = memo(function Navbar() {
           pointerEvents: 'auto',
           transform: 'translateZ(0)',
           willChange: 'transform' as any,
-          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 6px)'
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 2px)'
         }}
       >
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-14">
             <Link 
               to="/" 
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer group no-underline hover:no-underline"
@@ -318,7 +318,7 @@ export const Navbar = memo(function Navbar() {
                 <img
                   src="/icons/icon_android_48x48.png"
                   alt="ドッグパーク"
-                  className="w-12 h-12"
+                  className="w-10 h-10"
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
                     const parent = (e.target as HTMLElement).parentElement;
