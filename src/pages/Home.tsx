@@ -155,7 +155,7 @@ export function Home() {
           <section
             id="hero-section"
             aria-label="メインヒーロー"
-            className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg mt-2"
+            className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg mt-3"
             tabIndex={-1}
           >
             <AnimatedElement animation="slide" duration={isMobile ? 200 : 300} delay={staggerDelay * 0}>
