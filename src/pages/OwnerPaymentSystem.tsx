@@ -54,7 +54,7 @@ export function OwnerPaymentSystem() {
 
   useEffect(() => {
     if (!user) {
-      navigate('/liff/login');
+      navigate('/login');
       return;
     }
     

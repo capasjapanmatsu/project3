@@ -102,12 +102,11 @@ export function BottomNavigation() {
       className="fixed left-0 right-0 z-[70] md:hidden"
       style={{
         bottom: 0,
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         transform: 'translateZ(0)',
         pointerEvents: 'none'
       }}
     >
-      <div className="flex justify-around items-center h-16 bg-white border-t border-gray-200 pointer-events-auto">
+      <div className="flex justify-around items-center h-16 bg-white border-t border-gray-200 pointer-events-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);

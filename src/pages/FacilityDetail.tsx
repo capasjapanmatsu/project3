@@ -950,7 +950,7 @@ export function FacilityDetail() {
                             
                             <div className="pt-4">
                               {!user ? (
-                                <Link to="/liff/login">
+                                <Link to="/login">
                                   <Button className="w-full py-3 text-base" variant="outline">
                                     ログインしてクーポンを取得
                                   </Button>
