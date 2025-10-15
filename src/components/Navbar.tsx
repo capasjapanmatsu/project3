@@ -7,11 +7,11 @@ import {
     ShoppingCart
 } from 'lucide-react';
 import { Suspense, lazy, memo, useCallback, useEffect, useRef, useState } from 'react';
-import isIOS from '../utils/isIOS';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { log, safeSupabaseQuery } from '../utils/helpers';
+import isIOS from '../utils/isIOS';
 import { attachPrefetchHandlers } from '../utils/routePrefetcher';
 import { fetchSessionUser, logoutSession, type SessionUser } from '../utils/sessionClient';
 import { supabase } from '../utils/supabase';
@@ -103,6 +103,8 @@ export const Navbar = memo(function Navbar() {
   }, [showLoginMenu]);
 
   const isLoggedIn = Boolean(user || sessionUser || effectiveUserId);
+  const headerHeightPx = isLoggedIn ? (isIOS() ? 36 : 32) : (isIOS() ? 32 : 28);
+  const logoSizePx = isLoggedIn ? 20 : 18;
 
   // Memoize fetch functions to prevent unnecessary re-renders
   const fetchUserName = useCallback(async () => {
@@ -308,7 +310,7 @@ export const Navbar = memo(function Navbar() {
         }}
       >
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center" style={{ height: isIOS() ? '36px' : '32px', minHeight: isIOS() ? '36px' : '32px' }}>
+          <div className="flex justify-between items-center" style={{ height: `${headerHeightPx}px`, minHeight: `${headerHeightPx}px` }}>
             <Link 
               to="/" 
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer group no-underline hover:no-underline"
@@ -319,7 +321,7 @@ export const Navbar = memo(function Navbar() {
                 <img
                   src="/icons/icon_android_48x48.png"
                   alt="ドッグパーク"
-                  className="w-5 h-5"
+                  style={{ width: `${logoSizePx}px`, height: `${logoSizePx}px` }}
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
                     const parent = (e.target as HTMLElement).parentElement;
