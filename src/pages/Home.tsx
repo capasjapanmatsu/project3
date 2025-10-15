@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import AnimatedElement from '../components/accessibility/AnimatedElement';
 import { DogInfoCorner } from '../components/home/DogInfoCorner';
 import { FacilityRecruitmentBanner } from '../components/home/FacilityRecruitmentBanner';
@@ -13,7 +14,6 @@ import useAuth from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
 import type { Dog, NewsAnnouncement } from '../types';
 import { supabase } from '../utils/supabase';
-import { Link } from 'react-router-dom';
 
 export function Home() {
   const { user } = useAuth();
@@ -155,7 +155,7 @@ export function Home() {
           <section
             id="hero-section"
             aria-label="メインヒーロー"
-            className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg mt-4"
+            className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-lg mt-6"
             tabIndex={-1}
           >
             <AnimatedElement animation="slide" duration={isMobile ? 200 : 300} delay={staggerDelay * 0}>

@@ -307,7 +307,7 @@ export const Navbar = memo(function Navbar() {
         }}
       >
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center h-12">
+          <div className="flex justify-between items-center h-12" style={{minHeight: '48px'}}>
             <Link 
               to="/" 
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer group no-underline hover:no-underline"
