@@ -7,6 +7,7 @@ import {
     ShoppingCart
 } from 'lucide-react';
 import { Suspense, lazy, memo, useCallback, useEffect, useRef, useState } from 'react';
+import isIOS from '../utils/isIOS';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
@@ -307,7 +308,7 @@ export const Navbar = memo(function Navbar() {
         }}
       >
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center h-9" style={{minHeight: '36px'}}>
+          <div className="flex justify-between items-center" style={{ height: isIOS() ? '36px' : '32px', minHeight: isIOS() ? '36px' : '32px' }}>
             <Link 
               to="/" 
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer group no-underline hover:no-underline"

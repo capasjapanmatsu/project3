@@ -2,6 +2,7 @@ import { Home, Key, MapPin, User, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
+import isIOS from '../utils/isIOS';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 
@@ -106,7 +107,7 @@ export function BottomNavigation() {
         pointerEvents: 'none'
       }}
     >
-      <div className="flex justify-around items-center h-12 bg-white border-t border-gray-200 pointer-events-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <div className="flex justify-around items-center bg-white border-t border-gray-200 pointer-events-auto" style={{ height: isIOS() ? '48px' : '44px', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
