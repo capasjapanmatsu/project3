@@ -106,7 +106,7 @@ export function BottomNavigation() {
         pointerEvents: 'none'
       }}
     >
-      <div className="flex justify-around items-center h-16 bg-white border-t border-gray-200 pointer-events-auto" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 4px)' }}>
+      <div className="flex justify-around items-center h-16 bg-white border-t border-gray-200 pointer-events-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);

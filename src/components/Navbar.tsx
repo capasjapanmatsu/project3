@@ -303,7 +303,7 @@ export const Navbar = memo(function Navbar() {
           pointerEvents: 'auto',
           transform: 'translateZ(0)',
           willChange: 'transform' as any,
-          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0px)'
+          paddingTop: 'env(safe-area-inset-top, 0px)'
         }}
       >
         <div className="container mx-auto px-4">
