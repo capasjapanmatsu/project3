@@ -49,6 +49,19 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 
+	<!-- Custom URL Schemes for deep links (Stripe success/cancel, OAuth, etc.) -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.dogparkjp.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>dogparkjp</string>
+			</array>
+		</dict>
+	</array>
+
 	<!-- Protected resources purpose strings (required by Apple) -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>近くのドッグランを表示し、地図上で現在地を利用するために位置情報を使用します。</string>

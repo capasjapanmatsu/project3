@@ -1,6 +1,6 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-const config: CapacitorConfig = {
+const config = {
   appId: 'com.dogparkjp.app',
   appName: 'ドッグパークJP',
   webDir: 'dist',
@@ -15,7 +15,9 @@ const config: CapacitorConfig = {
       'https://api.stripe.com/*',
       'https://hooks.stripe.com/*',
       'https://dogparkjp.com/*',
-      'https://*.dogparkjp.com/*'
+      'https://*.dogparkjp.com/*',
+      'https://maps.googleapis.com/*',
+      'https://maps.gstatic.com/*'
     ],
     captureLinks: [
       'https://checkout.stripe.com/*',
@@ -94,6 +96,6 @@ const config: CapacitorConfig = {
     scheme: 'ドッグパークJP',
     contentInset: 'automatic'
   }
-};
+} as any as CapacitorConfig;
 
 export default config;
