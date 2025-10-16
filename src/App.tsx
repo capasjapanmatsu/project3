@@ -220,7 +220,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             <Navbar />
             {/* Fixed Navbar 下のスペーサーは最小限に（実ヘッダー高に追随） */}
             {/* 未ログイン時はヘッダーが更に短いのでスペーサーも縮める */}
-            <div aria-hidden="true" style={{ height: 'calc(32px + env(safe-area-inset-top, 0px))' }} />
+            <div aria-hidden="true" style={{ height: 'calc(28px + env(safe-area-inset-top, 0px))' }} />
             <main className="flex-1">
               {children}
             </main>

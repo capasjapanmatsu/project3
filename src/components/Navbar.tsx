@@ -104,8 +104,8 @@ export const Navbar = memo(function Navbar() {
 
   const isLoggedIn = Boolean(user || sessionUser || effectiveUserId);
   // 直前の変更を戻す（以前のサイズに復元）
-  // ヘッダーレイアウト最適化（高さを下げ、文字は大きめに）
-  const headerHeightPx = isLoggedIn ? (isIOS() ? 34 : 32) : (isIOS() ? 30 : 28);
+  // ヘッダーレイアウト最適化（さらに数px短縮）
+  const headerHeightPx = isLoggedIn ? (isIOS() ? 32 : 30) : (isIOS() ? 28 : 26);
   const logoSizePx = isLoggedIn ? 20 : 18;
   const iconButtonSize = Math.max(24, headerHeightPx - 6);
 
