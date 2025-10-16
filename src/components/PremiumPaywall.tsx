@@ -22,8 +22,8 @@ export default function PremiumPaywall({
       const { data: session } = await supabase.auth.getSession();
       const accessToken = session.session?.access_token;
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`;
-      const success = `${window.location.origin}/premium/success`;
-      const cancel = `${window.location.origin}/premium/cancel`;
+      const success = `${window.location.origin}/payment-return?success=true`;
+      const cancel = `${window.location.origin}/payment-return?canceled=true`;
       const res = await fetch(url, {
         method: 'POST',
         headers: {

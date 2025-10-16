@@ -103,8 +103,9 @@ export const Navbar = memo(function Navbar() {
   }, [showLoginMenu]);
 
   const isLoggedIn = Boolean(user || sessionUser || effectiveUserId);
-  const headerHeightPx = isLoggedIn ? (isIOS() ? 36 : 32) : (isIOS() ? 32 : 28);
-  const logoSizePx = isLoggedIn ? 20 : 18;
+  // さらにコンパクト化（iOS優先で小さめ）
+  const headerHeightPx = isLoggedIn ? (isIOS() ? 28 : 26) : (isIOS() ? 26 : 24);
+  const logoSizePx = isLoggedIn ? 16 : 14;
 
   // Memoize fetch functions to prevent unnecessary re-renders
   const fetchUserName = useCallback(async () => {
@@ -310,7 +311,7 @@ export const Navbar = memo(function Navbar() {
         }}
       >
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center" style={{ height: `${headerHeightPx}px`, minHeight: `${headerHeightPx}px` }}>
+          <div className="flex justify-between items-center" style={{ height: `${headerHeightPx}px`, minHeight: `${headerHeightPx}px`, maxWidth: isIOS() ? '66.6667%' : '100%', margin: '0 auto' }}>
             <Link 
               to="/" 
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer group no-underline hover:no-underline"

@@ -1,8 +1,8 @@
 import { loadStripe } from '@stripe/stripe-js';
 import { useCallback, useState } from 'react';
 import useAuth from '../context/AuthContext';
+import openInApp from '../utils/openInApp';
 import { supabase } from '../utils/supabase';
-import isCapacitorNative from '../utils/isCapacitorNative';
 
 interface CheckoutParams {
   priceId?: string;
@@ -54,6 +54,12 @@ export function useStripe() {
     setError(null);
 
     try {
+      // スプラッシュが再表示されないように事前にフラグを立てる
+      try {
+        localStorage.setItem('hasSeenSplash', 'true');
+        localStorage.setItem('skipSplashOnce', '1');
+      } catch {}
+
       // Supabaseセッションを確実に準備
       await ensureSupabaseSession();
       // ユーザーIDを取得（LINEユーザーとメールユーザー両方対応）
@@ -99,15 +105,15 @@ export function useStripe() {
         is_line_user: !!lineUser
       }));
 
-      // 成功/キャンセルURL: 常に現在のオリジンへ戻す（Capacitorでは http://localhost を維持）
-      const baseForStripe = successUrl && cancelUrl
-        ? null
-        : window.location.origin;
+      // 成功/キャンセルURLは常に /payment-return に統一（ここでアプリ復帰を強制）
+      const origin = window.location.origin;
+      const resolvedSuccess = successUrl || `${origin}/payment-return?success=true`;
+      const resolvedCancel = cancelUrl || `${origin}/payment-return?canceled=true`;
 
       const requestBody: Record<string, unknown> = {
         mode,
-        success_url: successUrl || `${baseForStripe}/payment-confirmation?success=true`,
-        cancel_url: cancelUrl || `${baseForStripe}/payment-confirmation?canceled=true`,
+        success_url: resolvedSuccess,
+        cancel_url: resolvedCancel,
       };
 
       // priceIdが指定されている場合は追加
@@ -160,16 +166,7 @@ export function useStripe() {
       const { sessionId, url } = await response.json();
       
       if (url) {
-        try {
-          if (isCapacitorNative()) {
-            const { Browser } = await import('@capacitor/browser');
-            await Browser.open({ url, presentationStyle: 'popover' });
-          } else {
-            window.location.href = url;
-          }
-        } catch (_) {
-          window.location.href = url;
-        }
+        await openInApp(url);
         return;
       } else if (sessionId) {
         // Stripe.jsをロード

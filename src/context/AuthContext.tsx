@@ -1,8 +1,8 @@
 import { Session, User } from '@supabase/supabase-js';
 import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import isCapacitorNative from '../utils/isCapacitorNative';
 import { SessionUser, fetchSessionUser } from '../utils/sessionClient';
 import { supabase } from '../utils/supabase';
-import isCapacitorNative from '../utils/isCapacitorNative';
 
 interface UserProfile {
   id: string;
@@ -259,13 +259,8 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       if (data?.url) {
         try {
-          if (isCapacitorNative()) {
-            const { Browser } = await import('@capacitor/browser');
-            // Open in the in-app browser and rely on appUrlOpen to capture the redirect
-            await Browser.open({ url: data.url, presentationStyle: 'popover', windowName: '_self' });
-          } else {
-            window.location.href = data.url;
-          }
+          const { Browser } = await import('@capacitor/browser');
+          await Browser.open({ url: data.url, presentationStyle: 'popover', windowName: '_self' });
         } catch (_) {
           window.location.href = data.url as string;
         }
@@ -292,12 +287,8 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       if (data?.url) {
         try {
-          if (isCapacitorNative()) {
-            const { Browser } = await import('@capacitor/browser');
-            await Browser.open({ url: data.url, presentationStyle: 'popover' });
-          } else {
-            window.location.href = data.url;
-          }
+          const { Browser } = await import('@capacitor/browser');
+          await Browser.open({ url: data.url, presentationStyle: 'popover', windowName: '_self' });
         } catch (_) {
           window.location.href = data.url as string;
         }

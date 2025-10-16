@@ -7,6 +7,7 @@ import useAuth from './context/AuthContext';
 import { MaintenanceProvider } from './context/MaintenanceContext';
 import ParkOperationGuidelines from './pages/ParkOperationGuidelines';
 import { fetchSessionUser } from './utils/sessionClient';
+import { supabase } from './utils/supabase';
 
 // レイアウトコンポーネント
 import { BottomNavigation } from './components/BottomNavigation';
@@ -132,6 +133,7 @@ const AccessControl = React.lazy(() => import('./pages/AccessControl').then(modu
 const SubscriptionIntro = React.lazy(() => import('./pages/SubscriptionIntro').then(module => ({ default: module.SubscriptionIntro })));
 const InviteUnlock = React.lazy(() => import('./pages/InviteUnlock'));
 const PaymentConfirmation = React.lazy(() => import('./pages/PaymentConfirmation'));
+const PaymentReturn = React.lazy(() => import('./pages/PaymentReturn'));
 
 // その他のページ
 const TermsOfService = React.lazy(() => import('./pages/TermsOfService').then(module => ({ default: module.TermsOfService })));
@@ -251,6 +253,37 @@ const App: React.FC = () => {
         // Accept our domain or the Capacitor localhost scheme
         const isWebHost = incoming.host === 'dogparkjp.com' || incoming.host.endsWith('.dogparkjp.com');
         const isCapacitorLocal = incoming.protocol === 'capacitor:';
+        const isCustomScheme = incoming.protocol === 'dogparkjp:'; // custom OAuth callback scheme
+
+        // Custom scheme deep links: OAuth/Stripe
+        if (isCustomScheme) {
+          const code = incoming.searchParams.get('code');
+          const error = incoming.searchParams.get('error_description');
+          const isPayment = incoming.pathname.includes('payment-confirmation');
+          if (isPayment) {
+            const success = incoming.searchParams.get('success');
+            try {
+              localStorage.setItem('hasSeenSplash', 'true');
+              localStorage.setItem('skipSplashOnce', '1');
+            } catch {}
+            navigate(`/payment-confirmation?${success ? 'success=true' : 'canceled=true'}`, { replace: true });
+            return;
+          }
+          if (code) {
+            try {
+              const { data, error: exErr } = await supabase.auth.exchangeCodeForSession(code);
+              if (!exErr && data?.session) {
+                // セッション確立後にトップへ戻す
+                navigate('/dashboard', { replace: true });
+                return;
+              }
+            } catch {}
+          }
+          // 失敗時はログインへ
+          navigate('/login', { replace: true });
+          return;
+        }
+
         if (isWebHost || isCapacitorLocal) {
           const nextPath = `${incoming.pathname}${incoming.search}`;
           navigate(nextPath === '/' ? '/dashboard' : nextPath, { replace: true });
@@ -538,6 +571,11 @@ const App: React.FC = () => {
               <Route path="/subscription-intro" element={
                 <Suspense fallback={<PageSkeleton />}>
                   <SubscriptionIntro />
+                </Suspense>
+              } />
+              <Route path="/payment-return" element={
+                <Suspense fallback={<PageSkeleton />}>
+                  <PaymentReturn />
                 </Suspense>
               } />
               <Route path="/payment-confirmation" element={

@@ -21,8 +21,8 @@ import useAuth from '../context/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import type { CartItem, Product } from '../types';
 import { logger } from '../utils/logger';
-import isCapacitorNative from '../utils/isCapacitorNative';
 import { notify } from '../utils/notification';
+import openInApp from '../utils/openInApp';
 import { supabase } from '../utils/supabase';
 
 interface ProductImage {
@@ -286,8 +286,8 @@ export function ProductDetail() {
         },
         body: JSON.stringify({
           mode: 'subscription',
-          success_url: `${window.location.origin}/order-history`,
-          cancel_url: `${window.location.origin}/products/${product.id}`,
+          success_url: `${window.location.origin}/payment-return?success=true`,
+          cancel_url: `${window.location.origin}/payment-return?canceled=true`,
           subscription: {
             product_id: product.id,
             option_id: selected.id,
@@ -300,16 +300,7 @@ export function ProductDetail() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || '定期購入の開始に失敗しました');
       if (data.url) {
-        try {
-          if (isCapacitorNative()) {
-            const { Browser } = await import('@capacitor/browser');
-            await Browser.open({ url: data.url, presentationStyle: 'popover' });
-          } else {
-            window.location.href = data.url;
-          }
-        } catch (_) {
-          window.location.href = data.url;
-        }
+        try { await openInApp(data.url); } catch { window.location.href = data.url; }
       } else {
         notify.error('チェックアウトURLの取得に失敗しました');
       }

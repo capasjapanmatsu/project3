@@ -2,10 +2,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Capacitor } from '@capacitor/core';
-import isCapacitorNative from '../utils/isCapacitorNative';
 import { Loader } from 'lucide-react';
 import { createContext, useContext, useEffect, useState } from 'react';
+import isCapacitorNative from '../utils/isCapacitorNative';
 
 // Google Maps API の簡単な型定義
 declare global {

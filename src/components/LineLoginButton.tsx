@@ -1,6 +1,4 @@
-import { MessageCircle } from 'lucide-react';
 import React from 'react';
-import Button from './Button';
 
 interface Props {
   full?: boolean;

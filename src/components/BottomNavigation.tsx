@@ -2,8 +2,8 @@ import { Home, Key, MapPin, User, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
-import isIOS from '../utils/isIOS';
 import useAuth from '../context/AuthContext';
+import isIOS from '../utils/isIOS';
 import { supabase } from '../utils/supabase';
 
 export function BottomNavigation() {
