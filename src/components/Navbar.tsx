@@ -107,6 +107,7 @@ export const Navbar = memo(function Navbar() {
   // ヘッダーレイアウト最適化（高さを下げ、文字は大きめに）
   const headerHeightPx = isLoggedIn ? (isIOS() ? 34 : 32) : (isIOS() ? 30 : 28);
   const logoSizePx = isLoggedIn ? 20 : 18;
+  const iconButtonSize = Math.max(24, headerHeightPx - 6);
 
   // Memoize fetch functions to prevent unnecessary re-renders
   const fetchUserName = useCallback(async () => {
@@ -385,7 +386,8 @@ export const Navbar = memo(function Navbar() {
                   {/* 通知アイコン */}
                   <Link 
                     to="/community" 
-                    className="relative inline-flex items-center justify-center w-10 h-10 rounded-md text-gray-600 hover:text-blue-600 active:opacity-70 transition-colors no-underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-blue-500 z-[60]"
+                    className="relative inline-flex items-center justify-center rounded-md text-gray-600 hover:text-blue-600 active:opacity-70 transition-colors no-underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-blue-500 z-[60]"
+                    style={{ width: iconButtonSize, height: iconButtonSize }}
                     aria-label={`通知 ${unreadNotifications > 0 ? `${unreadNotifications}件の未読通知があります` : ''}`}
                     {...attachPrefetchHandlers('/community')}
                   >
@@ -400,7 +402,8 @@ export const Navbar = memo(function Navbar() {
                   {/* カートアイコン */}
                   <Link 
                     to="/petshop" 
-                    className="relative inline-flex items-center justify-center w-10 h-10 rounded-md text-gray-600 hover:text-green-600 active:opacity-70 transition-colors no-underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-green-500 z-[60]"
+                    className="relative inline-flex items-center justify-center rounded-md text-gray-600 hover:text-green-600 active:opacity-70 transition-colors no-underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-green-500 z-[60]"
+                    style={{ width: iconButtonSize, height: iconButtonSize }}
                     aria-label={`カート ${cartItemCount > 0 ? `${cartItemCount}点の商品があります` : ''}`}
                     {...attachPrefetchHandlers('/petshop')}
                   >
@@ -460,7 +463,8 @@ export const Navbar = memo(function Navbar() {
                   {/* ログアウトボタン（LIFFセッションも含めてログアウト） */}
                   <button
                     onClick={() => { void handleLogout(); }}
-                    className="inline-flex items-center justify-center w-10 h-10 rounded-md text-gray-600 hover:text-red-600 active:opacity-70 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 z-[60]"
+                    className="inline-flex items-center justify-center rounded-md text-gray-600 hover:text-red-600 active:opacity-70 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 z-[60]"
+                    style={{ width: iconButtonSize, height: iconButtonSize }}
                     aria-label="ログアウト"
                   >
                     <LogOut className="h-4 w-4 pointer-events-none" aria-hidden="true" />
