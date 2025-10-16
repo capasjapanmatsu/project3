@@ -104,7 +104,8 @@ export const Navbar = memo(function Navbar() {
 
   const isLoggedIn = Boolean(user || sessionUser || effectiveUserId);
   // 直前の変更を戻す（以前のサイズに復元）
-  const headerHeightPx = isLoggedIn ? (isIOS() ? 36 : 32) : (isIOS() ? 32 : 28);
+  // ヘッダーレイアウト最適化（高さを下げ、文字は大きめに）
+  const headerHeightPx = isLoggedIn ? (isIOS() ? 34 : 32) : (isIOS() ? 30 : 28);
   const logoSizePx = isLoggedIn ? 20 : 18;
 
   // Memoize fetch functions to prevent unnecessary re-renders
@@ -311,7 +312,7 @@ export const Navbar = memo(function Navbar() {
         }}
       >
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center" style={{ height: `${headerHeightPx}px`, minHeight: `${headerHeightPx}px`, maxWidth: isIOS() ? '66.6667%' : '100%', margin: '0 auto' }}>
+          <div className="flex justify-between items-center" style={{ height: `${headerHeightPx}px`, minHeight: `${headerHeightPx}px` }}>
             <Link 
               to="/" 
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer group no-underline hover:no-underline"
@@ -336,8 +337,8 @@ export const Navbar = memo(function Navbar() {
                 />
               </div>
               
-              <div className="flex flex-col">
-                <span className="text-sm md:text-base font-bold leading-tight">
+              <div className="flex flex-col justify-center">
+                <span className="text-lg md:text-xl font-bold leading-none whitespace-nowrap tracking-tight">
                   <span className="navbar-text-dogpark text-gray-800">ドッグパーク</span>
                   <span className="navbar-text-jp text-blue-600 ml-1">JP</span>
                 </span>
