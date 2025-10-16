@@ -343,7 +343,7 @@ export const Navbar = memo(function Navbar() {
                   <span className="navbar-text-dogpark text-gray-800">ドッグパーク</span>
                   <span className="navbar-text-jp text-blue-600 ml-1">JP</span>
                 </span>
-                <span className="navbar-subtitle-text text-xs text-gray-500 leading-none hidden md:inline">
+                <span className="navbar-subtitle-text text-[11px] md:text-xs text-gray-500 leading-none inline">
                   愛犬との素敵な時間を
                 </span>
               </div>
