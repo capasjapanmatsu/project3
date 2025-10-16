@@ -567,7 +567,7 @@ export function AccessControl() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto pt-3">
       {/* FX styles for game-like animations */}
       <style>{`
         @keyframes ripple { 0% { transform: scale(1); opacity: .45; } 100% { transform: scale(1.8); opacity: 0; } }

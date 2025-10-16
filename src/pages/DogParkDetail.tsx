@@ -573,7 +573,7 @@ export function DogParkDetail() {
   const rentalInfo = getFacilityRentalInfo();
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-6 pt-3">
       {error && (
         <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
           {error}
