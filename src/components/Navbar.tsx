@@ -103,9 +103,9 @@ export const Navbar = memo(function Navbar() {
   }, [showLoginMenu]);
 
   const isLoggedIn = Boolean(user || sessionUser || effectiveUserId);
-  // さらにコンパクト化（iOS優先で小さめ）
-  const headerHeightPx = isLoggedIn ? (isIOS() ? 28 : 26) : (isIOS() ? 26 : 24);
-  const logoSizePx = isLoggedIn ? 16 : 14;
+  // 直前の変更を戻す（以前のサイズに復元）
+  const headerHeightPx = isLoggedIn ? (isIOS() ? 36 : 32) : (isIOS() ? 32 : 28);
+  const logoSizePx = isLoggedIn ? 20 : 18;
 
   // Memoize fetch functions to prevent unnecessary re-renders
   const fetchUserName = useCallback(async () => {
