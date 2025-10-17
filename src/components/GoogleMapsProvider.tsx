@@ -143,6 +143,7 @@ export function GoogleMapsProvider({
         script.src = scriptUrl;
         script.async = true;
         script.defer = true;
+        try { (script as any).referrerPolicy = 'origin'; } catch {}
 
         console.log('Google Maps スクリプトURL:', scriptUrl.replace(key, `${key.substring(0, 6)}...`));
         setDebugText((prev) => prev + `URL: ${scriptUrl.replace(key, `${key.substring(0, 6)}...`)}\n`);
