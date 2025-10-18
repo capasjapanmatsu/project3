@@ -188,15 +188,22 @@ export function SubscriptionIntro() {
     setActionError('');
     setActionSuccess('');
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('認証が必要です。再ログインしてください。');
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-pause-subscription`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${token}`,
+          'apikey': `${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({ subscription_id: subscriptionId })
       });
-      if (!res.ok) throw new Error((await res.json()).error || '一時停止に失敗しました');
+      const txt = await res.text();
+      if (!res.ok) {
+        try { const j = JSON.parse(txt); throw new Error(j.error || j.message || '一時停止に失敗しました'); } catch { throw new Error(txt || '一時停止に失敗しました'); }
+      }
       setActionSuccess('サブスクリプションを一時停止しました');
       await refreshSubscription();
     } catch (e) {
@@ -212,15 +219,22 @@ export function SubscriptionIntro() {
     setActionError('');
     setActionSuccess('');
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('認証が必要です。再ログインしてください。');
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-resume-subscription`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${token}`,
+          'apikey': `${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({ subscription_id: subscriptionId })
       });
-      if (!res.ok) throw new Error((await res.json()).error || '再開に失敗しました');
+      const txt = await res.text();
+      if (!res.ok) {
+        try { const j = JSON.parse(txt); throw new Error(j.error || j.message || '再開に失敗しました'); } catch { throw new Error(txt || '再開に失敗しました'); }
+      }
       setActionSuccess('サブスクリプションを再開しました');
       await refreshSubscription();
     } catch (e) {
@@ -237,15 +251,22 @@ export function SubscriptionIntro() {
     setActionError('');
     setActionSuccess('');
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('認証が必要です。再ログインしてください。');
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-cancel-subscription`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${token}`,
+          'apikey': `${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({ subscription_id: subscriptionId })
       });
-      if (!res.ok) throw new Error((await res.json()).error || '退会に失敗しました');
+      const txt = await res.text();
+      if (!res.ok) {
+        try { const j = JSON.parse(txt); throw new Error(j.error || j.message || '退会に失敗しました'); } catch { throw new Error(txt || '退会に失敗しました'); }
+      }
       setActionSuccess('退会手続きを受け付けました');
       await refreshSubscription();
     } catch (e) {
