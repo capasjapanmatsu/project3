@@ -120,6 +120,51 @@ interface FacilityCategory {
 
 export default function FacilityEdit() {
   const premium = usePremiumOwner();
+  const [isCancellingPremium, setIsCancellingPremium] = useState(false);
+  const [cancelMsg, setCancelMsg] = useState('');
+
+  const cancelPremium = async () => {
+    try {
+      setIsCancellingPremium(true);
+      setError('');
+      setSuccess('');
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setError('認証が必要です。再ログインしてください。');
+        return;
+      }
+      // 施設単位の購読IDがある場合: facility_premium_memberships から取得（任意）
+      let subscriptionId: string | null = null;
+      try {
+        const { data: row } = await supabase
+          .from('facility_premium_memberships')
+          .select('subscription_id')
+          .eq('facility_id', facilityId)
+          .maybeSingle();
+        subscriptionId = (row as any)?.subscription_id || null;
+      } catch {}
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-cancel-subscription`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': `${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ subscription_id: subscriptionId || undefined, notes: 'cancel_from_facility_edit' })
+      });
+      const txt = await res.text();
+      if (!res.ok) {
+        try { const j = JSON.parse(txt); throw new Error(j.error || j.message || '解約に失敗しました'); } catch { throw new Error(txt || '解約に失敗しました'); }
+      }
+      setSuccess('プレミアム会員の解約手続きを受け付けました。');
+      setCancelMsg('現在の期間終了後に自動的に終了します。');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '解約に失敗しました');
+    } finally {
+      setIsCancellingPremium(false);
+    }
+  };
 
   // プレミアム加入（初月無料）を開始する
   const startCheckout = async () => {
@@ -1230,6 +1275,16 @@ export default function FacilityEdit() {
                   {formData.is_public ? '公開' : '非公開'}
                 </span>
               </div>
+              {premium.state === 'active' && (
+                <div className="mt-3">
+                  <Button onClick={cancelPremium} isLoading={isCancellingPremium} className="w-full bg-red-600 hover:bg-red-700">
+                    プレミアム会員を解約する
+                  </Button>
+                  {cancelMsg && (
+                    <div className="text-xs text-gray-600 mt-2">{cancelMsg}</div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
