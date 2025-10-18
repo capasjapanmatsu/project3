@@ -4,6 +4,7 @@ import {
     Building,
     CheckCircle,
     Clock,
+    Crown,
     Edit,
     Eye,
     Globe,
@@ -43,6 +44,7 @@ export function MyFacilitiesManagement() {
   const [showInquiry, setShowInquiry] = useState(false);
   const [inquiryText, setInquiryText] = useState('');
   const [sending, setSending] = useState(false);
+  const [premiumByFacility, setPremiumByFacility] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const fetchFacilities = async () => {
@@ -82,6 +84,47 @@ export function MyFacilitiesManagement() {
 
         console.log('✅ Facilities data:', processedFacilities);
         setFacilities(processedFacilities);
+
+        // ---- プレミアム判定（施設単位） ----
+        try {
+          const ids = processedFacilities.map(f => f.id);
+          const map: Record<string, boolean> = {};
+          if (ids.length > 0) {
+            // 1) facility_premium_memberships があれば優先
+            try {
+              const { data: rows, error: pmErr } = await supabase
+                .from('facility_premium_memberships')
+                .select('facility_id,status')
+                .in('facility_id', ids)
+                .eq('owner_id', user.id);
+              if (!pmErr && rows) {
+                rows.forEach((r: any) => { map[r.facility_id] = ['active','trialing','paused'].includes(String(r.status)); });
+              }
+            } catch {}
+            // 2) フォールバック: 予約設定が有効な施設はプレミアム（機能開放の代理指標）
+            try {
+              const { data: rs } = await supabase
+                .from('facility_reservation_settings')
+                .select('facility_id, enabled')
+                .in('facility_id', ids);
+              (rs || []).forEach((r: any) => { if (r.enabled) map[r.facility_id] = true; });
+            } catch {}
+            // 3) フォールバック: pet_facilities に is_premium/premium_status があれば参照
+            try {
+              const { data: pf } = await supabase
+                .from('pet_facilities')
+                .select('id, is_premium, premium_status')
+                .in('id', ids);
+              (pf || []).forEach((r: any) => {
+                if (r.is_premium || ['active','trialing','paused'].includes(String(r.premium_status))) map[r.id] = true;
+              });
+            } catch {}
+          }
+          setPremiumByFacility(map);
+        } catch (e) {
+          console.warn('premium map load failed', e);
+          setPremiumByFacility({});
+        }
       } catch (error) {
         console.error('Error in fetchFacilities:', error);
       } finally {
@@ -201,8 +244,13 @@ export function MyFacilitiesManagement() {
                   {/* ヘッダー部分 */}
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                        {facility.name}
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                        <span>{facility.name}</span>
+                        {premiumByFacility[facility.id] && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700" title="プレミアム会員（施設）">
+                            <Crown className="w-3.5 h-3.5 mr-1" /> プレミアム
+                          </span>
+                        )}
                       </h3>
                       <div className="flex items-center text-gray-600 mb-2">
                         <MapPin className="w-4 h-4 mr-2" />
