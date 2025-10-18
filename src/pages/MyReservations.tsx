@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -98,9 +98,9 @@ export default function MyReservations() {
 
   // 予約者からの任意メッセージ送信は廃止（キャンセル時のみ自動メッセージを送る）
 
-  if (loading) return <div className="p-6 pt-6 md:pt-8">読み込み中...</div>;
+  if (loading) return <div className="p-6 pt-10 md:pt-12">読み込み中...</div>;
   return (
-    <div className="max-w-3xl mx-auto p-6 pt-6 md:pt-8 space-y-6">
+    <div className="max-w-3xl mx-auto p-6 pt-10 md:pt-12 space-y-6">
       <h1 className="text-xl font-semibold mb-2">店舗予約一覧</h1>
       {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>}
       <Card className="p-4">

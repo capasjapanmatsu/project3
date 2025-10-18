@@ -1,8 +1,8 @@
 import { ArrowLeft, ChevronLeft, ChevronRight, Coins, PawPrint } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import Card from '../components/Card';
 import Button from '../components/Button';
+import Card from '../components/Card';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 
@@ -69,7 +69,7 @@ export default function PointsHistory() {
   }, [user?.id, lineUser?.id, isLineAuthenticated]);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 pt-6 md:pt-8 pb-6 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 pt-10 md:pt-12 pb-6 space-y-6">
       <div className="flex items-center justify-between">
         <Link to="/dashboard" className="inline-flex items-center text-gray-600 hover:text-gray-800">
           <ArrowLeft className="w-4 h-4 mr-2" />
