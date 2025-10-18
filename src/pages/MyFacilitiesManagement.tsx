@@ -189,7 +189,7 @@ export function MyFacilitiesManagement() {
         description="あなたが管理するペット関連施設の一覧と詳細管理ページです。"
       />
       
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 pt-10 md:pt-12 pb-8">
         {/* ヘッダー */}
         <div className="mb-8">
           <div className="flex items-center mb-4">
@@ -304,6 +304,13 @@ export function MyFacilitiesManagement() {
                       <div className="font-semibold">
                         {facility.created_at ? new Date(facility.created_at).toLocaleDateString() : '不明'}
                       </div>
+                      {premiumByFacility[facility.id] && (
+                        <div className="mt-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700" title="プレミアム会員（施設）">
+                            <Crown className="w-3.5 h-3.5 mr-1" /> プレミアム会員
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <div className="text-sm text-gray-600">ステータス</div>
