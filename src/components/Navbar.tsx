@@ -317,7 +317,7 @@ export const Navbar = memo(function Navbar() {
           paddingTop: 'calc(env(safe-area-inset-top, 0px) + 6px)'
         }}
       >
-        <div className="container mx-auto px-4" style={{ maxWidth: '720px' }}>
+        <div className="container mx-auto px-4" style={{ maxWidth: '640px' }}>
           <div className="flex justify-between items-center" style={{ height: `${headerHeightPx}px`, minHeight: `${headerHeightPx}px` }}>
             <Link 
               to="/" 
