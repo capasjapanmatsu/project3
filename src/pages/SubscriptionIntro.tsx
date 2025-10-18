@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle, Crown, Shield, Sparkles, Star, Users } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Crown, Pause, Play, Shield, Sparkles, Star, Trash2, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Button from '../components/Button';
@@ -50,8 +50,13 @@ export function SubscriptionIntro() {
   const { createCheckoutSession } = useStripe();
   const [searchParams] = useSearchParams();
   const [hasSubscription, setHasSubscription] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [actionSuccess, setActionSuccess] = useState('');
+  const [isProcessing, setIsProcessing] = useState<null | 'pause' | 'resume' | 'cancel'>(null);
 
   // サブスクリプション商品を取得
   const subscriptionProduct = products.find(p => p.mode === 'subscription');
@@ -73,15 +78,18 @@ export function SubscriptionIntro() {
         // ビュー stripe_user_subscriptions は auth.uid() でフィルタされる想定
         const { data: subscription, error } = await supabase
           .from('stripe_user_subscriptions')
-          .select('status')
+          .select('status, subscription_id')
           .maybeSingle();
 
         if (error) {
           console.error('Error checking subscription:', error);
         }
 
-        const active = subscription?.status === 'active' || subscription?.status === 'trialing';
-        setHasSubscription(!!active);
+        const status = subscription?.status as string | undefined;
+        setSubscriptionStatus(status ?? null);
+        setSubscriptionId((subscription as any)?.subscription_id ?? null);
+        const consideredJoined = status === 'active' || status === 'trialing' || status === 'paused';
+        setHasSubscription(!!consideredJoined);
       } catch (error) {
         console.error('Error in checkSubscriptionStatus:', error);
       } finally {
@@ -153,6 +161,97 @@ export function SubscriptionIntro() {
     } catch (err) {
       console.error('Error creating checkout session:', err);
       setError('決済ページの作成に失敗しました。しばらく時間をおいてから再度お試しください。');
+    }
+  };
+
+  const refreshSubscription = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { data: subscription } = await supabase
+        .from('stripe_user_subscriptions')
+        .select('status, subscription_id')
+        .maybeSingle();
+      const status = subscription?.status as string | undefined;
+      setSubscriptionStatus(status ?? null);
+      setSubscriptionId((subscription as any)?.subscription_id ?? null);
+      const consideredJoined = status === 'active' || status === 'trialing' || status === 'paused';
+      setHasSubscription(!!consideredJoined);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePause = async () => {
+    if (!subscriptionId) return;
+    setIsProcessing('pause');
+    setActionError('');
+    setActionSuccess('');
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-pause-subscription`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ subscription_id: subscriptionId })
+      });
+      if (!res.ok) throw new Error((await res.json()).error || '一時停止に失敗しました');
+      setActionSuccess('サブスクリプションを一時停止しました');
+      await refreshSubscription();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : '一時停止に失敗しました');
+    } finally {
+      setIsProcessing(null);
+    }
+  };
+
+  const handleResume = async () => {
+    if (!subscriptionId) return;
+    setIsProcessing('resume');
+    setActionError('');
+    setActionSuccess('');
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-resume-subscription`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ subscription_id: subscriptionId })
+      });
+      if (!res.ok) throw new Error((await res.json()).error || '再開に失敗しました');
+      setActionSuccess('サブスクリプションを再開しました');
+      await refreshSubscription();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : '再開に失敗しました');
+    } finally {
+      setIsProcessing(null);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!subscriptionId) return;
+    if (!window.confirm('サブスクリプションを退会しますか？現在の期間終了後に終了します。')) return;
+    setIsProcessing('cancel');
+    setActionError('');
+    setActionSuccess('');
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-cancel-subscription`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ subscription_id: subscriptionId })
+      });
+      if (!res.ok) throw new Error((await res.json()).error || '退会に失敗しました');
+      setActionSuccess('退会手続きを受け付けました');
+      await refreshSubscription();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : '退会に失敗しました');
+    } finally {
+      setIsProcessing(null);
     }
   };
 
@@ -260,15 +359,29 @@ export function SubscriptionIntro() {
 
               {hasSubscription ? (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-center text-green-600 mb-4">
-                    <CheckCircle className="w-6 h-6 mr-2" />
-                    <span className="font-semibold">ご加入済み</span>
+                  <div className="flex items-center justify-center mb-2">
+                    <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                    <span className="font-semibold text-green-700">
+                      {subscriptionStatus === 'paused' ? '一時停止中' : 'ご加入中'}
+                    </span>
                   </div>
-                  <Button 
-                    onClick={() => navigate('/dashboard')}
-                    className="w-full"
-                  >
-                    ダッシュボードに移動
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(subscriptionStatus === 'active' || subscriptionStatus === 'trialing') && (
+                      <Button onClick={() => { void handlePause(); }} isLoading={isProcessing === 'pause'} className="bg-yellow-600 hover:bg-yellow-700">
+                        <Pause className="w-4 h-4 mr-2" /> 一時停止
+                      </Button>
+                    )}
+                    {subscriptionStatus === 'paused' && (
+                      <Button onClick={() => { void handleResume(); }} isLoading={isProcessing === 'resume'} className="bg-green-600 hover:bg-green-700">
+                        <Play className="w-4 h-4 mr-2" /> 再開
+                      </Button>
+                    )}
+                    <Button onClick={() => { void handleCancel(); }} isLoading={isProcessing === 'cancel'} variant="secondary" className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400">
+                      <Trash2 className="w-4 h-4 mr-2" /> 退会する
+                    </Button>
+                  </div>
+                  <Button onClick={() => navigate('/dashboard')} variant="secondary" className="w-full">
+                    ダッシュボードに戻る
                   </Button>
                 </div>
               ) : (
@@ -286,11 +399,23 @@ export function SubscriptionIntro() {
             </Card>
           </div>
 
-          {error && (
+          {(error || actionError || actionSuccess) && (
             <div className="max-w-md mx-auto mb-8">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                <p className="text-red-600 text-sm">{error}</p>
-              </div>
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center mb-3">
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              )}
+              {actionError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center mb-3">
+                  <p className="text-red-600 text-sm">{actionError}</p>
+                </div>
+              )}
+              {actionSuccess && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                  <p className="text-green-700 text-sm">{actionSuccess}</p>
+                </div>
+              )}
             </div>
           )}
 
