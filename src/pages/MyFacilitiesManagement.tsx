@@ -120,6 +120,37 @@ export function MyFacilitiesManagement() {
               });
             } catch {}
           }
+          // 4) 追加フォールバック: オーナーのプレミアム購読がアカウント単位で有効で、
+          //    かつ施設が1件のみの場合はその施設をプレミアムとみなす（暫定運用）
+          try {
+            const premiumPriceId = import.meta.env.VITE_PREMIUM_OWNER_PRICE_ID as string | undefined;
+            if (processedFacilities.length === 1 && premiumPriceId && !map[processedFacilities[0].id]) {
+              let active = false;
+              const { data: sub1 } = await supabase
+                .from('stripe_user_subscriptions')
+                .select('status, price_id')
+                .maybeSingle();
+              if (sub1 && (sub1 as any).price_id === premiumPriceId && ['active','trialing','paused'].includes(String((sub1 as any).status))) {
+                active = true;
+              }
+              if (!active) {
+                const { data: sub2 } = await supabase
+                  .from('user_subscriptions')
+                  .select('status, product_key, price_id')
+                  .eq('user_id', user.id)
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+                if (sub2 && ((sub2 as any).price_id === premiumPriceId || /premium_owner/i.test(String((sub2 as any).product_key)))) {
+                  const status = String((sub2 as any).status);
+                  active = ['active','trialing','paused'].includes(status);
+                }
+              }
+              if (active) {
+                map[processedFacilities[0].id] = true;
+              }
+            }
+          } catch {}
           setPremiumByFacility(map);
         } catch (e) {
           console.warn('premium map load failed', e);
