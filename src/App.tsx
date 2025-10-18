@@ -218,8 +218,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         <div className="min-h-screen bg-gray-50 flex flex-col">
             <SEO />
             <Navbar />
-            {/* Fixed Navbar 下のスペーサー: 上パディング増分(6px)も反映 */}
-            <div aria-hidden="true" style={{ height: 'calc(34px + env(safe-area-inset-top, 0px))' }} />
+            {/* Fixed Navbar 下のスペーサー: さらに+6px拡大 */}
+            <div aria-hidden="true" style={{ height: 'calc(40px + env(safe-area-inset-top, 0px))' }} />
             <main className="flex-1">
               {children}
             </main>
