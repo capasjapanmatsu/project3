@@ -323,7 +323,7 @@ export function OrderHistory() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto pt-6 md:pt-8">
       {/* ヘッダー */}
       <div className="flex items-center space-x-4 mb-6">
         <Link

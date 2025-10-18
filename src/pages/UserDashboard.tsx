@@ -665,7 +665,7 @@ export function UserDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 md:pt-8 pb-8 space-y-8">
       {/* Header with Modern CSS */}
       <div className="flex justify-between items-center mb-4">
         <div>

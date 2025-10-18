@@ -228,7 +228,7 @@ export function Cart() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto pt-6 md:pt-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold flex items-center">
           <ShoppingCart className="w-8 h-8 text-green-600 mr-3" />
