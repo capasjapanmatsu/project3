@@ -343,7 +343,7 @@ export const Navbar = memo(function Navbar() {
                 />
               </div>
               
-              <div className="flex flex-col justify-center">
+              <div className="flex flex-col justify-center mt-[2px] md:mt-[3px]">
                 <span className="text-xl md:text-2xl font-bold leading-none whitespace-nowrap tracking-tight">
                   <span className="navbar-text-dogpark text-gray-800">ドッグパーク</span>
                   <span className="navbar-text-jp text-blue-600 ml-1">JP</span>
