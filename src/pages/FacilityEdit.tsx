@@ -927,6 +927,37 @@ export default function FacilityEdit() {
       setIsDeleting(true);
       setError('');
 
+      // 施設のプレミアム契約がある場合は先に解約（失敗しても続行）
+      try {
+        await (async () => {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token;
+            if (!token) return;
+            // 施設のsubscription_idを取得
+            let subscriptionId: string | null = null;
+            try {
+              const { data: row } = await supabase
+                .from('facility_premium_memberships')
+                .select('subscription_id')
+                .eq('facility_id', facility.id)
+                .maybeSingle();
+              subscriptionId = (row as any)?.subscription_id || null;
+            } catch {}
+            if (!subscriptionId) return;
+            await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-cancel-subscription`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'apikey': `${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              },
+              body: JSON.stringify({ subscription_id: subscriptionId, notes: 'cancel_on_facility_delete' })
+            });
+          } catch {}
+        })();
+      } catch {}
+
       // 管理者権限の確認
       const { data: profileData } = await supabase
         .from('profiles')
@@ -1275,16 +1306,6 @@ export default function FacilityEdit() {
                   {formData.is_public ? '公開' : '非公開'}
                 </span>
               </div>
-              {premium.state === 'active' && (
-                <div className="mt-3">
-                  <Button onClick={cancelPremium} isLoading={isCancellingPremium} className="w-full bg-red-600 hover:bg-red-700">
-                    プレミアム会員を解約する
-                  </Button>
-                  {cancelMsg && (
-                    <div className="text-xs text-gray-600 mt-2">{cancelMsg}</div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
@@ -2091,6 +2112,17 @@ export default function FacilityEdit() {
                       </span>
                     )}
                   </p>
+
+                  {premium.state === 'active' && (
+                    <div className="mb-4">
+                      <Button onClick={cancelPremium} isLoading={isCancellingPremium} className="w-full bg-red-600 hover:bg-red-700">
+                        プレミアム会員を解約する
+                      </Button>
+                      {cancelMsg && (
+                        <div className="text-xs text-gray-700 mt-2">{cancelMsg}</div>
+                      )}
+                    </div>
+                  )}
                   
                   <Button
                     onClick={() => setShowDeleteDialog(true)}
