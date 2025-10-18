@@ -106,8 +106,13 @@ export const Navbar = memo(function Navbar() {
   // 直前の変更を戻す（以前のサイズに復元）
   // ヘッダーレイアウト最適化（さらに数px短縮）
   const headerHeightPx = isLoggedIn ? (isIOS() ? 32 : 30) : (isIOS() ? 28 : 26);
-  const logoSizePx = isLoggedIn ? 20 : 18;
-  const iconButtonSize = Math.max(24, headerHeightPx - 6);
+  // ロゴは見た目を約2倍に。ヘッダー高さを超えないようにクランプ
+  const baseLogoSize = isLoggedIn ? 20 : 18;
+  const targetLogoSizePx = baseLogoSize * 2;
+  const logoSizePx = Math.max(18, Math.min(targetLogoSizePx, headerHeightPx - 2));
+  // 右側アイコンのボタンはヘッダー高いっぱい、アイコン自体も少し拡大
+  const iconButtonSize = headerHeightPx;
+  const iconGlyphPx = Math.max(20, Math.min(headerHeightPx - 6, 24));
 
   // Memoize fetch functions to prevent unnecessary re-renders
   const fetchUserName = useCallback(async () => {
@@ -339,11 +344,11 @@ export const Navbar = memo(function Navbar() {
               </div>
               
               <div className="flex flex-col justify-center">
-                <span className="text-lg md:text-xl font-bold leading-none whitespace-nowrap tracking-tight">
+                <span className="text-xl md:text-2xl font-bold leading-none whitespace-nowrap tracking-tight">
                   <span className="navbar-text-dogpark text-gray-800">ドッグパーク</span>
                   <span className="navbar-text-jp text-blue-600 ml-1">JP</span>
                 </span>
-                <span className="navbar-subtitle-text text-[11px] md:text-xs text-gray-500 leading-none inline">
+                <span className="navbar-subtitle-text text-[10px] md:text-[11px] text-gray-500 leading-none inline">
                   愛犬との素敵な時間を
                 </span>
               </div>
@@ -391,7 +396,7 @@ export const Navbar = memo(function Navbar() {
                     aria-label={`通知 ${unreadNotifications > 0 ? `${unreadNotifications}件の未読通知があります` : ''}`}
                     {...attachPrefetchHandlers('/community')}
                   >
-                    <Bell className="h-5 w-5 pointer-events-none" aria-hidden="true" />
+                    <Bell className="pointer-events-none" aria-hidden="true" style={{ width: iconGlyphPx, height: iconGlyphPx }} />
                     {unreadNotifications > 0 && (
                       <span className="pointer-events-none absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" aria-hidden="true">
                         {unreadNotifications > 9 ? '9+' : unreadNotifications}
@@ -407,7 +412,7 @@ export const Navbar = memo(function Navbar() {
                     aria-label={`カート ${cartItemCount > 0 ? `${cartItemCount}点の商品があります` : ''}`}
                     {...attachPrefetchHandlers('/petshop')}
                   >
-                    <ShoppingCart className="h-5 w-5 pointer-events-none" aria-hidden="true" data-cart-target="true" />
+                    <ShoppingCart className="pointer-events-none" aria-hidden="true" data-cart-target="true" style={{ width: iconGlyphPx, height: iconGlyphPx }} />
                     {cartItemCount > 0 && (
                       <span className="pointer-events-none absolute -top-2 -right-2 bg-red-500 text-white text-[10px] rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center" aria-hidden="true">
                         {cartItemCount > 9 ? '9+' : cartItemCount}
@@ -455,7 +460,7 @@ export const Navbar = memo(function Navbar() {
                       aria-label="管理者ページ"
                       {...attachPrefetchHandlers('/admin')}
                     >
-                      <Shield className="h-4 w-4" aria-hidden="true" />
+                      <Shield aria-hidden="true" style={{ width: Math.max(18, iconGlyphPx - 2), height: Math.max(18, iconGlyphPx - 2) }} />
                       <span className="hidden md:inline">管理者</span>
                     </Link>
                   )}
@@ -467,7 +472,7 @@ export const Navbar = memo(function Navbar() {
                     style={{ width: iconButtonSize, height: iconButtonSize }}
                     aria-label="ログアウト"
                   >
-                    <LogOut className="h-4 w-4 pointer-events-none" aria-hidden="true" />
+                    <LogOut className="pointer-events-none" aria-hidden="true" style={{ width: iconGlyphPx, height: iconGlyphPx }} />
                     <span className="hidden md:inline ml-1">ログアウト</span>
                   </button>
                 </>
