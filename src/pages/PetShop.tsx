@@ -342,7 +342,7 @@ export function PetShop() {
   }
 
   return (
-    <div className="space-y-6 pt-6 md:pt-8">
+    <div className="space-y-6 pt-10 md:pt-12">
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
         <div>
