@@ -23,7 +23,7 @@ import { retryConfigs, useRetryWithRecovery } from '../hooks/useRetryWithRecover
 import { useSubscription } from '../hooks/useSubscription';
 import type { Dog, DogPark, SmartLock } from '../types';
 import { triggerHapticFeedback } from '../utils/hapticFeedback';
-import { DEFAULT_LOCATION, LocationError, formatDistance, getCurrentLocation, sortByDistance, calculateDistance, type Location } from '../utils/location';
+import { DEFAULT_LOCATION, LocationError, calculateDistance, formatDistance, getCurrentLocation, sortByDistance, type Location } from '../utils/location';
 import { checkPaymentStatus, type PaymentStatus } from '../utils/paymentUtils';
 import { safeGetItem, safeSetItem } from '../utils/safeStorage';
 import { supabase } from '../utils/supabase';
@@ -567,7 +567,7 @@ export function AccessControl() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto pt-3">
+    <div className="max-w-4xl mx-auto pt-6 md:pt-8">
       {/* FX styles for game-like animations */}
       <style>{`
         @keyframes ripple { 0% { transform: scale(1); opacity: .45; } 100% { transform: scale(1.8); opacity: 0; } }
