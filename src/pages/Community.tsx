@@ -708,7 +708,7 @@ export function Community() {
 
   return (
     <div
-      className="max-w-6xl mx-auto w-full"
+      className="max-w-6xl mx-auto w-full pt-10 md:pt-12"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       style={{
