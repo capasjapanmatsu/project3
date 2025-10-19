@@ -109,6 +109,8 @@ const FacilityReserve = React.lazy(() => import('./pages/FacilityReserve'));
 
 // ショッピング関連ページ
 const PetShop = React.lazy(() => import('./pages/PetShop').then(module => ({ default: module.PetShop })));
+  const Spots = React.lazy(() => import('./pages/Spots'));
+  const SpotDetail = React.lazy(() => import('./pages/SpotDetail'));
 const Cart = React.lazy(() => import('./pages/Cart').then(module => ({ default: module.Cart })));
 const Checkout = React.lazy(() => import('./pages/Checkout').then(module => ({ default: module.Checkout })));
 const ProductDetail = React.lazy(() => import('./pages/ProductDetail').then(module => ({ default: module.ProductDetail })));
@@ -466,6 +468,18 @@ const App: React.FC = () => {
               <Route path="/news/:newsId" element={
                 <Suspense fallback={<PageSkeleton />}>
                   <NewsDetail />
+                </Suspense>
+              } />
+
+              {/* 映えスポット */}
+              <Route path="/spots" element={
+                <Suspense fallback={<PageSkeleton />}>
+                  <Spots />
+                </Suspense>
+              } />
+              <Route path="/spots/:id" element={
+                <Suspense fallback={<PageSkeleton />}>
+                  <SpotDetail />
                 </Suspense>
               } />
               
