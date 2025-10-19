@@ -35,6 +35,8 @@ create table if not exists public.spots (
   longitude double precision,
   address text,
   is_hidden boolean not null default false, -- admin hide
+  rating_count int not null default 0,
+  rating_sum int not null default 0, -- sum of 1..5
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -97,6 +99,33 @@ create table if not exists public.spot_likes (
   created_at timestamptz not null default now(),
   primary key (spot_id, user_id)
 );
+
+-- Ratings (1..5). Keep aggregate in spots.rating_count/rating_sum
+create table if not exists public.spot_ratings (
+  spot_id uuid not null references public.spots(id) on delete cascade,
+  user_id uuid not null,
+  rating int not null check (rating between 1 and 5),
+  created_at timestamptz not null default now(),
+  primary key (spot_id, user_id)
+);
+
+create or replace function public.update_spot_rating_aggregate()
+returns trigger language plpgsql as $$
+begin
+  update public.spots s
+  set rating_count = sub.cnt, rating_sum = sub.sum
+  from (
+    select spot_id, count(*) as cnt, coalesce(sum(rating),0) as sum
+    from public.spot_ratings where spot_id = new.spot_id group by spot_id
+  ) sub
+  where s.id = sub.spot_id;
+  return null;
+end $$;
+
+drop trigger if exists trg_spot_ratings_aiud on public.spot_ratings;
+create trigger trg_spot_ratings_aiud
+after insert or update or delete on public.spot_ratings
+for each row execute procedure public.update_spot_rating_aggregate();
 
 -- Reports
 create table if not exists public.spot_reports (
@@ -175,6 +204,7 @@ alter table public.spots enable row level security;
 alter table public.spot_media enable row level security;
 alter table public.spot_comments enable row level security;
 alter table public.spot_likes enable row level security;
+alter table public.spot_ratings enable row level security;
 alter table public.spot_reports enable row level security;
 
 -- Spots policies
@@ -269,6 +299,18 @@ for insert to authenticated with check (user_id = auth.uid());
 drop policy if exists spot_likes_delete on public.spot_likes;
 create policy spot_likes_delete on public.spot_likes
 for delete using (user_id = auth.uid() or public.is_admin());
+
+-- Ratings policies
+drop policy if exists spot_ratings_select on public.spot_ratings;
+create policy spot_ratings_select on public.spot_ratings for select using (true);
+
+drop policy if exists spot_ratings_upsert on public.spot_ratings;
+create policy spot_ratings_upsert on public.spot_ratings
+for insert to authenticated with check (user_id = auth.uid());
+
+drop policy if exists spot_ratings_update on public.spot_ratings;
+create policy spot_ratings_update on public.spot_ratings
+for update using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- Reports
 drop policy if exists spot_reports_select on public.spot_reports;
