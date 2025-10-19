@@ -63,9 +63,10 @@ const getCategoryIcon = (categoryId: string): React.ReactNode => {
   return icons[categoryId] || <Building2 className={iconClass} />;
 };
 
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export function DogParkList() {
+  const navigate = useNavigate();
   const [activeView, setActiveView] = useState<'dogparks' | 'facilities'>('dogparks');
   const [debugInfo, setDebugInfo] = useState<Record<string, unknown> | null>(null);
   const [showDebug, setShowDebug] = useState(false);
@@ -489,17 +490,17 @@ export function DogParkList() {
         </div>
       )}
 
-      {/* タブ風ボタン */}
+      {/* タブ風ボタン（縦並び + 新タブ: 映えスポット） */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center py-4">
-            <div className="flex bg-gray-100 rounded-lg p-1">
+          <div className="py-4">
+            <div className="flex flex-col gap-3 items-stretch">
               <button
                 onClick={() => setActiveView('dogparks')}
-                className={`px-6 py-3 rounded-md font-medium transition-all ${
+                className={`w-full text-left px-6 py-3 rounded-md font-medium transition-all ${
                   activeView === 'dogparks'
                     ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 <MapPin className="w-4 h-4 mr-2 inline text-current" />
@@ -507,14 +508,21 @@ export function DogParkList() {
               </button>
               <button
                 onClick={() => setActiveView('facilities')}
-                className={`px-6 py-3 rounded-md font-medium transition-all ${
+                className={`w-full text-left px-6 py-3 rounded-md font-medium transition-all ${
                   activeView === 'facilities'
                     ? 'bg-green-600 text-white shadow-md'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 <MapPin className="w-4 h-4 mr-2 inline text-current" />
                 ワンちゃんと行ける施設
+              </button>
+              <button
+                onClick={() => navigate('/spots')}
+                className="w-full text-left px-6 py-3 rounded-md font-medium transition-all bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                <MapPin className="w-4 h-4 mr-2 inline text-current" />
+                ワンちゃんと行ける映えスポット
               </button>
             </div>
           </div>
