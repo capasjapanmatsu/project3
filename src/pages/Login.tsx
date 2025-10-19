@@ -82,7 +82,7 @@ export function Login() {
   };
 
   return (
-    <div className="max-w-md mx-auto">
+    <div className="max-w-md mx-auto pt-10 md:pt-12">
       <h1 className="text-2xl font-bold text-center mb-8">ログイン</h1>
       
       {/* サブスクリプション誘導メッセージ */}
