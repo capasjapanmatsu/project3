@@ -1,11 +1,12 @@
+import { Filter, MapPin, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Plus, Filter } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
-import { supabase } from '../utils/supabase';
-import useAuth from '../context/AuthContext';
 import SpotPostModal from '../components/spots/SpotPostModal';
+import SpotsMap from '../components/spots/SpotsMap';
+import useAuth from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
 
 type Spot = {
   id: string;
@@ -102,6 +103,13 @@ export default function Spots() {
       </div>
 
       {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>}
+
+      {/* マップがメイン */}
+      <SpotsMap
+        spots={filteredSpots.map(s => ({ id: s.id, title: s.title, latitude: s.latitude, longitude: s.longitude }))}
+        thumbMap={thumbMap}
+        className="mb-6"
+      />
       {loading ? (
         <div className="py-16 text-center text-gray-500">読み込み中...</div>
       ) : (

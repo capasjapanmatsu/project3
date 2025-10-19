@@ -1,10 +1,10 @@
+import { MapPin, Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { X, MapPin, Upload } from 'lucide-react';
-import Button from '../Button';
-import Card from '../Card';
-import { supabase } from '../../utils/supabase';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../../context/AuthContext';
+import { supabase } from '../../utils/supabase';
+import Button from '../Button';
+import Card from '../Card';
 
 type Props = { onClose: () => void; onCreated: (id: string) => void };
 
@@ -16,6 +16,7 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
   const [category, setCategory] = useState<string>('');
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
+  const mapRef = useState<HTMLDivElement | null>(null)[0];
   const [address, setAddress] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -102,6 +103,15 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
         <div className="p-4 space-y-4">
           {error && <div className="p-3 bg-red-100 text-red-700 rounded">{error}</div>}
 
+          <div className="text-xs text-gray-600 bg-blue-50 border border-blue-200 p-2 rounded">
+            このコーナーは公共施設など無料でワンちゃん同伴できるスポットを投稿できます。個人店や有料スポットは掲載できません。
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">位置を地図で指定（必須）</label>
+            <div id="spot-post-map" style={{ width: '100%', height: 220, borderRadius: 8, background: '#f3f4f6' }} />
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1">タイトル（必須）</label>
             <input value={title} onChange={(e)=>setTitle(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="場所の名前"/>
@@ -123,16 +133,7 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
             <textarea value={description} onChange={(e)=>setDescription(e.target.value)} rows={3} className="w-full border rounded px-3 py-2"/>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1 flex items-center"><MapPin className="w-4 h-4 mr-2"/>緯度</label>
-              <input type="number" step="0.000001" value={lat ?? ''} onChange={(e)=>setLat(e.target.value?Number(e.target.value):null)} className="w-full border rounded px-3 py-2"/>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 flex items-center"><MapPin className="w-4 h-4 mr-2"/>経度</label>
-              <input type="number" step="0.000001" value={lng ?? ''} onChange={(e)=>setLng(e.target.value?Number(e.target.value):null)} className="w-full border rounded px-3 py-2"/>
-            </div>
-          </div>
+          {/* 緯度経度入力は地図指定に移行（必要に応じてデバッグ用で再導入可） */}
 
           <div>
             <label className="block text-sm font-medium mb-1 flex items-center"><Upload className="w-4 h-4 mr-2"/>画像（1〜3枚）</label>
