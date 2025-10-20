@@ -1,5 +1,5 @@
-import { MapPin, Search, Upload, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Search, Upload, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../../context/AuthContext';
 import { supabase } from '../../utils/supabase';
