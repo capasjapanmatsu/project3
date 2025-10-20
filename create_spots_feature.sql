@@ -30,6 +30,7 @@ create table if not exists public.spots (
   title text not null,
   description text,
   category text,
+  categories text[] default '{}',
   tags text[] default '{}',
   latitude double precision,
   longitude double precision,
