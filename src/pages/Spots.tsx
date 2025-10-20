@@ -1,4 +1,4 @@
-import { Filter, MapPin, Plus, Waves, Mountain, Trees, Landmark, Building2, Sailboat, Binoculars, Flower2, Sun } from 'lucide-react';
+import { Building2, Filter, Flower2, Landmark, MapPin, Mountain, Plus, Sailboat, Search, Sun, Trees, Waves } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
@@ -119,7 +119,7 @@ export default function Spots() {
                   {c === '寺社' && <Landmark className="w-4 h-4"/>}
                   {c === '公共施設' && <Building2 className="w-4 h-4"/>}
                   {c === '川沿い/湖畔' && <Sailboat className="w-4 h-4"/>}
-                  {c === '展望台' && <Binoculars className="w-4 h-4"/>}
+                  {c === '展望台' && <Search className="w-4 h-4"/>}
                   {c === '花畑' && <Flower2 className="w-4 h-4"/>}
                   {c === '桜/紅葉' && <Flower2 className="w-4 h-4"/>}
                   {c === '散歩道' && <Trees className="w-4 h-4"/>}
