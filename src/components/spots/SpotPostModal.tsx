@@ -1,4 +1,4 @@
-import { MapPin, Upload, X } from 'lucide-react';
+import { MapPin, Search, Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../../context/AuthContext';
@@ -16,7 +16,8 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
   const [category, setCategory] = useState<string>('');
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
-  const mapRef = useState<HTMLDivElement | null>(null)[0];
+  const [mapObj, setMapObj] = useState<any>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const [address, setAddress] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,6 +31,31 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
       });
     }
   }, []);
+
+  // 地図初期化
+  useEffect(() => {
+    const win: any = window;
+    if (!mapContainerRef.current || !win.google?.maps) return;
+    const center = lat && lng ? { lat, lng } : { lat: 35.6762, lng: 139.6503 };
+    const map = new win.google.maps.Map(mapContainerRef.current, {
+      center,
+      zoom: lat && lng ? 14 : 12,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+    });
+    setMapObj(map);
+    const marker = new win.google.maps.Marker({ position: center, map, draggable: true });
+    win.google.maps.event.addListener(marker, 'dragend', (e: any) => {
+      setLat(e.latLng.lat());
+      setLng(e.latLng.lng());
+    });
+    win.google.maps.event.addListener(map, 'click', (e: any) => {
+      marker.setPosition(e.latLng);
+      setLat(e.latLng.lat());
+      setLng(e.latLng.lng());
+    });
+  }, [mapContainerRef, lat, lng]);
 
   const handleSubmit = async () => {
     if (!user) {
@@ -109,7 +135,29 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
 
           <div>
             <label className="block text-sm font-medium mb-1">位置を地図で指定（必須）</label>
-            <div id="spot-post-map" style={{ width: '100%', height: 220, borderRadius: 8, background: '#f3f4f6' }} />
+            <div ref={mapContainerRef} style={{ width: '100%', height: 240, borderRadius: 8, background: '#f3f4f6' }} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">住所（任意）</label>
+            <div className="flex gap-2">
+              <input value={address} onChange={(e)=>setAddress(e.target.value)} className="flex-1 border rounded px-3 py-2" placeholder="例: 東京都港区芝公園4-2-8"/>
+              <button type="button" className="px-3 py-2 border rounded bg-gray-100 hover:bg-gray-200 text-sm" onClick={async ()=>{
+                if (!address.trim()) return;
+                try {
+                  const resp = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`);
+                  const json = await resp.json();
+                  const loc = json?.results?.[0]?.geometry?.location;
+                  if (loc && mapObj) {
+                    setLat(loc.lat); setLng(loc.lng);
+                    (mapObj as any).setCenter(loc);
+                    (mapObj as any).setZoom(15);
+                  }
+                } catch {}
+              }}>
+                <Search className="w-4 h-4 inline mr-1"/>検索
+              </button>
+            </div>
           </div>
 
           <div>
@@ -119,8 +167,20 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">カテゴリ</label>
-              <input value={category} onChange={(e)=>setCategory(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="例: 海辺"/>
+            <label className="block text-sm font-medium mb-1">カテゴリ</label>
+            <select value={category} onChange={(e)=>setCategory(e.target.value)} className="w-full border rounded px-3 py-2">
+              <option value="">選択してください</option>
+              <option value="海辺">海辺</option>
+              <option value="高台/夕日">高台/夕日</option>
+              <option value="公園">公園</option>
+              <option value="寺社">寺社</option>
+              <option value="公共施設">公共施設</option>
+              <option value="川沿い/湖畔">川沿い/湖畔</option>
+              <option value="展望台">展望台</option>
+              <option value="花畑">花畑</option>
+              <option value="桜/紅葉">桜/紅葉</option>
+              <option value="散歩道">散歩道</option>
+            </select>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">住所（任意）</label>
@@ -129,7 +189,7 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">説明（任意）</label>
+            <label className="block text-sm font-medium mb-1">コメント（任意）</label>
             <textarea value={description} onChange={(e)=>setDescription(e.target.value)} rows={3} className="w-full border rounded px-3 py-2"/>
           </div>
 

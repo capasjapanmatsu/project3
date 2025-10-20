@@ -1,6 +1,6 @@
+import { MapPin } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Card from '../Card';
-import { MapPin } from 'lucide-react';
 import { useGoogleMaps } from '../GoogleMapsProvider';
 
 export type SpotForMap = {
@@ -21,6 +21,7 @@ export default function SpotsMap({ spots, thumbMap, className = '' }: Props) {
   const { isLoaded, error } = useGoogleMaps();
   const [mapObj, setMapObj] = useState<any>(null);
   const [infoWindow, setInfoWindow] = useState<any>(null);
+  const [currentLoc, setCurrentLoc] = useState<{ lat: number; lng: number } | null>(null);
 
   const DEFAULT_CENTER = { lat: 35.6762, lng: 139.6503 };
 
@@ -48,20 +49,33 @@ export default function SpotsMap({ spots, thumbMap, className = '' }: Props) {
     return () => { delete (window as any).infoWindowNavigate; };
   }, []);
 
+  // 現在地を取得して中心に
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setCurrentLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setCurrentLoc(null),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
+    );
+  }, []);
+
   // 初期化
   useEffect(() => {
     if (!isLoaded || error || !mapRef.current) return;
     const win: any = window;
     const map = new win.google.maps.Map(mapRef.current, {
-      center: DEFAULT_CENTER,
-      zoom: 12,
+      center: currentLoc || DEFAULT_CENTER,
+      zoom: currentLoc ? 13 : 12,
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
     });
     setMapObj(map);
     setInfoWindow(new win.google.maps.InfoWindow());
-  }, [isLoaded, error]);
+    if (currentLoc) {
+      new win.google.maps.Marker({ position: currentLoc, map, title: '現在地' });
+    }
+  }, [isLoaded, error, currentLoc]);
 
   // マーカー更新
   useEffect(() => {
@@ -85,11 +99,14 @@ export default function SpotsMap({ spots, thumbMap, className = '' }: Props) {
       const bounds = new (window as any).google.maps.LatLngBounds();
       markers.forEach((m) => bounds.extend(m.getPosition()));
       mapObj.fitBounds(bounds, 80);
+    } else if (currentLoc) {
+      mapObj.setCenter(currentLoc);
+      mapObj.setZoom(13);
     }
     return () => {
       markers.forEach((m) => m.setMap(null));
     };
-  }, [spots, mapObj, infoWindow, createInfoContent]);
+  }, [spots, mapObj, infoWindow, createInfoContent, currentLoc]);
 
   if (error) {
     return (
