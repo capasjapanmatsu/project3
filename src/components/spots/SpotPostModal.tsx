@@ -14,6 +14,7 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<string>('');
+  const [categories, setCategories] = useState<string[]>([]);
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [mapObj, setMapObj] = useState<any>(null);
@@ -46,14 +47,24 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
     });
     setMapObj(map);
     const marker = new win.google.maps.Marker({ position: center, map, draggable: true });
+    const geocoder = new win.google.maps.Geocoder();
+    const reverseGeocode = (ll: {lat: number; lng: number}) => {
+      geocoder.geocode({ location: ll, region: 'JP' }, (results: any, status: any) => {
+        if (status === 'OK' && results && results[0]) {
+          setAddress(results[0].formatted_address || address);
+        }
+      });
+    };
     win.google.maps.event.addListener(marker, 'dragend', (e: any) => {
       setLat(e.latLng.lat());
       setLng(e.latLng.lng());
+      reverseGeocode({ lat: e.latLng.lat(), lng: e.latLng.lng() });
     });
     win.google.maps.event.addListener(map, 'click', (e: any) => {
       marker.setPosition(e.latLng);
       setLat(e.latLng.lat());
       setLng(e.latLng.lng());
+      reverseGeocode({ lat: e.latLng.lat(), lng: e.latLng.lng() });
     });
   }, [mapContainerRef, lat, lng]);
 
@@ -81,6 +92,7 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
           title: title.trim(),
           description: description.trim() || null,
           category: category || null,
+          categories: categories.length > 0 ? categories : null,
           latitude: lat,
           longitude: lng,
           address: address || null,
@@ -145,13 +157,40 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
               <button type="button" className="px-3 py-2 border rounded bg-gray-100 hover:bg-gray-200 text-sm" onClick={async ()=>{
                 if (!address.trim()) return;
                 try {
-                  const resp = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`);
-                  const json = await resp.json();
-                  const loc = json?.results?.[0]?.geometry?.location;
-                  if (loc && mapObj) {
-                    setLat(loc.lat); setLng(loc.lng);
-                    (mapObj as any).setCenter(loc);
-                    (mapObj as any).setZoom(15);
+                  const win: any = window;
+                  // 1) Geocoder（地域バイアス: 日本）
+                  if (win.google?.maps) {
+                    const geocoder = new win.google.maps.Geocoder();
+                    geocoder.geocode({ address, region: 'JP' }, (results: any, status: any) => {
+                      if (status === 'OK' && results && results[0]) {
+                        const loc = results[0].geometry.location;
+                        const latlng = { lat: loc.lat(), lng: loc.lng() };
+                        setLat(latlng.lat); setLng(latlng.lng);
+                        if (mapObj) { (mapObj as any).setCenter(latlng); (mapObj as any).setZoom(15); }
+                      } else {
+                        // 2) Fallback: Places Autocomplete → Place Details
+                        if (win.google?.maps?.places) {
+                          const auto = new win.google.maps.places.AutocompleteService();
+                          auto.getPlacePredictions({ input: address, componentRestrictions: { country: 'jp' } }, (preds: any, pStatus: any) => {
+                            if (pStatus === 'OK' && preds && preds[0]) {
+                              const placeId = preds[0].place_id;
+                              const svc = new win.google.maps.places.PlacesService(mapObj || document.createElement('div'));
+                              svc.getDetails({ placeId, fields: ['geometry'] }, (place: any, dStatus: any) => {
+                                if (dStatus === 'OK' && place?.geometry?.location) {
+                                  const loc2 = place.geometry.location; const ll = { lat: loc2.lat(), lng: loc2.lng() };
+                                  setLat(ll.lat); setLng(ll.lng);
+                                  if (mapObj) { (mapObj as any).setCenter(ll); (mapObj as any).setZoom(15); }
+                                } else {
+                                  alert('位置を特定できませんでした');
+                                }
+                              });
+                            } else {
+                              alert('位置を特定できませんでした');
+                            }
+                          });
+                        }
+                      }
+                    });
                   }
                 } catch {}
               }}>
@@ -167,24 +206,28 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-            <label className="block text-sm font-medium mb-1">カテゴリ</label>
-            <select value={category} onChange={(e)=>setCategory(e.target.value)} className="w-full border rounded px-3 py-2">
+            <label className="block text-sm font-medium mb-1">カテゴリ（メイン）</label>
+            <select value={category} onChange={(e)=>setCategory(e.target.value)} className="w-full border rounded px-3 py-2 mb-2">
               <option value="">選択してください</option>
               <option value="海辺">海辺</option>
-              <option value="高台/夕日">高台/夕日</option>
+              <option value="高台">高台</option>
+              <option value="夕日">夕日</option>
               <option value="公園">公園</option>
               <option value="寺社">寺社</option>
               <option value="公共施設">公共施設</option>
               <option value="川沿い/湖畔">川沿い/湖畔</option>
               <option value="展望台">展望台</option>
               <option value="花畑">花畑</option>
-              <option value="桜/紅葉">桜/紅葉</option>
+              <option value="桜">桜</option>
+              <option value="紅葉">紅葉</option>
               <option value="散歩道">散歩道</option>
             </select>
+            <label className="block text-sm font-medium mb-1">追加カテゴリ（複数選択可）</label>
+            <div className="flex flex-wrap gap-2">
+              {["海辺","高台","夕日","公園","寺社","公共施設","川沿い/湖畔","展望台","花畑","桜","紅葉","散歩道"].map((c)=>(
+                <button type="button" key={c} onClick={()=>setCategories(prev=>prev.includes(c)?prev.filter(x=>x!==c):[...prev,c])} className={`px-3 py-1 rounded-full border text-sm ${categories.includes(c)?'bg-blue-600 text-white border-blue-600':'bg-white text-gray-700 border-gray-300'}`}>{c}</button>
+              ))}
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">住所（任意）</label>
-              <input value={address} onChange={(e)=>setAddress(e.target.value)} className="w-full border rounded px-3 py-2"/>
             </div>
           </div>
 
