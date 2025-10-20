@@ -1,4 +1,4 @@
-import { Filter, MapPin, Plus } from 'lucide-react';
+import { Filter, MapPin, Plus, Waves, Mountain, Trees, Landmark, Building2, Sailboat, Binoculars, Flower2, Sun } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
@@ -40,6 +40,7 @@ export default function Spots() {
   const [error, setError] = useState('');
   const [showPost, setShowPost] = useState(false);
   const [category, setCategory] = useState<string | null>(null);
+  const [showCategories, setShowCategories] = useState(false);
 
   const filteredSpots = useMemo(() => {
     if (!category) return spots;
@@ -95,11 +96,39 @@ export default function Spots() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-4">
-        <button onClick={() => setCategory(null)} className={`px-3 py-1 rounded-full border ${category===null?'bg-blue-600 text-white border-blue-600':'bg-white text-blue-600 border-blue-600'}`}>すべて</button>
-        {CATEGORIES.map((c) => (
-          <button key={c} onClick={() => setCategory(c)} className={`px-3 py-1 rounded-full border ${category===c?'bg-blue-600 text-white border-blue-600':'bg-white text-blue-600 border-blue-600'}`}>{c}</button>
-        ))}
+      {/* アコーディオン（カテゴリ） */}
+      <div className="mb-4 bg-white rounded-lg border">
+        <button onClick={()=>setShowCategories(!showCategories)} className="w-full px-3 py-3 flex items-center justify-between text-left hover:bg-gray-50">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">カテゴリ</span>
+            <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">{category ? 1 : 0} / {CATEGORIES.length}</span>
+          </div>
+          <span className={`text-gray-400 transition-transform ${showCategories ? 'rotate-180' : ''}`}>▼</span>
+        </button>
+        {showCategories && (
+          <div className="px-3 pb-3 border-t border-gray-100">
+            <div className="flex flex-wrap gap-2 pt-3">
+              <button onClick={() => setCategory(null)} className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg border ${category===null?'bg-blue-600 text-white border-blue-600':'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>
+                <Sun className="w-4 h-4"/>すべて
+              </button>
+              {CATEGORIES.map((c) => (
+                <button key={c} onClick={() => setCategory(c)} className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg border ${category===c?'bg-blue-600 text-white border-blue-600':'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>
+                  {c === '海辺' && <Waves className="w-4 h-4"/>}
+                  {c === '高台/夕日' && <Mountain className="w-4 h-4"/>}
+                  {c === '公園' && <Trees className="w-4 h-4"/>}
+                  {c === '寺社' && <Landmark className="w-4 h-4"/>}
+                  {c === '公共施設' && <Building2 className="w-4 h-4"/>}
+                  {c === '川沿い/湖畔' && <Sailboat className="w-4 h-4"/>}
+                  {c === '展望台' && <Binoculars className="w-4 h-4"/>}
+                  {c === '花畑' && <Flower2 className="w-4 h-4"/>}
+                  {c === '桜/紅葉' && <Flower2 className="w-4 h-4"/>}
+                  {c === '散歩道' && <Trees className="w-4 h-4"/>}
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>}
