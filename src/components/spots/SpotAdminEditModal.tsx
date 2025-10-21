@@ -1,8 +1,8 @@
+import { MapPin, Save, Search, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import Card from '../Card';
-import Button from '../Button';
 import { supabase } from '../../utils/supabase';
-import { MapPin, Save, Trash2, X } from 'lucide-react';
+import Button from '../Button';
+import Card from '../Card';
 
 type Props = {
   spot: any;
@@ -108,7 +108,56 @@ export default function SpotAdminEditModal({ spot, onClose, onSaved, onDeleted }
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">住所</label>
-            <input value={address} onChange={(e)=>setAddress(e.target.value)} className="w-full border rounded px-3 py-2"/>
+            <div className="flex gap-2">
+              <input value={address} onChange={(e)=>setAddress(e.target.value)} className="flex-1 border rounded px-3 py-2"/>
+              <button
+                type="button"
+                className="px-3 py-2 border rounded bg-gray-100 hover:bg-gray-200 text-sm"
+                onClick={async ()=>{
+                  const addr = address.trim();
+                  if (!addr) return;
+                  try {
+                    const win: any = window;
+                    if (!win.google?.maps) return;
+                    const geocoder = new win.google.maps.Geocoder();
+                    geocoder.geocode({ address: addr, region: 'JP' }, (results: any, status: any) => {
+                      if (status === 'OK' && results && results[0]) {
+                        const loc = results[0].geometry.location;
+                        const latlng = { lat: loc.lat(), lng: loc.lng() };
+                        setLat(latlng.lat); setLng(latlng.lng);
+                        if (mapObjRef.current) { mapObjRef.current.setCenter(latlng); mapObjRef.current.setZoom(15); }
+                        if (markerRef.current) markerRef.current.setPosition(latlng);
+                        const formatted = results[0].formatted_address || '';
+                        setAddress(formatted);
+                      } else if (win.google?.maps?.places) {
+                        const auto = new win.google.maps.places.AutocompleteService();
+                        auto.getPlacePredictions({ input: addr, componentRestrictions: { country: 'jp' } }, (preds: any, pStatus: any) => {
+                          if (pStatus === 'OK' && preds && preds[0]) {
+                            const placeId = preds[0].place_id;
+                            const svc = new win.google.maps.places.PlacesService(mapObjRef.current || document.createElement('div'));
+                            svc.getDetails({ placeId, fields: ['geometry','formatted_address'] }, (place: any, dStatus: any) => {
+                              if (dStatus === 'OK' && place?.geometry?.location) {
+                                const loc2 = place.geometry.location; const ll = { lat: loc2.lat(), lng: loc2.lng() };
+                                setLat(ll.lat); setLng(ll.lng);
+                                if (mapObjRef.current) { mapObjRef.current.setCenter(ll); mapObjRef.current.setZoom(15); }
+                                if (markerRef.current) markerRef.current.setPosition(ll);
+                                if (place.formatted_address) setAddress(place.formatted_address);
+                              } else {
+                                alert('位置を特定できませんでした');
+                              }
+                            });
+                          } else {
+                            alert('位置を特定できませんでした');
+                          }
+                        });
+                      }
+                    });
+                  } catch {}
+                }}
+              >
+                <Search className="w-4 h-4 inline mr-1"/>検索
+              </button>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1 flex items-center"><MapPin className="w-4 h-4 mr-2"/>位置</label>
