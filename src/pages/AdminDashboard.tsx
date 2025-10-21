@@ -7,6 +7,7 @@ import {
     DollarSign,
     Eye,
     FileText,
+    MapPin,
     Mail,
     Monitor,
     Settings,
@@ -68,7 +69,7 @@ interface FraudStats {
 export function AdminDashboard() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'pages' | 'parks' | 'facilities' | 'users' | 'maintenance' | 'fraud' | 'sponsors' | 'vaccine-approval' | 'inquiries'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'pages' | 'parks' | 'facilities' | 'spots' | 'users' | 'maintenance' | 'fraud' | 'sponsors' | 'vaccine-approval' | 'inquiries'>('overview');
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalParks: 0,
@@ -90,6 +91,7 @@ export function AdminDashboard() {
   const [spotReports, setSpotReports] = useState<Array<{ id: string; spot_id: string; reason: string; status: string; admin_note: string | null; created_at: string; spot?: { title?: string|null; address?: string|null; is_hidden?: boolean|null } }>>([]);
   const [loadingSpotReports, setLoadingSpotReports] = useState(false);
   const [showClosedReports, setShowClosedReports] = useState(false);
+  const openSpotReports = spotReports.filter(r => r.status !== 'closed').length;
 
   // 不正検知関連のstate
   const [fraudStats, setFraudStats] = useState<FraudStats | null>(null);
@@ -483,6 +485,7 @@ export function AdminDashboard() {
               { id: 'pages', label: 'ページ管理', icon: FileText },
               { id: 'parks', label: 'ドッグラン', icon: Building, badge: stats.pendingParks },
               { id: 'facilities', label: 'その他施設', icon: Building, badge: stats.pendingFacilities },
+              { id: 'spots', label: '映えスポット', icon: MapPin, badge: openSpotReports },
               { id: 'users', label: 'ユーザー', icon: Users },
               { id: 'vaccine-approval', label: 'ワクチン', icon: Shield, badge: stats.pendingVaccines }
             ].map((tab) => {
@@ -651,7 +654,91 @@ export function AdminDashboard() {
               </div>
             </Card>
 
-            {/* 映えスポット通報 管理 */}
+            {/* 映えスポット（概要内セクション） */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">映えスポット</h2>
+                <div className="flex items-center gap-2">
+                  <button onClick={()=>setShowClosedReports(v=>!v)} className="text-sm text-blue-600 underline">
+                    {showClosedReports ? '未対応のみ表示' : '対応済みも表示'}
+                  </button>
+                  <Button variant="secondary" size="sm" onClick={fetchSpotReports}>再読み込み</Button>
+                </div>
+              </div>
+              {/* 通報サマリー（バッジ） */}
+              <div className="flex items-center gap-4 mb-3 text-sm">
+                <span className="inline-flex items-center px-2 py-1 rounded bg-orange-100 text-orange-700">未対応 {spotReports.filter(r=>r.status!=='closed').length}</span>
+                <span className="inline-flex items-center px-2 py-1 rounded bg-green-100 text-green-700">対応済み {spotReports.filter(r=>r.status==='closed').length}</span>
+              </div>
+              {loadingSpotReports ? (
+                <div className="text-sm text-gray-600">読み込み中...</div>
+              ) : (
+                <div className="overflow-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-gray-500">日時</th>
+                        <th className="px-3 py-2 text-left text-gray-500">スポット</th>
+                        <th className="px-3 py-2 text-left text-gray-500">理由</th>
+                        <th className="px-3 py-2 text-left text-gray-500">メモ</th>
+                        <th className="px-3 py-2 text-left text-gray-500">状態</th>
+                        <th className="px-3 py-2 text-left text-gray-500">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {spotReports
+                        .filter(r => showClosedReports ? true : r.status !== 'closed')
+                        .map((r) => (
+                        <tr key={r.id} className="align-top">
+                          <td className="px-3 py-2 whitespace-nowrap">{new Date(r.created_at).toLocaleString('ja-JP')}</td>
+                          <td className="px-3 py-2">
+                            <div className="font-medium text-gray-900">{r.spot?.title || r.spot_id}</div>
+                            <div className="text-xs text-gray-500">{r.spot?.address || ''}</div>
+                          </td>
+                          <td className="px-3 py-2 max-w-[260px]">
+                            <div className="text-gray-800 break-words">{r.reason}</div>
+                          </td>
+                          <td className="px-3 py-2 w-[260px]">
+                            <textarea defaultValue={r.admin_note || ''} className="w-full border rounded px-2 py-1 text-sm" rows={2}
+                              onBlur={(e)=>saveAdminNote(r.id, e.target.value)} placeholder="対応メモ"/>
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className={`inline-flex px-2 py-1 rounded text-xs font-semibold ${r.status==='closed'?'bg-green-100 text-green-700':'bg-orange-100 text-orange-700'}`}>
+                              {r.status==='closed'?'対応済み':'未対応'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Link to={`/spots/${r.spot_id}`} target="_blank" className="text-blue-600 hover:text-blue-800 flex items-center"><Eye className="w-4 h-4 mr-1"/>詳細</Link>
+                              {r.spot_id && (
+                                <button className="text-gray-700 hover:text-gray-900 flex items-center"
+                                  onClick={()=>toggleSpotHidden(r.spot_id, !(r.spot?.is_hidden ?? false))}>
+                                  {(r.spot?.is_hidden ?? false) ? '表示する' : '非表示にする'}
+                                </button>
+                              )}
+                              {r.status !== 'closed' && (
+                                <button className="text-green-700 hover:text-green-900 flex items-center" onClick={()=>closeReport(r.id)}>
+                                  <CheckCircle className="w-4 h-4 mr-1"/>対応済みにする
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {spotReports.filter(r => showClosedReports ? true : r.status !== 'closed').length === 0 && (
+                        <tr><td className="px-3 py-6 text-center text-gray-500" colSpan={6}>通報はありません</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          </div>
+        )}
+
+        {/* 映えスポット タブ（同じテーブルを独立表示） */}
+        {activeTab === 'spots' && (
+          <div className="space-y-6">
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">映えスポット通報</h2>
@@ -710,7 +797,7 @@ export function AdminDashboard() {
                               )}
                               {r.status !== 'closed' && (
                                 <button className="text-green-700 hover:text-green-900 flex items-center" onClick={()=>closeReport(r.id)}>
-                                  <CheckCircle className="w-4 h-4 mr-1"/>対応済みにする
+                                  完了
                                 </button>
                               )}
                             </div>
