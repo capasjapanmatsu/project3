@@ -2,10 +2,11 @@ import { Flag, ImageIcon, MapPin, MessageCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Button from '../components/Button';
-import SpotAddPostModal from '../components/spots/SpotAddPostModal';
 import Card from '../components/Card';
+import SpotAddPostModal from '../components/spots/SpotAddPostModal';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
+import isCapacitorNative from '../utils/isCapacitorNative';
 
 export default function SpotDetail() {
   const { id } = useParams();
@@ -18,6 +19,7 @@ export default function SpotDetail() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [showAddPost, setShowAddPost] = useState(false);
+  const [displayAddress, setDisplayAddress] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -35,6 +37,41 @@ export default function SpotDetail() {
       }
     })();
   }, [id]);
+
+  // 日本語住所の再取得（表示専用）
+  useEffect(() => {
+    try {
+      const win: any = window;
+      if (!spot?.latitude || !spot?.longitude || !win.google?.maps) return;
+      const geocoder = new win.google.maps.Geocoder();
+      geocoder.geocode({ location: { lat: spot.latitude, lng: spot.longitude }, region: 'JP' }, (results: any, status: any) => {
+        if (status === 'OK' && results && results[0]) {
+          setDisplayAddress(results[0].formatted_address || '');
+        }
+      });
+    } catch {}
+  }, [spot?.latitude, spot?.longitude]);
+
+  // 追加フォールバック：REST Geocoding API を使って日本語住所を強制取得
+  useEffect(() => {
+    const fetchJa = async () => {
+      if (!spot?.latitude || !spot?.longitude) return;
+      if (/[\u3040-\u30FF\u4E00-\u9FFF]/.test(displayAddress)) return; // 既に日本語っぽければスキップ
+      const key = isCapacitorNative()
+        ? (import.meta.env.VITE_GOOGLE_MAPS_API_KEY_MOBILE || import.meta.env.VITE_GOOGLE_MAPS_API_KEY)
+        : import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if (!key) return;
+      try {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${spot.latitude},${spot.longitude}&language=ja&region=JP&key=${key}`;
+        const res = await fetch(url, { credentials: 'omit' });
+        const json = await res.json();
+        if (json?.status === 'OK' && json.results?.[0]?.formatted_address) {
+          setDisplayAddress(json.results[0].formatted_address as string);
+        }
+      } catch {}
+    };
+    void fetchJa();
+  }, [spot?.latitude, spot?.longitude, displayAddress]);
 
   const addComment = async () => {
     if (!user || !comment.trim()) return;
@@ -63,7 +100,7 @@ export default function SpotDetail() {
             <div className="text-sm text-blue-600 mb-1">{spot.category || '未分類'}</div>
             <h1 className="text-2xl font-bold">{spot.title}</h1>
             <div className="text-sm text-gray-600 mt-1 flex items-center">
-              <MapPin className="w-4 h-4 mr-1"/>{spot.address || `${spot.latitude?.toFixed(5)}, ${spot.longitude?.toFixed(5)}`}
+              <MapPin className="w-4 h-4 mr-1"/>{displayAddress || spot.address || `${spot.latitude?.toFixed(5)}, ${spot.longitude?.toFixed(5)}`}
             </div>
           </div>
 

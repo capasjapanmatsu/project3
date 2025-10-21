@@ -214,6 +214,8 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
                         const latlng = { lat: loc.lat(), lng: loc.lng() };
                         setLat(latlng.lat); setLng(latlng.lng);
                         if (mapObj) { (mapObj as any).setCenter(latlng); (mapObj as any).setZoom(15); }
+                        const formatted = results[0].formatted_address || '';
+                        setAddress(formatted);
                       } else {
                         // 2) Fallback: Places Autocomplete → Place Details
                         if (win.google?.maps?.places) {
@@ -222,11 +224,12 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
                             if (pStatus === 'OK' && preds && preds[0]) {
                               const placeId = preds[0].place_id;
                               const svc = new win.google.maps.places.PlacesService(mapObj || document.createElement('div'));
-                              svc.getDetails({ placeId, fields: ['geometry'] }, (place: any, dStatus: any) => {
+                              svc.getDetails({ placeId, fields: ['geometry','formatted_address'] }, (place: any, dStatus: any) => {
                                 if (dStatus === 'OK' && place?.geometry?.location) {
                                   const loc2 = place.geometry.location; const ll = { lat: loc2.lat(), lng: loc2.lng() };
                                   setLat(ll.lat); setLng(ll.lng);
                                   if (mapObj) { (mapObj as any).setCenter(ll); (mapObj as any).setZoom(15); }
+                                  if (place.formatted_address) setAddress(place.formatted_address);
                                 } else {
                                   alert('位置を特定できませんでした');
                                 }
