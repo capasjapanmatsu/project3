@@ -1,7 +1,8 @@
-import { MapPin } from 'lucide-react';
+import { MapPin, Navigation } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Card from '../Card';
 import { useGoogleMaps } from '../GoogleMapsProvider';
+import Button from '../Button';
 
 export type SpotForMap = {
   id: string;
@@ -22,6 +23,7 @@ export default function SpotsMap({ spots, thumbMap, className = '' }: Props) {
   const [mapObj, setMapObj] = useState<any>(null);
   const [infoWindow, setInfoWindow] = useState<any>(null);
   const [currentLoc, setCurrentLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
 
   const DEFAULT_CENTER = { lat: 35.6762, lng: 139.6503 };
 
@@ -77,7 +79,7 @@ export default function SpotsMap({ spots, thumbMap, className = '' }: Props) {
     }
   }, [isLoaded, error, currentLoc]);
 
-  // マーカー更新
+  // マーカー更新（現在地がある場合は現在地を優先してセンターに保つ）
   useEffect(() => {
     if (!mapObj || !infoWindow) return;
     const win: any = window;
@@ -95,13 +97,13 @@ export default function SpotsMap({ spots, thumbMap, className = '' }: Props) {
       });
       markers.push(marker);
     });
-    if (markers.length > 0) {
+    if (currentLoc) {
+      mapObj.setCenter(currentLoc);
+      mapObj.setZoom(13);
+    } else if (markers.length > 0) {
       const bounds = new (window as any).google.maps.LatLngBounds();
       markers.forEach((m) => bounds.extend(m.getPosition()));
       mapObj.fitBounds(bounds, 80);
-    } else if (currentLoc) {
-      mapObj.setCenter(currentLoc);
-      mapObj.setZoom(13);
     }
     return () => {
       markers.forEach((m) => m.setMap(null));
@@ -119,7 +121,25 @@ export default function SpotsMap({ spots, thumbMap, className = '' }: Props) {
 
   return (
     <Card className={`overflow-hidden ${className}`}>
-      <div className="p-3 border-b bg-gray-50 flex items-center"><MapPin className="w-4 h-4 text-blue-600 mr-2"/>映えスポットマップ</div>
+      <div className="p-3 border-b bg-gray-50 flex items-center justify-between">
+        <div className="flex items-center"><MapPin className="w-4 h-4 text-blue-600 mr-2"/>映えスポットマップ</div>
+        <Button size="sm" variant="secondary" onClick={() => {
+          if (!navigator.geolocation) return;
+          setIsLocating(true);
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+              setCurrentLoc(loc);
+              if (mapObj) { mapObj.setCenter(loc); mapObj.setZoom(13); }
+              setIsLocating(false);
+            },
+            () => setIsLocating(false),
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+          );
+        }} disabled={isLocating} className="text-xs">
+          <Navigation className="w-3 h-3 mr-1" />{isLocating ? '取得中...' : '現在地'}
+        </Button>
+      </div>
       <div ref={mapRef} className="w-full h-96" style={{ minHeight: '400px' }}/>
       <div className="p-2 border-t bg-gray-50 text-center text-xs text-gray-500">マーカーをクリックすると詳細が表示されます</div>
     </Card>
