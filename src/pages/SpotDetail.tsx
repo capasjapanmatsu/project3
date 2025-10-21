@@ -4,10 +4,11 @@ import { useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import SpotAddPostModal from '../components/spots/SpotAddPostModal';
+import SpotAdminEditModal from '../components/spots/SpotAdminEditModal';
+import SpotReportModal from '../components/spots/SpotReportModal';
 import useAuth from '../context/AuthContext';
 import isCapacitorNative from '../utils/isCapacitorNative';
 import { supabase } from '../utils/supabase';
-import SpotAdminEditModal from '../components/spots/SpotAdminEditModal';
 
 export default function SpotDetail() {
   const { id } = useParams();
@@ -22,6 +23,7 @@ export default function SpotDetail() {
   const [showAddPost, setShowAddPost] = useState(false);
   const [displayAddress, setDisplayAddress] = useState('');
   const [showAdminEdit, setShowAdminEdit] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -133,13 +135,7 @@ export default function SpotDetail() {
 
           {/* report */}
           <div className="mt-4">
-            <Button variant="secondary" onClick={async ()=>{
-              if (!user) return;
-              const reason = prompt('通報理由を入力してください');
-              if (!reason) return;
-              await supabase.from('spot_reports').insert({ spot_id: id, reporter_id: user.id, reason });
-              alert('通報を受け付けました。ありがとうございました。');
-            }}>
+            <Button variant="secondary" onClick={()=>setShowReport(true)}>
               <Flag className="w-4 h-4 mr-2"/>通報
             </Button>
           </div>
@@ -163,6 +159,9 @@ export default function SpotDetail() {
                 window.history.back();
               }}
             />
+          )}
+          {showReport && (
+            <SpotReportModal spotId={id as string} onClose={()=>setShowReport(false)}/>
           )}
         </>
       )}
