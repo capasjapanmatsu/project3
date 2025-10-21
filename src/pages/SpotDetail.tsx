@@ -1,4 +1,4 @@
-import { ExternalLink, Flag, ImageIcon, MapPin } from 'lucide-react';
+import { Edit3, ExternalLink, Flag, ImageIcon, MapPin } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Button from '../components/Button';
@@ -7,10 +7,11 @@ import SpotAddPostModal from '../components/spots/SpotAddPostModal';
 import useAuth from '../context/AuthContext';
 import isCapacitorNative from '../utils/isCapacitorNative';
 import { supabase } from '../utils/supabase';
+import SpotAdminEditModal from '../components/spots/SpotAdminEditModal';
 
 export default function SpotDetail() {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [spot, setSpot] = useState<any>(null);
   const [media, setMedia] = useState<any[]>([]);
   const [comment, setComment] = useState(''); // kept for future but UIは非表示
@@ -20,6 +21,7 @@ export default function SpotDetail() {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [showAddPost, setShowAddPost] = useState(false);
   const [displayAddress, setDisplayAddress] = useState('');
+  const [showAdminEdit, setShowAdminEdit] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -119,7 +121,12 @@ export default function SpotDetail() {
 
           {/* 投稿ボタンのみ表示（コメントUIは非表示） */}
           <Card className="p-4">
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
+              {isAdmin && (
+                <Button variant="secondary" size="sm" onClick={()=>setShowAdminEdit(true)}>
+                  <Edit3 className="w-4 h-4 mr-2"/>管理者編集
+                </Button>
+              )}
               <Button size="sm" onClick={()=>setShowAddPost(true)}>この場所で投稿する</Button>
             </div>
           </Card>
@@ -143,6 +150,19 @@ export default function SpotDetail() {
               const { data: cs } = await supabase.from('spot_comments').select('*').eq('spot_id', id).order('created_at', { ascending: true });
               setComments(cs || []);
             }}/>
+          )}
+          {showAdminEdit && spot && (
+            <SpotAdminEditModal
+              spot={spot}
+              onClose={()=>setShowAdminEdit(false)}
+              onSaved={async()=>{
+                const { data: s } = await supabase.from('spots').select('*').eq('id', id).single();
+                setSpot(s);
+              }}
+              onDeleted={()=>{
+                window.history.back();
+              }}
+            />
           )}
         </>
       )}

@@ -19,7 +19,12 @@ stable
 as $$
   select exists (
     select 1 from public.profiles p
-    where p.id = auth.uid() and p.role = 'admin'
+    where p.id = auth.uid()
+      and (
+        coalesce(p.role, '') = 'admin' or
+        coalesce(p.user_type, '') = 'admin' or
+        lower(coalesce(p.email, '')) = 'capasjapan@gmail.com'
+      )
   );
 $$;
 
@@ -374,6 +379,51 @@ do $$ begin
     for delete using (bucket_id = 'spot-images' and (owner = auth.uid() or public.is_admin()));
   end if;
 end $$;
+
+commit;
+
+-- Award points for spot posts (10 points each)
+begin;
+
+-- Ensure profiles has points column
+alter table if exists public.profiles
+  add column if not exists points integer not null default 0;
+
+-- History table
+create table if not exists public.points_history (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  delta integer not null,
+  reason text,
+  ref_spot_id uuid references public.spots(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.points_history enable row level security;
+
+drop policy if exists points_history_select on public.points_history;
+create policy points_history_select on public.points_history
+for select using (user_id = auth.uid() or public.is_admin());
+
+-- allow inserts by the authenticated user (trigger runs under session user)
+drop policy if exists points_history_insert on public.points_history;
+create policy points_history_insert on public.points_history
+for insert to authenticated with check (user_id = auth.uid() or public.is_admin());
+
+-- Trigger to award points after a spot is created
+create or replace function public.award_points_on_spot_insert()
+returns trigger language plpgsql as $$
+begin
+  update public.profiles set points = points + 10 where id = new.author_id;
+  insert into public.points_history(user_id, delta, reason, ref_spot_id)
+  values (new.author_id, 10, 'spot_post', new.id);
+  return new;
+end $$;
+
+drop trigger if exists trg_award_points_on_spot_insert on public.spots;
+create trigger trg_award_points_on_spot_insert
+after insert on public.spots
+for each row execute procedure public.award_points_on_spot_insert();
 
 commit;
 

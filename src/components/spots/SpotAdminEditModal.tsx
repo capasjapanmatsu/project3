@@ -1,0 +1,130 @@
+import { useEffect, useRef, useState } from 'react';
+import Card from '../Card';
+import Button from '../Button';
+import { supabase } from '../../utils/supabase';
+import { MapPin, Save, Trash2, X } from 'lucide-react';
+
+type Props = {
+  spot: any;
+  onClose: () => void;
+  onSaved: () => void;
+  onDeleted: () => void;
+};
+
+export default function SpotAdminEditModal({ spot, onClose, onSaved, onDeleted }: Props) {
+  const [title, setTitle] = useState(spot?.title || '');
+  const [description, setDescription] = useState(spot?.description || '');
+  const [address, setAddress] = useState(spot?.address || '');
+  const [lat, setLat] = useState<number | null>(spot?.latitude ?? null);
+  const [lng, setLng] = useState<number | null>(spot?.longitude ?? null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const markerRef = useRef<any>(null);
+  const mapObjRef = useRef<any>(null);
+
+  useEffect(() => {
+    try {
+      const win: any = window;
+      if (!mapRef.current || !win.google?.maps) return;
+      const center = lat && lng ? { lat, lng } : { lat: 35.6762, lng: 139.6503 };
+      const map = new win.google.maps.Map(mapRef.current, {
+        center,
+        zoom: lat && lng ? 15 : 12,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+      });
+      mapObjRef.current = map;
+      const marker = new win.google.maps.Marker({ position: center, map, draggable: true });
+      markerRef.current = marker;
+      const geocoder = new win.google.maps.Geocoder();
+      const reverse = (ll: { lat: number; lng: number }) => {
+        geocoder.geocode({ location: ll, region: 'JP' }, (results: any, status: any) => {
+          if (status === 'OK' && results && results[0]) setAddress(results[0].formatted_address || '');
+        });
+      };
+      win.google.maps.event.addListener(marker, 'dragend', (e: any) => {
+        const ll = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+        setLat(ll.lat); setLng(ll.lng); reverse(ll);
+      });
+      win.google.maps.event.addListener(map, 'click', (e: any) => {
+        const ll = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+        marker.setPosition(ll); setLat(ll.lat); setLng(ll.lng); reverse(ll);
+      });
+    } catch {}
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase.from('spots').update({
+        title: title.trim(),
+        description: description.trim() || null,
+        address: address || null,
+        latitude: lat,
+        longitude: lng,
+      }).eq('id', spot.id);
+      if (error) throw error;
+      onSaved();
+      onClose();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!confirm('このスポットを削除しますか？ この操作は取り消せません。')) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from('spots').delete().eq('id', spot.id);
+      if (error) throw error;
+      onDeleted();
+      onClose();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+      <Card className="max-w-2xl w-full max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">スポットを編集（管理者）</h2>
+          <button onClick={onClose}><X className="w-5 h-5"/></button>
+        </div>
+        <div className="p-4 space-y-4 overflow-y-auto">
+          <div>
+            <label className="block text-sm font-medium mb-1">タイトル</label>
+            <input value={title} onChange={(e)=>setTitle(e.target.value)} className="w-full border rounded px-3 py-2"/>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">説明（任意）</label>
+            <textarea value={description} onChange={(e)=>setDescription(e.target.value)} rows={3} className="w-full border rounded px-3 py-2"/>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">住所</label>
+            <input value={address} onChange={(e)=>setAddress(e.target.value)} className="w-full border rounded px-3 py-2"/>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1 flex items-center"><MapPin className="w-4 h-4 mr-2"/>位置</label>
+            <div ref={mapRef} className="w-full h-64 rounded" style={{ background: '#f3f4f6' }}/>
+          </div>
+        </div>
+        <div className="p-4 border-t flex justify-between items-center">
+          <Button variant="danger" onClick={remove} isLoading={deleting}><Trash2 className="w-4 h-4 mr-2"/>削除</Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={onClose}>キャンセル</Button>
+            <Button onClick={save} isLoading={saving}><Save className="w-4 h-4 mr-2"/>保存</Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+
