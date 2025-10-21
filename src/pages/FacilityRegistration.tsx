@@ -695,14 +695,12 @@ export default function FacilityRegistration() {
         </Card>
         )}
 
-        {/* 申請ボタン（オーナー未加入時は隠す） */}
-        {(isUserSubmission || premium.state === 'active') && (
-          <div className="flex justify-end">
-            <Button type="submit" disabled={isLoading} className="px-8 py-3 text-lg">
-              {isLoading ? '申請中...' : '申請を送信'}
-            </Button>
-          </div>
-        )}
+        {/* 申請ボタン（オーナー無料登録も可能） */}
+        <div className="flex justify-end">
+          <Button type="submit" disabled={isLoading} className="px-8 py-3 text-lg">
+            {isLoading ? '申請中...' : '申請を送信'}
+          </Button>
+        </div>
 
         {/* オーナー申請かつ未加入時のペイウォール */}
         {!isUserSubmission && premium.state !== 'active' && (
