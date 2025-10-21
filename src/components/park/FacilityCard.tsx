@@ -275,7 +275,9 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
             <span className="text-sm text-gray-600">{facility.category_name || categoryInfo.label}</span>
           </div>
           
-          {isCurrentlyOpen() ? (
+          {(facility as any).is_user_submitted ? (
+            <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">未確認</span>
+          ) : isCurrentlyOpen() ? (
             <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
               営業中
             </span>
@@ -306,6 +308,9 @@ export function FacilityCard({ facility, showDistance, distance }: FacilityCardP
           <h3 className="font-semibold text-lg text-gray-900 line-clamp-2 flex-1">
             {facility.name}
           </h3>
+          {(facility as any).official_badge && (
+            <span className="ml-2 inline-flex items-center text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">公式</span>
+          )}
         </div>
 
         {/* 評価 */}

@@ -24,6 +24,12 @@ export interface PetFacility {
   status: 'pending' | 'approved' | 'rejected' | 'suspended';
   created_at: string;
   category_name?: string; // JOINしたカテゴリーの日本語名
+  // v2 追加フィールド
+  is_user_submitted?: boolean;
+  verified?: boolean;
+  official_badge?: boolean;
+  submitted_by?: string | null;
+  owner_id?: string | null;
   // 営業時間/休業日（施設編集画面のカレンダー設定と連動）
   opening_time?: string | null; // 'HH:MM:SS' 形式（DB TIME）
   closing_time?: string | null; // 'HH:MM:SS' 形式（DB TIME）

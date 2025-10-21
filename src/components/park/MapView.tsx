@@ -100,6 +100,15 @@ export function MapView({
     </svg>
   `;
 
+  // 一般投稿（未確認）ピン（グレー）
+  const facilityIconDraft = `
+    <svg width="36" height="50" viewBox="0 0 36 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M18 0C8.059 0 0 8.059 0 18C0 27.941 18 50 18 50S36 27.941 36 18C36 8.059 27.941 0 18 0Z" fill="#9CA3AF" stroke="white" stroke-width="2"/>
+      <circle cx="18" cy="18" r="13" fill="white"/>
+      <path d="M12 12h12v12H12z" fill="#9CA3AF"/>
+    </svg>
+  `;
+
   // 現在地アイコン（ポールに丸のピンデザイン）
   const currentLocationIcon = `
     <svg width="24" height="40" viewBox="0 0 24 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -344,7 +353,7 @@ export function MapView({
                 map: map,
                 title: facility.name,
                 icon: {
-                  url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(facilityIcon)}`,
+                  url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent((facility as any).is_user_submitted ? facilityIconDraft : facilityIcon)}`,
                   scaledSize: new windowObj.google.maps.Size(36, 50),
                   anchor: new windowObj.google.maps.Point(18, 50)
                 }
