@@ -546,6 +546,17 @@ export function DogParkList() {
 
       {/* メインコンテンツ */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 施設向けの説明文（トップ） */}
+        {activeView === 'facilities' && (
+          <div className="mb-4 bg-white rounded-lg border p-4 text-sm text-gray-700">
+            <p>
+              このコーナーではユーザー行きつけのお店やご近所の施設を他のユーザーにも認知してもらえるように掲載する事ができます。
+            </p>
+            <p className="mt-1">
+              またそのお店のオーナーの場合はより詳しいお店の情報等（ホームページ・メニュー・予約管理など）の設定が可能となります。（プレミアム会員）
+            </p>
+          </div>
+        )}
         {/* カテゴリフィルター（施設表示時のみ） */}
         {activeView === 'facilities' && (
           <div className="mb-4 bg-white rounded-lg shadow-sm border">
