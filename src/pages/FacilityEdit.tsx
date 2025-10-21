@@ -146,7 +146,19 @@ export default function FacilityEdit() {
           .maybeSingle();
         subscriptionId = (row as any)?.subscription_id || null;
       } catch {}
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-cancel-subscription`, {
+      // フォールバック: アカウント単位の購読（v1）
+      if (!subscriptionId) {
+        try {
+          const { data: sub } = await supabase
+            .from('stripe_user_subscriptions')
+            .select('subscription_id,status,price_id')
+            .maybeSingle();
+          const sid = (sub as any)?.subscription_id as string | undefined;
+          if (sid) subscriptionId = sid;
+        } catch {}
+      }
+      const endpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-cancel-subscription`;
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
