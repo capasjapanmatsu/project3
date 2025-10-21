@@ -1,7 +1,6 @@
 [build]
   publish = "dist"
   command = "npm run build"
-  ignore = "exit 0"
 
 # シークレットスキャンの設定
 [build.processing]
