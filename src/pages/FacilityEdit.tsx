@@ -1034,22 +1034,45 @@ export default function FacilityEdit() {
         // 画像削除エラーは継続して施設削除を試行
       }
 
-      // 施設本体を削除
-      let deleteQuery = supabase.from('pet_facilities').delete();
-      
-      if (profileData?.role === 'admin') {
-        deleteQuery = deleteQuery.eq('id', facility.id);
-      } else {
-        deleteQuery = deleteQuery.eq('id', facility.id).eq('owner_id', user?.id);
+      // 施設本体を削除（まず通常削除を試行、失敗時に権限別フォールバック）
+      let deleteError: any = null;
+      try {
+        let deleteQuery = supabase.from('pet_facilities').delete();
+        if (profileData?.role === 'admin') {
+          deleteQuery = deleteQuery.eq('id', facility.id);
+        } else {
+          deleteQuery = deleteQuery.eq('id', facility.id).eq('owner_id', user?.id);
+        }
+        const res = await deleteQuery;
+        deleteError = res.error;
+      } catch (e) {
+        deleteError = e;
       }
 
-      const { error: deleteError } = await deleteQuery;
-
       if (deleteError) {
-        if (deleteError.message?.includes('RLS')) {
-          throw new Error('権限エラー: この施設を削除する権限がありません。管理者にお問い合わせください。');
+        // 管理者ならRPCで強制削除
+        if (profileData?.role === 'admin') {
+          const { error: rpcError } = await supabase.rpc('force_delete_facility', { target_facility_id: facility.id });
+          if (rpcError) throw rpcError;
+        } else {
+          // オーナーの場合、owner_idがnull（一般投稿等）でRLSに阻まれることがある → 自分が投稿者か確認して削除
+          try {
+            const { data: mine } = await supabase
+              .from('pet_facilities')
+              .select('id, submitted_by, owner_id')
+              .eq('id', facility.id)
+              .maybeSingle();
+            const isAuthor = (mine as any)?.submitted_by === user?.id;
+            if (isAuthor && !(mine as any)?.owner_id) {
+              const { error: del2 } = await supabase.from('pet_facilities').delete().eq('id', facility.id);
+              if (del2) throw del2;
+            } else {
+              throw deleteError;
+            }
+          } catch (e) {
+            throw new Error('施設の削除に失敗しました。権限または関連データの制約により削除できません。');
+          }
         }
-        throw new Error(`削除処理エラー: ${deleteError.message}`);
       }
 
       // 削除検証
