@@ -92,6 +92,9 @@ export function FacilityDetail() {
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [reviewImageModal, setReviewImageModal] = useState<string | null>(null);
+  const [reporting, setReporting] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportNote, setReportNote] = useState('');
 
   // 画像処理用のstate
   const [showImageCropper, setShowImageCropper] = useState(false);
@@ -711,6 +714,10 @@ export function FacilityDetail() {
                           この施設を管理する
                         </Button>
                       )}
+                    </div>
+                    {/* 通報ボタン */}
+                    <div className="mt-3 text-right">
+                      <Button variant="secondary" size="sm" onClick={()=>setReporting(true)}>この施設を通報する</Button>
                     </div>
                   </div>
                 )}
@@ -1488,10 +1495,62 @@ export function FacilityDetail() {
           />
         )}
       </div>
+
+      {/* 通報モーダル */}
+      <ReportModal
+        open={reporting}
+        onClose={()=>setReporting(false)}
+        onSubmit={async (reason, note)=>{
+          try {
+            if (!user) { navigate('/login'); return; }
+            await supabase.from('facility_reports').insert({
+              facility_id: facilityId,
+              reporter_id: user.id,
+              reason,
+              note
+            });
+            setReporting(false);
+            alert('通報を受け付けました。ありがとうございます。');
+          } catch (e) {
+            alert('通報の送信に失敗しました。時間をおいて再度お試しください。');
+          }
+        }}
+      />
     </>
   );
 } 
 
+// 通報モーダル（簡易版）
+function ReportModal({ open, onClose, onSubmit }:{ open:boolean; onClose:()=>void; onSubmit:(reason:string,note:string)=>Promise<void> }){
+  const [reason, setReason] = useState('');
+  const [note, setNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <div className="p-4">
+          <h3 className="font-semibold text-lg mb-3">施設の通報</h3>
+          <label className="block text-sm mb-1">理由</label>
+          <select value={reason} onChange={(e)=>setReason(e.target.value)} className="w-full border rounded px-3 py-2 mb-3">
+            <option value="">選択してください</option>
+            <option value="情報が不正確">情報が不正確</option>
+            <option value="ワンちゃん同伴不可">ワンちゃん同伴不可だった</option>
+            <option value="施設が存在しない">施設が存在しない</option>
+            <option value="不適切な内容">不適切な内容</option>
+            <option value="その他">その他</option>
+          </select>
+          <label className="block text-sm mb-1">詳細（任意）</label>
+          <textarea value={note} onChange={(e)=>setNote(e.target.value)} rows={3} className="w-full border rounded px-3 py-2"/>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="secondary" onClick={onClose}>閉じる</Button>
+            <Button onClick={async()=>{ if(!reason) return; setSubmitting(true); try{ await onSubmit(reason,note);} finally{ setSubmitting(false);} }} disabled={submitting || !reason}>{submitting ? '送信中...' : '送信'}</Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
 function ReserveEntryInline({ facilityId }: { facilityId: string }) {
   const [enabled, setEnabled] = useState(false);
   const navigate = useNavigate();

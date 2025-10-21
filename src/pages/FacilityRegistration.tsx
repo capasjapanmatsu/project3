@@ -506,45 +506,27 @@ export default function FacilityRegistration() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  電話番号
-                </label>
-                <Input
-                  label="電話番号"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="電話番号を入力してください"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ウェブサイト
-                </label>
-                <Input
-                  label="ウェブサイト"
-                  name="website"
-                  value={formData.website}
-                  onChange={handleInputChange}
-                  placeholder="https://example.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  施設説明
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="施設の特徴やサービス内容を説明してください"
-                />
-              </div>
+              {isUserSubmission ? (
+                <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded p-3">
+                  一般投稿では、登録時に必要なのは「施設名」と「住所」のみです。<br/>
+                  電話番号・ウェブサイト・詳細説明などの設定は、オーナー権限（プレミアム会員）に切り替えてから編集できます。
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">電話番号</label>
+                    <Input label="電話番号" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="電話番号を入力してください" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">ウェブサイト</label>
+                    <Input label="ウェブサイト" name="website" value={formData.website} onChange={handleInputChange} placeholder="https://example.com" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">施設説明</label>
+                    <textarea name="description" value={formData.description} onChange={handleInputChange} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="施設の特徴やサービス内容を説明してください" />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </Card>
