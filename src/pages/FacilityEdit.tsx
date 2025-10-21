@@ -157,6 +157,29 @@ export default function FacilityEdit() {
           if (sid) subscriptionId = sid;
         } catch {}
       }
+      // さらにフォールバック: customer_id からアクティブな subscription を特定
+      if (!subscriptionId) {
+        try {
+          const { data: customer } = await supabase
+            .from('stripe_customers')
+            .select('customer_id')
+            .eq('user_id', user?.id)
+            .maybeSingle();
+          const customerId = (customer as any)?.customer_id as string | undefined;
+          if (customerId) {
+            const { data: sub2 } = await supabase
+              .from('stripe_subscriptions')
+              .select('subscription_id,status,created_at')
+              .eq('customer_id', customerId)
+              .in('status', ['active','trialing','paused'] as any)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            const sid2 = (sub2 as any)?.subscription_id as string | undefined;
+            if (sid2) subscriptionId = sid2;
+          }
+        } catch {}
+      }
       const endpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-cancel-subscription`;
       const res = await fetch(endpoint, {
         method: 'POST',
