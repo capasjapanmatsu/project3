@@ -169,17 +169,18 @@ export default function FacilityEdit() {
           if (customerId) {
             const { data: sub2 } = await supabase
               .from('stripe_subscriptions')
-              .select('subscription_id,status,created_at')
+              .select('id,subscription_id,status,created_at')
               .eq('customer_id', customerId)
               .in('status', ['active','trialing','paused'] as any)
               .order('created_at', { ascending: false })
               .limit(1)
               .maybeSingle();
-            const sid2 = (sub2 as any)?.subscription_id as string | undefined;
+            const sid2 = ((sub2 as any)?.subscription_id || (sub2 as any)?.id) as string | undefined;
             if (sid2) subscriptionId = sid2;
           }
         } catch {}
       }
+      console.log('cancelPremium: using subscriptionId =', subscriptionId);
       const endpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-cancel-subscription`;
       const res = await fetch(endpoint, {
         method: 'POST',
