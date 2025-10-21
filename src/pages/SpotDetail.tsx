@@ -1,19 +1,19 @@
-import { Flag, ImageIcon, MapPin, MessageCircle } from 'lucide-react';
+import { ExternalLink, Flag, ImageIcon, MapPin } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import SpotAddPostModal from '../components/spots/SpotAddPostModal';
 import useAuth from '../context/AuthContext';
-import { supabase } from '../utils/supabase';
 import isCapacitorNative from '../utils/isCapacitorNative';
+import { supabase } from '../utils/supabase';
 
 export default function SpotDetail() {
   const { id } = useParams();
   const { user } = useAuth();
   const [spot, setSpot] = useState<any>(null);
   const [media, setMedia] = useState<any[]>([]);
-  const [comment, setComment] = useState('');
+  const [comment, setComment] = useState(''); // kept for future but UIは非表示
   const [comments, setComments] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,21 +73,8 @@ export default function SpotDetail() {
     void fetchJa();
   }, [spot?.latitude, spot?.longitude, displayAddress]);
 
-  const addComment = async () => {
-    if (!user || !comment.trim()) return;
-    setIsSubmitting(true);
-    try {
-      const { error: e } = await supabase.from('spot_comments').insert({ spot_id: id, author_id: user.id, content: comment.trim() });
-      if (e) throw e;
-      setComment('');
-      const { data: cs } = await supabase.from('spot_comments').select('*').eq('spot_id', id).order('created_at', { ascending: true });
-      setComments(cs || []);
-    } catch (e: any) {
-      setError(e?.message || 'コメント送信に失敗しました');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // 旧コメント送信機能は非表示化（必要に応じて復活）
+  const addComment = async () => {};
 
   return (
     <div className="max-w-5xl mx-auto px-4 pt-10 md:pt-12 pb-8">
@@ -99,8 +86,19 @@ export default function SpotDetail() {
           <div className="mb-4">
             <div className="text-sm text-blue-600 mb-1">{spot.category || '未分類'}</div>
             <h1 className="text-2xl font-bold">{spot.title}</h1>
-            <div className="text-sm text-gray-600 mt-1 flex items-center">
-              <MapPin className="w-4 h-4 mr-1"/>{displayAddress || spot.address || `${spot.latitude?.toFixed(5)}, ${spot.longitude?.toFixed(5)}`}
+            <div className="text-sm text-gray-600 mt-1 flex items-center flex-wrap gap-2">
+              <span className="inline-flex items-center"><MapPin className="w-4 h-4 mr-1"/>{displayAddress || spot.address || `${spot.latitude?.toFixed(5)}, ${spot.longitude?.toFixed(5)}`}</span>
+              {spot.latitude && spot.longitude && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${spot.latitude},${spot.longitude}`)}&hl=ja`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-blue-600 hover:text-blue-700 underline"
+                  aria-label="Googleマップで開く"
+                >
+                  <ExternalLink className="w-4 h-4 mr-1"/>Googleマップで開く
+                </a>
+              )}
             </div>
           </div>
 
@@ -119,24 +117,10 @@ export default function SpotDetail() {
             <Card className="p-4 mb-4"><p className="text-gray-700 whitespace-pre-wrap">{spot.description}</p></Card>
           )}
 
-          {/* comments */}
+          {/* 投稿ボタンのみ表示（コメントUIは非表示） */}
           <Card className="p-4">
-            <div className="flex items-center mb-3"><MessageCircle className="w-5 h-5 text-blue-600 mr-2"/><h2 className="font-semibold">コメント</h2></div>
-            <div className="flex justify-end mb-3">
+            <div className="flex justify-end">
               <Button size="sm" onClick={()=>setShowAddPost(true)}>この場所で投稿する</Button>
-            </div>
-            <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
-              {comments.map(c => (
-                <div key={c.id} className="text-sm">
-                  <div className="text-gray-800">{c.content}</div>
-                  <div className="text-gray-400 text-xs">{new Date(c.created_at).toLocaleString()}</div>
-                </div>
-              ))}
-              {comments.length === 0 && <div className="text-gray-500 text-sm">最初のコメントを書きましょう</div>}
-            </div>
-            <div className="flex gap-2">
-              <input value={comment} onChange={(e)=>setComment(e.target.value)} placeholder="コメントを書く" className="flex-1 border rounded px-3 py-2"/>
-              <Button onClick={addComment} isLoading={isSubmitting}>送信</Button>
             </div>
           </Card>
 
