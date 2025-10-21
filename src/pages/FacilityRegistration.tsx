@@ -5,7 +5,7 @@ import {
     Image as ImageIcon
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import ImageCropper from '../components/ImageCropper';
@@ -39,6 +39,7 @@ const FACILITY_CATEGORIES = [
 export default function FacilityRegistration() {
   const { user, isAuthenticated, userProfile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
@@ -72,6 +73,16 @@ export default function FacilityRegistration() {
       navigate('/login');
     }
   }, [isAuthenticated, navigate]);
+
+  // クエリ ?mode=user|owner で初期選択を切り替え
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(location.search);
+      const mode = params.get('mode');
+      if (mode === 'owner') setIsUserSubmission(false);
+      if (mode === 'user') setIsUserSubmission(true);
+    } catch {}
+  }, [location.search]);
 
   // userProfileが変更された時にuserInfoを自動設定
   useEffect(() => {

@@ -516,6 +516,22 @@ export function DogParkList() {
                 <MapPin className="w-4 h-4 mr-2 inline text-current" />
                 ワンちゃんと行ける施設
               </button>
+              {activeView === 'facilities' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                  <button
+                    onClick={() => navigate('/facility-registration?mode=user')}
+                    className="w-full px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    一般投稿で施設を知らせる
+                  </button>
+                  <button
+                    onClick={() => navigate('/facility-registration?mode=owner')}
+                    className="w-full px-4 py-2 rounded-md bg-black text-white hover:bg-gray-900"
+                  >
+                    オーナー申請（プレミアム会員）
+                  </button>
+                </div>
+              )}
               <button
                 onClick={() => navigate('/spots')}
                 className="w-full text-left px-6 py-3 rounded-md font-medium transition-all bg-gray-100 text-gray-700 hover:bg-gray-200"
