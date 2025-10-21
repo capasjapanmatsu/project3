@@ -127,6 +127,13 @@ export default function Spots() {
         </div>
       </div>
 
+      {/* 説明文 */}
+      <div className="mb-4 bg-white rounded-lg border p-4 text-sm text-gray-700">
+        <p>
+          このコーナーではワンちゃんン同伴可能な公共施設、神社、お寺や映えスポットなどを投稿できるコーナーです。ワンちゃん同伴可能か確かめて投稿してルール、マナーを守りましょう。表示マップは自分の位置情報を掲載してください。
+        </p>
+      </div>
+
       {/* アコーディオン（カテゴリ） */}
       <div className="mb-4 bg-white rounded-lg border">
         <button onClick={()=>setShowCategories(!showCategories)} className="w-full px-3 py-3 flex items-center justify-between text-left hover:bg-gray-50">
