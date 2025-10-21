@@ -2220,7 +2220,7 @@ export default function FacilityEdit() {
                     )}
                   </p>
 
-                  {premium.state === 'active' && (
+                  {premiumUiState === 'active' && (
                     <div className="mb-4">
                       <Button onClick={cancelPremium} isLoading={isCancellingPremium} className="w-full bg-red-600 hover:bg-red-700">
                         プレミアム会員を解約する
