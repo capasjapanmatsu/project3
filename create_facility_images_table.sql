@@ -42,6 +42,28 @@ CREATE POLICY "facility_owners_can_manage_images"
     )
   );
 
+-- 一般投稿者は自身が投稿した仮掲載施設の画像を管理可能
+CREATE POLICY "submitters_can_manage_images"
+  ON pet_facility_images
+  FOR ALL
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM pet_facilities
+      WHERE pet_facilities.id = pet_facility_images.facility_id
+      AND pet_facilities.is_user_submitted = true
+      AND pet_facilities.submitted_by = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM pet_facilities
+      WHERE pet_facilities.id = pet_facility_images.facility_id
+      AND pet_facilities.is_user_submitted = true
+      AND pet_facilities.submitted_by = auth.uid()
+    )
+  );
+
 -- 認証済みユーザーは承認済み施設の画像を参照可能
 CREATE POLICY "users_can_view_approved_facility_images"
   ON pet_facility_images
@@ -104,6 +126,19 @@ WITH CHECK (
   )
 );
 
+-- 一般投稿者は自身の仮掲載施設にアップロード可能
+CREATE POLICY "submitters_can_upload_images"
+ON storage.objects
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'pet-facility-images' AND
+  (storage.foldername(name))[1] IN (
+    SELECT id::text FROM pet_facilities
+    WHERE is_user_submitted = true AND submitted_by = auth.uid()
+  )
+);
+
 -- 施設所有者は自分の施設画像を更新可能
 CREATE POLICY "facility_owners_can_update_images"
 ON storage.objects
@@ -118,6 +153,18 @@ USING (
   )
 );
 
+CREATE POLICY "submitters_can_update_images"
+ON storage.objects
+FOR UPDATE
+TO authenticated
+USING (
+  bucket_id = 'pet-facility-images' AND
+  (storage.foldername(name))[1] IN (
+    SELECT id::text FROM pet_facilities
+    WHERE is_user_submitted = true AND submitted_by = auth.uid()
+  )
+);
+
 -- 施設所有者は自分の施設画像を削除可能
 CREATE POLICY "facility_owners_can_delete_images"
 ON storage.objects
@@ -129,6 +176,18 @@ USING (
     SELECT id::text
     FROM pet_facilities
     WHERE owner_id = auth.uid()
+  )
+);
+
+CREATE POLICY "submitters_can_delete_images"
+ON storage.objects
+FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'pet-facility-images' AND
+  (storage.foldername(name))[1] IN (
+    SELECT id::text FROM pet_facilities
+    WHERE is_user_submitted = true AND submitted_by = auth.uid()
   )
 );
 

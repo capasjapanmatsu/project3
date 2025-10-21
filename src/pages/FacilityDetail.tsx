@@ -75,6 +75,7 @@ export function FacilityDetail() {
   const [showCouponDisplay, setShowCouponDisplay] = useState(false);
   const [displayingCoupon, setDisplayingCoupon] = useState<UserCoupon | null>(null);
   const [obtainingCouponId, setObtainingCouponId] = useState<string | null>(null);
+  const [claiming, setClaiming] = useState(false);
   
   // レビュー機能のstate
   const [reviews, setReviews] = useState<FacilityReview[]>([]);
@@ -142,7 +143,6 @@ export function FacilityDetail() {
         .from('pet_facilities')
         .select('*')
         .eq('id', facilityId)
-        .eq('status', 'approved')
         .single();
 
       // 施設画像（エラーを無視）
@@ -679,6 +679,36 @@ export function FacilityDetail() {
                     <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
                       {facility.description}
                     </p>
+                  </div>
+                )}
+
+                {/* 一般投稿の未確認バッジとオーナー管理ボタン */}
+                {facility && (facility as any).is_user_submitted && (
+                  <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="text-yellow-800 text-sm">
+                        この施設は一般ユーザーの投稿です（未確認）。オーナーが管理すると公式表示になります。
+                      </div>
+                      {user && (
+                        <Button
+                          isLoading={claiming}
+                          onClick={async ()=>{
+                            try {
+                              setClaiming(true);
+                              const { error } = await supabase.rpc('claim_facility', { p_facility_id: facilityId });
+                              if (error) throw error;
+                              await fetchFacilityData();
+                              alert('この施設の管理者になりました（公式化）。');
+                            } catch (e) {
+                              alert('管理申請に失敗しました。プレミアム会員のみが利用できます。');
+                            } finally { setClaiming(false); }
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          この施設を管理する
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )}
 

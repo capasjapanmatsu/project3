@@ -57,6 +57,8 @@ export default function FacilityRegistration() {
     website: '',
     description: ''
   });
+  const [isUserSubmission, setIsUserSubmission] = useState<boolean>(true); // 一般投稿モード（初期有効）
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   // 認証チェック
   useEffect(() => {
@@ -288,17 +290,41 @@ export default function FacilityRegistration() {
           phone: formData.phone || null,
           website: formData.website || null,
           description: formData.description || null,
-          owner_id: user.id,
-          status: 'pending'
+          owner_id: isUserSubmission ? null : user.id,
+          status: isUserSubmission ? 'pending' : 'pending',
+          is_user_submitted: isUserSubmission,
+          submitted_by: isUserSubmission ? user.id : null,
+          verified: isUserSubmission ? false : true,
+          official_badge: isUserSubmission ? false : true,
+          is_public: true
         })
         .select()
         .single();
 
       if (facilityError) throw facilityError;
 
-      const successMsg = geocodeResult 
-        ? '施設の申請が正常に送信されました。地図上での正確な位置も設定されています。承認をお待ちください。'
-        : '施設の申請が正常に送信されました。（位置情報は後ほど設定されます）承認をお待ちください。';
+      // 画像1枚（任意）を一般投稿時に保存
+      try {
+        if (isUserSubmission && imageFile && facilityData?.id) {
+          const key = `${facilityData.id}/${Date.now()}_${imageFile.name}`;
+          const up = await supabase.storage.from('pet-facility-images').upload(key, imageFile, { cacheControl: '31536000' });
+          if (!up.error) {
+            const { data: pub } = supabase.storage.from('pet-facility-images').getPublicUrl(key);
+            await supabase.from('pet_facility_images').insert({
+              facility_id: facilityData.id,
+              image_url: pub.publicUrl,
+              image_type: 'main',
+              display_order: 0
+            });
+          }
+        }
+      } catch {}
+
+      const successMsg = isUserSubmission
+        ? '一般投稿として仮掲載されました。オーナーが管理すると公式表示になります。'
+        : (geocodeResult 
+            ? '施設の申請が正常に送信されました。地図上での正確な位置も設定されています。承認をお待ちください。'
+            : '施設の申請が正常に送信されました。（位置情報は後ほど設定されます）承認をお待ちください。');
       
       setSuccessMessage(successMsg);
       try {
@@ -322,6 +348,7 @@ export default function FacilityRegistration() {
         website: '',
         description: ''
       });
+      setImageFile(null);
 
     } catch (err) {
       console.error('Error submitting facility:', err);
@@ -365,6 +392,23 @@ export default function FacilityRegistration() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* 投稿モード選択 */}
+        <Card>
+          <div className="p-6">
+            <h2 className="text-xl font-semibold mb-4">投稿モード</h2>
+            <div className="space-y-2 text-sm text-gray-700">
+              <label className="flex items-center gap-2">
+                <input type="radio" name="submission_mode" checked={isUserSubmission} onChange={()=>setIsUserSubmission(true)} />
+                一般投稿（仮掲載、画像は1枚まで）
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="radio" name="submission_mode" checked={!isUserSubmission} onChange={()=>setIsUserSubmission(false)} />
+                オーナー申請（プレミアム会員）
+              </label>
+              <p className="text-xs text-gray-500 mt-1">一般投稿は未確認マークで表示され、オーナーが管理すると公式表示になります。</p>
+            </div>
+          </div>
+        </Card>
         {/* 基本情報 */}
         <Card>
           <div className="p-6">
@@ -465,25 +509,21 @@ export default function FacilityRegistration() {
           </div>
         </Card>
 
-        {/* 施設画像に関する案内 */}
+        {/* 画像アップロード（一般投稿時は1枚まで） */}
         <Card>
           <div className="p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center">
               <ImageIcon className="w-6 h-6 mr-2" />
-              施設画像について
+              画像アップロード
             </h2>
-            
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start">
-                <AlertCircle className="w-5 h-5 text-blue-600 mt-1 mr-3 flex-shrink-0" />
-                <div>
-                  <h3 className="text-sm font-medium text-blue-800 mb-1">画像のアップロードについて</h3>
-                  <p className="text-sm text-blue-700">
-                    掲載画像は承認後にマイページ内で添付することができます。
-                  </p>
-                </div>
+            {isUserSubmission ? (
+              <div className="space-y-2">
+                <input type="file" accept="image/*" onChange={(e)=>setImageFile(e.target.files?.[0] || null)} />
+                <p className="text-xs text-gray-500">一般投稿では画像は1枚までです。サムネイルとして使用されます。</p>
               </div>
-            </div>
+            ) : (
+              <p className="text-sm text-gray-600">オーナー申請では登録後に施設編集から複数画像を管理できます。</p>
+            )}
           </div>
         </Card>
 
