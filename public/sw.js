@@ -1,5 +1,5 @@
 /* Minimal SW with stale-while-revalidate for images/fonts and cache-first for app shell */
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.0.1';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -43,7 +43,12 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Same-origin only for shell
+  // 非GET（POST/PUT/DELETEなど）や、クロスオリジンは介入しない（そのままネットワークへ）
+  if (request.method !== 'GET' || url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Same-origin のHTMLナビゲーションは Network-first
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).catch(() => caches.match('/offline.html'))
@@ -66,66 +71,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Other GET requests: try network first, fallback to cache
-  if (request.method === 'GET') {
-    event.respondWith(
-      fetch(request).then((resp) => {
-        const copy = resp.clone();
-        caches.open('misc-network-first').then((c) => c.put(request, copy));
-        return resp;
-      }).catch(() => caches.match(request))
-    );
-    return;
-  }
+  // Other GET requests (same-origin): Network-first with fallback to cache
+  event.respondWith(
+    fetch(request).then((resp) => {
+      const copy = resp.clone();
+      caches.open('misc-network-first').then((c) => c.put(request, copy));
+      return resp;
+    }).catch(() => caches.match(request))
+  );
 });
 
 // Minimal Service Worker - デバッグ用
 console.log('Minimal Service Worker loaded');
 
-self.addEventListener('install', function(event) {
-  console.log('Service Worker installing...');
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', function(event) {
-  console.log('Service Worker activating...');
-  event.waitUntil(self.clients.claim());
-});
-
-const CACHE_NAME = 'dpjp-pwa-v1';
-const STATIC_ASSETS = [
-  '/',
-  '/offline.html',
-  '/manifest.json',
-  '/icons/icon_android_192x192.png',
-  '/icons/icon_android_144x144.png'
-];
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-  );
-});
-
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  // HTMLドキュメントはNetwork-firstでオフライン時にfallback
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request).catch(() => caches.match('/offline.html'))
-    );
-    return;
-  }
-  // 静的アセットはCache-first
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      return (
-        cached || fetch(request).then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
-        }).catch(() => cached)
-      );
-    })
-  );
-});
+// 余分な重複ハンドラを削除し、GETのみを対象にしました（POSTは素通し）
