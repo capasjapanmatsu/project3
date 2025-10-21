@@ -12,6 +12,7 @@ import ImageCropper from '../components/ImageCropper';
 import Input from '../components/Input';
 import { LocationEditMap } from '../components/LocationEditMap';
 import useAuth from '../context/AuthContext';
+import { usePremiumOwner } from '../hooks/usePremiumOwner';
 import { geocodeAddress } from '../utils/geocoding';
 import { supabase } from '../utils/supabase';
 
@@ -40,6 +41,7 @@ export default function FacilityRegistration() {
   const { user, isAuthenticated, userProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const premium = usePremiumOwner();
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
@@ -66,6 +68,21 @@ export default function FacilityRegistration() {
   const [rawImageFile, setRawImageFile] = useState<File | null>(null);
   const [selectedLat, setSelectedLat] = useState<number | null>(null);
   const [selectedLng, setSelectedLng] = useState<number | null>(null);
+  const startCheckout = async () => {
+    const priceId = import.meta.env.VITE_PREMIUM_OWNER_PRICE_ID as string | undefined;
+    if (!priceId) { alert('環境変数 VITE_PREMIUM_OWNER_PRICE_ID が未設定です'); return; }
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const accessToken = session.session?.access_token;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`;
+      const success = `${window.location.origin}/payment-return?success=true`;
+      const cancel = `${window.location.origin}/payment-return?canceled=true`;
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ mode: 'subscription', price_id: priceId, trial_period_days: 30, success_url: success, cancel_url: cancel, notes: 'premium_owner_subscription_from_facility_registration' }) });
+      const body = await res.json();
+      if (!res.ok || !body?.url) throw new Error(body?.error || 'checkout failed');
+      window.location.href = body.url;
+    } catch (e:any) { alert(`決済開始に失敗しました: ${e?.message || e}`); }
+  };
 
   // 認証チェック
   useEffect(() => {
@@ -426,6 +443,7 @@ export default function FacilityRegistration() {
           </div>
         </Card>
         {/* 位置の指定（あいまい検索 + 地図で決定） */}
+        {(isUserSubmission || premium.state === 'active') && (
         <Card>
           <div className="p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center">
@@ -449,7 +467,9 @@ export default function FacilityRegistration() {
             )}
           </div>
         </Card>
-        {/* 基本情報 */}
+        )}
+        {/* 基本情報（プレミアム未加入のオーナー申請では非表示） */}
+        {(isUserSubmission || premium.state === 'active') && (
         <Card>
           <div className="p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center">
@@ -530,8 +550,10 @@ export default function FacilityRegistration() {
             </div>
           </div>
         </Card>
+        )}
 
         {/* 画像アップロード（一般投稿時は1枚まで） */}
+        {(isUserSubmission || premium.state === 'active') && (
         <Card>
           <div className="p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center">
@@ -558,6 +580,7 @@ export default function FacilityRegistration() {
             )}
           </div>
         </Card>
+        )}
 
         {showImageCropper && rawImageFile && (
           <ImageCropper
@@ -576,6 +599,7 @@ export default function FacilityRegistration() {
         )}
 
         {/* ユーザー情報セクション */}
+        {(isUserSubmission || premium.state === 'active') && (
         <Card>
           <div className="p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center">
@@ -669,17 +693,35 @@ export default function FacilityRegistration() {
             </div>
           </div>
         </Card>
+        )}
 
-        {/* 申請ボタン */}
-        <div className="flex justify-end">
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className="px-8 py-3 text-lg"
-          >
-            {isLoading ? '申請中...' : '申請を送信'}
-          </Button>
-        </div>
+        {/* 申請ボタン（オーナー未加入時は隠す） */}
+        {(isUserSubmission || premium.state === 'active') && (
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isLoading} className="px-8 py-3 text-lg">
+              {isLoading ? '申請中...' : '申請を送信'}
+            </Button>
+          </div>
+        )}
+
+        {/* オーナー申請かつ未加入時のペイウォール */}
+        {!isUserSubmission && premium.state !== 'active' && (
+          <Card>
+            <div className="p-6">
+              <h2 className="text-xl font-semibold mb-3">お店のオーナー様ですか？</h2>
+              <p className="text-sm text-gray-700 leading-relaxed">
+                お店単位での登録と契約が必要です。プレミアム会員（月額500円）にご加入いただくと、
+                お店情報の編集（電話番号・ウェブサイト・説明）、定休日/営業時間設定、予約管理、クーポン配布の機能が使用可能となります。
+              </p>
+              <div className="mt-4">
+                <Button onClick={startCheckout} className="w-full sm:w-auto bg-black hover:bg-gray-900 text-white">
+                  プレミアム会員に申し込む
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500 mt-3">決済完了後に基本情報の入力項目が表示されます。</p>
+            </div>
+          </Card>
+        )}
       </form>
     </div>
   );
