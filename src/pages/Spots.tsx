@@ -30,7 +30,7 @@ type SpotMedia = {
   created_at: string;
 };
 
-const CATEGORIES = ['海辺', '高台/夕日', '公園', '寺社', '公共施設', '川沿い/湖畔', '展望台', '花畑', '桜/紅葉', '散歩道'];
+const CATEGORIES = ['海辺', '高台/夕日', '公園', '寺社', '公共施設', '川沿い/湖畔', '展望台', '花畑', '桜/紅葉', '散歩道', 'オブジェ'];
 
 export default function Spots() {
   const { user } = useAuth();
@@ -44,7 +44,10 @@ export default function Spots() {
 
   const filteredSpots = useMemo(() => {
     if (!category) return spots;
-    return spots.filter((s) => (s.category || '') === category);
+    return spots.filter((s: any) => {
+      const cats: string[] = (s.categories as any) || [];
+      return (s.category || '') === category || cats.includes(category);
+    });
   }, [spots, category]);
 
   useEffect(() => {
@@ -123,6 +126,7 @@ export default function Spots() {
                   {c === '花畑' && <Flower2 className="w-4 h-4"/>}
                   {c === '桜/紅葉' && <Flower2 className="w-4 h-4"/>}
                   {c === '散歩道' && <Trees className="w-4 h-4"/>}
+                  {c === 'オブジェ' && <Landmark className="w-4 h-4"/>}
                   {c}
                 </button>
               ))}
@@ -148,11 +152,11 @@ export default function Spots() {
             return (
               <Card key={s.id} className="overflow-hidden">
                 <Link to={`/spots/${s.id}`} className="block no-underline hover:no-underline">
-                  <div className="h-44 bg-gray-100">
+                  <div className="relative w-full pb-[100%] bg-gray-100 overflow-hidden">
                     {thumb ? (
-                      <img src={thumb.url} alt={s.title} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+                      <img src={thumb.url} alt={s.title} className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async"/>
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400"><MapPin className="w-8 h-8"/></div>
+                      <div className="absolute inset-0 flex items-center justify-center text-gray-400"><MapPin className="w-8 h-8"/></div>
                     )}
                   </div>
                   <div className="p-4">
