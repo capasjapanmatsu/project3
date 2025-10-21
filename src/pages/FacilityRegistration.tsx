@@ -8,11 +8,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import ImageCropper from '../components/ImageCropper';
 import Input from '../components/Input';
+import { LocationEditMap } from '../components/LocationEditMap';
 import useAuth from '../context/AuthContext';
 import { geocodeAddress } from '../utils/geocoding';
 import { supabase } from '../utils/supabase';
-import ImageCropper from '../components/ImageCropper';
 
 interface FacilityForm {
   name: string;
@@ -62,6 +63,8 @@ export default function FacilityRegistration() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [showImageCropper, setShowImageCropper] = useState(false);
   const [rawImageFile, setRawImageFile] = useState<File | null>(null);
+  const [selectedLat, setSelectedLat] = useState<number | null>(null);
+  const [selectedLng, setSelectedLng] = useState<number | null>(null);
 
   // 認証チェック
   useEffect(() => {
@@ -265,20 +268,19 @@ export default function FacilityRegistration() {
       setIsLoading(true);
       setError('');
 
-      // 住所から緯度・経度を取得
+      // 住所から緯度・経度を取得（地図で選択が優先）
       console.log(`📍 住所をジオコーディング中: ${formData.address}`);
       const geocodeResult = await geocodeAddress(formData.address);
-      
-      let latitude = null;
-      let longitude = null;
-      
-      if (geocodeResult) {
-        latitude = geocodeResult.latitude;
-        longitude = geocodeResult.longitude;
-        console.log(`✅ ジオコーディング成功: ${latitude}, ${longitude}`);
-      } else {
-        console.warn('⚠️ ジオコーディングに失敗しました。住所のみで登録を続行します。');
-        // ジオコーディング失敗でも登録は続行（住所のみ保存）
+      let latitude = selectedLat ?? null;
+      let longitude = selectedLng ?? null;
+      if (latitude === null || longitude === null) {
+        if (geocodeResult) {
+          latitude = geocodeResult.latitude;
+          longitude = geocodeResult.longitude;
+          console.log(`✅ ジオコーディング成功: ${latitude}, ${longitude}`);
+        } else {
+          console.warn('⚠️ ジオコーディングに失敗しました。住所のみで登録を続行します。');
+        }
       }
 
       // 施設情報を登録
@@ -410,6 +412,30 @@ export default function FacilityRegistration() {
               </label>
               <p className="text-xs text-gray-500 mt-1">一般投稿は未確認マークで表示され、オーナーが管理すると公式表示になります。</p>
             </div>
+          </div>
+        </Card>
+        {/* 位置の指定（あいまい検索 + 地図で決定） */}
+        <Card>
+          <div className="p-6">
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              位置の指定（地図で決定）
+            </h2>
+            <div className="mb-3 text-sm text-gray-600">
+              住所をあいまい検索して、地図上のマーカーをドラッグまたは地図をクリックして確定できます。
+            </div>
+            <LocationEditMap
+              initialAddress={formData.address}
+              onLocationChange={(lat, lng, addr) => {
+                setSelectedLat(lat);
+                setSelectedLng(lng);
+                if (addr && addr !== formData.address) {
+                  setFormData(prev => ({ ...prev, address: addr }));
+                }
+              }}
+            />
+            {selectedLat !== null && selectedLng !== null && (
+              <div className="mt-2 text-xs text-gray-600">現在位置: {selectedLat.toFixed(6)}, {selectedLng.toFixed(6)}</div>
+            )}
           </div>
         </Card>
         {/* 基本情報 */}

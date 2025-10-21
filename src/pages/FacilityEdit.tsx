@@ -693,7 +693,7 @@ export default function FacilityEdit() {
       // 新しい画像の場合
       if (currentImageIndex === null) {
         // 最新の画像データを取得して正確なdisplay_orderを計算
-        const { data: currentImages, error: fetchError } = await supabase
+        const { data: currentImagesRaw, error: fetchError } = await supabase
           .from('pet_facility_images')
           .select('display_order')
           .eq('facility_id', facility.id)
@@ -702,7 +702,8 @@ export default function FacilityEdit() {
 
         if (fetchError) throw fetchError;
 
-        const newDisplayOrder = currentImages.length > 0 ? currentImages[0].display_order + 1 : 0;
+        const currentImages = (currentImagesRaw ?? []) as Array<{ display_order: number }>;
+        const newDisplayOrder = currentImages.length > 0 ? currentImages[0]!.display_order + 1 : 0;
         const imageType = newDisplayOrder === 0 ? 'main' : 'additional';
 
         const { data: imageData, error: imageError } = await supabase
@@ -721,7 +722,10 @@ export default function FacilityEdit() {
         setFacilityImages(prev => [...prev, imageData].sort((a, b) => a.display_order - b.display_order));
       } else {
         // 既存画像の更新
-        const imageToUpdate = facilityImages[currentImageIndex];
+        if (currentImageIndex == null || currentImageIndex < 0 || currentImageIndex >= facilityImages.length) {
+          throw new Error('選択した画像インデックスが不正です');
+        }
+        const imageToUpdate = facilityImages[currentImageIndex]!;
         
         const { data: imageData, error: imageError } = await supabase
           .from('pet_facility_images')
@@ -831,15 +835,16 @@ export default function FacilityEdit() {
       // display_orderを再調整
       const updatedImages = facilityImages.filter(img => img.id !== imageId);
       for (let i = 0; i < updatedImages.length; i++) {
+        const img = updatedImages[i]!;
         const newImageType = i === 0 ? 'main' : 'additional';
-        if (updatedImages[i].display_order !== i || updatedImages[i].image_type !== newImageType) {
+        if (img.display_order !== i || img.image_type !== newImageType) {
           await supabase
             .from('pet_facility_images')
             .update({ 
               display_order: i, 
               image_type: newImageType 
             })
-            .eq('id', updatedImages[i].id);
+            .eq('id', img.id);
         }
       }
 
@@ -1423,6 +1428,7 @@ export default function FacilityEdit() {
                           施設名 *
                         </label>
                         <Input
+                          label=""
                           name="name"
                           value={formData.name}
                           onChange={handleInputChange}
@@ -1457,6 +1463,7 @@ export default function FacilityEdit() {
                         住所 *
                       </label>
                       <Input
+                        label=""
                         name="address"
                         value={formData.address}
                         onChange={handleInputChange}
@@ -1471,6 +1478,7 @@ export default function FacilityEdit() {
                           電話番号
                         </label>
                         <Input
+                          label=""
                           name="phone"
                           value={formData.phone}
                           onChange={handleInputChange}
@@ -1484,6 +1492,7 @@ export default function FacilityEdit() {
                           ウェブサイト
                         </label>
                         <Input
+                          label=""
                           name="website"
                           value={formData.website}
                           onChange={handleInputChange}

@@ -7,8 +7,8 @@ import Input from './Input';
 
 interface LocationEditMapProps {
   initialAddress?: string;
-  initialLatitude?: number;
-  initialLongitude?: number;
+  initialLatitude?: number | undefined;
+  initialLongitude?: number | undefined;
   onLocationChange: (latitude: number, longitude: number, address?: string) => void;
   className?: string;
 }
@@ -23,6 +23,7 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
+  const geocoderRef = useRef<google.maps.Geocoder | null>(null);
   
   const [address, setAddress] = useState(initialAddress);
   const [latitude, setLatitude] = useState<number>(initialLatitude || 35.6762);
@@ -51,6 +52,7 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
       });
 
       googleMapRef.current = map;
+      geocoderRef.current = new google.maps.Geocoder();
 
       // ドラッグ可能なマーカーを作成
       const marker = new google.maps.Marker({
@@ -73,6 +75,24 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
 
       markerRef.current = marker;
 
+      // 逆ジオコーディング共通関数
+      const reverseGeocodeAndNotify = (lat: number, lng: number) => {
+        const geo = geocoderRef.current;
+        if (!geo) {
+          onLocationChange(lat, lng);
+          return;
+        }
+        geo.geocode({ location: { lat, lng }, region: 'JP' }, (results: any, status: any) => {
+          if (status === 'OK' && results && results[0]) {
+            const formatted = results[0].formatted_address || '';
+            setAddress((prev) => formatted || prev);
+            onLocationChange(lat, lng, formatted || undefined);
+          } else {
+            onLocationChange(lat, lng);
+          }
+        });
+      };
+
       // ドラッグイベントリスナー
       marker.addListener('dragend', () => {
         const position = marker.getPosition();
@@ -81,8 +101,18 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
           const newLng = position.lng();
           setLatitude(newLat);
           setLongitude(newLng);
-          onLocationChange(newLat, newLng);
+          reverseGeocodeAndNotify(newLat, newLng);
         }
+      });
+
+      // マップクリックでマーカー移動
+      map.addListener('click', (e: any) => {
+        const newLat = e.latLng.lat();
+        const newLng = e.latLng.lng();
+        marker.setPosition({ lat: newLat, lng: newLng });
+        setLatitude(newLat);
+        setLongitude(newLng);
+        reverseGeocodeAndNotify(newLat, newLng);
       });
 
       setIsLoading(false);
@@ -144,8 +174,41 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
         
         console.log(`✅ マーカー位置更新完了: ${newLat}, ${newLng}`);
       } else {
-        console.error('❌ 全ての住所形式で失敗');
-        alert(`住所が見つかりませんでした。\n\n入力された住所: ${address}\n\n以下をご確認ください：\n・住所が正確に入力されているか\n・郵便番号が含まれているか\n・全角文字が使用されていないか\n\nもしくは、マーカーを直接ドラッグして位置を調整してください。`);
+        // Places API によるフォールバック
+        try {
+          const google = googleInstance;
+          if (google?.maps?.places) {
+            const auto = new google.maps.places.AutocompleteService();
+            auto.getPlacePredictions({ input: address, componentRestrictions: { country: 'jp' } }, (preds: any, pStatus: any) => {
+              if (pStatus === 'OK' && preds && preds[0]) {
+                const placeId = preds[0].place_id;
+                const svc = new google.maps.places.PlacesService(googleMapRef.current as any);
+                svc.getDetails({ placeId, fields: ['geometry','formatted_address'] }, (place: any, dStatus: any) => {
+                  if (dStatus === 'OK' && place?.geometry?.location) {
+                    const loc = place.geometry.location;
+                    const ll = { lat: loc.lat(), lng: loc.lng() };
+                    googleMapRef.current!.setCenter(ll);
+                    googleMapRef.current!.setZoom(16);
+                    markerRef.current!.setPosition(ll);
+                    setLatitude(ll.lat);
+                    setLongitude(ll.lng);
+                    const formatted = place.formatted_address || undefined;
+                    setAddress((prev) => formatted || prev);
+                    onLocationChange(ll.lat, ll.lng, formatted);
+                  } else {
+                    alert('位置を特定できませんでした');
+                  }
+                });
+              } else {
+                alert(`住所が見つかりませんでした。\n\n入力: ${address}\nマーカーをドラッグして調整してください。`);
+              }
+            });
+          } else {
+            alert(`住所が見つかりませんでした。\n\n入力: ${address}\nマーカーをドラッグして調整してください。`);
+          }
+        } catch {
+          alert(`住所が見つかりませんでした。\n\n入力: ${address}\nマーカーをドラッグして調整してください。`);
+        }
       }
     } catch (error) {
       console.error('住所検索エラー:', error);
