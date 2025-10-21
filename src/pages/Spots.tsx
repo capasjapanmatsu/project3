@@ -41,6 +41,7 @@ export default function Spots() {
   const [showPost, setShowPost] = useState(false);
   const [category, setCategory] = useState<string | null>(null);
   const [showCategories, setShowCategories] = useState(false);
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
 
   const filteredSpots = useMemo(() => {
     if (!category) return spots;
@@ -88,6 +89,33 @@ export default function Spots() {
       }
     })();
   }, []);
+
+  // 現在地を取得（一覧の距離表示用）
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setUserLoc(null),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+    );
+  }, []);
+
+  const distanceKm = (a: {lat:number; lng:number}, b: {lat:number; lng:number}): number => {
+    const toRad = (d: number) => d * Math.PI / 180;
+    const R = 6371; // km
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const la1 = toRad(a.lat);
+    const la2 = toRad(b.lat);
+    const h = Math.sin(dLat/2)**2 + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  };
+
+  const formatDistance = (km: number): string => {
+    if (!isFinite(km)) return '';
+    if (km < 1) return `${Math.round(km * 1000)}m`;
+    return `${km.toFixed(1)}km`;
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 pt-10 md:pt-12 pb-8">
@@ -149,6 +177,7 @@ export default function Spots() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredSpots.map((s) => {
             const thumb = thumbMap[s.id];
+            const dist = userLoc && s.latitude && s.longitude ? distanceKm(userLoc, { lat: s.latitude as number, lng: s.longitude as number }) : null;
             return (
               <Card key={s.id} className="overflow-hidden">
                 <Link to={`/spots/${s.id}`} className="block no-underline hover:no-underline">
@@ -162,6 +191,9 @@ export default function Spots() {
                   <div className="p-4">
                     <div className="text-sm text-blue-600 mb-1">{s.category || '未分類'}</div>
                     <h2 className="font-semibold text-gray-900">{s.title}</h2>
+                    {dist !== null && (
+                      <div className="text-xs text-gray-500 mt-0.5">現在地から約 {formatDistance(dist)}</div>
+                    )}
                     {s.description && <p className="text-sm text-gray-600 mt-1 line-clamp-2">{s.description}</p>}
                   </div>
                 </Link>
