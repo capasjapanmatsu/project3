@@ -5,6 +5,7 @@ import useAuth from '../../context/AuthContext';
 import { supabase } from '../../utils/supabase';
 import Button from '../Button';
 import Card from '../Card';
+import ImageCropper from '../ImageCropper';
 
 type Props = { onClose: () => void; onCreated: (id: string) => void };
 
@@ -20,7 +21,9 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
   const [mapObj, setMapObj] = useState<any>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const [address, setAddress] = useState('');
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<Array<File | null>>([null, null, null]);
+  const [cropIndex, setCropIndex] = useState<number | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -51,7 +54,9 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
     const reverseGeocode = (ll: {lat: number; lng: number}) => {
       geocoder.geocode({ location: ll, region: 'JP' }, (results: any, status: any) => {
         if (status === 'OK' && results && results[0]) {
-          setAddress(results[0].formatted_address || address);
+          // Prefer Japanese long_name components when available
+          const formatted = results[0].formatted_address || '';
+          setAddress(formatted);
         }
       });
     };
@@ -77,35 +82,77 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
       setError('タイトルは必須です');
       return;
     }
-    if (files.length === 0) {
+    if (!files.some(Boolean)) {
       setError('最初に1枚以上の画像を選択してください');
+      return;
+    }
+    if (!category && categories.length === 0) {
+      setError('タグを1つ以上選択してください');
       return;
     }
     setError('');
     setIsSubmitting(true);
     try {
-      // 1. create spot
-      const { data: spotRow, error: e1 } = await supabase
-        .from('spots')
-        .insert({
-          author_id: user.id,
-          title: title.trim(),
-          description: description.trim() || null,
-          category: category || null,
-          categories: categories.length > 0 ? categories : null,
-          latitude: lat,
-          longitude: lng,
-          address: address || null,
-        })
-        .select('id')
-        .single();
-      if (e1) throw e1;
+      // 画像を1:1にトリミングし、WebP(1024x1024)へ変換
+      const processToSquareWebp = (file: File, size = 1024): Promise<File> => new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = size; canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) { reject(new Error('Canvas not supported')); return; }
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          canvas.toBlob((blob) => {
+            if (!blob) { reject(new Error('Failed to convert image')); return; }
+            const out = new File([blob], file.name.replace(/\.[^.]+$/, '') + '.webp', { type: 'image/webp' });
+            resolve(out);
+          }, 'image/webp', 0.9);
+        };
+        img.onerror = reject;
+        img.crossOrigin = 'anonymous';
+        img.src = URL.createObjectURL(file);
+      });
+
+      // 1. create spot (fallback: if schema cache misses categories column)
+      const payload: Record<string, any> = {
+        author_id: user.id,
+        title: title.trim(),
+        description: description.trim() || null,
+        category: null,
+        categories: categories.length > 0 ? categories : [category].filter(Boolean),
+        latitude: lat,
+        longitude: lng,
+        address: address || null,
+      };
+
+      let spotRow: any = null;
+      let insertErr: any = null;
+      {
+        const { data, error } = await supabase.from('spots').insert(payload).select('id').single();
+        spotRow = data; insertErr = error;
+      }
+      if (insertErr) {
+        const msg = String(insertErr?.message || insertErr?.details || '');
+        if (/categories/.test(msg)) {
+          // fallback without categories (schema cache not updated). Put first tag into legacy category
+          const payloadFallback = { ...payload };
+          delete (payloadFallback as any).categories;
+          payloadFallback.category = (categories[0] || category || null);
+          const { data, error } = await supabase.from('spots').insert(payloadFallback).select('id').single();
+          if (error) throw error; spotRow = data;
+        } else {
+          throw insertErr;
+        }
+      }
       const spotId = spotRow!.id as string;
 
       // 2. upload images (limit: first 3 files only)
-      const upFiles = files.slice(0, 3);
+      const upFiles = files.filter(Boolean).slice(0, 3) as File[];
       for (let i = 0; i < upFiles.length; i++) {
-        const f = upFiles[i];
+        const f = await processToSquareWebp(upFiles[i]);
         // NOTE: Simplified: for now upload original; server-side edge function for resize/webp can be added later
         const key = `${user.id}/${spotId}/${Date.now()}_${i}_${f.name}`;
         const { data: storageRes, error: uerr } = await supabase.storage.from('spot-images').upload(key, f, {
@@ -133,12 +180,12 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
-      <Card className="max-w-2xl w-full">
-        <div className="flex items-center justify-between p-4 border-b">
+      <Card className="max-w-2xl w-full max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b shrink-0">
           <h2 className="text-lg font-semibold">スポットを投稿</h2>
           <button onClick={onClose}><X className="w-5 h-5"/></button>
         </div>
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 overflow-y-auto">
           {error && <div className="p-3 bg-red-100 text-red-700 rounded">{error}</div>}
 
           <div className="text-xs text-gray-600 bg-blue-50 border border-blue-200 p-2 rounded">
@@ -204,27 +251,11 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
             <input value={title} onChange={(e)=>setTitle(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="場所の名前"/>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
             <div>
-            <label className="block text-sm font-medium mb-1">カテゴリ（メイン）</label>
-            <select value={category} onChange={(e)=>setCategory(e.target.value)} className="w-full border rounded px-3 py-2 mb-2">
-              <option value="">選択してください</option>
-              <option value="海辺">海辺</option>
-              <option value="高台">高台</option>
-              <option value="夕日">夕日</option>
-              <option value="公園">公園</option>
-              <option value="寺社">寺社</option>
-              <option value="公共施設">公共施設</option>
-              <option value="川沿い/湖畔">川沿い/湖畔</option>
-              <option value="展望台">展望台</option>
-              <option value="花畑">花畑</option>
-              <option value="桜">桜</option>
-              <option value="紅葉">紅葉</option>
-              <option value="散歩道">散歩道</option>
-            </select>
-            <label className="block text-sm font-medium mb-1">追加カテゴリ（複数選択可）</label>
+            <label className="block text-sm font-medium mb-1">タグ（複数可・最低1つ）</label>
             <div className="flex flex-wrap gap-2">
-              {["海辺","高台","夕日","公園","寺社","公共施設","川沿い/湖畔","展望台","花畑","桜","紅葉","散歩道"].map((c)=>(
+              {["海辺","高台","夕日","公園","寺社","公共施設","川沿い/湖畔","展望台","花畑","桜","紅葉","散歩道","オブジェ"].map((c)=>(
                 <button type="button" key={c} onClick={()=>setCategories(prev=>prev.includes(c)?prev.filter(x=>x!==c):[...prev,c])} className={`px-3 py-1 rounded-full border text-sm ${categories.includes(c)?'bg-blue-600 text-white border-blue-600':'bg-white text-gray-700 border-gray-300'}`}>{c}</button>
               ))}
             </div>
@@ -240,17 +271,38 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
 
           <div>
             <label className="block text-sm font-medium mb-1 flex items-center"><Upload className="w-4 h-4 mr-2"/>画像（1〜3枚）</label>
-            <input type="file" accept="image/*" multiple onChange={(e)=>{
-              const arr = Array.from(e.target.files || []);
-              setFiles(arr.slice(0,3));
-            }} />
+            <div className="space-y-2">
+              {[0,1,2].map((idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <span className="text-xs text-gray-600 w-12">画像{idx+1}</span>
+                  <input type="file" accept="image/*" onChange={(e)=>{
+                    const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                    if (f) { setCropIndex(idx); setCropFile(f); }
+                  }} />
+                </div>
+              ))}
+            </div>
             <p className="text-xs text-gray-500 mt-1">投稿後に他のユーザーもこのスポットへ最大3枚まで追加できます。</p>
           </div>
         </div>
-        <div className="p-4 border-t flex justify-end gap-2">
+        <div className="p-4 border-t flex justify-end gap-2 shrink-0 bg-white">
           <Button variant="secondary" onClick={onClose}>キャンセル</Button>
-          <Button onClick={handleSubmit} isLoading={isSubmitting}>投稿する</Button>
+          <Button onClick={handleSubmit} isLoading={isSubmitting}>保存</Button>
         </div>
+        {cropFile && cropIndex !== null && (
+          <ImageCropper
+            imageFile={cropFile}
+            aspectRatio={1}
+            maxWidth={1024}
+            maxHeight={1024}
+            onCropComplete={(blob: Blob) => {
+              const out = new File([blob], cropFile.name.replace(/\.[^.]+$/, '') + '.webp', { type: 'image/webp' });
+              setFiles(prev => { const copy = [...prev]; copy[cropIndex] = out; return copy; });
+              setCropFile(null); setCropIndex(null);
+            }}
+            onCancel={() => { setCropFile(null); setCropIndex(null); }}
+          />
+        )}
       </Card>
     </div>
   );

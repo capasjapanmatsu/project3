@@ -139,7 +139,7 @@ export function GoogleMapsProvider({
         // Google Maps API スクリプトを動的に読み込み
         const script = document.createElement('script');
         const librariesParam = libraries.length > 0 ? `&libraries=${libraries.join(',')}` : '';
-        let scriptUrl = `https://maps.googleapis.com/maps/api/js?key=${key}${librariesParam}`;
+        let scriptUrl = `https://maps.googleapis.com/maps/api/js?key=${key}${librariesParam}&language=ja&region=JP`;
         script.src = scriptUrl;
         script.async = true;
         script.defer = true;
@@ -184,7 +184,7 @@ export function GoogleMapsProvider({
                 console.warn('Google Maps フォールバックキーで再試行');
                 setDebugText((prev) => prev + 'フォールバックキーで再試行\n');
                 const fallbackScript = document.createElement('script');
-                const fallbackUrl = `https://maps.googleapis.com/maps/api/js?key=${fallbackKey}${librariesParam}`;
+                const fallbackUrl = `https://maps.googleapis.com/maps/api/js?key=${fallbackKey}${librariesParam}&language=ja&region=JP`;
                 fallbackScript.src = fallbackUrl;
                 fallbackScript.async = true;
                 fallbackScript.defer = true;

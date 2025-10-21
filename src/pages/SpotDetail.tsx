@@ -1,10 +1,11 @@
+import { Flag, ImageIcon, MapPin, MessageCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '../utils/supabase';
 import Button from '../components/Button';
+import SpotAddPostModal from '../components/spots/SpotAddPostModal';
 import Card from '../components/Card';
-import { MapPin, Flag, MessageCircle, ImageIcon } from 'lucide-react';
 import useAuth from '../context/AuthContext';
+import { supabase } from '../utils/supabase';
 
 export default function SpotDetail() {
   const { id } = useParams();
@@ -16,6 +17,7 @@ export default function SpotDetail() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const [showAddPost, setShowAddPost] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -83,6 +85,9 @@ export default function SpotDetail() {
           {/* comments */}
           <Card className="p-4">
             <div className="flex items-center mb-3"><MessageCircle className="w-5 h-5 text-blue-600 mr-2"/><h2 className="font-semibold">コメント</h2></div>
+            <div className="flex justify-end mb-3">
+              <Button size="sm" onClick={()=>setShowAddPost(true)}>この場所で投稿する</Button>
+            </div>
             <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
               {comments.map(c => (
                 <div key={c.id} className="text-sm">
@@ -110,6 +115,14 @@ export default function SpotDetail() {
               <Flag className="w-4 h-4 mr-2"/>通報
             </Button>
           </div>
+          {showAddPost && (
+            <SpotAddPostModal spotId={id as string} onClose={()=>setShowAddPost(false)} onAdded={async()=>{
+              const { data: m } = await supabase.from('spot_media').select('*').eq('spot_id', id).order('is_thumbnail', { ascending: false }).order('created_at', { ascending: true });
+              setMedia(m || []);
+              const { data: cs } = await supabase.from('spot_comments').select('*').eq('spot_id', id).order('created_at', { ascending: true });
+              setComments(cs || []);
+            }}/>
+          )}
         </>
       )}
     </div>
