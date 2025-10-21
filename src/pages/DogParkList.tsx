@@ -396,16 +396,7 @@ export function DogParkList() {
     );
   }
 
-  if (activeView === 'facilities' && facilities.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <EmptyState
-          title="施設が見つかりません"
-          description="まだ施設のデータが登録されていません。"
-        />
-      </div>
-    );
-  }
+  // 施設が0件でもマップは表示したいので early return はしない
 
   return (
     <div className="min-h-screen bg-gray-50 pt-3">
