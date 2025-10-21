@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import Card from '../Card';
-import Button from '../Button';
-import { supabase } from '../../utils/supabase';
 import { AlertTriangle, Send, X } from 'lucide-react';
+import { useState } from 'react';
+import { supabase } from '../../utils/supabase';
+import Button from '../Button';
+import Card from '../Card';
 
 type Props = {
   spotId: string;
