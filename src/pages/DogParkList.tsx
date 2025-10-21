@@ -73,6 +73,7 @@ export function DogParkList() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(Object.keys(CATEGORY_LABELS));
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
+  const [facilityStatusFilter, setFacilityStatusFilter] = useState<'all'|'official'|'unverified'>('all');
   
   const { user, isAuthenticated } = useAuth();
   
@@ -166,9 +167,16 @@ export function DogParkList() {
   // カテゴリフィルター機能
   const filteredFacilities = useMemo(() => {
     // すべて選択時はフィルタしない（実質全表示）
-    if (selectedCategories.length === Object.keys(CATEGORY_LABELS).length) {
-      return facilities;
+    let base = facilities as any[];
+
+    // 公式/未確認フィルタ
+    if (facilityStatusFilter === 'official') {
+      base = base.filter(f => !f.is_user_submitted);
+    } else if (facilityStatusFilter === 'unverified') {
+      base = base.filter(f => f.is_user_submitted);
     }
+
+    if (selectedCategories.length === Object.keys(CATEGORY_LABELS).length) return base as any;
 
     // 表示と同じ日本語カテゴリ名でフィルタ（サムネイルの表記に合わせる）
     const selectedNameSet = new Set(
@@ -176,7 +184,7 @@ export function DogParkList() {
     );
 
     // f.category_name（日本語）を優先。なければ code でも判定
-    let filtered = facilities.filter(f => {
+    let filtered = base.filter((f: any) => {
       const nameJa = (f as any).category_name as string | undefined;
       const code = (f as any).category as string | undefined;
       if (nameJa && selectedNameSet.has(nameJa)) return true;
@@ -203,7 +211,7 @@ export function DogParkList() {
       });
     }
     return filtered;
-  }, [facilities, selectedCategories, userLocation]);
+  }, [facilities, selectedCategories, userLocation, facilityStatusFilter]);
 
   // カテゴリ選択の処理
   const handleCategoryToggle = (categoryId: string) => {
@@ -592,6 +600,23 @@ export function DogParkList() {
                       {categoryName}
                     </button>
                   ))}
+                </div>
+
+                {/* 公式/未確認フィルタ */}
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-gray-600">表示:</span>
+                  <button
+                    onClick={()=>setFacilityStatusFilter('all')}
+                    className={`px-3 py-1 rounded border ${facilityStatusFilter==='all'?'bg-gray-800 text-white border-gray-800':'bg-white text-gray-700 border-gray-300'}`}
+                  >すべて</button>
+                  <button
+                    onClick={()=>setFacilityStatusFilter('official')}
+                    className={`px-3 py-1 rounded border ${facilityStatusFilter==='official'?'bg-blue-700 text-white border-blue-700':'bg-white text-gray-700 border-gray-300'}`}
+                  >公式</button>
+                  <button
+                    onClick={()=>setFacilityStatusFilter('unverified')}
+                    className={`px-3 py-1 rounded border ${facilityStatusFilter==='unverified'?'bg-gray-600 text-white border-gray-600':'bg-white text-gray-700 border-gray-300'}`}
+                  >未確認</button>
                 </div>
               </div>
             )}
