@@ -630,6 +630,9 @@ export function FacilityDetail() {
                       <MapPin className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
                       <span className="text-lg">{facility.address}</span>
                     </div>
+                    {facility && (facility as any).official_badge && (
+                      <span className="inline-flex items-center text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">公式</span>
+                    )}
                     <Button 
                       variant="secondary" 
                       size="sm" 

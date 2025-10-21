@@ -233,6 +233,17 @@ export function MapView({
       `;
     }
     
+    // バッジ（施設のみ）
+    let badgeHtml = '';
+    if (type === 'facility') {
+      const anyItem: any = item as any;
+      if (anyItem.is_user_submitted) {
+        badgeHtml = `<span style="font-size:10px;background:#F3F4F6;color:#374151;padding:2px 6px;border-radius:999px;margin-left:6px;">未確認</span>`;
+      } else if (anyItem.official_badge) {
+        badgeHtml = `<span style="font-size:10px;background:#DBEAFE;color:#1D4ED8;padding:2px 6px;border-radius:999px;margin-left:6px;">公式</span>`;
+      }
+    }
+
     return `
       <div style="
         min-width: 220px;
@@ -249,7 +260,7 @@ export function MapView({
           margin: 6px 0 0px 0;
           color: #1f2937;
           line-height: 1.3;
-        ">${itemName}</h3>
+        ">${itemName}${badgeHtml}</h3>
         
         <div style="
           display: flex;

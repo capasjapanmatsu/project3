@@ -110,6 +110,8 @@ interface PetFacility {
   latitude: number | null;
   longitude: number | null;
   is_public?: boolean;
+  is_user_submitted?: boolean;
+  owner_id?: string | null;
 }
 
 interface FacilityCategory {
@@ -224,6 +226,7 @@ export default function FacilityEdit() {
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState<number | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isUserSubmitted, setIsUserSubmitted] = useState(false);
   
   // フォームデータ
   const [formData, setFormData] = useState({
