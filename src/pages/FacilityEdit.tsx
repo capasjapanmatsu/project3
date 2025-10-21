@@ -122,8 +122,13 @@ interface FacilityCategory {
 
 export default function FacilityEdit() {
   const premium = usePremiumOwner();
+  const [premiumUiState, setPremiumUiState] = useState<'active' | 'inactive' | 'error'>(() => premium.state === 'active' ? 'active' : 'inactive');
   const [isCancellingPremium, setIsCancellingPremium] = useState(false);
   const [cancelMsg, setCancelMsg] = useState('');
+
+  useEffect(() => {
+    setPremiumUiState(premium.state === 'active' ? 'active' : (premium.state === 'error' ? 'error' : 'inactive'));
+  }, [premium.state]);
 
   const cancelPremium = async () => {
     try {
@@ -192,11 +197,21 @@ export default function FacilityEdit() {
         body: JSON.stringify({ subscription_id: subscriptionId || undefined, notes: 'cancel_from_facility_edit' })
       });
       const txt = await res.text();
+      let parsed: any = null; try { parsed = JSON.parse(txt); } catch {}
       if (!res.ok) {
-        try { const j = JSON.parse(txt); throw new Error(j.error || j.message || '解約に失敗しました'); } catch { throw new Error(txt || '解約に失敗しました'); }
+        const msg: string = parsed?.error || parsed?.message || txt || '解約に失敗しました';
+        // 既にキャンセル済み or 有効な購読なし は成功扱い
+        if (/already canceled/i.test(msg) || /No active subscription/i.test(msg) || /No subscription/i.test(msg)) {
+          setSuccess('すでに解約済みのため、プレミアム会員は無効です。');
+          setPremiumUiState('inactive');
+        } else {
+          throw new Error(msg);
+        }
+      } else {
+        setSuccess('プレミアム会員の解約手続きを受け付けました。');
+        setCancelMsg('現在の期間終了後に自動的に終了します。');
+        setPremiumUiState('inactive');
       }
-      setSuccess('プレミアム会員の解約手続きを受け付けました。');
-      setCancelMsg('現在の期間終了後に自動的に終了します。');
     } catch (e) {
       setError(e instanceof Error ? e.message : '解約に失敗しました');
     } finally {
@@ -2144,6 +2159,25 @@ export default function FacilityEdit() {
                   </div>
                 )}
               </div>
+            </Card>
+          )}
+
+          {/* プレミアム 会員状態に応じたボタン表示（基本情報タブ） */}
+          {activeTab === 'info' && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-4">プレミアム会員</h2>
+              {premiumUiState === 'active' ? (
+                <Button onClick={cancelPremium} isLoading={isCancellingPremium} className="w-full bg-red-600 hover:bg-red-700">
+                  プレミアム会員を解約する
+                </Button>
+              ) : (
+                <Button onClick={startCheckout} className="w-full bg-black hover:bg-gray-900">
+                  プレミアム会員に申し込む
+                </Button>
+              )}
+              {cancelMsg && (
+                <div className="text-xs text-gray-700 mt-2">{cancelMsg}</div>
+              )}
             </Card>
           )}
 
