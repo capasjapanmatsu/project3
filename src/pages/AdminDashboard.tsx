@@ -86,6 +86,10 @@ export function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [processingError, setProcessingError] = useState('');
   const [processingSuccess, setProcessingSuccess] = useState('');
+  // 映えスポット通報
+  const [spotReports, setSpotReports] = useState<Array<{ id: string; spot_id: string; reason: string; status: string; admin_note: string | null; created_at: string; spot?: { title?: string|null; address?: string|null; is_hidden?: boolean|null } }>>([]);
+  const [loadingSpotReports, setLoadingSpotReports] = useState(false);
+  const [showClosedReports, setShowClosedReports] = useState(false);
 
   // 不正検知関連のstate
   const [fraudStats, setFraudStats] = useState<FraudStats | null>(null);
@@ -101,6 +105,7 @@ export function AdminDashboard() {
     void fetchAdminData();
     void fetchEmergencyData();
     void fetchFraudStats();
+    void fetchSpotReports();
   }, [isAdmin, navigate]);
 
   const fetchAdminData = async () => {
@@ -202,6 +207,65 @@ export function AdminDashboard() {
     } catch (error) {
       console.error('Error fetching fraud stats:', error);
       setFraudStats(null);
+    }
+  };
+
+  const fetchSpotReports = async () => {
+    try {
+      setLoadingSpotReports(true);
+      // 1) 通報一覧
+      const { data: reports, error: rErr } = await supabase
+        .from('spot_reports')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (rErr) throw rErr;
+      const list = reports || [];
+      // 2) 関連スポット
+      const ids = Array.from(new Set(list.map((r: any) => r.spot_id).filter(Boolean)));
+      let spotMap: Record<string, { title?: string; address?: string; is_hidden?: boolean }> = {};
+      if (ids.length > 0) {
+        const { data: spotsData } = await supabase
+          .from('spots')
+          .select('id,title,address,is_hidden')
+          .in('id', ids);
+        (spotsData || []).forEach((s: any) => { spotMap[s.id] = { title: s.title, address: s.address, is_hidden: s.is_hidden }; });
+      }
+      setSpotReports(list.map((r: any) => ({ ...r, spot: spotMap[r.spot_id] })));
+    } catch (e) {
+      console.error('Failed to fetch spot reports', e);
+    } finally {
+      setLoadingSpotReports(false);
+    }
+  };
+
+  const closeReport = async (id: string) => {
+    try {
+      const { error } = await supabase.from('spot_reports').update({ status: 'closed' }).eq('id', id);
+      if (error) throw error;
+      await fetchSpotReports();
+    } catch (e) {
+      console.error('closeReport error', e);
+    }
+  };
+
+  const saveAdminNote = async (id: string, note: string) => {
+    try {
+      const { error } = await supabase.from('spot_reports').update({ admin_note: note }).eq('id', id);
+      if (error) throw error;
+      await fetchSpotReports();
+    } catch (e) {
+      console.error('saveAdminNote error', e);
+    }
+  };
+
+  const toggleSpotHidden = async (spotId: string, hide: boolean) => {
+    try {
+      const { error } = await supabase.from('spots').update({ is_hidden: hide }).eq('id', spotId);
+      if (error) throw error;
+      await fetchSpotReports();
+    } catch (e) {
+      console.error('toggleSpotHidden error', e);
     }
   };
 
@@ -585,6 +649,81 @@ export function AdminDashboard() {
                   </Button>
                 </Link>
               </div>
+            </Card>
+
+            {/* 映えスポット通報 管理 */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">映えスポット通報</h2>
+                <div className="flex items-center gap-2">
+                  <button onClick={()=>setShowClosedReports(v=>!v)} className="text-sm text-blue-600 underline">
+                    {showClosedReports ? '未対応のみ表示' : '対応済みも表示'}
+                  </button>
+                  <Button variant="secondary" size="sm" onClick={fetchSpotReports}>再読み込み</Button>
+                </div>
+              </div>
+              {loadingSpotReports ? (
+                <div className="text-sm text-gray-600">読み込み中...</div>
+              ) : (
+                <div className="overflow-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-gray-500">日時</th>
+                        <th className="px-3 py-2 text-left text-gray-500">スポット</th>
+                        <th className="px-3 py-2 text-left text-gray-500">理由</th>
+                        <th className="px-3 py-2 text-left text-gray-500">メモ</th>
+                        <th className="px-3 py-2 text-left text-gray-500">状態</th>
+                        <th className="px-3 py-2 text-left text-gray-500">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {spotReports
+                        .filter(r => showClosedReports ? true : r.status !== 'closed')
+                        .map((r) => (
+                        <tr key={r.id} className="align-top">
+                          <td className="px-3 py-2 whitespace-nowrap">{new Date(r.created_at).toLocaleString('ja-JP')}</td>
+                          <td className="px-3 py-2">
+                            <div className="font-medium text-gray-900">{r.spot?.title || r.spot_id}</div>
+                            <div className="text-xs text-gray-500">{r.spot?.address || ''}</div>
+                          </td>
+                          <td className="px-3 py-2 max-w-[260px]">
+                            <div className="text-gray-800 break-words">{r.reason}</div>
+                          </td>
+                          <td className="px-3 py-2 w-[260px]">
+                            <textarea defaultValue={r.admin_note || ''} className="w-full border rounded px-2 py-1 text-sm" rows={2}
+                              onBlur={(e)=>saveAdminNote(r.id, e.target.value)} placeholder="対応メモ"/>
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className={`inline-flex px-2 py-1 rounded text-xs font-semibold ${r.status==='closed'?'bg-green-100 text-green-700':'bg-orange-100 text-orange-700'}`}>
+                              {r.status==='closed'?'対応済み':'未対応'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Link to={`/spots/${r.spot_id}`} target="_blank" className="text-blue-600 hover:text-blue-800 flex items-center"><Eye className="w-4 h-4 mr-1"/>詳細</Link>
+                              {r.spot_id && (
+                                <button className="text-gray-700 hover:text-gray-900 flex items-center"
+                                  onClick={()=>toggleSpotHidden(r.spot_id, !(r.spot?.is_hidden ?? false))}>
+                                  {(r.spot?.is_hidden ?? false) ? '表示する' : '非表示にする'}
+                                </button>
+                              )}
+                              {r.status !== 'closed' && (
+                                <button className="text-green-700 hover:text-green-900 flex items-center" onClick={()=>closeReport(r.id)}>
+                                  <CheckCircle className="w-4 h-4 mr-1"/>対応済みにする
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {spotReports.filter(r => showClosedReports ? true : r.status !== 'closed').length === 0 && (
+                        <tr><td className="px-3 py-6 text-center text-gray-500" colSpan={6}>通報はありません</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </Card>
           </div>
         )}
