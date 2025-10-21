@@ -12,6 +12,7 @@ import Input from '../components/Input';
 import useAuth from '../context/AuthContext';
 import { geocodeAddress } from '../utils/geocoding';
 import { supabase } from '../utils/supabase';
+import ImageCropper from '../components/ImageCropper';
 
 interface FacilityForm {
   name: string;
@@ -59,6 +60,8 @@ export default function FacilityRegistration() {
   });
   const [isUserSubmission, setIsUserSubmission] = useState<boolean>(true); // 一般投稿モード（初期有効）
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [showImageCropper, setShowImageCropper] = useState(false);
+  const [rawImageFile, setRawImageFile] = useState<File | null>(null);
 
   // 認証チェック
   useEffect(() => {
@@ -518,14 +521,40 @@ export default function FacilityRegistration() {
             </h2>
             {isUserSubmission ? (
               <div className="space-y-2">
-                <input type="file" accept="image/*" onChange={(e)=>setImageFile(e.target.files?.[0] || null)} />
-                <p className="text-xs text-gray-500">一般投稿では画像は1枚までです。サムネイルとして使用されます。</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e)=>{
+                    const f = e.target.files?.[0] || null;
+                    if (f) { setRawImageFile(f); setShowImageCropper(true); }
+                  }}
+                />
+                {imageFile && (
+                  <div className="mt-2 text-xs text-gray-600">選択済み: {imageFile.name}</div>
+                )}
+                <p className="text-xs text-gray-500">一般投稿では画像は1枚までです。1:1でトリミングされ、サムネイルとして使用されます。</p>
               </div>
             ) : (
               <p className="text-sm text-gray-600">オーナー申請では登録後に施設編集から複数画像を管理できます。</p>
             )}
           </div>
         </Card>
+
+        {showImageCropper && rawImageFile && (
+          <ImageCropper
+            imageFile={rawImageFile}
+            onCropComplete={(blob)=>{
+              const f = new File([blob], 'facility_main.webp', { type: 'image/webp' });
+              setImageFile(f);
+              setShowImageCropper(false);
+              setRawImageFile(null);
+            }}
+            onCancel={()=>{ setShowImageCropper(false); setRawImageFile(null); }}
+            aspectRatio={1}
+            maxWidth={1024}
+            maxHeight={1024}
+          />
+        )}
 
         {/* ユーザー情報セクション */}
         <Card>

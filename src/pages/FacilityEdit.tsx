@@ -1,22 +1,22 @@
 import { usePremiumOwner } from '@/hooks/usePremiumOwner';
 import {
-    AlertCircle,
-    AlertTriangle,
-    ArrowLeft,
-    Building,
-    Calendar,
-    CheckCircle,
-    ChevronLeft,
-    ChevronRight,
-    Clock,
-    Eye,
-    Gift,
-    Image as ImageIcon,
-    MapPin,
-    Plus,
-    Save,
-    Trash2,
-    UploadCloud
+  AlertCircle,
+  AlertTriangle,
+  ArrowLeft,
+  Building,
+  Calendar,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Eye,
+  Gift,
+  Image as ImageIcon,
+  MapPin,
+  Plus,
+  Save,
+  Trash2,
+  UploadCloud
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -1837,7 +1837,7 @@ export default function FacilityEdit() {
                     ))}
                     
                     {/* 新しい画像追加ボタン */}
-                    {facilityImages.length < 5 && (
+                        {(!isUserSubmitted && facilityImages.length < 5) && (
                       <div className="aspect-square bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-blue-400 hover:bg-blue-50 transition-colors">
                         <input
                           type="file"
@@ -1856,7 +1856,9 @@ export default function FacilityEdit() {
                       </div>
                     )}
                   </div>
-                  
+                  {isUserSubmitted && (
+                    <div className="text-xs text-yellow-800 bg-yellow-50 border border-yellow-200 rounded p-2 mt-2">一般投稿の施設は画像は1枚のみです。画像を変更する場合は既存のメイン画像を差し替えてください。</div>
+                  )}
                   {facilityImages.length === 0 && (
                     <div className="text-center py-8 text-gray-500">
                       <UploadCloud className="w-12 h-12 mx-auto mb-3 text-gray-400" />
