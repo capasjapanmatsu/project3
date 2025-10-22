@@ -77,6 +77,7 @@ export function FacilityDetail() {
   const [displayingCoupon, setDisplayingCoupon] = useState<UserCoupon | null>(null);
   const [obtainingCouponId, setObtainingCouponId] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
+  const [canContactOwner, setCanContactOwner] = useState(false);
   
   // レビュー機能のstate
   const [reviews, setReviews] = useState<FacilityReview[]>([]);
@@ -184,6 +185,40 @@ export function FacilityDetail() {
       };
 
       setFacility(facilityData);
+      
+      // オーナー問い合わせ可否（オーナー存在かつプレミアム/稼働状態）を判定
+      try {
+        const ownerId: string | null = (facilityResult.data as any)?.owner_id || null;
+        let premiumActive = false;
+        // 1) facility_premium_memberships
+        try {
+          const { data: membership } = await supabase
+            .from('facility_premium_memberships')
+            .select('status,is_active')
+            .eq('facility_id', facilityId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          premiumActive = Boolean(membership?.is_active) || membership?.status === 'active';
+        } catch {}
+        // 2) facility_reservation_settings.enabled（運用上の代替指標）
+        if (!premiumActive) {
+          try {
+            const { data: r } = await supabase
+              .from('facility_reservation_settings')
+              .select('enabled')
+              .eq('facility_id', facilityId)
+              .maybeSingle();
+            premiumActive = Boolean(r?.enabled);
+          } catch {}
+        }
+        // 3) pet_facilities のフラグ類
+        if (!premiumActive) {
+          premiumActive = Boolean((facilityResult.data as any)?.is_premium) 
+            || (facilityResult.data as any)?.premium_status === 'active';
+        }
+        setCanContactOwner(Boolean(ownerId) && premiumActive);
+      } catch {}
       
       // レビューデータの取得（エラーを無視、シンプルなクエリ）
       const reviewsResult = await supabase
@@ -821,37 +856,39 @@ export function FacilityDetail() {
                   </div>
                 )}
 
-                {/* 施設オーナーに問い合わせ */}
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                  <Button
-                    onClick={async () => {
-                      if (!user) { navigate('/login'); return; }
-                      try {
-                        // 施設のオーナーID取得
-                        const { data: owner } = await supabase
-                          .from('pet_facilities')
-                          .select('owner_id')
-                          .eq('id', facilityId)
-                          .single();
-                        const ownerId = owner?.owner_id;
-                        if (!ownerId) { alert('オーナー情報が見つかりません'); return; }
-                        // スレッド起動用メッセージ（施設名付き）
-                        await supabase.from('messages').insert({
-                          sender_id: user.id,
-                          receiver_id: ownerId,
-                          content: `（施設『${facility.name}』の詳細ページからの問い合わせ）`
-                        });
-                        sessionStorage.setItem('communityActiveTab', 'messages');
-                        sessionStorage.setItem('communityOpenPartnerId', ownerId);
-                        navigate('/community');
-                      } catch {}
-                    }}
-                    className="w-full bg-green-600 hover:bg-green-700 text-lg py-3 flex items-center justify-center"
-                  >
-                    <MessageSquare className="w-5 h-5 mr-2" />
-                    施設オーナーに問い合わせる
-                  </Button>
-                </div>
+                {/* 施設オーナーに問い合わせ（オーナー管理・プレミアム状態のみ表示） */}
+                {canContactOwner && (
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <Button
+                      onClick={async () => {
+                        if (!user) { navigate('/login'); return; }
+                        try {
+                          // 施設のオーナーID取得
+                          const { data: owner } = await supabase
+                            .from('pet_facilities')
+                            .select('owner_id')
+                            .eq('id', facilityId)
+                            .single();
+                          const ownerId = owner?.owner_id;
+                          if (!ownerId) { alert('オーナー情報が見つかりません'); return; }
+                          // スレッド起動用メッセージ（施設名付き）
+                          await supabase.from('messages').insert({
+                            sender_id: user.id,
+                            receiver_id: ownerId,
+                            content: `（施設『${facility.name}』の詳細ページからの問い合わせ）`
+                          });
+                          sessionStorage.setItem('communityActiveTab', 'messages');
+                          sessionStorage.setItem('communityOpenPartnerId', ownerId);
+                          navigate('/community');
+                        } catch {}
+                      }}
+                      className="w-full bg-green-600 hover:bg-green-700 text-lg py-3 flex items-center justify-center"
+                    >
+                      <MessageSquare className="w-5 h-5 mr-2" />
+                      施設オーナーに問い合わせる
+                    </Button>
+                  </div>
+                )}
 
                 {/* 評価・レビュー概要 */}
                 {reviewSummary && (
