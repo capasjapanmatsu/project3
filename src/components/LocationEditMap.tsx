@@ -23,6 +23,9 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
+  const hasAutoGeocodedRef = useRef(false);
+  const hasCenteredToGeolocationRef = useRef(false);
+  const userInteractedRef = useRef(false);
   
   const [address, setAddress] = useState(initialAddress);
   const [latitude, setLatitude] = useState<number>(initialLatitude || 35.6762);
@@ -95,6 +98,8 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
 
       // ドラッグイベントリスナー
       marker.addListener('dragend', () => {
+        userInteractedRef.current = true;
+        (window as any).__PARK_LOCATION_LOCKED__ = true;
         const position = marker.getPosition();
         if (position) {
           const newLat = position.lat();
@@ -107,6 +112,8 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
 
       // マップクリックでマーカー移動
       map.addListener('click', (e: any) => {
+        userInteractedRef.current = true;
+        (window as any).__PARK_LOCATION_LOCKED__ = true;
         const newLat = e.latLng.lat();
         const newLng = e.latLng.lng();
         marker.setPosition({ lat: newLat, lng: newLng });
@@ -129,6 +136,8 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
     if (!address.trim() || !googleMapRef.current || !markerRef.current) return;
     setIsGeocoding(true);
     try {
+      userInteractedRef.current = true;
+      (window as any).__PARK_LOCATION_LOCKED__ = true;
       const google = googleInstance;
       const geocoder = geocoderRef.current;
       // 1) JS Geocoderで前方ジオコーディング
@@ -241,6 +250,34 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
     }
   }, [address, onLocationChange, googleInstance]);
 
+  // 現在地ボタン
+  const handleLocateMe = useCallback(() => {
+    if (!googleMapRef.current || !markerRef.current) return;
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      hasCenteredToGeolocationRef.current = true;
+      userInteractedRef.current = true;
+      (window as any).__PARK_LOCATION_LOCKED__ = true;
+      try {
+        googleMapRef.current!.setCenter(ll);
+        googleMapRef.current!.setZoom(15);
+        markerRef.current!.setPosition(ll);
+        setLatitude(ll.lat); setLongitude(ll.lng);
+        const geo = geocoderRef.current;
+        if (geo) {
+          geo.geocode({ location: ll, region: 'JP' }, (results: any, status: any) => {
+            const formatted = status === 'OK' && results && results[0]?.formatted_address ? results[0].formatted_address : undefined;
+            if (formatted) setAddress(formatted);
+            onLocationChange(ll.lat, ll.lng, formatted);
+          });
+        } else {
+          onLocationChange(ll.lat, ll.lng);
+        }
+      } catch {}
+    });
+  }, [onLocationChange]);
+
   // 初期化
   useEffect(() => {
     if (isLoaded && googleInstance) {
@@ -248,82 +285,78 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
     }
   }, [initMap, isLoaded, googleInstance]);
 
-  // 現在地を取得して初期中心に（可能なら）
+  // 現在地を取得して初期中心に（初回のみ）
   useEffect(() => {
     if (!mapReady || !googleMapRef.current || !markerRef.current) return;
+    if (hasCenteredToGeolocationRef.current || userInteractedRef.current) return;
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition((pos) => {
       const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      hasCenteredToGeolocationRef.current = true;
       setLatitude(loc.lat); setLongitude(loc.lng);
       try {
         googleMapRef.current!.setCenter(loc);
         googleMapRef.current!.setZoom(15);
         markerRef.current!.setPosition(loc);
-        onLocationChange(loc.lat, loc.lng);
+        const geo = geocoderRef.current;
+        if (geo) {
+          geo.geocode({ location: loc, region: 'JP' }, (results: any, status: any) => {
+            const formatted = status === 'OK' && results && results[0]?.formatted_address ? results[0].formatted_address : undefined;
+            if (formatted) setAddress(formatted);
+            onLocationChange(loc.lat, loc.lng, formatted);
+          });
+        } else {
+          onLocationChange(loc.lat, loc.lng);
+        }
       } catch {}
     });
-  }, [mapReady, onLocationChange]);
+  }, [mapReady]);
 
   // 初期住所が設定されているが座標が未設定の場合、自動ジオコーディング（JS Geocoder優先）
   useEffect(() => {
     const performInitialGeocoding = async () => {
-      console.log('🏁 自動ジオコーディング条件チェック:', {
-        initialAddress,
-        hasInitialCoords: !!(initialLatitude && initialLongitude),
-        isGeocoding,
-        hasMapAndMarker: !!(googleMapRef.current && markerRef.current)
-      });
-      
-      // 初期住所があり、座標が未設定で、マップが初期化済みの場合
-      // 位置が手動固定されている場合は自動ジオコーディングを行わない
+      // 初回のみ、自動ジオコーディング（ユーザーが操作した後は走らせない）
+      if (hasAutoGeocodedRef.current || userInteractedRef.current) return;
       const locked = (window as any).__PARK_LOCATION_LOCKED__ === true;
-
-      if (!locked && initialAddress && 
-          !initialLatitude && 
-          !initialLongitude && 
-          !isGeocoding && 
-          googleMapRef.current && 
-          markerRef.current) {
-        
-        console.log('🚀 初期住所での自動ジオコーディングを実行:', initialAddress);
-        
-        try {
-          setIsGeocoding(true);
-          const geocoder = geocoderRef.current;
-          if (geocoder) {
-            geocoder.geocode({ address: initialAddress, region: 'JP' }, (results: any, status: any) => {
-              if (status === 'OK' && results && results[0]?.geometry?.location) {
-                const loc = results[0].geometry.location;
-                const ll = { lat: loc.lat(), lng: loc.lng() };
-                googleMapRef.current!.setCenter(ll);
-                googleMapRef.current!.setZoom(16);
-                markerRef.current!.setPosition(ll);
-                setLatitude(ll.lat); setLongitude(ll.lng);
-                const formatted = results[0].formatted_address || undefined;
-                onLocationChange(ll.lat, ll.lng, formatted);
-              }
-              setIsGeocoding(false);
-            });
-          } else {
+      if (locked) return;
+      if (!initialAddress || initialLatitude || initialLongitude) return;
+      if (!googleMapRef.current || !markerRef.current) return;
+      try {
+        setIsGeocoding(true);
+        const geocoder = geocoderRef.current;
+        if (geocoder) {
+          geocoder.geocode({ address: initialAddress, region: 'JP' }, (results: any, status: any) => {
+            hasAutoGeocodedRef.current = true;
+            if (status === 'OK' && results && results[0]?.geometry?.location) {
+              const loc = results[0].geometry.location;
+              const ll = { lat: loc.lat(), lng: loc.lng() };
+              googleMapRef.current!.setCenter(ll);
+              googleMapRef.current!.setZoom(16);
+              markerRef.current!.setPosition(ll);
+              setLatitude(ll.lat); setLongitude(ll.lng);
+              const formatted = results[0].formatted_address || undefined;
+              if (formatted) setAddress(formatted);
+              onLocationChange(ll.lat, ll.lng, formatted);
+            }
             setIsGeocoding(false);
-          }
-        } catch (error) {
-          console.error('💥 初期ジオコーディングエラー:', error);
+          });
+        } else {
+          hasAutoGeocodedRef.current = true;
           setIsGeocoding(false);
         }
-      } else {
-        console.log('⏭️ 自動ジオコーディングをスキップ');
+      } catch {
+        hasAutoGeocodedRef.current = true;
+        setIsGeocoding(false);
       }
     };
 
     // マップが初期化されてから少し待って実行
     const timer = setTimeout(() => {
-      console.log('⏰ 自動ジオコーディング実行タイマー開始');
       void performInitialGeocoding();
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [initialAddress, initialLatitude, initialLongitude, isGeocoding, onLocationChange]);
+  }, [initialAddress, initialLatitude, initialLongitude, mapReady]);
 
   // エンターキーでの検索
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -381,6 +414,15 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
           className="w-full h-80 rounded-lg border border-gray-300"
           style={{ minHeight: '320px' }}
         />
+        {/* 現在地ボタン */}
+        <button
+          type="button"
+          onClick={handleLocateMe}
+          className="absolute bottom-3 right-3 bg-white shadow rounded-full p-2 border border-gray-200 hover:bg-gray-50"
+          aria-label="現在地"
+        >
+          <MapPin className="w-5 h-5 text-gray-700" />
+        </button>
         {isLoading && (
           <div className="absolute inset-0 bg-gray-100 rounded-lg flex items-center justify-center">
             <div className="text-center">
