@@ -431,12 +431,8 @@ export default function FacilityRegistration() {
             <h2 className="text-xl font-semibold mb-4">投稿モード</h2>
             <div className="space-y-2 text-sm text-gray-700">
               <label className="flex items-center gap-2">
-                <input type="radio" name="submission_mode" checked={isUserSubmission} onChange={()=>setIsUserSubmission(true)} />
+                <input type="radio" name="submission_mode" checked readOnly />
                 一般投稿（仮掲載、画像は1枚まで）
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="radio" name="submission_mode" checked={!isUserSubmission} onChange={()=>setIsUserSubmission(false)} />
-                オーナー申請（プレミアム会員）
               </label>
               <p className="text-xs text-gray-500 mt-1">一般投稿は未確認マークで表示され、オーナーが管理すると公式表示になります。</p>
             </div>

@@ -31,6 +31,7 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [mapError, setMapError] = useState<string>('');
+  const [mapReady, setMapReady] = useState(false);
 
   // GoogleMapsProviderからgoogleインスタンスを取得
   const { isLoaded, google: googleInstance } = useGoogleMaps();
@@ -116,6 +117,7 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
       });
 
       setIsLoading(false);
+      setMapReady(true);
     } catch (error) {
       console.error('Google Maps初期化エラー:', error);
       setMapError('地図の読み込みに失敗しました。');
@@ -224,6 +226,22 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
       void initMap();
     }
   }, [initMap, isLoaded, googleInstance]);
+
+  // 現在地を取得して初期中心に（可能なら）
+  useEffect(() => {
+    if (!mapReady || !googleMapRef.current || !markerRef.current) return;
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      setLatitude(loc.lat); setLongitude(loc.lng);
+      try {
+        googleMapRef.current!.setCenter(loc);
+        googleMapRef.current!.setZoom(15);
+        markerRef.current!.setPosition(loc);
+        onLocationChange(loc.lat, loc.lng);
+      } catch {}
+    });
+  }, [mapReady, onLocationChange]);
 
   // 初期住所が設定されているが座標が未設定の場合、自動ジオコーディング
   useEffect(() => {
