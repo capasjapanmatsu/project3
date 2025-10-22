@@ -311,28 +311,71 @@ export default function FacilityRegistration() {
         }
       }
 
-      // 施設情報を登録
-      const { data: facilityData, error: facilityError } = await supabase
-        .from('pet_facilities')
-        .insert({
-          name: formData.name,
-          category_id: formData.category_id,
-          address: formData.address,
-          latitude: latitude,
-          longitude: longitude,
-          phone: formData.phone || null,
-          website: formData.website || null,
-          description: formData.description || null,
-          owner_id: isUserSubmission ? null : user.id,
-          status: isUserSubmission ? 'pending' : 'pending',
-          is_user_submitted: isUserSubmission,
-          submitted_by: isUserSubmission ? user.id : null,
-          verified: isUserSubmission ? false : true,
-          official_badge: isUserSubmission ? false : true,
-          is_public: true
-        })
-        .select()
-        .single();
+      // 施設情報を登録（段階的フォールバック付き）
+      const selectedCategoryName = (FACILITY_CATEGORIES.find(c => c.id === formData.category_id)?.name) || formData.category_id;
+      const basePayload: any = {
+        name: formData.name,
+        // まずは新スキーマの category_id を使用
+        category_id: formData.category_id,
+        address: formData.address,
+        latitude: latitude,
+        longitude: longitude,
+        phone: formData.phone || null,
+        website: formData.website || null,
+        description: formData.description || null,
+        owner_id: isUserSubmission ? null : user.id,
+        status: 'pending',
+        is_public: true
+      };
+      const newFlags: any = {
+        is_user_submitted: isUserSubmission,
+        submitted_by: isUserSubmission ? user.id : null,
+        verified: isUserSubmission ? false : true,
+        official_badge: isUserSubmission ? false : true
+      };
+
+      const attemptInsert = async (payload: any) => {
+        return await supabase
+          .from('pet_facilities')
+          .insert(payload)
+          .select()
+          .single();
+      };
+
+      let facilityData: any | null = null;
+      let facilityError: any | null = null;
+
+      // 1) 新スキーマ（新フラグ含む）
+      ({ data: facilityData, error: facilityError } = await attemptInsert({ ...basePayload, ...newFlags }));
+
+      // 2) is_user_submitted 等が無い場合 → これらを外して再試行
+      if (facilityError) {
+        const msg = `${facilityError?.message || ''} ${facilityError?.details || ''}`;
+        if (msg.includes('is_user_submitted')) {
+          ({ data: facilityData, error: facilityError } = await attemptInsert({ ...basePayload }));
+        }
+      }
+
+      // 3) category_id が無い旧スキーマの場合 → category に名称で再試行
+      if (facilityError) {
+        const msg = `${facilityError?.message || ''} ${facilityError?.details || ''}`;
+        if (msg.includes('category_id')) {
+          const legacyPayload = { ...basePayload } as any;
+          delete legacyPayload.category_id;
+          legacyPayload.category = selectedCategoryName;
+          ({ data: facilityData, error: facilityError } = await attemptInsert(legacyPayload));
+        }
+      }
+
+      // 4) owner_id が無い環境の場合 → owner_id を外して再試行
+      if (facilityError) {
+        const msg = `${facilityError?.message || ''} ${facilityError?.details || ''}`;
+        if (msg.includes('owner_id')) {
+          const payload = { ...basePayload } as any;
+          delete payload.owner_id;
+          ({ data: facilityData, error: facilityError } = await attemptInsert(payload));
+        }
+      }
 
       if (facilityError) throw facilityError;
 
