@@ -203,7 +203,7 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
       }
 
       alert(`住所が見つかりませんでした。\n\n入力: ${address}\nマーカーをドラッグして調整してください。`);
-      // 失敗時は現在地へ自動フォールバック
+      // 失敗時フォールバック（ただしキー制限系エラーは除外）
       try {
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition((pos) => {
@@ -218,19 +218,24 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
       } catch {}
     } catch (error) {
       console.warn('住所検索フォールバックも失敗:', error);
-      alert(`住所が見つかりませんでした。\n\n入力: ${address}\nマーカーをドラッグして調整してください。`);
-      try {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition((pos) => {
-            const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            googleMapRef.current!.setCenter(ll);
-            googleMapRef.current!.setZoom(15);
-            markerRef.current!.setPosition(ll);
-            setLatitude(ll.lat); setLongitude(ll.lng);
-            onLocationChange(ll.lat, ll.lng);
-          });
-        }
-      } catch {}
+      const msg = (error as Error)?.message || '';
+      if (msg.includes('REQUEST_DENIED') || msg.includes('OVER_QUERY_LIMIT') || msg.includes('PLACES_UNAVAILABLE')) {
+        alert('住所検索に必要なGoogle Maps APIが許可されていません（APIキーのHTTPリファラ制限またはAPI制限）。設定をご確認ください。');
+      } else {
+        alert(`住所が見つかりませんでした。\n\n入力: ${address}\nマーカーをドラッグして調整してください。`);
+        try {
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+              const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+              googleMapRef.current!.setCenter(ll);
+              googleMapRef.current!.setZoom(15);
+              markerRef.current!.setPosition(ll);
+              setLatitude(ll.lat); setLongitude(ll.lng);
+              onLocationChange(ll.lat, ll.lng);
+            });
+          }
+        } catch {}
+      }
     } finally {
       setIsGeocoding(false);
     }
