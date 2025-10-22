@@ -1,6 +1,5 @@
 import { MapPin, Search } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { geocodeAddress } from '../utils/geocoding';
 import Button from './Button';
 import { useGoogleMaps } from './GoogleMapsProvider';
 import Input from './Input';
@@ -125,100 +124,117 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
     }
   }, [latitude, longitude, onLocationChange]);
 
-  // 住所検索とジオコーディング
+  // 住所検索とジオコーディング（JS Geocoder → Places findPlaceFromQuery の順）
   const handleAddressSearch = useCallback(async () => {
     if (!address.trim() || !googleMapRef.current || !markerRef.current) return;
-
     setIsGeocoding(true);
-
     try {
-      console.log(`🔍 住所検索開始: "${address}"`);
-      
-      // 複数の住所形式で試行
-      const addressVariations = [
-        address.trim(),
-        `〒861-8006 ${address.trim()}`,
-        address.trim().replace(/[－]/g, '-'),
-        address.trim().replace(/(\d+)丁目(\d+)-(\d+)/g, '$1-$2-$3'),
-        address.trim().replace(/(\d+)丁目(\d+)－(\d+)/g, '$1-$2-$3')
-      ];
-
-      let result = null;
-      let lastError = null;
-
-      for (const addressVariation of addressVariations) {
-        console.log(`🔍 試行中の住所: "${addressVariation}"`);
-        try {
-          result = await geocodeAddress(addressVariation);
-          if (result) {
-            console.log(`✅ 成功した住所形式: "${addressVariation}"`);
-            break;
-          }
-        } catch (error) {
-          console.warn(`⚠️ 住所形式 "${addressVariation}" で失敗:`, error);
-          lastError = error;
-        }
+      const google = googleInstance;
+      const geocoder = geocoderRef.current;
+      // 1) JS Geocoderで前方ジオコーディング
+      if (geocoder) {
+        await new Promise<void>((resolve, reject) => {
+          geocoder.geocode({ address: address.trim(), region: 'JP' }, (results: any, status: any) => {
+            if (status === 'OK' && results && results[0]?.geometry?.location) {
+              const loc = results[0].geometry.location;
+              const ll = { lat: loc.lat(), lng: loc.lng() };
+              googleMapRef.current!.setCenter(ll);
+              googleMapRef.current!.setZoom(16);
+              markerRef.current!.setPosition(ll);
+              setLatitude(ll.lat); setLongitude(ll.lng);
+              const formatted = results[0].formatted_address || undefined;
+              setAddress((prev)=> formatted || prev);
+              onLocationChange(ll.lat, ll.lng, formatted);
+              resolve();
+            } else {
+              reject(new Error(status || 'GEOCODER_FAILED'));
+            }
+          });
+        });
+        return; // 成功
       }
-      
-      if (result) {
-        const newLat = result.latitude;
-        const newLng = result.longitude;
-        
-        // マップとマーカーの位置を更新
-        const newPosition = { lat: newLat, lng: newLng };
-        googleMapRef.current.setCenter(newPosition);
-        googleMapRef.current.setZoom(16);
-        markerRef.current.setPosition(newPosition);
-        
-        setLatitude(newLat);
-        setLongitude(newLng);
-        onLocationChange(newLat, newLng, result.formatted_address);
-        
-        console.log(`✅ マーカー位置更新完了: ${newLat}, ${newLng}`);
-      } else {
-        // Places API によるフォールバック
-        try {
-          const google = googleInstance;
-          if (google?.maps?.places) {
-            const auto = new google.maps.places.AutocompleteService();
-            auto.getPlacePredictions({ input: address, componentRestrictions: { country: 'jp' } }, (preds: any, pStatus: any) => {
-              if (pStatus === 'OK' && preds && preds[0]) {
-                const placeId = preds[0].place_id;
-                const svc = new google.maps.places.PlacesService(googleMapRef.current as any);
-                svc.getDetails({ placeId, fields: ['geometry','formatted_address'] }, (place: any, dStatus: any) => {
-                  if (dStatus === 'OK' && place?.geometry?.location) {
-                    const loc = place.geometry.location;
-                    const ll = { lat: loc.lat(), lng: loc.lng() };
-                    googleMapRef.current!.setCenter(ll);
-                    googleMapRef.current!.setZoom(16);
-                    markerRef.current!.setPosition(ll);
-                    setLatitude(ll.lat);
-                    setLongitude(ll.lng);
-                    const formatted = place.formatted_address || undefined;
-                    setAddress((prev) => formatted || prev);
-                    onLocationChange(ll.lat, ll.lng, formatted);
-                  } else {
-                    alert('位置を特定できませんでした');
-                  }
-                });
+
+      // 2) Places (New) findPlaceFromQuery にフォールバック
+      if (google?.maps?.places) {
+        await new Promise<void>((resolve, reject) => {
+          const svc = new google.maps.places.PlacesService(googleMapRef.current as any);
+          // @ts-ignore - new API typings may vary
+          const req: any = { query: address.trim(), fields: ['geometry','formatted_address'], language: 'ja', region: 'JP' };
+          // try findPlaceFromQuery; fallback to textSearch if not available
+          if (typeof svc.findPlaceFromQuery === 'function') {
+            svc.findPlaceFromQuery(req, (places: any, status: any) => {
+              if (status === 'OK' && places && places[0]?.geometry?.location) {
+                const loc = places[0].geometry.location;
+                const ll = { lat: loc.lat(), lng: loc.lng() };
+                googleMapRef.current!.setCenter(ll);
+                googleMapRef.current!.setZoom(16);
+                markerRef.current!.setPosition(ll);
+                setLatitude(ll.lat); setLongitude(ll.lng);
+                const formatted = places[0].formatted_address || undefined;
+                setAddress((prev)=> formatted || prev);
+                onLocationChange(ll.lat, ll.lng, formatted);
+                resolve();
               } else {
-                alert(`住所が見つかりませんでした。\n\n入力: ${address}\nマーカーをドラッグして調整してください。`);
+                reject(new Error(status || 'PLACES_FAILED'));
+              }
+            });
+          } else if (typeof svc.textSearch === 'function') {
+            svc.textSearch({ query: address.trim(), region: 'JP', language: 'ja' }, (results: any, status: any) => {
+              if (status === 'OK' && results && results[0]?.geometry?.location) {
+                const loc = results[0].geometry.location;
+                const ll = { lat: loc.lat(), lng: loc.lng() };
+                googleMapRef.current!.setCenter(ll);
+                googleMapRef.current!.setZoom(16);
+                markerRef.current!.setPosition(ll);
+                setLatitude(ll.lat); setLongitude(ll.lng);
+                const formatted = results[0].formatted_address || undefined;
+                setAddress((prev)=> formatted || prev);
+                onLocationChange(ll.lat, ll.lng, formatted);
+                resolve();
+              } else {
+                reject(new Error(status || 'TEXT_SEARCH_FAILED'));
               }
             });
           } else {
-            alert(`住所が見つかりませんでした。\n\n入力: ${address}\nマーカーをドラッグして調整してください。`);
+            reject(new Error('PLACES_UNAVAILABLE'));
           }
-        } catch {
-          alert(`住所が見つかりませんでした。\n\n入力: ${address}\nマーカーをドラッグして調整してください。`);
-        }
+        });
+        return; // 成功
       }
+
+      alert(`住所が見つかりませんでした。\n\n入力: ${address}\nマーカーをドラッグして調整してください。`);
+      // 失敗時は現在地へ自動フォールバック
+      try {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition((pos) => {
+            const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            googleMapRef.current!.setCenter(ll);
+            googleMapRef.current!.setZoom(15);
+            markerRef.current!.setPosition(ll);
+            setLatitude(ll.lat); setLongitude(ll.lng);
+            onLocationChange(ll.lat, ll.lng);
+          });
+        }
+      } catch {}
     } catch (error) {
-      console.error('住所検索エラー:', error);
-      alert(`住所の検索中にエラーが発生しました。\n\nエラー詳細: ${error}\n\nマーカーを直接ドラッグして位置を調整してください。`);
+      console.warn('住所検索フォールバックも失敗:', error);
+      alert(`住所が見つかりませんでした。\n\n入力: ${address}\nマーカーをドラッグして調整してください。`);
+      try {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition((pos) => {
+            const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            googleMapRef.current!.setCenter(ll);
+            googleMapRef.current!.setZoom(15);
+            markerRef.current!.setPosition(ll);
+            setLatitude(ll.lat); setLongitude(ll.lng);
+            onLocationChange(ll.lat, ll.lng);
+          });
+        }
+      } catch {}
     } finally {
       setIsGeocoding(false);
     }
-  }, [address, onLocationChange]);
+  }, [address, onLocationChange, googleInstance]);
 
   // 初期化
   useEffect(() => {
@@ -243,7 +259,7 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
     });
   }, [mapReady, onLocationChange]);
 
-  // 初期住所が設定されているが座標が未設定の場合、自動ジオコーディング
+  // 初期住所が設定されているが座標が未設定の場合、自動ジオコーディング（JS Geocoder優先）
   useEffect(() => {
     const performInitialGeocoding = async () => {
       console.log('🏁 自動ジオコーディング条件チェック:', {
@@ -268,31 +284,26 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
         
         try {
           setIsGeocoding(true);
-          const result = await geocodeAddress(initialAddress);
-          
-          if (result) {
-            const newLat = result.latitude;
-            const newLng = result.longitude;
-            
-            console.log('📍 新しい座標:', { newLat, newLng });
-            
-            // マップとマーカーの位置を更新
-            const newPosition = { lat: newLat, lng: newLng };
-            googleMapRef.current.setCenter(newPosition);
-            googleMapRef.current.setZoom(16);
-            markerRef.current.setPosition(newPosition);
-            
-            setLatitude(newLat);
-            setLongitude(newLng);
-            onLocationChange(newLat, newLng, result.formatted_address);
-            
-            console.log('✅ 初期ジオコーディング成功:', newLat, newLng);
+          const geocoder = geocoderRef.current;
+          if (geocoder) {
+            geocoder.geocode({ address: initialAddress, region: 'JP' }, (results: any, status: any) => {
+              if (status === 'OK' && results && results[0]?.geometry?.location) {
+                const loc = results[0].geometry.location;
+                const ll = { lat: loc.lat(), lng: loc.lng() };
+                googleMapRef.current!.setCenter(ll);
+                googleMapRef.current!.setZoom(16);
+                markerRef.current!.setPosition(ll);
+                setLatitude(ll.lat); setLongitude(ll.lng);
+                const formatted = results[0].formatted_address || undefined;
+                onLocationChange(ll.lat, ll.lng, formatted);
+              }
+              setIsGeocoding(false);
+            });
           } else {
-            console.log('❌ 初期ジオコーディング失敗:', initialAddress);
+            setIsGeocoding(false);
           }
         } catch (error) {
           console.error('💥 初期ジオコーディングエラー:', error);
-        } finally {
           setIsGeocoding(false);
         }
       } else {
