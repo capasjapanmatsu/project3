@@ -20,6 +20,8 @@ import Button from '../components/Button';
 import Card from '../components/Card';
 import ImageCropper from '../components/ImageCropper';
 import { SEO } from '../components/SEO';
+import Card from '../components/Card';
+import PremiumPaywall from '../components/PremiumPaywall';
 import { CouponDisplay } from '../components/coupons/CouponDisplay';
 import useAuth from '../context/AuthContext';
 import type { FacilityCoupon, UserCoupon } from '../types/coupons';
@@ -750,6 +752,24 @@ export function FacilityDetail() {
                           この施設を管理する
                         </Button>
                       )}
+                    </div>
+                    {/* オーナー登録誘導 */}
+                    <div className="mt-4">
+                      <Card className="p-4">
+                        <h4 className="font-semibold mb-2">この施設のオーナーですか？</h4>
+                        <p className="text-sm text-gray-700 mb-3">オーナー登録（プレミアム会員）で以下が可能になります。</p>
+                        <ul className="text-sm list-disc pl-5 space-y-1 text-gray-700">
+                          <li>クーポンが発行できます</li>
+                          <li>予約管理ができるようになります</li>
+                          <li>WEBサイト、電話番号、お問合せの設定ができます</li>
+                          <li>マップ上に公式表示アイコンで表示されます</li>
+                          <li>施設内でワクチン接種証明を確認する場合はJPパスポートを使用し簡素化できます</li>
+                        </ul>
+                        <p className="text-xs text-gray-600 mt-2">※JPパスポートとは、ユーザーが事前にワクチン証明の画像等をアップロードし、店舗側が目視で有効期限等を確認して証明する仕組みです。公式店・JPパスポート対応店として公開されます。</p>
+                        <div className="mt-4">
+                          <PremiumPaywall title="プレミアム会員（オーナー）" description="クーポン発行・予約管理・各種連絡先設定・公式バッジ表示・JPパスポート対応のご利用が可能になります。" />
+                        </div>
+                      </Card>
                     </div>
                     {/* 通報ボタン */}
                     <div className="mt-3 text-right">
