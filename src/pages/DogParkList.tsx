@@ -517,18 +517,12 @@ export function DogParkList() {
                 ワンちゃんと行ける施設
               </button>
               {activeView === 'facilities' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                <div className="grid grid-cols-1 gap-2 mt-1">
                   <button
                     onClick={() => navigate('/facility-registration?mode=user')}
-                    className="w-full px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                    className="w-full px-4 py-2 rounded-md bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
                   >
-                    一般投稿で施設を知らせる
-                  </button>
-                  <button
-                    onClick={() => navigate('/facility-registration?mode=owner')}
-                    className="w-full px-4 py-2 rounded-md bg-black text-white hover:bg-gray-900"
-                  >
-                    オーナー申請（プレミアム会員）
+                    知ってるお店を登録する
                   </button>
                 </div>
               )}
