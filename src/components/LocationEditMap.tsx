@@ -1,4 +1,4 @@
-import { MapPin, Search } from 'lucide-react';
+import { MapPin, Search, Navigation } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Button from './Button';
 import { useGoogleMaps } from './GoogleMapsProvider';
@@ -34,6 +34,7 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [mapError, setMapError] = useState<string>('');
   const [mapReady, setMapReady] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   // GoogleMapsProviderからgoogleインスタンスを取得
   const { isLoaded, google: googleInstance } = useGoogleMaps();
@@ -254,6 +255,7 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
   const handleLocateMe = useCallback(() => {
     if (!googleMapRef.current || !markerRef.current) return;
     if (!navigator.geolocation) return;
+    setIsLocating(true);
     navigator.geolocation.getCurrentPosition((pos) => {
       const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       hasCenteredToGeolocationRef.current = true;
@@ -270,12 +272,14 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
             const formatted = status === 'OK' && results && results[0]?.formatted_address ? results[0].formatted_address : undefined;
             if (formatted) setAddress(formatted);
             onLocationChange(ll.lat, ll.lng, formatted);
+            setIsLocating(false);
           });
         } else {
           onLocationChange(ll.lat, ll.lng);
+          setIsLocating(false);
         }
       } catch {}
-    });
+    }, () => setIsLocating(false), { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 });
   }, [onLocationChange]);
 
   // 初期化
@@ -409,6 +413,18 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
 
       {/* 地図表示 */}
       <div className="relative">
+        <div className="absolute -top-10 right-0">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleLocateMe}
+            disabled={isLocating}
+            className="text-xs"
+          >
+            <Navigation className="w-3 h-3 mr-1" />
+            {isLocating ? '取得中...' : '現在地'}
+          </Button>
+        </div>
         <div
           ref={mapRef}
           className="w-full h-80 rounded-lg border border-gray-300"
