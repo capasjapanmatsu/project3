@@ -64,6 +64,7 @@ interface ReviewSummary {
 export function FacilityDetail() {
   const { id: facilityId } = useParams();
   const { user } = useAuth();
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
   
   const [facility, setFacility] = useState<FacilityWithDetails | null>(null);
@@ -786,6 +787,39 @@ export function FacilityDetail() {
                     </div>
                   </div>
                 </div>
+
+                {/* 管理者専用: 施設削除ボタン */}
+                {isAdmin && (
+                  <div className="bg-red-50 p-4 rounded-xl border border-red-200 shadow-sm">
+                    <h3 className="text-lg font-semibold text-red-700 mb-2">管理者操作</h3>
+                    <Button
+                      className="w-full bg-red-600 hover:bg-red-700"
+                      onClick={async () => {
+                        if (!facilityId) return;
+                        if (!confirm('この施設を削除します。よろしいですか？この操作は取り消せません。')) return;
+                        try {
+                          // まず通常削除を試行
+                          const { error: delErr } = await supabase
+                            .from('pet_facilities')
+                            .delete()
+                            .eq('id', facilityId);
+                          if (delErr) {
+                            // 失敗したら管理者RPC（存在する場合）を試行
+                            try {
+                              await supabase.rpc('force_delete_facility', { p_facility_id: facilityId });
+                            } catch {}
+                          }
+                          alert('施設を削除しました');
+                          navigate('/parks');
+                        } catch (e) {
+                          alert('削除に失敗しました');
+                        }
+                      }}
+                    >
+                      施設を削除する（管理者）
+                    </Button>
+                  </div>
+                )}
 
                 {/* 施設オーナーに問い合わせ */}
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
