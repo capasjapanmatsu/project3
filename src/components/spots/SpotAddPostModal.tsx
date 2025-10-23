@@ -54,7 +54,7 @@ export default function SpotAddPostModal({ spotId, onClose, onAdded }: Props) {
     <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
       <Card className="max-w-2xl w-full max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-4 border-b shrink-0">
-          <h2 className="text-lg font-semibold">この場所で投稿する</h2>
+          <h2 className="text-lg font-semibold">レビューする</h2>
           <button onClick={onClose}><X className="w-5 h-5"/></button>
         </div>
         <div className="p-4 space-y-4 overflow-y-auto">

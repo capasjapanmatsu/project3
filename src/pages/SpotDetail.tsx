@@ -129,7 +129,7 @@ export default function SpotDetail() {
                   <Edit3 className="w-4 h-4 mr-2"/>管理者編集
                 </Button>
               )}
-              <Button size="sm" onClick={()=>setShowAddPost(true)}>この場所で投稿する</Button>
+              <Button size="sm" onClick={()=>setShowAddPost(true)}>レビューする</Button>
             </div>
           </Card>
 
