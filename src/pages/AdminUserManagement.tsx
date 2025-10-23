@@ -36,6 +36,7 @@ interface UserData {
   last_sign_in_at?: string;
   is_active: boolean;
   subscription_status?: 'active' | 'inactive' | 'cancelled';
+  is_premium_owner?: boolean;
   dog_count: number;
   reservation_count: number;
   total_spent: number;
@@ -170,6 +171,67 @@ export function AdminUserManagement() {
             .eq('status', 'active')
             .single();
 
+          // オーナープレミアム（施設オーナー向け）の加入状況を判定
+          let isPremiumOwner = false;
+          const premiumPriceId = import.meta.env.VITE_PREMIUM_OWNER_PRICE_ID as string | undefined;
+          // 1) user_subscriptions（存在すれば）
+          try {
+            const { data: ownerSub } = await supabase
+              .from('user_subscriptions')
+              .select('status, product_key, price_id')
+              .eq('user_id', profile.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (ownerSub) {
+              const status = String((ownerSub as any).status || '');
+              const productKey = String((ownerSub as any).product_key || '');
+              const priceId = String((ownerSub as any).price_id || '');
+              if (['active','trialing','paused'].includes(status) && (/(^|_)premium_owner($|_)/i.test(productKey) || (premiumPriceId && priceId === premiumPriceId))) {
+                isPremiumOwner = true;
+              }
+            }
+          } catch {}
+          // 2) stripe_user_subscriptions ビュー（存在し、かつ参照可能なら）
+          if (!isPremiumOwner && premiumPriceId) {
+            try {
+              const { data: sus } = await supabase
+                .from('stripe_user_subscriptions')
+                .select('status, price_id, user_id')
+                .eq('user_id', profile.id)
+                .maybeSingle();
+              if (sus && ['active','trialing','paused'].includes(String((sus as any).status)) && (String((sus as any).price_id) === premiumPriceId)) {
+                isPremiumOwner = true;
+              }
+            } catch {}
+          }
+          // 3) 保険的フォールバック: 施設オーナーの施設で機能開放されていればプレミアム相当
+          if (!isPremiumOwner) {
+            try {
+              const { data: facIds } = await supabase
+                .from('pet_facilities')
+                .select('id, is_premium, premium_status')
+                .eq('owner_id', profile.id);
+              const ids = (facIds || []).map((f: any) => f.id);
+              // pet_facilities のフラグ
+              if ((facIds || []).some((f: any) => f.is_premium || ['active','trialing','paused'].includes(String(f.premium_status)))) {
+                isPremiumOwner = true;
+              }
+              // reservation settings による機能開放
+              if (!isPremiumOwner && ids.length > 0) {
+                try {
+                  const { data: rs } = await supabase
+                    .from('facility_reservation_settings')
+                    .select('enabled')
+                    .in('facility_id', ids);
+                  if ((rs || []).some((r: any) => r.enabled)) {
+                    isPremiumOwner = true;
+                  }
+                } catch {}
+              }
+            } catch {}
+          }
+
           // 支払い合計額を取得
           const { data: payments } = await supabase
             .from('reservations')
@@ -197,6 +259,7 @@ export function AdminUserManagement() {
             last_sign_in_at: undefined,
             is_active: true,
             subscription_status: subscription ? 'active' : 'inactive',
+            is_premium_owner: isPremiumOwner,
             dog_count: dogCount || 0,
             reservation_count: reservationCount || 0,
             total_spent: totalSpent,
@@ -605,6 +668,12 @@ export function AdminUserManagement() {
                           <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full mt-1">
                             <Crown className="w-3 h-3 mr-1" />
                             サブスクリプション
+                          </span>
+                        )}
+                        {user.is_premium_owner && (
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full mt-1 ml-1">
+                            <Crown className="w-3 h-3 mr-1" />
+                            プレミアム（オーナー）
                           </span>
                         )}
                       </td>
