@@ -134,6 +134,18 @@ export default function Spots() {
         </p>
       </div>
 
+      {/* 投稿ボタン（説明文の直下・横長） */}
+      <div className="mb-6">
+        <Button
+          isFullWidth
+          onClick={() => setShowPost(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white text-base py-3"
+        >
+          <Plus className="w-5 h-5 mr-2" />
+          あなたが知っているスポットをワンちゃん同伴可能スポットを投稿
+        </Button>
+      </div>
+
       {/* アコーディオン（カテゴリ） */}
       <div className="mb-4 bg-white rounded-lg border">
         <button onClick={()=>setShowCategories(!showCategories)} className="w-full px-3 py-3 flex items-center justify-between text-left hover:bg-gray-50">
