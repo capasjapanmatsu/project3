@@ -41,8 +41,19 @@ export default function SpotAddPostModal({ spotId, onClose, onAdded }: Props) {
       }
       // upload images (pre-cropped to webp by ImageCropper)
       const upFiles = files.filter(Boolean) as File[];
-      for (let i=0; i<upFiles.length; i++) {
-        const f = upFiles[i]!;
+      // guard: per-user per-spot max 3 images
+      let allowed = 3;
+      try {
+        const { count } = await supabase
+          .from('spot_media')
+          .select('id', { count: 'exact', head: true })
+          .eq('spot_id', spotId)
+          .eq('author_id', user.id);
+        allowed = Math.max(0, 3 - (count || 0));
+      } catch {}
+      const filesToUpload = upFiles.slice(0, allowed);
+      for (let i=0; i<filesToUpload.length; i++) {
+        const f = filesToUpload[i]!;
         const key = `${user.id}/${spotId}/${Date.now()}_${i}_${f.name}`;
         const { data: storageRes, error: uerr } = await supabase.storage
           .from('spot-images')
@@ -52,8 +63,12 @@ export default function SpotAddPostModal({ spotId, onClose, onAdded }: Props) {
         const { error: insErr } = await supabase.from('spot_media').insert({ spot_id: spotId, author_id: user.id, url: pub.publicUrl, storage_key: storageRes!.path, sort_order: i });
         if (insErr) throw insErr;
       }
+      const skipped = upFiles.length > filesToUpload.length ? (upFiles.length - filesToUpload.length) : 0;
       onAdded();
       onClose();
+      if (skipped > 0) {
+        try { setTimeout(() => alert(`写真は最大3枚までです。今回 ${skipped} 枚はスキップされました。`), 0); } catch {}
+      }
     } catch (e: any) {
       setError(e?.message || '投稿に失敗しました');
       setIsSubmitting(false);
