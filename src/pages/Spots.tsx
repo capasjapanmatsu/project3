@@ -120,10 +120,9 @@ export default function Spots() {
   return (
     <div className="max-w-6xl mx-auto px-4 pt-10 md:pt-12 pb-8">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold flex items-center"><MapPin className="w-6 h-6 text-blue-600 mr-2"/>映えスポット</h1>
+        <h1 className="text-2xl font-bold flex items-center"><MapPin className="w-6 h-6 text-blue-600 mr-2"/>みんなの投稿スポット</h1>
         <div className="flex items-center gap-2">
           <Button variant="secondary" className="hidden md:inline-flex"><Filter className="w-4 h-4 mr-2"/>絞り込み</Button>
-          <Button onClick={() => setShowPost(true)}><Plus className="w-4 h-4 mr-2"/>スポットを投稿</Button>
         </div>
       </div>
 
@@ -142,7 +141,7 @@ export default function Spots() {
           className="bg-blue-600 hover:bg-blue-700 text-white text-base py-3"
         >
           <Plus className="w-5 h-5 mr-2" />
-          あなたが知っているスポットをワンちゃん同伴可能スポットを投稿
+          あなたが知っているワンちゃん同伴可能スポットを投稿
         </Button>
       </div>
 
