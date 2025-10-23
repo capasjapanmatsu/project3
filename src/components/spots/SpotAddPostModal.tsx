@@ -41,22 +41,12 @@ export default function SpotAddPostModal({ spotId, onClose, onAdded }: Props) {
       }
       // upload images (pre-cropped to webp by ImageCropper)
       const upFiles = files.filter(Boolean) as File[];
-      // client-side guard for DB trigger (max 3 photos per user per spot)
-      let allowed = 3;
-      try {
-        const { count } = await supabase
-          .from('spot_media')
-          .select('id', { count: 'exact', head: true })
-          .eq('spot_id', spotId)
-          .eq('author_id', user.id);
-        allowed = Math.max(0, 3 - (count || 0));
-      } catch {}
-      const filesToUpload = upFiles.slice(0, allowed);
-      const skipped = upFiles.length > filesToUpload.length ? (upFiles.length - filesToUpload.length) : 0;
-      for (let i=0; i<filesToUpload.length; i++) {
-        const f = filesToUpload[i]!;
+      for (let i=0; i<upFiles.length; i++) {
+        const f = upFiles[i]!;
         const key = `${user.id}/${spotId}/${Date.now()}_${i}_${f.name}`;
-        const { data: storageRes, error: uerr } = await supabase.storage.from('spot-images').upload(key, f, { cacheControl: '31536000', upsert: false });
+        const { data: storageRes, error: uerr } = await supabase.storage
+          .from('spot-images')
+          .upload(key, f, { cacheControl: '31536000', upsert: false, contentType: f.type || 'image/webp' });
         if (uerr) throw uerr;
         const { data: pub } = supabase.storage.from('spot-images').getPublicUrl(storageRes!.path);
         const { error: insErr } = await supabase.from('spot_media').insert({ spot_id: spotId, author_id: user.id, url: pub.publicUrl, storage_key: storageRes!.path, sort_order: i });
@@ -64,10 +54,6 @@ export default function SpotAddPostModal({ spotId, onClose, onAdded }: Props) {
       }
       onAdded();
       onClose();
-      if (skipped > 0 && upFiles.length > 0) {
-        // 非同期でユーザーに情報を伝える（UI簡易対応）
-        try { setTimeout(() => alert(`写真は最大3枚までです。今回 ${skipped} 枚はスキップされました。`), 0); } catch {}
-      }
     } catch (e: any) {
       setError(e?.message || '投稿に失敗しました');
       setIsSubmitting(false);
