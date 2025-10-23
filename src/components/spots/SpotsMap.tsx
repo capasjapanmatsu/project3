@@ -1,8 +1,8 @@
 import { MapPin, Navigation } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Button from '../Button';
 import Card from '../Card';
 import { useGoogleMaps } from '../GoogleMapsProvider';
-import Button from '../Button';
 
 export type SpotForMap = {
   id: string;
@@ -122,7 +122,7 @@ export default function SpotsMap({ spots, thumbMap, className = '' }: Props) {
   return (
     <Card className={`overflow-hidden ${className}`}>
       <div className="p-3 border-b bg-gray-50 flex items-center justify-between">
-        <div className="flex items-center"><MapPin className="w-4 h-4 text-blue-600 mr-2"/>映えスポットマップ</div>
+        <div className="flex items-center"><MapPin className="w-4 h-4 text-blue-600 mr-2"/>スポットマップ</div>
         <Button size="sm" variant="secondary" onClick={() => {
           if (!navigator.geolocation) return;
           setIsLocating(true);
