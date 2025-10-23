@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import Card from '../Card';
-import Button from '../Button';
-import ImageCropper from '../ImageCropper';
 import { Upload, X } from 'lucide-react';
-import { supabase } from '../../utils/supabase';
+import { useState } from 'react';
 import useAuth from '../../context/AuthContext';
+import { supabase } from '../../utils/supabase';
+import Button from '../Button';
+import Card from '../Card';
+import ImageCropper from '../ImageCropper';
 
 type Props = {
   spotId: string;
@@ -33,7 +33,20 @@ export default function SpotAddPostModal({ spotId, onClose, onAdded }: Props) {
       }
       // upload images (pre-cropped to webp by ImageCropper)
       const upFiles = files.filter(Boolean) as File[];
+      // client-side guard for DB trigger (max 3 photos per user per spot)
+      let allowed = 3;
+      try {
+        const { count } = await supabase
+          .from('spot_media')
+          .select('id', { count: 'exact', head: true })
+          .eq('spot_id', spotId)
+          .eq('author_id', user.id);
+        allowed = Math.max(0, 3 - (count || 0));
+      } catch {}
+      const filesToUpload = upFiles.slice(0, allowed);
+      const skipped = upFiles.length - filesToUpload.length;
       for (let i=0; i<upFiles.length; i++) {
+        if (i >= filesToUpload.length) break; // safety
         const f = upFiles[i]!;
         const key = `${user.id}/${spotId}/${Date.now()}_${i}_${f.name}`;
         const { data: storageRes, error: uerr } = await supabase.storage.from('spot-images').upload(key, f, { cacheControl: '31536000', upsert: false });
@@ -44,6 +57,10 @@ export default function SpotAddPostModal({ spotId, onClose, onAdded }: Props) {
       }
       onAdded();
       onClose();
+      if (skipped > 0) {
+        // 非同期でユーザーに情報を伝える（UI簡易対応）
+        try { setTimeout(() => alert(`写真は最大3枚までです。今回 ${skipped} 枚はスキップされました。`), 0); } catch {}
+      }
     } catch (e: any) {
       setError(e?.message || '投稿に失敗しました');
       setIsSubmitting(false);
