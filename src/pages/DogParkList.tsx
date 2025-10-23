@@ -522,7 +522,7 @@ export function DogParkList() {
                     onClick={() => navigate('/facility-registration?mode=user')}
                     className="w-full px-4 py-2 rounded-md bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
                   >
-                    知ってるお店を登録する
+                    あなたが知ってるお店を投稿
                   </button>
                 </div>
               )}
