@@ -40,25 +40,10 @@ export default function SpotAddPostModal({ spotId, onClose, onAdded }: Props) {
         if (rErr) throw rErr;
       }
       // upload images (pre-cropped to webp by ImageCropper)
-      const upFiles = files.filter(Boolean) as File[];
-      // guard: per-user per-spot max 3 images
-      let allowed = 3;
-      try {
-        const { count } = await supabase
-          .from('spot_media')
-          .select('id', { count: 'exact', head: true })
-          .eq('spot_id', spotId)
-          .eq('author_id', user.id);
-        allowed = Math.max(0, 3 - (count || 0));
-      } catch {}
-      const filesToUpload = upFiles.slice(0, allowed);
-      if (upFiles.length > 0 && filesToUpload.length === 0) {
-        setError('写真は最大3枚までです。すでに3枚投稿済みのため、追加できません。');
-        setIsSubmitting(false);
-        return;
-      }
-      for (let i=0; i<filesToUpload.length; i++) {
-        const f = filesToUpload[i]!;
+      // 1回の投稿につき最大3枚まで（トータル上限はDBの200枚ルールに委譲）
+      const upFiles = (files.filter(Boolean) as File[]).slice(0, 3);
+      for (let i=0; i<upFiles.length; i++) {
+        const f = upFiles[i]!;
         const key = `${user.id}/${spotId}/${Date.now()}_${i}_${f.name}`;
         const { data: storageRes, error: uerr } = await supabase.storage
           .from('spot-images')
