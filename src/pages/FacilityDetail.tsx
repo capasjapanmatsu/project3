@@ -726,7 +726,7 @@ export function FacilityDetail() {
                 )}
 
                 {/* オーナー未設定 or 一般投稿: オーナー登録CTA */}
-                {facility && (((facility as any).is_user_submitted) || !(facility as any).owner_id) && (
+                {facility && ((((facility as any).is_user_submitted) || !(facility as any).owner_id || isAdmin)) && (
                   <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 shadow-sm">
                     <div className="flex items-center justify-between">
                       <div className="text-yellow-800 text-sm">
