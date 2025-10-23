@@ -1,4 +1,5 @@
 import { supabase } from '@/utils/supabase';
+import { useState } from 'react';
 import Button from './Button';
 import Card from './Card';
 
@@ -11,6 +12,7 @@ export default function PremiumPaywall({
   title = 'プレミアムオーナー会員',
   description = 'クーポン管理と予約管理はプレミアム会員（月額¥500）でご利用いただけます。'
 }: Props) {
+  const [ownerConfirmed, setOwnerConfirmed] = useState(false);
   const startCheckout = async () => {
     const priceId = import.meta.env.VITE_PREMIUM_OWNER_PRICE_ID;
     if (!priceId) {
@@ -58,9 +60,21 @@ export default function PremiumPaywall({
         <li>予約管理（受付・カレンダー・上限制御）</li>
         <li>サポート優先対応</li>
       </ul>
+      <div className="flex items-start gap-2 mb-4">
+        <input
+          id="owner-confirm"
+          type="checkbox"
+          className="mt-1 h-4 w-4 border-gray-300 rounded"
+          checked={ownerConfirmed}
+          onChange={(e) => setOwnerConfirmed(e.target.checked)}
+        />
+        <label htmlFor="owner-confirm" className="text-sm text-gray-800">
+          この施設のオーナーで間違いありません。
+        </label>
+      </div>
       <div className="flex items-center justify-between">
         <div className="text-gray-900 font-bold">月額 ¥500</div>
-        <Button onClick={startCheckout} className="bg-blue-600 hover:bg-blue-700">お支払いに進む</Button>
+        <Button onClick={startCheckout} className="bg-blue-600 hover:bg-blue-700" disabled={!ownerConfirmed}>お支払いに進む</Button>
       </div>
     </Card>
   );
