@@ -19,9 +19,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import ImageCropper from '../components/ImageCropper';
-import { SEO } from '../components/SEO';
-import Card from '../components/Card';
 import PremiumPaywall from '../components/PremiumPaywall';
+import { SEO } from '../components/SEO';
 import { CouponDisplay } from '../components/coupons/CouponDisplay';
 import useAuth from '../context/AuthContext';
 import type { FacilityCoupon, UserCoupon } from '../types/coupons';
@@ -726,12 +725,14 @@ export function FacilityDetail() {
                   </div>
                 )}
 
-                {/* 一般投稿の未確認バッジとオーナー管理ボタン */}
-                {facility && (facility as any).is_user_submitted && (
+                {/* オーナー未設定 or 一般投稿: オーナー登録CTA */}
+                {facility && (((facility as any).is_user_submitted) || !(facility as any).owner_id) && (
                   <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 shadow-sm">
                     <div className="flex items-center justify-between">
                       <div className="text-yellow-800 text-sm">
-                        この施設は一般ユーザーの投稿です（未確認）。オーナーが管理すると公式表示になります。
+                        {(facility as any).is_user_submitted
+                          ? 'この施設は一般ユーザーの投稿です（未確認）。オーナーが管理すると公式表示になります。'
+                          : 'この施設はまだオーナー登録されていません。オーナー登録で公式表示＆各機能が利用できます。'}
                       </div>
                       {user && (
                         <Button
