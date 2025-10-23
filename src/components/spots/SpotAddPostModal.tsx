@@ -52,6 +52,11 @@ export default function SpotAddPostModal({ spotId, onClose, onAdded }: Props) {
         allowed = Math.max(0, 3 - (count || 0));
       } catch {}
       const filesToUpload = upFiles.slice(0, allowed);
+      if (upFiles.length > 0 && filesToUpload.length === 0) {
+        setError('写真は最大3枚までです。すでに3枚投稿済みのため、追加できません。');
+        setIsSubmitting(false);
+        return;
+      }
       for (let i=0; i<filesToUpload.length; i++) {
         const f = filesToUpload[i]!;
         const key = `${user.id}/${spotId}/${Date.now()}_${i}_${f.name}`;
@@ -63,12 +68,9 @@ export default function SpotAddPostModal({ spotId, onClose, onAdded }: Props) {
         const { error: insErr } = await supabase.from('spot_media').insert({ spot_id: spotId, author_id: user.id, url: pub.publicUrl, storage_key: storageRes!.path, sort_order: i });
         if (insErr) throw insErr;
       }
-      const skipped = upFiles.length > filesToUpload.length ? (upFiles.length - filesToUpload.length) : 0;
       onAdded();
       onClose();
-      if (skipped > 0) {
-        try { setTimeout(() => alert(`写真は最大3枚までです。今回 ${skipped} 枚はスキップされました。`), 0); } catch {}
-      }
+      // スキップ通知は行わない（混乱を避ける）
     } catch (e: any) {
       setError(e?.message || '投稿に失敗しました');
       setIsSubmitting(false);
