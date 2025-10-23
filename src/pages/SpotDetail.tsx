@@ -9,6 +9,7 @@ import SpotReportModal from '../components/spots/SpotReportModal';
 import useAuth from '../context/AuthContext';
 import isCapacitorNative from '../utils/isCapacitorNative';
 import { supabase } from '../utils/supabase';
+import { useEffect as ReactUseEffect } from 'react';
 
 export default function SpotDetail() {
   const { id } = useParams();
@@ -133,10 +134,15 @@ export default function SpotDetail() {
             </div>
           </Card>
 
-          {/* レビュー一覧（簡易表示） */}
-          {comments.length > 0 && (
-            <Card className="p-4 mt-4">
-              <h3 className="font-semibold mb-2">みんなのレビュー</h3>
+          {/* レビュー一覧（簡易表示 + 平均） */}
+          <Card className="p-4 mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold">みんなのレビュー</h3>
+              <AvgRating spotId={id as string} />
+            </div>
+            {comments.length === 0 ? (
+              <div className="text-sm text-gray-500">まだレビューがありません</div>
+            ) : (
               <div className="space-y-2">
                 {comments.map((c)=> (
                   <div key={c.id} className="text-sm text-gray-800 border-b last:border-b-0 py-2">
@@ -144,8 +150,8 @@ export default function SpotDetail() {
                   </div>
                 ))}
               </div>
-            </Card>
-          )}
+            )}
+          </Card>
 
           {/* report */}
           <div className="mt-4">
@@ -183,4 +189,33 @@ export default function SpotDetail() {
   );
 }
 
+
+function AvgRating({ spotId }: { spotId: string }) {
+  const [avg, setAvg] = useState<number | null>(null);
+  const [count, setCount] = useState<number>(0);
+  ReactUseEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('spot_ratings')
+          .select('rating', { count: 'exact' })
+          .eq('spot_id', spotId);
+        const arr = (data || []) as Array<{ rating: number }>;
+        const c = (data as any)?.length ?? 0;
+        setCount(c);
+        if (arr.length > 0) {
+          const sum = arr.reduce((s, r) => s + (Number(r.rating) || 0), 0);
+          setAvg(sum / arr.length);
+        } else {
+          setAvg(null);
+        }
+      } catch {}
+    })();
+  }, [spotId]);
+  return (
+    <div className="text-sm text-gray-700">
+      {avg ? `平均 ${avg.toFixed(1)} / 5 （${count}件）` : '平均 ー'}
+    </div>
+  );
+}
 

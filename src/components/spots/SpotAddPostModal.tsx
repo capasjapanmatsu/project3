@@ -1,4 +1,4 @@
-import { Upload, X } from 'lucide-react';
+import { Star, Upload, X } from 'lucide-react';
 import { useState } from 'react';
 import useAuth from '../../context/AuthContext';
 import { supabase } from '../../utils/supabase';
@@ -20,6 +20,7 @@ export default function SpotAddPostModal({ spotId, onClose, onAdded }: Props) {
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [rating, setRating] = useState<number>(5);
 
   const handleSubmit = async () => {
     if (!user) { setError('ログインが必要です'); return; }
@@ -30,6 +31,13 @@ export default function SpotAddPostModal({ spotId, onClose, onAdded }: Props) {
       if (comment.trim()) {
         const { error: cErr } = await supabase.from('spot_comments').insert({ spot_id: spotId, author_id: user.id, content: comment.trim() });
         if (cErr) throw cErr;
+      }
+      // upsert rating (1..5)
+      if (rating >= 1 && rating <= 5) {
+        const { error: rErr } = await supabase
+          .from('spot_ratings')
+          .upsert({ spot_id: spotId, user_id: user.id, rating }, { onConflict: 'spot_id,user_id' });
+        if (rErr) throw rErr;
       }
       // upload images (pre-cropped to webp by ImageCropper)
       const upFiles = files.filter(Boolean) as File[];
@@ -75,6 +83,24 @@ export default function SpotAddPostModal({ spotId, onClose, onAdded }: Props) {
         </div>
         <div className="p-4 space-y-4 overflow-y-auto">
           {error && <div className="p-3 bg-red-100 text-red-700 rounded">{error}</div>}
+
+          <div>
+            <label className="block text-sm font-medium mb-1">評価（★1〜5）</label>
+            <div className="flex items-center gap-1">
+              {[1,2,3,4,5].map((n)=> (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={()=>setRating(n)}
+                  className={`p-1 rounded ${n<=rating ? 'text-yellow-500' : 'text-gray-300'} hover:text-yellow-500`}
+                  aria-label={`評価 ${n}`}
+                >
+                  <Star className={`${n<=rating ? 'fill-current' : ''} w-5 h-5`} />
+                </button>
+              ))}
+              <span className="ml-2 text-sm text-gray-600">{rating} / 5</span>
+            </div>
+          </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">コメント（任意）</label>
