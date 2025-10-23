@@ -98,6 +98,7 @@ export function FacilityDetail() {
   const [reporting, setReporting] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportNote, setReportNote] = useState('');
+  const [isOwnerCtaOpen, setIsOwnerCtaOpen] = useState(false);
 
   // 画像処理用のstate
   const [showImageCropper, setShowImageCropper] = useState(false);
@@ -757,19 +758,31 @@ export function FacilityDetail() {
                     {/* オーナー登録誘導 */}
                     <div className="mt-4">
                       <Card className="p-4">
-                        <h4 className="font-semibold mb-2">この施設のオーナーですか？</h4>
-                        <p className="text-sm text-gray-700 mb-3">オーナー登録（プレミアム会員）で以下が可能になります。</p>
-                        <ul className="text-sm list-disc pl-5 space-y-1 text-gray-700">
-                          <li>クーポンが発行できます</li>
-                          <li>予約管理ができるようになります</li>
-                          <li>WEBサイト、電話番号、お問合せの設定ができます</li>
-                          <li>マップ上に公式表示アイコンで表示されます</li>
-                          <li>施設内でワクチン接種証明を確認する場合はJPパスポートを使用し簡素化できます</li>
-                        </ul>
-                        <p className="text-xs text-gray-600 mt-2">※JPパスポートとは、ユーザーが事前にワクチン証明の画像等をアップロードし、店舗側が目視で有効期限等を確認して証明する仕組みです。公式店・JPパスポート対応店として公開されます。</p>
-                        <div className="mt-4">
-                          <PremiumPaywall title="プレミアム会員（オーナー）" description="クーポン発行・予約管理・各種連絡先設定・公式バッジ表示・JPパスポート対応のご利用が可能になります。" />
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsOwnerCtaOpen(prev => !prev)}
+                          className="w-full flex items-center justify-between font-semibold mb-2 text-left"
+                          aria-expanded={isOwnerCtaOpen}
+                        >
+                          <span>この施設のオーナーですか？</span>
+                          <ChevronRight className={`w-4 h-4 transform transition-transform ${isOwnerCtaOpen ? 'rotate-90' : ''}`} />
+                        </button>
+                        {isOwnerCtaOpen && (
+                          <div>
+                            <p className="text-sm text-gray-700 mb-3">オーナー登録（プレミアム会員）で以下が可能になります。</p>
+                            <ul className="text-sm list-disc pl-5 space-y-1 text-gray-700">
+                              <li>クーポンが発行できます</li>
+                              <li>予約管理ができるようになります</li>
+                              <li>WEBサイト、電話番号、お問合せの設定ができます</li>
+                              <li>マップ上に公式表示アイコンで表示されます</li>
+                              <li>施設内でワクチン接種証明を確認する場合はJPパスポートを使用し簡素化できます</li>
+                            </ul>
+                            <p className="text-xs text-gray-600 mt-2">※JPパスポートとは、ユーザーが事前にワクチン証明の画像等をアップロードし、店舗側が目視で有効期限等を確認して証明する仕組みです。公式店・JPパスポート対応店として公開されます。</p>
+                            <div className="mt-4">
+                              <PremiumPaywall title="プレミアム会員（オーナー）" description="クーポン発行・予約管理・各種連絡先設定・公式バッジ表示・JPパスポート対応のご利用が可能になります。" />
+                            </div>
+                          </div>
+                        )}
                       </Card>
                     </div>
                     {/* 通報ボタン */}
