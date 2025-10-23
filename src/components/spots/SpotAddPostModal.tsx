@@ -44,10 +44,9 @@ export default function SpotAddPostModal({ spotId, onClose, onAdded }: Props) {
         allowed = Math.max(0, 3 - (count || 0));
       } catch {}
       const filesToUpload = upFiles.slice(0, allowed);
-      const skipped = upFiles.length - filesToUpload.length;
-      for (let i=0; i<upFiles.length; i++) {
-        if (i >= filesToUpload.length) break; // safety
-        const f = upFiles[i]!;
+      const skipped = upFiles.length > filesToUpload.length ? (upFiles.length - filesToUpload.length) : 0;
+      for (let i=0; i<filesToUpload.length; i++) {
+        const f = filesToUpload[i]!;
         const key = `${user.id}/${spotId}/${Date.now()}_${i}_${f.name}`;
         const { data: storageRes, error: uerr } = await supabase.storage.from('spot-images').upload(key, f, { cacheControl: '31536000', upsert: false });
         if (uerr) throw uerr;
@@ -57,7 +56,7 @@ export default function SpotAddPostModal({ spotId, onClose, onAdded }: Props) {
       }
       onAdded();
       onClose();
-      if (skipped > 0) {
+      if (skipped > 0 && upFiles.length > 0) {
         // 非同期でユーザーに情報を伝える（UI簡易対応）
         try { setTimeout(() => alert(`写真は最大3枚までです。今回 ${skipped} 枚はスキップされました。`), 0); } catch {}
       }

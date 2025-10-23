@@ -121,7 +121,7 @@ export default function SpotDetail() {
             <Card className="p-4 mb-4"><p className="text-gray-700 whitespace-pre-wrap">{spot.description}</p></Card>
           )}
 
-          {/* 投稿ボタンのみ表示（コメントUIは非表示） */}
+          {/* 投稿ボタン */}
           <Card className="p-4">
             <div className="flex justify-between items-center">
               {isAdmin && (
@@ -132,6 +132,20 @@ export default function SpotDetail() {
               <Button size="sm" onClick={()=>setShowAddPost(true)}>レビューする</Button>
             </div>
           </Card>
+
+          {/* レビュー一覧（簡易表示） */}
+          {comments.length > 0 && (
+            <Card className="p-4 mt-4">
+              <h3 className="font-semibold mb-2">みんなのレビュー</h3>
+              <div className="space-y-2">
+                {comments.map((c)=> (
+                  <div key={c.id} className="text-sm text-gray-800 border-b last:border-b-0 py-2">
+                    {c.content}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {/* report */}
           <div className="mt-4">
