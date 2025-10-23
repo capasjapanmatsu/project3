@@ -735,25 +735,6 @@ export function FacilityDetail() {
                           ? 'この施設は一般ユーザーの投稿です（未確認）。オーナーが管理すると公式表示になります。'
                           : 'この施設はまだオーナー登録されていません。オーナー登録で公式表示＆各機能が利用できます。'}
                       </div>
-                      {user && (
-                        <Button
-                          isLoading={claiming}
-                          onClick={async ()=>{
-                            try {
-                              setClaiming(true);
-                              const { error } = await supabase.rpc('claim_facility', { p_facility_id: facilityId });
-                              if (error) throw error;
-                              await fetchFacilityData();
-                              alert('この施設の管理者になりました（公式化）。');
-                            } catch (e) {
-                              alert('管理申請に失敗しました。プレミアム会員のみが利用できます。');
-                            } finally { setClaiming(false); }
-                          }}
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          この施設を管理する
-                        </Button>
-                      )}
                     </div>
                     {/* オーナー登録誘導 */}
                     <div className="mt-4">
@@ -778,6 +759,7 @@ export function FacilityDetail() {
                               <li>施設内でワクチン接種証明を確認する場合はJPパスポートを使用し簡素化できます</li>
                             </ul>
                             <p className="text-xs text-gray-600 mt-2">※JPパスポートとは、ユーザーが事前にワクチン証明の画像等をアップロードし、店舗側が目視で有効期限等を確認して証明する仕組みです。公式店・JPパスポート対応店として公開されます。</p>
+                            <p className="text-xs text-gray-600 mt-2">※プレミアム会員は店舗毎に契約が必要です。複数店舗がある場合は1店舗づつ契約してください。</p>
                             <div className="mt-4">
                               <PremiumPaywall title="プレミアム会員（オーナー）" description="クーポン発行・予約管理・各種連絡先設定・公式バッジ表示・JPパスポート対応のご利用が可能になります。" />
                             </div>
