@@ -1,5 +1,5 @@
-import { Edit3, ExternalLink, Flag, ImageIcon, MapPin } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { AlertTriangle, Edit3, ExternalLink, Flag, ImageIcon, MapPin } from 'lucide-react';
+import { useEffect as ReactUseEffect, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -9,7 +9,6 @@ import SpotReportModal from '../components/spots/SpotReportModal';
 import useAuth from '../context/AuthContext';
 import isCapacitorNative from '../utils/isCapacitorNative';
 import { supabase } from '../utils/supabase';
-import { useEffect as ReactUseEffect } from 'react';
 
 export default function SpotDetail() {
   const { id } = useParams();
@@ -151,6 +150,17 @@ export default function SpotDetail() {
                 ))}
               </div>
             )}
+          </Card>
+
+          {/* 利用時の注意事項 */}
+          <Card className="p-4 mt-4 bg-yellow-50 border border-yellow-200">
+            <div className="flex items-start">
+              <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5" />
+              <div>
+                <h4 className="font-semibold text-yellow-800 mb-1">利用にあたっての注意事項</h4>
+                <p className="text-sm text-yellow-800">現地のルールに従いマナーを守ってください。他の方のご迷惑にならない配慮をお願いします。</p>
+              </div>
+            </div>
           </Card>
 
           {/* report */}
