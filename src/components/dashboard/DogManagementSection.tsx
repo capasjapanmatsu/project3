@@ -82,29 +82,11 @@ export const DogManagementSection: React.FC<DogManagementSectionProps> = ({
 }) => {
   return (
     <Card className="p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900 flex items-center">
           <DogIcon className="w-5 h-5 mr-2 text-gray-700" />
           登録済みの愛犬
         </h2>
-        <div className="flex space-x-3">
-          {dogs.length > 0 && (
-            <Link
-              to="/jp-passport"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center"
-            >
-              <Shield className="w-4 h-4 mr-2" />
-              JPパスポート
-            </Link>
-          )}
-          <a
-            href="/dog-registration"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            愛犬を登録
-          </a>
-        </div>
       </div>
 
       {dogs.length === 0 ? (
@@ -114,13 +96,6 @@ export const DogManagementSection: React.FC<DogManagementSectionProps> = ({
           <p className="text-sm mb-4">
             ドッグランを利用するために、愛犬の情報を登録してください
           </p>
-          <a
-            href="/dog-registration"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium inline-flex items-center"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            愛犬を登録
-          </a>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -133,6 +108,24 @@ export const DogManagementSection: React.FC<DogManagementSectionProps> = ({
           ))}
         </div>
       )}
+
+      {/* 統一: カード最下部に横長ボタン配置 */}
+      <div className="mt-6 space-y-3">
+        {dogs.length > 0 && (
+          <Link to="/jp-passport" className="block">
+            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-md font-medium inline-flex items-center justify-center">
+              <Shield className="w-4 h-4 mr-2" />
+              JPパスポート
+            </button>
+          </Link>
+        )}
+        <a href="/dog-registration" className="block">
+          <button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-md font-medium inline-flex items-center justify-center">
+            <Plus className="w-4 h-4 mr-2" />
+            愛犬を登録
+          </button>
+        </a>
+      </div>
 
       {/* Dog Edit Modal */}
       {showDogEditModal && selectedDog && (

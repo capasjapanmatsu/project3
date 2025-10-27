@@ -754,17 +754,12 @@ export function UserDashboard() {
       />
 
       {/* Facility Reservations Section */}
-      <Card className="p-6 bg-gradient-to-br from-sky-50 to-blue-50 border-sky-200">
+      <Card className="p-6 bg-white border-gray-200">
         <div className="mb-4 flex justify-between items-center">
           <h2 className="text-xl font-semibold flex items-center">
             <Clock className="w-6 h-6 text-blue-600 mr-2" />
             店舗予約管理
           </h2>
-          <Link to="/my-reservations">
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-              一覧表示
-            </Button>
-          </Link>
         </div>
         {facilityReservations.length === 0 ? (
           <div className="text-center py-8 text-blue-700">店舗の予約はまだありません</div>
@@ -783,49 +778,58 @@ export function UserDashboard() {
             ))}
           </div>
         )}
+        <div className="mt-6">
+          <Link to="/my-reservations">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 py-3 text-base text-white">一覧表示</Button>
+          </Link>
+        </div>
       </Card>
 
       {/* Points Balance */}
-      <Card className="p-6 bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200">
+      <Card className="p-6 bg-white border-gray-200">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xl font-semibold flex items-center">
             <Coins className="w-6 h-6 text-amber-600 mr-2" />
             保有ポイント
           </h2>
-          <Link to="/points">
-            <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white">履歴を見る</Button>
-          </Link>
         </div>
         <div className="text-3xl font-bold text-amber-700">{pointsBalance.toLocaleString()} P</div>
         <p className="text-sm text-amber-700 mt-2">ペットショップで利用可能</p>
+        <div className="mt-6">
+          <Link to="/points">
+            <Button className="w-full bg-amber-600 hover:bg-amber-700 py-3 text-base text-white">履歴を見る</Button>
+          </Link>
+        </div>
+      </Card>
+
+      {/* Profile Settings Card */}
+      <Card className="p-6 bg-white border-gray-200">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xl font-semibold flex items-center">
+            <User className="w-6 h-6 text-gray-700 mr-2" />
+            登録情報
+          </h2>
+        </div>
+        <p className="text-gray-700">住所・氏名・連絡先を編集</p>
+        <ul className="mt-3 text-sm text-gray-700 list-disc pl-5 space-y-1">
+          <li>サブスク管理（解約・再開・支払い方法の更新）</li>
+          <li>退会申請（アカウント削除リクエスト）</li>
+        </ul>
+        <div className="mt-6">
+          <Link to="/profile-settings">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 py-3 text-base text-white">登録情報を編集</Button>
+          </Link>
+        </div>
       </Card>
 
       {/* User Coupons Section */}
-      <Card className="p-6 bg-gradient-to-br from-pink-50 to-purple-50 border-pink-200">
+      <Card className="p-6 bg-white border-gray-200">
         <div className="mb-4 flex justify-between items-center">
           <h2 className="text-xl font-semibold flex items-center">
             <Gift className="w-6 h-6 text-pink-600 mr-2" />
             保有クーポン ({validCouponsCount}枚)
           </h2>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => {
-                void fetchDashboardData();
-              }}
-              className="px-3 py-1 text-sm bg-pink-100 hover:bg-pink-200 text-pink-700 rounded-md transition-colors"
-              title="クーポンデータを更新"
-            >
-              🔄
-            </button>
-            {validCouponsCount > 0 && (
-              <Link to="/my-coupons">
-                <Button size="sm" className="bg-pink-600 hover:bg-pink-700 text-white">
-                  <Ticket className="w-4 h-4 mr-1" />
-                  一覧表示
-                </Button>
-              </Link>
-            )}
-          </div>
+          <div />
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -866,11 +870,12 @@ export function UserDashboard() {
                   )}
                 </div>
               ))}
-              {userCoupons.length > 6 && (
-                <div className="col-span-full text-center mt-4">
+              {userCoupons.length > 0 && (
+                <div className="col-span-full mt-6">
                   <Link to="/my-coupons">
-                    <Button variant="secondary" size="sm">
-                      すべて表示 ({userCoupons.length}枚)
+                    <Button className="w-full bg-pink-600 hover:bg-pink-700 py-3 text-base text-white">
+                      <Ticket className="w-4 h-4 mr-1" />
+                      クーポン一覧を見る
                     </Button>
                   </Link>
                 </div>
@@ -881,71 +886,73 @@ export function UserDashboard() {
       </Card>
 
       {/* Owned Parks Management Section with Modern Styling */}
-      <Card className="p-6 bg-gradient-to-br from-green-50 to-blue-50 border-green-200">
+      <Card className="p-6 bg-white border-gray-200">
         <div className="mb-4 flex justify-between items-center">
           <h2 className="text-xl font-semibold flex items-center">
             <Building className="w-6 h-6 text-green-600 mr-2" />
             管理中のドッグラン ({ownedParks.length}施設)
           </h2>
-          <Link to="/my-parks-management">
-            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-              <Edit className="w-4 h-4 mr-1" />
-              一覧・管理
-            </Button>
-          </Link>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {ownedParks.slice(0, 6).map((park) => {
-            // ステータスに応じた表示情報を取得
+            // ステータスに応じた表示情報を取得（施設と同じバッジ表記に統一）
             const getStatusInfo = (status: string) => {
               switch (status) {
                 case 'approved':
                   return {
                     label: '公開中',
                     color: 'bg-green-100 text-green-800',
+                    icon: CheckCircle,
                     description: ''
                   };
                 case 'pending':
                   return {
                     label: '第一審査中',
                     color: 'bg-yellow-100 text-yellow-800',
+                    icon: Clock,
                     description: '管理者による審査をお待ちください'
                   };
                 case 'first_stage_passed':
                   return {
                     label: '第二審査申請可能',
                     color: 'bg-blue-100 text-blue-800',
+                    icon: FileText,
                     description: '第二審査の申請をしてください'
                   };
                 case 'second_stage_waiting':
                   return {
                     label: '第二審査申請準備中',
                     color: 'bg-orange-100 text-orange-800',
+                    icon: Settings,
                     description: '画像アップロード等の準備を進めてください'
                   };
                 case 'second_stage_review':
                   return {
                     label: '第二審査中',
                     color: 'bg-purple-100 text-purple-800',
+                    icon: Clock,
                     description: '管理者による審査をお待ちください'
                   };
                 case 'smart_lock_testing':
                   return {
                     label: 'スマートロック実証検査中',
                     color: 'bg-indigo-100 text-indigo-800',
+                    icon: Shield,
                     description: '実証検査の完了をお待ちください'
                   };
                 case 'rejected':
                   return {
                     label: '却下',
                     color: 'bg-red-100 text-red-800',
+                    icon: AlertTriangle,
                     description: '詳細は管理ページでご確認ください'
                   };
                 default:
                   return {
                     label: '審査中',
                     color: 'bg-gray-100 text-gray-800',
+                    icon: Clock,
                     description: ''
                   };
               }
@@ -959,8 +966,9 @@ export function UserDashboard() {
                 <p className="text-sm text-gray-600 mb-2">{park.address}</p>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
-                      {statusInfo.label}
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${statusInfo.color}`}>
+                      {statusInfo.icon && <statusInfo.icon className="w-3 h-3" />}
+                      <span>{statusInfo.label}</span>
                     </span>
                     <div className="text-xs text-gray-500">
                       料金: ¥{park.price_per_hour}/時間
@@ -996,10 +1004,19 @@ export function UserDashboard() {
             </Link>
           </div>
         )}
+        {/* 統一: 一覧・管理ボタンを下部に横長表示 */}
+        <div className="mt-6">
+          <Link to="/my-parks-management">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 py-3 text-base text-white">
+              <Edit className="w-4 h-4 mr-2" />
+              一覧・管理
+            </Button>
+          </Link>
+        </div>
       </Card>
 
       {/* 管理中のペット関連施設一覧（0件でも表示） */}
-      <Card className="p-6 bg-gradient-to-br from-teal-50 to-cyan-50 border-teal-200">
+      <Card className="p-6 bg-white border-gray-200">
         <div className="mb-6 flex justify-between items-center">
           <div>
             <h2 className="text-xl font-semibold flex items-center">
@@ -1008,12 +1025,6 @@ export function UserDashboard() {
             </h2>
             <p className="text-gray-600 mt-1">ペットショップ、動物病院、トリミングサロンなどの施設管理</p>
           </div>
-          <Link to="/my-facilities-management">
-            <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">
-              <Edit className="w-4 h-4 mr-1" />
-              一覧・管理
-            </Button>
-          </Link>
         </div>
 
         {facilities.length === 0 ? (
@@ -1089,6 +1100,15 @@ export function UserDashboard() {
                 </Link>
               </div>
             )}
+            {/* 統一: 一覧・管理ボタンを下部に横長表示 */}
+            <div className="mt-6">
+              <Link to="/my-facilities-management">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700 py-3 text-base text-white">
+                  <Edit className="w-4 h-4 mr-1" />
+                  一覧・管理
+                </Button>
+              </Link>
+            </div>
           </>
         )}
       </Card>
@@ -1096,7 +1116,7 @@ export function UserDashboard() {
       {/* AIチャット（ページ内版）はFABに統合したため削除 */}
 
       {/* Quick Actions Section with Modern CSS Grid */}
-      <Card className="p-6">
+      <Card className="p-6 bg-white border-gray-200">
         <h2 className="text-xl font-semibold mb-6 flex items-center">
           <span className="text-2xl mr-2">🚀</span>
           クイックアクション
@@ -1105,86 +1125,112 @@ export function UserDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link to="/parks" className="group">
             <div className="p-6 bg-gradient-to-br from-blue-50 to-sky-50 rounded-xl hover:from-blue-100 hover:to-sky-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-blue-200">
-              <MapPin className="w-8 h-8 text-blue-600 mb-3" />
-              <h3 className="font-semibold text-blue-900 mb-1">ドッグラン検索</h3>
-              <p className="text-sm text-blue-700">近くのドッグランを探す</p>
+              <div className="flex items-center gap-4">
+                <MapPin className="w-12 h-12 text-blue-600" />
+                <div>
+                  <h3 className="font-semibold text-blue-900 mb-1">ドッグラン検索</h3>
+                  <p className="text-sm text-blue-700">近くのドッグランを探す</p>
+                </div>
+              </div>
             </div>
           </Link>
 
           <Link to="/dogpark-history" className="group">
-            <div className="p-6 bg-gradient-to-br from-teal-50 to-emerald-50 rounded-xl hover:from-teal-100 hover:to-emerald-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-teal-200">
-              <History className="w-8 h-8 text-teal-600 mb-3" />
-              <h3 className="font-semibold text-teal-900 mb-1">ドッグラン利用履歴</h3>
-              <p className="text-sm text-teal-700">入退場履歴を確認</p>
+            <div className="p-6 bg-gradient-to-br from-blue-50 to-sky-50 rounded-xl hover:from-blue-100 hover:to-sky-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-blue-200">
+              <div className="flex items-center gap-4">
+                <History className="w-12 h-12 text-blue-600" />
+                <div>
+                  <h3 className="font-semibold text-blue-900 mb-1">ドッグラン利用履歴</h3>
+                  <p className="text-sm text-blue-700">入退場履歴を確認</p>
+                </div>
+              </div>
             </div>
           </Link>
           
           <Link to="/community" className="group">
-            <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl hover:from-green-100 hover:to-emerald-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-green-200">
-              <Users className="w-8 h-8 text-green-600 mb-3" />
-              <h3 className="font-semibold text-green-900 mb-1">コミュニティ</h3>
-              <p className="text-sm text-green-700">他の飼い主と交流</p>
+            <div className="p-6 bg-gradient-to-br from-blue-50 to-sky-50 rounded-xl hover:from-blue-100 hover:to-sky-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-blue-200">
+              <div className="flex items-center gap-4">
+                <Users className="w-12 h-12 text-blue-600" />
+                <div>
+                  <h3 className="font-semibold text-blue-900 mb-1">コミュニティ</h3>
+                  <p className="text-sm text-blue-700">他の飼い主と交流</p>
+                </div>
+              </div>
             </div>
           </Link>
           
           <Link to="/petshop" className="group">
-            <div className="p-6 bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl hover:from-purple-100 hover:to-violet-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-purple-200">
-              <ShoppingBag className="w-8 h-8 text-purple-600 mb-3" />
-              <h3 className="font-semibold text-purple-900 mb-1">ペットショップ</h3>
-              <p className="text-sm text-purple-700">ペット用品を購入</p>
+            <div className="p-6 bg-gradient-to-br from-blue-50 to-sky-50 rounded-xl hover:from-blue-100 hover:to-sky-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-blue-200">
+              <div className="flex items-center gap-4">
+                <ShoppingBag className="w-12 h-12 text-blue-600" />
+                <div>
+                  <h3 className="font-semibold text-blue-900 mb-1">ペットショップ</h3>
+                  <p className="text-sm text-blue-700">ペット用品を購入</p>
+                </div>
+              </div>
             </div>
           </Link>
           
           <Link to="/order-history" className="group">
-            <div className="p-6 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl hover:from-amber-100 hover:to-yellow-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-amber-200">
-              <History className="w-8 h-8 text-amber-600 mb-3" />
-              <h3 className="font-semibold text-amber-900 mb-1">注文履歴</h3>
-              <p className="text-sm text-amber-700">購入履歴を確認</p>
+            <div className="p-6 bg-gradient-to-br from-blue-50 to-sky-50 rounded-xl hover:from-blue-100 hover:to-sky-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-blue-200">
+              <div className="flex items-center gap-4">
+                <History className="w-12 h-12 text-blue-600" />
+                <div>
+                  <h3 className="font-semibold text-blue-900 mb-1">注文履歴</h3>
+                  <p className="text-sm text-blue-700">購入履歴を確認</p>
+                </div>
+              </div>
             </div>
           </Link>
           
           <Link to="/news" className="group">
-            <div className="p-6 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl hover:from-orange-100 hover:to-amber-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-orange-200">
-              <Bell className="w-8 h-8 text-orange-600 mb-3" />
-              <h3 className="font-semibold text-orange-900 mb-1">新着情報</h3>
-              <p className="text-sm text-orange-700">最新のお知らせ</p>
+            <div className="p-6 bg-gradient-to-br from-blue-50 to-sky-50 rounded-xl hover:from-blue-100 hover:to-sky-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-blue-200">
+              <div className="flex items-center gap-4">
+                <Bell className="w-12 h-12 text-blue-600" />
+                <div>
+                  <h3 className="font-semibold text-blue-900 mb-1">新着情報</h3>
+                  <p className="text-sm text-blue-700">最新のお知らせ</p>
+                </div>
+              </div>
             </div>
           </Link>
 
 
           
           <Link to="/park-registration-agreement" className="group">
-            <div className="p-6 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl hover:from-yellow-100 hover:to-orange-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border-2 border-orange-200">
-              <Building className="w-8 h-8 text-orange-600 mb-3" />
-              <h3 className="font-semibold text-orange-900 mb-1">ドッグランオーナー募集</h3>
-              <p className="text-sm text-orange-700 mb-2">あなたのドッグランを登録</p>
-              <div className="text-xs text-orange-600 font-semibold bg-orange-100 px-2 py-1 rounded-full inline-block">
-                💰 収益化のチャンス！
+            <div className="p-6 bg-gradient-to-br from-blue-50 to-sky-50 rounded-xl hover:from-blue-100 hover:to-sky-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-blue-200">
+              <div className="flex items-center gap-4">
+                <Building className="w-12 h-12 text-blue-600" />
+                <div>
+                  <h3 className="font-semibold text-blue-900 mb-1">ドッグランオーナー募集</h3>
+                  <p className="text-sm text-blue-700 mb-2">あなたのドッグランを登録</p>
+                  <div className="text-xs text-blue-700 font-semibold bg-blue-100 px-2 py-1 rounded-full inline-block">
+                    💰 収益化のチャンス！
+                  </div>
+                </div>
               </div>
             </div>
           </Link>
           
           <Link to="/facility-registration" className="group">
-            <div className="p-6 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl hover:from-teal-100 hover:to-cyan-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border-2 border-teal-200">
-              <div className="flex items-center mb-3">
-                <Heart className="w-6 h-6 text-teal-600 mr-2" />
-                <ShoppingBag className="w-6 h-6 text-teal-600" />
-              </div>
-              <h3 className="font-semibold text-teal-900 mb-1">ペット関連施設登録</h3>
-              <p className="text-sm text-teal-700 mb-2">店舗・宿泊施設・サロンなど</p>
-              <div className="text-xs text-teal-600 font-semibold bg-teal-100 px-2 py-1 rounded-full inline-block">
-                🎉 今なら無料掲載！
+            <div className="p-6 bg-gradient-to-br from-blue-50 to-sky-50 rounded-xl hover:from-blue-100 hover:to-sky-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-blue-200">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center">
+                  <Heart className="w-10 h-10 text-blue-600 mr-2" />
+                  <ShoppingBag className="w-10 h-10 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-blue-900 mb-1">ペット関連施設登録</h3>
+                  <p className="text-sm text-blue-700 mb-2">店舗・宿泊施設・サロンなど</p>
+                  <div className="text-xs text-blue-700 font-semibold bg-blue-100 px-2 py-1 rounded-full inline-block">
+                    🎉 今なら無料掲載！
+                  </div>
+                </div>
               </div>
             </div>
           </Link>
           
-          <Link to="/profile-settings" className="group">
-            <div className="p-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl hover:from-indigo-100 hover:to-purple-100 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md border border-indigo-200">
-              <User className="w-8 h-8 text-indigo-600 mb-3" />
-              <h3 className="font-semibold text-indigo-900 mb-1">登録情報</h3>
-              <p className="text-sm text-indigo-700">住所・氏名・連絡先を編集</p>
-            </div>
-          </Link>
+          
         </div>
       </Card>
 

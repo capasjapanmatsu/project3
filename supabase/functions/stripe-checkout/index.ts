@@ -283,15 +283,34 @@ Deno.serve(async (req) => {
     }
 
     // サブスクの二重購入を防止（プレミアム会員/ドッグランのサブスク想定）
+    // ただし「今期末で解約予約中（cancel_at_period_end=true）」は再申込を許可
     if (mode === 'subscription') {
       const { data: existingSub } = await supabase
         .from('stripe_subscriptions')
-        .select('status')
+        .select('status,cancel_at_period_end')
         .eq('customer_id', customerId)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
       const blockingStatuses = ['active', 'trialing', 'past_due', 'unpaid'];
-      if (existingSub && blockingStatuses.includes((existingSub as any).status)) {
-        return corsResponse({ error: 'すでに有効なサブスクリプションがあります。解約または期限終了後に再度お試しください。' }, 409);
+      const isBlocking = !!(existingSub &&
+        blockingStatuses.includes((existingSub as any).status) &&
+        (existingSub as any).cancel_at_period_end !== true);
+      if (isBlocking) {
+        // DBが古い可能性があるため、Stripe側を最終確認してからブロックする
+        try {
+          const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 10 });
+          const blockingStatusesSet = new Set(['active','trialing','past_due','unpaid']);
+          const hasBlockingOnStripe = subs.data.some(s => blockingStatusesSet.has(String(s.status)) && s.cancel_at_period_end !== true);
+          if (hasBlockingOnStripe) {
+            return corsResponse({ error: 'すでに有効なサブスクリプションがあります。解約または期限終了後に再度お試しください。' }, 409);
+          }
+          // Stripe側でブロックがない → 続行（DBはWebhook反映待ち）
+        } catch (verifyErr) {
+          // Stripe 側の確認に失敗した場合は、二重課金防止よりもユーザーの再申込を優先して続行
+          // ログだけ残し、ブロックはしない（Webhook 同期でDBは最新化される）
+          console.error('Stripe subscription verification failed — proceeding anyway:', verifyErr);
+        }
       }
     }
 

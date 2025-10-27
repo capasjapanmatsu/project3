@@ -1,4 +1,4 @@
-import { MapPin, Search, Navigation } from 'lucide-react';
+import { MapPin, Navigation, Search } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Button from './Button';
 import { useGoogleMaps } from './GoogleMapsProvider';
@@ -325,8 +325,8 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
       if (locked) return;
       if (!initialAddress || initialLatitude || initialLongitude) return;
       if (!googleMapRef.current || !markerRef.current) return;
-      try {
-        setIsGeocoding(true);
+        try {
+          setIsGeocoding(true);
         const geocoder = geocoderRef.current;
         if (geocoder) {
           geocoder.geocode({ address: initialAddress, region: 'JP' }, (results: any, status: any) => {
@@ -344,7 +344,7 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
             }
             setIsGeocoding(false);
           });
-        } else {
+          } else {
           hasAutoGeocodedRef.current = true;
           setIsGeocoding(false);
         }

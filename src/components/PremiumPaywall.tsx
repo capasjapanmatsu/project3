@@ -54,7 +54,10 @@ export default function PremiumPaywall({
   return (
     <Card className="p-6">
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
-      <p className="text-sm text-gray-700 mb-4">{description}</p>
+      <p className="text-sm text-gray-700 mb-2">{description}</p>
+      <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1 inline-block mb-4">
+        ただいま初月（30日）無料キャンペーン中
+      </p>
       <ul className="text-sm text-gray-700 list-disc pl-5 mb-4">
         <li>クーポン管理（発行・配布・使用履歴）</li>
         <li>予約管理（受付・カレンダー・上限制御）</li>

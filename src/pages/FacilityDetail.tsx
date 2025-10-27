@@ -767,10 +767,7 @@ export function FacilityDetail() {
                         )}
                       </Card>
                     </div>
-                    {/* 通報ボタン */}
-                    <div className="mt-3 text-right">
-                      <Button variant="secondary" size="sm" onClick={()=>setReporting(true)}>この施設を通報する</Button>
-                    </div>
+                    
                   </div>
                 )}
 
@@ -1489,6 +1486,17 @@ export function FacilityDetail() {
             </div>
           </div>
         )}
+        </div>
+
+        {/* 通報ボタン（ページ下部） */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+          <div className="mt-6">
+            <Card className="p-4">
+              <div className="text-center">
+                <Button variant="secondary" onClick={() => setReporting(true)}>この施設を通報する</Button>
+              </div>
+            </Card>
+          </div>
         </div>
 
         {/* 画像拡大モーダル */}

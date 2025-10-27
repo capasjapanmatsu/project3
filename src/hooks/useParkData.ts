@@ -38,10 +38,9 @@ interface PetFacilityResponse {
 // useParkData.ts - ドッグパークと施設データ管理のカスタムフック
 import { useCallback, useState } from 'react';
 import { type DogPark } from '../types';
-import { type PetFacility } from '../types/facilities';
-import { FACILITY_CATEGORY_LABELS } from '../types/facilities';
-import { supabase } from '../utils/supabase';
+import { FACILITY_CATEGORY_LABELS, type PetFacility } from '../types/facilities';
 import { PARK_PLACEHOLDER_SVG } from '../utils/placeholders';
+import { supabase } from '../utils/supabase';
 
 // ドッグパークデータ管理フック
 export function useParkData() {
