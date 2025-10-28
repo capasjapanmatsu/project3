@@ -758,61 +758,7 @@ export function ProfileSettings() {
         </Button>
       </div>
 
-      {/* 通知設定カード */}
-      <Card className="p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-2">通知設定</h2>
-        <p className="text-sm text-gray-600 mb-4">コミュニティのメッセージやお知らせをLINEに転送します（連携が必要）。</p>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="font-medium">LINEで通知を受け取る</div>
-            {(() => {
-              const isLinked = lineLinked || linked === true || hasLineSession;
-              return <div className="text-sm text-gray-500">連携状態: {isLinked ? '連携済み' : '未連携'}</div>;
-            })()}
-          </div>
-          <label className="inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={notifyOptIn}
-              onChange={(e) => setNotifyOptIn(e.target.checked)}
-              disabled={!(lineLinked || linked === true || hasLineSession)}
-            />
-            <span className={`${(notifyOptIn && (lineLinked || linked === true || hasLineSession)) ? 'bg-green-400' : 'bg-gray-300'} w-12 h-6 flex items-center rounded-full p-1 transition-colors`}>
-              <span className={`bg-white w-5 h-5 rounded-full shadow transform transition-transform ${(notifyOptIn && (lineLinked || linked === true || hasLineSession)) ? 'translate-x-6' : ''}`}></span>
-            </span>
-          </label>
-        </div>
-        {!(lineLinked || linked === true || hasLineSession) && (
-          <div className="mt-3 text-sm text-orange-600">LINEと連携すると有効化できます。上部のLINE連携セクションから連携してください。</div>
-        )}
-        <div className="mt-4 text-right">
-          <Button onClick={async () => {
-            // LINEセッションを優先して保存（未ログインのケース対策）
-            try {
-              const res = await fetch('/.netlify/functions/profile-notify-optin', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ notifyOptIn })
-              });
-              if (res.ok) {
-                setSuccess('通知設定を保存しました');
-                setTimeout(() => setSuccess(''), 2000);
-              } else {
-                // フォールバック: Supabaseセッションで保存
-                await handleSubmit({ preventDefault: () => {} } as any);
-              }
-            } catch {
-              await handleSubmit({ preventDefault: () => {} } as any);
-            }
-          }} isLoading={isSaving}>
-            <Save className="w-4 h-4 mr-1" /> 保存
-          </Button>
-        </div>
-
-        {/* テスト送信は要望により非表示化 */}
-      </Card>
+      
 
       <Card className="p-6">
         <form onSubmit={handleSubmit}>
@@ -951,85 +897,53 @@ export function ProfileSettings() {
 
         <div className="space-y-4">
           <div className="p-4 bg-white rounded-lg border border-green-200">
-            <h3 className="font-semibold mb-2">LINE通知連携</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              dogparkjp公式LINEと友達になり、アプリ内の通知をLINEで受け取れます。
-              ドッグラン入退場時のPIN発行通知などもLINEで受信できます。
-            </p>
-            <div className="flex items-center gap-2">
-              {linked ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  isLoading={linking}
-                  disabled={linking}
-                  onClick={async () => {
-                    setError(''); setSuccess(''); setLinking(true);
-                    try {
-                      if (!hasLineSession) {
-                        setLinking(false);
-                        window.location.assign('/login?redirect=/profile-settings');
-                        return;
-                      }
-                      const res = await fetch('/line/unlink-user', {
-                        method: 'POST',
-                        credentials: 'include'
-                      });
-                      if (!res.ok) throw new Error(await res.text());
-                      setLinked(false);
-                      setSuccess('LINE連携を解除しました');
-                      setTimeout(() => setSuccess(''), 2500);
-                    } catch (e) {
-                      setError(e instanceof Error ? e.message : '解除に失敗しました');
-                    } finally { setLinking(false); }
-                  }}
-                >
-                  通知連携済み（解除する）
-                </Button>
-              ) : (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  isLoading={linking}
-                  disabled={linking}
-                  onClick={async () => {
-                    setError(''); setSuccess(''); setLinking(true);
-                    try {
-                      const uid = user?.id || lineUser?.app_user_id || lineUser?.id || effectiveUserId;
-                      if (!uid) throw new Error('ログインが必要です');
-                      const res = await fetch('/line/link-user', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ appUserId: uid })
-                      });
-                      if (res.status === 401) {
-                        // LINEセッションが無い場合は LIFF ログインへ誘導し、戻ってきたら再実行してもらう
-                        setLinking(false);
-                        setError('LINEログインの同意が必要です。画面の案内に従って再度お試しください。');
-                        window.location.assign('/login?redirect=/profile-settings');
-                        return;
-                      }
-                      if (!res.ok) throw new Error(await res.text());
-                      setLinked(true);
-                      // MEMO: 多対多リンクでも「連携済み」扱い（複数連携を許容）
-                      setSuccess('LINE通知連携が完了しました');
-                      try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
-                      setTimeout(() => setSuccess(''), 3500);
-                    } catch (e) {
-                      setError(e instanceof Error ? e.message : '連携に失敗しました');
-                    } finally { setLinking(false); }
-                  }}
-                >
-                  LINE通知を連携する
-                </Button>
-              )}
-
-              {linked !== null && (
-                <span className={`text-sm ${linked ? 'text-green-600' : 'text-gray-500'}`}>
-                  {linked ? '連携済み' : '未連携'}
+            <h3 className="font-semibold mb-2">通知設定</h3>
+            <p className="text-sm text-gray-600 mb-3">コミュニティのメッセージやお知らせをLINEに転送します（連携が必要）。</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-medium">LINEで通知を受け取る</div>
+                {(() => {
+                  const isLinked = lineLinked || linked === true || hasLineSession;
+                  return <div className="text-sm text-gray-500">連携状態: {isLinked ? '連携済み' : '未連携'}</div>;
+                })()}
+              </div>
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={notifyOptIn}
+                  onChange={(e) => setNotifyOptIn(e.target.checked)}
+                  disabled={!(lineLinked || linked === true || hasLineSession)}
+                />
+                <span className={`${(notifyOptIn && (lineLinked || linked === true || hasLineSession)) ? 'bg-green-400' : 'bg-gray-300'} w-12 h-6 flex items-center rounded-full p-1 transition-colors`}>
+                  <span className={`bg-white w-5 h-5 rounded-full shadow transform transition-transform ${(notifyOptIn && (lineLinked || linked === true || hasLineSession)) ? 'translate-x-6' : ''}`}></span>
                 </span>
-              )}
+              </label>
+            </div>
+            {!(lineLinked || linked === true || hasLineSession) && (
+              <div className="mt-3 text-sm text-orange-600">LINEと連携すると有効化できます。上部のLINE連携セクションから連携してください。</div>
+            )}
+            <div className="mt-4 text-left">
+              <Button variant="secondary" size="sm" onClick={async () => {
+                try {
+                  const res = await fetch('/.netlify/functions/profile-notify-optin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ notifyOptIn })
+                  });
+                  if (res.ok) {
+                    setSuccess('通知設定を保存しました');
+                    setTimeout(() => setSuccess(''), 2000);
+                  } else {
+                    await handleSubmit({ preventDefault: () => {} } as any);
+                  }
+                } catch {
+                  await handleSubmit({ preventDefault: () => {} } as any);
+                }
+              }} isLoading={isSaving}>
+                <Save className="w-4 h-4 mr-1" /> 保存
+              </Button>
             </div>
           </div>
 
@@ -1181,27 +1095,25 @@ export function ProfileSettings() {
 
           <div className="p-4 bg-white rounded-lg border border-gray-200">
             <h3 className="font-semibold mb-2">2段階認証（2FA）</h3>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {mfaStatus === 'loading' ? (
-                  <div className="flex items-center text-gray-600 text-sm"><Loader className="w-4 h-4 animate-spin mr-2" />状態を確認中...</div>
-                ) : mfaStatus === 'enabled' ? (
-                  <div className="flex items-center text-green-700 text-sm"><Shield className="w-4 h-4 mr-1" />有効</div>
-                ) : (
-                  <div className="flex items-center text-gray-600 text-sm"><Shield className="w-4 h-4 mr-1" />無効</div>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {mfaStatus === 'enabled' ? (
-                  <Button variant="secondary" size="sm" className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400" onClick={() => void handleDisable2FA()}>
-                    無効化する
-                  </Button>
-                ) : (
-                  <Button size="sm" onClick={() => void handleEnable2FA()}>
-                    有効化する
-                  </Button>
-                )}
-              </div>
+            <div className="flex items-center gap-2">
+              {mfaStatus === 'loading' ? (
+                <div className="flex items-center text-gray-600 text-sm"><Loader className="w-4 h-4 animate-spin mr-2" />状態を確認中...</div>
+              ) : mfaStatus === 'enabled' ? (
+                <div className="flex items-center text-green-700 text-sm"><Shield className="w-4 h-4 mr-1" />有効</div>
+              ) : (
+                <div className="flex items-center text-gray-600 text-sm"><Shield className="w-4 h-4 mr-1" />無効</div>
+              )}
+            </div>
+            <div className="mt-3">
+              {mfaStatus === 'enabled' ? (
+                <Button variant="secondary" size="sm" className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400" onClick={() => void handleDisable2FA()}>
+                  無効化する
+                </Button>
+              ) : (
+                <Button variant="secondary" size="sm" onClick={() => void handleEnable2FA()}>
+                  <Shield className="w-4 h-4 mr-1" /> 有効化する
+                </Button>
+              )}
             </div>
             {mfaError && (
               <div className="mt-3 p-3 bg-red-50 rounded text-red-800 text-sm">{mfaError}</div>
@@ -1209,7 +1121,7 @@ export function ProfileSettings() {
           </div>
 
           <div className="p-4 bg-white rounded-lg border border-gray-200">
-            <h3 className="font-semibold mb-2">アカウント削除</h3>
+            <h3 className="font-semibold mb-2">退会申請</h3>
             <p className="text-sm text-gray-600 mb-3">
               アカウントを削除すると、すべてのデータが完全に削除され、復元できなくなります。
             </p>
@@ -1220,7 +1132,7 @@ export function ProfileSettings() {
               onClick={() => setShowDeleteModal(true)}
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              アカウントを削除
+              退会する
             </Button>
           </div>
         </div>
@@ -1334,12 +1246,12 @@ export function ProfileSettings() {
         </div>
       )}
 
-      {/* アカウント削除モーダル */}
+      {/* 退会申請モーダル */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-red-600">アカウント削除</h3>
+              <h3 className="text-xl font-bold text-red-600">退会申請</h3>
               <button
                 onClick={() => {
                   setShowDeleteModal(false);
@@ -1367,7 +1279,7 @@ export function ProfileSettings() {
                 <div>
                   <p className="font-medium text-red-800 mb-1">警告: この操作は取り消せません</p>
                   <p className="text-sm text-red-700">
-                    アカウントを削除すると、以下のデータがすべて完全に削除されます：
+                    退会すると、以下のデータがすべて完全に削除されます：
                   </p>
                   <ul className="text-sm text-red-700 list-disc list-inside mt-2 space-y-1">
                     <li>プロフィール情報</li>
@@ -1413,7 +1325,7 @@ export function ProfileSettings() {
                     className="bg-red-600 hover:bg-red-700"
                     disabled={deleteConfirmation !== 'delete'}
                   >
-                    アカウントを削除
+                    退会する
                   </Button>
                 </div>
               </div>
