@@ -25,6 +25,24 @@ export default function SpotDetail() {
   const [showAdminEdit, setShowAdminEdit] = useState(false);
   const [showReport, setShowReport] = useState(false);
 
+  // 強制的にページ先頭へスクロール（ルート遷移後でも念のため）
+  useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      const main = document.getElementById('main-content');
+      if (main && typeof (main as any).scrollTo === 'function') {
+        (main as any).scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      } else if (main) {
+        (main as any).scrollTop = 0;
+        (main as any).scrollLeft = 0;
+      }
+      const se = (document as any).scrollingElement as HTMLElement | undefined;
+      if (se) { se.scrollTop = 0; se.scrollLeft = 0; }
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    } catch {}
+  }, []);
+
   useEffect(() => {
     (async () => {
       try {
