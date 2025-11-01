@@ -1,6 +1,7 @@
 import { Session, User } from '@supabase/supabase-js';
 import { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import isCapacitorNative from '../utils/isCapacitorNative';
+import { ensureGuestLoginIOS } from '../utils/guestAuth';
 import { SessionUser, fetchSessionUser } from '../utils/sessionClient';
 import { supabase } from '../utils/supabase';
 
@@ -147,7 +148,23 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         } catch {}
 
-        // 3) どちらもなければ未ログイン
+        // 3) どちらもなければ（iOSネイティブ時のみ）ゲスト自動ログインを試みる
+        try {
+          const ok = await ensureGuestLoginIOS();
+          if (ok) {
+            const { data: { user: u } } = await supabase.auth.getUser();
+            if (u && isMounted) {
+              setUser(u);
+              setIsAuthenticated(true);
+              setEffectiveUserId(u.id);
+              setIsAdmin(u.email === 'capasjapan@gmail.com');
+              setLoading(false);
+              return;
+            }
+          }
+        } catch {}
+
+        // 4) それでも未ログインなら未認証状態
         if (isMounted) {
           setSession(null);
           setUser(null);
