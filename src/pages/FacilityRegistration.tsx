@@ -129,27 +129,27 @@ export default function FacilityRegistration() {
       let latitude = selectedLat ?? null;
       let longitude = selectedLng ?? null;
       if (latitude === null || longitude === null) {
-        if (geocodeResult) {
-          latitude = geocodeResult.latitude;
-          longitude = geocodeResult.longitude;
-          console.log(`✅ ジオコーディング成功: ${latitude}, ${longitude}`);
-        } else {
-          console.warn('⚠️ ジオコーディングに失敗しました。住所のみで登録を続行します。');
+      if (geocodeResult) {
+        latitude = geocodeResult.latitude;
+        longitude = geocodeResult.longitude;
+        console.log(`✅ ジオコーディング成功: ${latitude}, ${longitude}`);
+      } else {
+        console.warn('⚠️ ジオコーディングに失敗しました。住所のみで登録を続行します。');
         }
       }
 
       // 施設情報を登録（段階的フォールバック付き）
       const selectedCategoryName = (FACILITY_CATEGORIES.find(c => c.id === formData.category_id)?.name) || formData.category_id;
       const basePayload: any = {
-        name: formData.name,
+          name: formData.name,
         // まずは新スキーマの category_id を使用
-        category_id: formData.category_id,
-        address: formData.address,
-        latitude: latitude,
-        longitude: longitude,
-        phone: formData.phone || null,
-        website: formData.website || null,
-        description: formData.description || null,
+          category_id: formData.category_id,
+          address: formData.address,
+          latitude: latitude,
+          longitude: longitude,
+          phone: formData.phone || null,
+          website: formData.website || null,
+          description: formData.description || null,
         owner_id: isUserSubmission ? null : user.id,
         status: 'pending',
         is_public: true
@@ -165,8 +165,8 @@ export default function FacilityRegistration() {
         return await supabase
           .from('pet_facilities')
           .insert(payload)
-          .select()
-          .single();
+        .select()
+        .single();
       };
 
       let facilityData: any | null = null;
@@ -226,7 +226,7 @@ export default function FacilityRegistration() {
       const successMsg = isUserSubmission
         ? '一般投稿として仮掲載されました。オーナーが管理すると公式表示になります。'
         : (geocodeResult 
-            ? '施設の申請が正常に送信されました。地図上での正確な位置も設定されています。承認をお待ちください。'
+        ? '施設の申請が正常に送信されました。地図上での正確な位置も設定されています。承認をお待ちください。'
             : '施設の申請が正常に送信されました。（位置情報は後ほど設定されます）承認をお待ちください。');
       
       setSuccessMessage(successMsg);
@@ -266,7 +266,7 @@ export default function FacilityRegistration() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 pt-6 md:pt-8">
+    <div className="max-w-6xl mx-auto p-6 pt-6 md:pt-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">ペット関連施設登録</h1>
         <p className="text-gray-600">
@@ -401,18 +401,18 @@ export default function FacilityRegistration() {
                 </div>
               ) : (
                 <>
-                  <div>
+              <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">電話番号</label>
                     <Input name="phone" value={formData.phone} onChange={handleInputChange} placeholder="電話番号を入力してください" />
-                  </div>
-                  <div>
+              </div>
+              <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">ウェブサイト</label>
                     <Input name="website" value={formData.website} onChange={handleInputChange} placeholder="https://example.com" />
-                  </div>
-                  <div>
+              </div>
+              <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">施設説明</label>
                     <textarea name="description" value={formData.description} onChange={handleInputChange} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="施設の特徴やサービス内容を説明してください" />
-                  </div>
+              </div>
                 </>
               )}
             </div>

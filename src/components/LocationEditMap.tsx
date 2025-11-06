@@ -425,7 +425,7 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
       </div>
 
       {/* 地図表示 */}
-      <div className="relative">
+      <div className="relative -mx-3 sm:-mx-6">
         <div
           ref={mapRef}
           className="w-full h-[420px] rounded-lg border border-gray-300"
