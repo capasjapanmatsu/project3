@@ -137,10 +137,7 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
       setError('タイトルは必須です');
       return;
     }
-    if (!files.some(Boolean)) {
-      setError('最初に1枚以上の画像を選択してください');
-      return;
-    }
+    // 画像は任意（0枚でも可）
     if (dogAllowed && !category && categories.length === 0) {
       setError('タグを1つ以上選択してください');
       return;
@@ -310,7 +307,7 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
           {/* 緯度経度入力は地図指定に移行（必要に応じてデバッグ用で再導入可） */}
 
           <div>
-            <label className="block text-sm font-medium mb-1 flex items-center"><Upload className="w-4 h-4 mr-2"/>画像（1〜3枚）</label>
+            <label className="block text-sm font-medium mb-1 flex items-center"><Upload className="w-4 h-4 mr-2"/>画像（任意・最大3枚）</label>
             <div className="space-y-2">
               {[0,1,2].map((idx) => (
                 <div key={idx} className="flex items-center gap-2">
