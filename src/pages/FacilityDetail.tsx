@@ -7,6 +7,7 @@ import {
     Clock,
     ExternalLink,
     Gift,
+    Medal,
     MapPin,
     MessageSquare,
     Phone,
@@ -97,6 +98,7 @@ export function FacilityDetail() {
   const [obtainingCouponId, setObtainingCouponId] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [canContactOwner, setCanContactOwner] = useState(false);
+  const [isOfficial, setIsOfficial] = useState(false);
   
   // レビュー機能のstate
   const [reviews, setReviews] = useState<FacilityReview[]>([]);
@@ -238,6 +240,7 @@ export function FacilityDetail() {
             || (facilityResult.data as any)?.premium_status === 'active';
         }
         setCanContactOwner(Boolean(ownerId) && premiumActive);
+        setIsOfficial(premiumActive);
       } catch {}
       
       // レビューデータの取得（エラーを無視、シンプルなクエリ）
@@ -675,6 +678,16 @@ export function FacilityDetail() {
                     <Building className="w-4 h-4 mr-2" />
                     {CATEGORY_LABELS[facility.category_info?.name || ''] || facility.category_info?.name || 'ペット関連施設'}
                   </div>
+                  {(isOfficial || (facility as any).official_badge) && (
+                    <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-200">
+                      <Medal className="w-4 h-4 mr-1"/>公式
+                    </div>
+                  )}
+                  {isOfficial && facility.coupons && facility.coupons.length > 0 && (
+                    <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-pink-100 text-pink-700 border border-pink-200">
+                      <Gift className="w-4 h-4 mr-1"/>クーポンあり
+                    </div>
+                  )}
                 </div>
 
                 {/* 施設名とアドレス */}
@@ -689,7 +702,7 @@ export function FacilityDetail() {
                       <MapPin className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
                       <span className="text-lg">{facility.address}</span>
                     </div>
-                    {facility && (facility as any).official_badge && (
+                    {facility && ((facility as any).official_badge || isOfficial) && (
                       <span className="inline-flex items-center text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">公式</span>
                     )}
                     <Button 
@@ -791,7 +804,8 @@ export function FacilityDetail() {
                   </div>
                 )}
 
-                {/* 営業時間・定休日 */}
+                {/* 営業時間・定休日（プレミアムのみ） */}
+                {isOfficial && (
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                     <Clock className="w-5 h-5 text-blue-500 mr-2" />
@@ -824,11 +838,14 @@ export function FacilityDetail() {
                     )}
                   </div>
                 </div>
+                )}
 
-                {/* 営業時間の直下に予約ボタン */}
-                <div className="mt-4">
-                  <ReserveEntryInline facilityId={facilityId!} />
-                </div>
+                {/* 営業時間の直下に予約ボタン（プレミアムのみ） */}
+                {isOfficial && (
+                  <div className="mt-4">
+                    <ReserveEntryInline facilityId={facilityId!} />
+                  </div>
+                )}
 
                 {/* アクセス */}
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
@@ -976,7 +993,7 @@ export function FacilityDetail() {
         {/* コンテンツエリア */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* クーポンセクション */}
-          {facility.coupons && facility.coupons.length > 0 && (
+          {isOfficial && facility.coupons && facility.coupons.length > 0 && (
             <div className="mb-12">
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold text-gray-900 mb-4">
@@ -1146,7 +1163,7 @@ export function FacilityDetail() {
           )}
 
           {/* レビューセクション */}
-          {true && (
+          {isOfficial && (
           <div className="mb-12">
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">
