@@ -428,8 +428,8 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
       <div className="relative">
         <div
           ref={mapRef}
-          className="w-full h-80 rounded-lg border border-gray-300"
-          style={{ minHeight: '320px' }}
+          className="w-full h-[420px] rounded-lg border border-gray-300"
+          style={{ minHeight: '420px' }}
         />
         {isLoading && (
           <div className="absolute inset-0 bg-gray-100 rounded-lg flex items-center justify-center">
