@@ -122,6 +122,20 @@ export default function SpotDetail() {
                 </a>
               )}
             </div>
+            {/* タグ表示（住所の下） */}
+            {(() => {
+              const arr = Array.isArray(spot?.categories) && (spot.categories as any[]).length > 0
+                ? (spot.categories as any[])
+                : (spot?.category ? [spot.category] : []);
+              if (!arr || arr.length === 0) return null;
+              return (
+                <div className="mt-1 text-sm text-gray-600 flex flex-wrap gap-2">
+                  {arr.map((t: any, i: number) => (
+                    <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200 text-xs">{String(t)}</span>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
 
           {/* swipeable gallery (basic horizontal scroll) */}
