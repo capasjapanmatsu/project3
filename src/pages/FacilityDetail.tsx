@@ -744,14 +744,16 @@ export function FacilityDetail() {
                   </div>
                 )}
 
-                {/* オーナー未設定 or 一般投稿: オーナー登録CTA */}
-                {facility && ((((facility as any).is_user_submitted) || !(facility as any).owner_id || isAdmin)) && (
+                {/* オーナー登録CTA（誰でも常に表示） */}
+                {facility && (
                   <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 shadow-sm">
                     <div className="flex items-center justify-between">
                       <div className="text-yellow-800 text-sm">
                         {(facility as any).is_user_submitted
                           ? 'この施設は一般ユーザーの投稿です（未確認）。オーナーが管理すると公式表示になります。'
-                          : 'この施設はまだオーナー登録されていません。オーナー登録で公式表示＆各機能が利用できます。'}
+                          : ((facility as any).owner_id
+                              ? 'オーナーの方は、こちらから権限申請・プレミアム登録が可能です。'
+                              : 'この施設はまだオーナー登録されていません。オーナー登録で公式表示＆各機能が利用できます。')}
                       </div>
                     </div>
                     {/* オーナー登録誘導 */}
