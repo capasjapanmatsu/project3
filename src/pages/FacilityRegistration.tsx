@@ -313,6 +313,22 @@ export default function FacilityRegistration() {
                 setSelectedLng(lng);
                 if (addr && addr !== formData.address) {
                   setFormData(prev => ({ ...prev, address: addr }));
+                } else {
+                  // 住所が未提供の場合のフォールバック（REST Geocoding）
+                  const key = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY_MOBILE || import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
+                  if (key) {
+                    void (async () => {
+                      try {
+                        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&language=ja&region=JP&key=${key}`;
+                        const res = await fetch(url, { credentials: 'omit' });
+                        const json = await res.json();
+                        const formatted = json?.status === 'OK' ? (json.results?.[0]?.formatted_address as string | undefined) : undefined;
+                        if (formatted) {
+                          setFormData(prev => ({ ...prev, address: formatted }));
+                        }
+                      } catch {}
+                    })();
+                  }
                 }
               }}
             />
@@ -337,7 +353,6 @@ export default function FacilityRegistration() {
                   施設名 <span className="text-red-500">*</span>
                 </label>
                 <Input
-                  label="施設名"
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
@@ -371,7 +386,6 @@ export default function FacilityRegistration() {
                   住所 <span className="text-red-500">*</span>
                 </label>
                 <Input
-                  label="住所"
                   name="address"
                   value={formData.address}
                   onChange={handleInputChange}
@@ -389,11 +403,11 @@ export default function FacilityRegistration() {
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">電話番号</label>
-                    <Input label="電話番号" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="電話番号を入力してください" />
+                    <Input name="phone" value={formData.phone} onChange={handleInputChange} placeholder="電話番号を入力してください" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">ウェブサイト</label>
-                    <Input label="ウェブサイト" name="website" value={formData.website} onChange={handleInputChange} placeholder="https://example.com" />
+                    <Input name="website" value={formData.website} onChange={handleInputChange} placeholder="https://example.com" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">施設説明</label>
