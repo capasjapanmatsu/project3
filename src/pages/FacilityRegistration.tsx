@@ -47,12 +47,7 @@ export default function FacilityRegistration() {
   const [error, setError] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string>('');
   
-  // ユーザー情報（自動取得・編集可能）
-  const [userInfo, setUserInfo] = useState({
-    name: '',
-    address: '',
-    isEditing: false
-  });
+  // ユーザー情報の収集UIは廃止（登録者情報確認のカードを削除）
 
   const [formData, setFormData] = useState<FacilityForm>({
     name: '',
@@ -101,182 +96,14 @@ export default function FacilityRegistration() {
     } catch {}
   }, [location.search]);
 
-  // userProfileが変更された時にuserInfoを自動設定
-  useEffect(() => {
-    console.log('📋 ユーザープロファイル確認:', userProfile);
-    console.log('👤 認証ユーザー確認:', user);
-    
-    const fetchUserProfile = async () => {
-      if (userProfile) {
-        // userProfileの全プロパティをログ出力
-        console.log('👤 利用可能なプロフィールフィールド:', Object.keys(userProfile));
-        
-        const userName = userProfile.name || userProfile.display_name || userProfile.full_name || '';
-        const userAddress = userProfile.address || userProfile.location || userProfile.postal_address || '';
-        
-        console.log('✅ プロファイルから取得した情報:', {
-          name: userName,
-          address: userAddress,
-          originalProfile: userProfile
-        });
-        
-        setUserInfo({
-          name: userName,
-          address: userAddress,
-          isEditing: false
-        });
-      } else if (user) {
-        console.log('🔄 userProfileがnullのため、Supabaseから直接取得を試行');
-        
-        try {
-          // Supabaseから直接プロフィール情報を取得
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-          
-          console.log('📋 Supabaseから取得したプロフィール:', { profile, error });
-          
-          if (profile && !error) {
-            const userName = profile.name || profile.display_name || profile.full_name || '';
-            const userAddress = profile.address || profile.location || profile.postal_address || '';
-            
-            console.log('✅ Supabaseから取得した情報:', {
-              name: userName,
-              address: userAddress,
-              profileData: profile
-            });
-            
-            setUserInfo({
-              name: userName,
-              address: userAddress,
-              isEditing: !userName || !userAddress
-            });
-          } else {
-            // Supabaseにプロフィールがない場合、user_metadataを確認
-            console.log('📧 認証ユーザーから情報取得:', {
-              email: user.email,
-              user_metadata: user.user_metadata,
-              app_metadata: user.app_metadata
-            });
-            
-            const userMetadata = user.user_metadata || {};
-            console.log('🔍 user_metadata詳細分析:', {
-              全キー: Object.keys(userMetadata),
-              全データ: userMetadata,
-              name候補: {
-                name: userMetadata.name,
-                full_name: userMetadata.full_name,
-                display_name: userMetadata.display_name,
-                given_name: userMetadata.given_name,
-                family_name: userMetadata.family_name,
-                nickname: userMetadata.nickname
-              },
-              address候補: {
-                address: userMetadata.address,
-                location: userMetadata.location,
-                postal_address: userMetadata.postal_address,
-                street_address: userMetadata.street_address,
-                formatted_address: userMetadata.formatted_address
-              }
-            });
-            
-            // より多くのフィールドから名前を取得
-            const userName = userMetadata.name || 
-                            userMetadata.full_name || 
-                            userMetadata.display_name || 
-                            userMetadata.given_name ||
-                            userMetadata.nickname ||
-                            (userMetadata.given_name && userMetadata.family_name ? 
-                              `${userMetadata.family_name} ${userMetadata.given_name}` : '') ||
-                            '';
-                            
-            // より多くのフィールドから住所を取得
-            const userAddress = userMetadata.address || 
-                               userMetadata.location || 
-                               userMetadata.postal_address ||
-                               userMetadata.street_address ||
-                               userMetadata.formatted_address ||
-                               '';
-            
-            console.log('✅ 認証ユーザーから取得した情報:', {
-              name: userName,
-              address: userAddress,
-              emailFallback: user.email // 最終手段としてemailを表示
-            });
-            
-            setUserInfo({
-              name: userName,
-              address: userAddress,
-              isEditing: !userName || !userAddress // 情報が不完全な場合は編集モードにする
-            });
-          }
-        } catch (error) {
-          console.error('❌ プロフィール取得エラー:', error);
-          setUserInfo({
-            name: '',
-            address: '',
-            isEditing: true
-          });
-        }
-      } else {
-        console.log('❌ userProfileと認証ユーザーが未定義');
-        // デフォルト値を設定（手動入力可能）
-        setUserInfo({
-          name: '',
-          address: '',
-          isEditing: true // 自動入力できない場合は編集モードにする
-        });
-      }
-    };
-    
-    fetchUserProfile();
-  }, [userProfile, user]);
+  // 登録者情報確認のUIは削除したため、関連処理は行いません
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // ユーザー情報の編集ハンドラー
-  const handleUserInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setUserInfo(prev => ({ ...prev, [name]: value }));
-  };
-
-  // ユーザー情報の保存
-  const saveUserInfo = async () => {
-    if (!user) return;
-
-    try {
-      setIsLoading(true);
-      
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          name: userInfo.name,
-          address: userInfo.address
-        })
-        .eq('id', user.id);
-
-      if (error) throw error;
-
-      setUserInfo(prev => ({ ...prev, isEditing: false }));
-      setSuccessMessage('ユーザー情報を更新しました');
-    } catch (err) {
-      console.error('Error updating user info:', err);
-      setError('ユーザー情報の更新に失敗しました');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 編集キャンセルハンドラー  
-  const cancelUserInfoEdit = () => {
-    // 元の値に戻す（ここでは簡単に編集モードを終了）
-    setUserInfo(prev => ({ ...prev, isEditing: false }));
-  };
+  // （削除）ユーザー情報編集関連のハンドラーは不要
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -637,102 +464,7 @@ export default function FacilityRegistration() {
           />
         )}
 
-        {/* ユーザー情報セクション */}
-        {(isUserSubmission || premium.state === 'active') && (
-        <Card>
-          <div className="p-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
-              <CheckCircle className="w-6 h-6 mr-2" />
-              登録者情報の確認
-            </h2>
-            
-            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-start">
-                <AlertCircle className="w-5 h-5 text-blue-500 mr-2 mt-0.5" />
-                <div className="text-sm text-blue-800">
-                  <p className="font-medium mb-1">登録者情報の確認</p>
-                  <p className="text-xs mb-2">
-                    アカウント情報から自動取得されました。変更が必要な場合は編集できます。
-                  </p>
-                  <p className="text-xs font-medium text-blue-600">
-                    ⚠️ この情報は公開されません
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  氏名
-                </label>
-                {userInfo.isEditing ? (
-                  <Input
-                    label=""
-                    name="name"
-                    value={userInfo.name}
-                    onChange={handleUserInfoChange}
-                    placeholder="氏名を入力してください"
-                    required
-                  />
-                ) : (
-                  <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md">
-                    <p className="text-gray-900">{userInfo.name || '未設定'}</p>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  住所
-                </label>
-                {userInfo.isEditing ? (
-                  <Input
-                    name="address"
-                    value={userInfo.address}
-                    onChange={handleUserInfoChange}
-                    placeholder="住所を入力してください"
-                  />
-                ) : (
-                  <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md">
-                    <p className="text-gray-900">{userInfo.address || '未設定'}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-end mt-4">
-              {userInfo.isEditing ? (
-                <div className="space-x-2">
-                  <Button
-                    type="button"
-                    onClick={() => void saveUserInfo()}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? '保存中...' : '保存'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={cancelUserInfoEdit}
-                    disabled={isLoading}
-                  >
-                    キャンセル
-                  </Button>
-                </div>
-              ) : (
-                <Button 
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setUserInfo(prev => ({ ...prev, isEditing: true }))}
-                >
-                  編集
-                </Button>
-              )}
-            </div>
-          </div>
-        </Card>
-        )}
+        {/* 登録者情報確認カードは削除 */}
 
         {/* 申請ボタン（オーナー無料登録も可能） */}
         <div className="flex justify-end">
