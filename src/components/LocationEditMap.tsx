@@ -388,7 +388,7 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
         <label className="block text-sm font-medium text-gray-700 mb-2">
           住所で検索
         </label>
-        <div className="flex space-x-2">
+        <div className="flex items-stretch gap-2">
           <Input
             value={address}
             onChange={(e) => setAddress(e.target.value)}
@@ -396,49 +396,41 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
             placeholder="住所を入力してください"
             className="flex-1"
           />
-          <Button
+          {/* 検索ボタン（正方形） */}
+          <button
             type="button"
-            onClick={handleAddressSearch}
+            onClick={() => void handleAddressSearch()}
             disabled={isGeocoding || !address.trim()}
-            className="px-4"
+            className={`w-12 h-12 rounded-md bg-blue-600 text-white flex items-center justify-center disabled:opacity-60`}
+            aria-label="検索"
           >
             {isGeocoding ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
-              <Search className="w-4 h-4" />
+              <Search className="w-5 h-5" />
             )}
-          </Button>
+          </button>
+          {/* 現在地ボタン（正方形/アイコン上・テキスト下） */}
+          <button
+            type="button"
+            onClick={() => void handleLocateMe()}
+            disabled={isLocating}
+            className="w-12 h-12 rounded-md border border-gray-300 bg-white text-gray-700 flex flex-col items-center justify-center text-[10px] leading-none disabled:opacity-60"
+            aria-label="現在地"
+          >
+            <Navigation className="w-4 h-4 mb-0.5" />
+            {isLocating ? '取得中' : '現在地'}
+          </button>
         </div>
       </div>
 
       {/* 地図表示 */}
       <div className="relative">
-        <div className="absolute -top-10 right-0">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={handleLocateMe}
-            disabled={isLocating}
-            className="text-xs"
-          >
-            <Navigation className="w-3 h-3 mr-1" />
-            {isLocating ? '取得中...' : '現在地'}
-          </Button>
-        </div>
         <div
           ref={mapRef}
           className="w-full h-80 rounded-lg border border-gray-300"
           style={{ minHeight: '320px' }}
         />
-        {/* 現在地ボタン */}
-        <button
-          type="button"
-          onClick={handleLocateMe}
-          className="absolute bottom-3 right-3 bg-white shadow rounded-full p-2 border border-gray-200 hover:bg-gray-50"
-          aria-label="現在地"
-        >
-          <MapPin className="w-5 h-5 text-gray-700" />
-        </button>
         {isLoading && (
           <div className="absolute inset-0 bg-gray-100 rounded-lg flex items-center justify-center">
             <div className="text-center">
@@ -449,18 +441,7 @@ export const LocationEditMap: React.FC<LocationEditMapProps> = ({
         )}
       </div>
 
-      {/* 座標表示 */}
-      <div className="bg-gray-50 rounded-lg p-3">
-        <div className="flex items-center justify-between text-sm">
-          <span className="font-medium text-gray-700">現在の座標:</span>
-          <span className="text-gray-600">
-            {latitude.toFixed(6)}, {longitude.toFixed(6)}
-          </span>
-        </div>
-        <p className="text-xs text-gray-500 mt-1">
-          ※ 赤いマーカーをドラッグして位置を調整できます
-        </p>
-      </div>
+      {/* 座標の重複表示を避けるため、下部の現在位置表示は削除 */}
     </div>
   );
 }; 

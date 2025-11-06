@@ -270,7 +270,7 @@ export default function FacilityRegistration() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">ペット関連施設登録</h1>
         <p className="text-gray-600">
-          ペット関連施設の掲載申請を行います。管理者の承認後、地図に表示されます。
+          あなたが知ってるワンちゃん同伴可能なお店などを投稿しましょう
         </p>
       </div>
 
@@ -295,19 +295,7 @@ export default function FacilityRegistration() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* 投稿モード選択 */}
-        <Card>
-          <div className="p-6">
-            <h2 className="text-xl font-semibold mb-4">投稿モード</h2>
-            <div className="space-y-2 text-sm text-gray-700">
-              <label className="flex items-center gap-2">
-                <input type="radio" name="submission_mode" checked readOnly />
-                一般投稿（仮掲載、画像は1枚まで）
-              </label>
-              <p className="text-xs text-gray-500 mt-1">一般投稿は未確認マークで表示され、オーナーが管理すると公式表示になります。</p>
-            </div>
-          </div>
-        </Card>
+        {/* 投稿モードのカードは削除 */}
         {/* 位置の指定（あいまい検索 + 地図で決定） */}
         {(isUserSubmission || premium.state === 'active') && (
         <Card>
