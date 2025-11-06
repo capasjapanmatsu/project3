@@ -18,6 +18,7 @@ export default function SpotAdminEditModal({ spot, onClose, onSaved, onDeleted }
   const [lat, setLat] = useState<number | null>(spot?.latitude ?? null);
   const [lng, setLng] = useState<number | null>(spot?.longitude ?? null);
   const [dogAllowed, setDogAllowed] = useState<boolean>(spot?.dog_allowed !== false);
+  const [categories, setCategories] = useState<string[]>(Array.isArray(spot?.categories) ? spot.categories as string[] : (spot?.category ? [spot.category] : []));
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -59,15 +60,31 @@ export default function SpotAdminEditModal({ spot, onClose, onSaved, onDeleted }
   const save = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase.from('spots').update({
+      // まずは categories を更新（列がない環境ではフォールバック）
+      const updateCommon = {
         title: title.trim(),
         description: description.trim() || null,
         address: address || null,
         latitude: lat,
         longitude: lng,
         dog_allowed: dogAllowed,
-      }).eq('id', spot.id);
-      if (error) throw error;
+      } as Record<string, any>;
+
+      let upErr: any = null;
+      {
+        const { error } = await supabase.from('spots').update({ ...updateCommon, categories }).eq('id', spot.id);
+        upErr = error;
+      }
+      if (upErr) {
+        const msg = String(upErr?.message || upErr?.details || '');
+        if (/categories/.test(msg)) {
+          const payloadFallback = { ...updateCommon, category: (categories[0] || null) };
+          const { error: e2 } = await supabase.from('spots').update(payloadFallback).eq('id', spot.id);
+          if (e2) throw e2;
+        } else {
+          throw upErr;
+        }
+      }
       onSaved();
       onClose();
     } catch (e) {
@@ -113,6 +130,19 @@ export default function SpotAdminEditModal({ spot, onClose, onSaved, onDeleted }
               <label className="inline-flex items-center gap-2">
                 <input type="radio" name="dog_allowed_admin" checked={!dogAllowed} onChange={()=>setDogAllowed(false)} /> 不可
               </label>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">タグ（複数可）</label>
+            <div className="flex flex-wrap gap-2">
+              {['海辺','高台','夕日','公園','寺社','公共施設','川沿い/湖畔','展望台','花畑','桜','紅葉','散歩道','オブジェ'].map((c)=>(
+                <button
+                  type="button"
+                  key={c}
+                  onClick={()=>setCategories(prev=>prev.includes(c)?prev.filter(x=>x!==c):[...prev,c])}
+                  className={`px-3 py-1 rounded-full border text-sm ${categories.includes(c)?'bg-blue-600 text-white border-blue-600':'bg-white text-gray-700 border-gray-300'}`}
+                >{c}</button>
+              ))}
             </div>
           </div>
           <div>
