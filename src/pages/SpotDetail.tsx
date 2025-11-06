@@ -1,5 +1,4 @@
-import { AlertTriangle, Edit3, ExternalLink, Flag, ImageIcon, MapPin } from 'lucide-react';
-import { PARK_PLACEHOLDER_SVG } from '../utils/placeholders';
+import { AlertTriangle, Edit3, ExternalLink, Flag, MapPin } from 'lucide-react';
 import { useEffect as ReactUseEffect, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Button from '../components/Button';
@@ -9,6 +8,7 @@ import SpotAdminEditModal from '../components/spots/SpotAdminEditModal';
 import SpotReportModal from '../components/spots/SpotReportModal';
 import useAuth from '../context/AuthContext';
 import isCapacitorNative from '../utils/isCapacitorNative';
+import { PARK_PLACEHOLDER_SVG } from '../utils/placeholders';
 import { supabase } from '../utils/supabase';
 
 export default function SpotDetail() {
@@ -25,6 +25,12 @@ export default function SpotDetail() {
   const [displayAddress, setDisplayAddress] = useState('');
   const [showAdminEdit, setShowAdminEdit] = useState(false);
   const [showReport, setShowReport] = useState(false);
+
+  // 住所から先頭の「日本」「日本、」「日本,」を除去
+  const sanitizeJaAddress = (s?: string): string => {
+    if (!s) return '';
+    return s.replace(/^\s*日本[、,]?\s*/,'').trim();
+  };
 
   // 強制的にページ先頭へスクロール（ルート遷移後でも念のため）
   useEffect(() => {
@@ -69,7 +75,7 @@ export default function SpotDetail() {
       const geocoder = new win.google.maps.Geocoder();
       geocoder.geocode({ location: { lat: spot.latitude, lng: spot.longitude }, region: 'JP' }, (results: any, status: any) => {
         if (status === 'OK' && results && results[0]) {
-          setDisplayAddress(results[0].formatted_address || '');
+          setDisplayAddress(sanitizeJaAddress(results[0].formatted_address || ''));
         }
       });
     } catch {}
@@ -89,7 +95,7 @@ export default function SpotDetail() {
         const res = await fetch(url, { credentials: 'omit' });
         const json = await res.json();
         if (json?.status === 'OK' && json.results?.[0]?.formatted_address) {
-          setDisplayAddress(json.results[0].formatted_address as string);
+          setDisplayAddress(sanitizeJaAddress(json.results[0].formatted_address as string));
         }
       } catch {}
     };
@@ -110,7 +116,11 @@ export default function SpotDetail() {
             <div className="text-sm text-blue-600 mb-1">{spot.category || '未分類'}</div>
             <h1 className="text-2xl font-bold">{spot.title}</h1>
             <div className="text-sm text-gray-600 mt-1 flex items-center flex-wrap gap-2">
-              <span className="inline-flex items-center"><MapPin className="w-4 h-4 mr-1"/>{displayAddress || spot.address || `${spot.latitude?.toFixed(5)}, ${spot.longitude?.toFixed(5)}`}</span>
+              {(() => {
+                const raw = displayAddress || spot.address;
+                const shown = raw ? sanitizeJaAddress(raw) : `${spot.latitude?.toFixed(5)}, ${spot.longitude?.toFixed(5)}`;
+                return <span className="inline-flex items-center"><MapPin className="w-4 h-4 mr-1"/>{shown}</span>;
+              })()}
               {spot.latitude && spot.longitude && (
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${spot.latitude},${spot.longitude}`)}&hl=ja`}

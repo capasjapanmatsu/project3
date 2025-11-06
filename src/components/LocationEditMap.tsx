@@ -1,6 +1,5 @@
 import { MapPin, Navigation, Search } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import Button from './Button';
 import { useGoogleMaps } from './GoogleMapsProvider';
 import Input from './Input';
 
