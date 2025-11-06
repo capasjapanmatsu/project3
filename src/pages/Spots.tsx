@@ -44,11 +44,24 @@ export default function Spots() {
   const [showCategories, setShowCategories] = useState(false);
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
 
+  // 複合表示ラベルを実タグへエイリアス
+  const resolveAliases = (c: string | null): string[] => {
+    if (!c) return [];
+    const map: Record<string, string[]> = {
+      '桜/紅葉': ['桜', '紅葉', '桜/紅葉'],
+      '高台/夕日': ['高台', '夕日', '高台/夕日'],
+      '川沿い/湖畔': ['川沿い', '湖畔', '川沿い/湖畔'],
+    };
+    return map[c] || [c];
+  };
+
   const filteredSpots = useMemo(() => {
     if (!category) return spots;
+    const aliases = resolveAliases(category);
     return spots.filter((s: any) => {
       const cats: string[] = (s.categories as any) || [];
-      return (s.category || '') === category || cats.includes(category);
+      const legacy = (s.category || '') as string;
+      return (aliases.includes(legacy)) || cats.some((t) => aliases.includes(t));
     });
   }, [spots, category]);
 
