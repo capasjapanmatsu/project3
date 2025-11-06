@@ -21,6 +21,7 @@ export default function SpotAdminEditModal({ spot, onClose, onSaved, onDeleted }
   const [categories, setCategories] = useState<string[]>(Array.isArray(spot?.categories) ? spot.categories as string[] : (spot?.category ? [spot.category] : []));
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const mapRef = useRef<HTMLDivElement | null>(null);
   const markerRef = useRef<any>(null);
   const mapObjRef = useRef<any>(null);
@@ -60,6 +61,7 @@ export default function SpotAdminEditModal({ spot, onClose, onSaved, onDeleted }
   const save = async () => {
     setSaving(true);
     try {
+      setErrorMsg('');
       // まずは categories を更新（列がない環境ではフォールバック）
       const updateCommon = {
         title: title.trim(),
@@ -70,25 +72,28 @@ export default function SpotAdminEditModal({ spot, onClose, onSaved, onDeleted }
         dog_allowed: dogAllowed,
       } as Record<string, any>;
 
-      let upErr: any = null;
-      {
-        const { error } = await supabase.from('spots').update({ ...updateCommon, categories }).eq('id', spot.id);
-        upErr = error;
-      }
-      if (upErr) {
-        const msg = String(upErr?.message || upErr?.details || '');
+      // 1st trial: update with categories[] & dog_allowed
+      let { error: err1 } = await supabase.from('spots').update({ ...updateCommon, categories }).eq('id', spot.id);
+      if (err1) {
+        // Build fallback payload progressively
+        const msg = String(err1.message || err1.details || '');
+        const payload: Record<string, any> = { ...updateCommon };
         if (/categories/.test(msg)) {
-          const payloadFallback = { ...updateCommon, category: (categories[0] || null) };
-          const { error: e2 } = await supabase.from('spots').update(payloadFallback).eq('id', spot.id);
-          if (e2) throw e2;
+          payload.category = (categories[0] || null);
         } else {
-          throw upErr;
+          payload.categories = categories;
         }
+        if (/dog_allowed/.test(msg)) {
+          delete payload.dog_allowed;
+        }
+        const { error: err2 } = await supabase.from('spots').update(payload).eq('id', spot.id);
+        if (err2) throw err2;
       }
       onSaved();
       onClose();
     } catch (e) {
       console.error(e);
+      setErrorMsg((e as any)?.message || '保存に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -117,6 +122,7 @@ export default function SpotAdminEditModal({ spot, onClose, onSaved, onDeleted }
           <button onClick={onClose}><X className="w-5 h-5"/></button>
         </div>
         <div className="p-4 space-y-4 overflow-y-auto">
+          {errorMsg && <div className="p-3 bg-red-100 text-red-700 rounded text-sm">{errorMsg}</div>}
           <div>
             <label className="block text-sm font-medium mb-1">タイトル</label>
             <input value={title} onChange={(e)=>setTitle(e.target.value)} className="w-full border rounded px-3 py-2"/>
