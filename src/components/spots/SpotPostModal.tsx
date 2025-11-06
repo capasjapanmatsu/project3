@@ -16,6 +16,7 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<string>('');
   const [categories, setCategories] = useState<string[]>([]);
+  const [dogAllowed, setDogAllowed] = useState<boolean>(true);
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [mapObj, setMapObj] = useState<any>(null);
@@ -26,6 +27,51 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // 住所検索（入力から座標へ）
+  const handleAddressSearchClick = async () => {
+    if (!address.trim()) return;
+    try {
+      const win: any = window;
+      // 1) Geocoder（地域バイアス: 日本）
+      if (win.google?.maps) {
+        const geocoder = new win.google.maps.Geocoder();
+        geocoder.geocode({ address, region: 'JP' }, (results: any, status: any) => {
+          if (status === 'OK' && results && results[0]) {
+            const loc = results[0].geometry.location;
+            const latlng = { lat: loc.lat(), lng: loc.lng() };
+            setLat(latlng.lat); setLng(latlng.lng);
+            if (mapObj) { (mapObj as any).setCenter(latlng); (mapObj as any).setZoom(15); }
+            const formatted = results[0].formatted_address || '';
+            setAddress(formatted);
+          } else {
+            // 2) Fallback: Places Autocomplete → Place Details
+            if (win.google?.maps?.places) {
+              const auto = new win.google.maps.places.AutocompleteService();
+              auto.getPlacePredictions({ input: address, componentRestrictions: { country: 'jp' } }, (preds: any, pStatus: any) => {
+                if (pStatus === 'OK' && preds && preds[0]) {
+                  const placeId = preds[0].place_id;
+                  const svc = new win.google.maps.places.PlacesService(mapObj || document.createElement('div'));
+                  svc.getDetails({ placeId, fields: ['geometry','formatted_address'] }, (place: any, dStatus: any) => {
+                    if (dStatus === 'OK' && place?.geometry?.location) {
+                      const loc2 = place.geometry.location; const ll = { lat: loc2.lat(), lng: loc2.lng() };
+                      setLat(ll.lat); setLng(ll.lng);
+                      if (mapObj) { (mapObj as any).setCenter(ll); (mapObj as any).setZoom(15); }
+                      if (place.formatted_address) setAddress(place.formatted_address);
+                    } else {
+                      alert('位置を特定できませんでした');
+                    }
+                  });
+                } else {
+                  alert('位置を特定できませんでした');
+                }
+              });
+            }
+          }
+        });
+      }
+    } catch {}
+  };
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -52,12 +98,21 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
     const marker = new win.google.maps.Marker({ position: center, map, draggable: true });
     const geocoder = new win.google.maps.Geocoder();
     const reverseGeocode = (ll: {lat: number; lng: number}) => {
-      geocoder.geocode({ location: ll, region: 'JP' }, (results: any, status: any) => {
-        if (status === 'OK' && results && results[0]) {
-          // Prefer Japanese long_name components when available
-          const formatted = results[0].formatted_address || '';
-          setAddress(formatted);
+      geocoder.geocode({ location: ll, region: 'JP' }, async (results: any, status: any) => {
+        let formatted = (status === 'OK' && results && results[0]) ? (results[0].formatted_address || '') : '';
+        if (!formatted) {
+          // iOS WebView等でGeocoderが失敗する場合のフォールバック
+          try {
+            const key = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY_MOBILE || import.meta.env.VITE_GOOGLE_MAPS_API_KEY) as string | undefined;
+            if (key) {
+              const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${ll.lat},${ll.lng}&language=ja&region=JP&key=${key}`;
+              const res = await fetch(url, { credentials: 'omit' });
+              const json = await res.json();
+              formatted = json?.status === 'OK' ? (json.results?.[0]?.formatted_address || '') : '';
+            }
+          } catch {}
         }
+        if (formatted) setAddress(formatted);
       });
     };
     win.google.maps.event.addListener(marker, 'dragend', (e: any) => {
@@ -86,7 +141,7 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
       setError('最初に1枚以上の画像を選択してください');
       return;
     }
-    if (!category && categories.length === 0) {
+    if (dogAllowed && !category && categories.length === 0) {
       setError('タグを1つ以上選択してください');
       return;
     }
@@ -120,12 +175,13 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
       const payload: Record<string, any> = {
         author_id: user.id,
         title: title.trim(),
-        description: description.trim() || null,
+        description: dogAllowed ? (description.trim() || null) : 'この施設へのワンちゃん同伴は禁止となっています。',
         category: null,
-        categories: categories.length > 0 ? categories : [category].filter(Boolean),
+        categories: dogAllowed ? (categories.length > 0 ? categories : [category].filter(Boolean)) : [],
         latitude: lat,
         longitude: lng,
         address: address || null,
+        dog_allowed: dogAllowed,
       };
 
       let spotRow: any = null;
@@ -142,6 +198,11 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
           delete (payloadFallback as any).categories;
           payloadFallback.category = (categories[0] || category || null);
           const { data, error } = await supabase.from('spots').insert(payloadFallback).select('id').single();
+          if (error) throw error; spotRow = data;
+        } else if (/dog_allowed/.test(msg)) {
+          const payloadFallback2 = { ...payload };
+          delete (payloadFallback2 as any).dog_allowed;
+          const { data, error } = await supabase.from('spots').insert(payloadFallback2).select('id').single();
           if (error) throw error; spotRow = data;
         } else {
           throw insertErr;
@@ -194,56 +255,14 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
 
           <div>
             <label className="block text-sm font-medium mb-1">位置を地図で指定（必須）</label>
-            <div ref={mapContainerRef} style={{ width: '100%', height: 240, borderRadius: 8, background: '#f3f4f6' }} />
+            <div ref={mapContainerRef} style={{ width: '100%', height: 420, borderRadius: 8, background: '#f3f4f6' }} />
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">住所（任意）</label>
             <div className="flex gap-2">
               <input value={address} onChange={(e)=>setAddress(e.target.value)} className="flex-1 border rounded px-3 py-2" placeholder="例: 東京都港区芝公園4-2-8"/>
-              <button type="button" className="px-3 py-2 border rounded bg-gray-100 hover:bg-gray-200 text-sm" onClick={async ()=>{
-                if (!address.trim()) return;
-                try {
-                  const win: any = window;
-                  // 1) Geocoder（地域バイアス: 日本）
-                  if (win.google?.maps) {
-                    const geocoder = new win.google.maps.Geocoder();
-                    geocoder.geocode({ address, region: 'JP' }, (results: any, status: any) => {
-                      if (status === 'OK' && results && results[0]) {
-                        const loc = results[0].geometry.location;
-                        const latlng = { lat: loc.lat(), lng: loc.lng() };
-                        setLat(latlng.lat); setLng(latlng.lng);
-                        if (mapObj) { (mapObj as any).setCenter(latlng); (mapObj as any).setZoom(15); }
-                        const formatted = results[0].formatted_address || '';
-                        setAddress(formatted);
-                      } else {
-                        // 2) Fallback: Places Autocomplete → Place Details
-                        if (win.google?.maps?.places) {
-                          const auto = new win.google.maps.places.AutocompleteService();
-                          auto.getPlacePredictions({ input: address, componentRestrictions: { country: 'jp' } }, (preds: any, pStatus: any) => {
-                            if (pStatus === 'OK' && preds && preds[0]) {
-                              const placeId = preds[0].place_id;
-                              const svc = new win.google.maps.places.PlacesService(mapObj || document.createElement('div'));
-                              svc.getDetails({ placeId, fields: ['geometry','formatted_address'] }, (place: any, dStatus: any) => {
-                                if (dStatus === 'OK' && place?.geometry?.location) {
-                                  const loc2 = place.geometry.location; const ll = { lat: loc2.lat(), lng: loc2.lng() };
-                                  setLat(ll.lat); setLng(ll.lng);
-                                  if (mapObj) { (mapObj as any).setCenter(ll); (mapObj as any).setZoom(15); }
-                                  if (place.formatted_address) setAddress(place.formatted_address);
-                                } else {
-                                  alert('位置を特定できませんでした');
-                                }
-                              });
-                            } else {
-                              alert('位置を特定できませんでした');
-                            }
-                          });
-                        }
-                      }
-                    });
-                  }
-                } catch {}
-              }}>
+              <button type="button" className="px-3 py-2 border rounded bg-gray-100 hover:bg-gray-200 text-sm" onClick={()=>{ void handleAddressSearchClick(); }}>
                 <Search className="w-4 h-4 inline mr-1"/>検索
               </button>
             </div>
@@ -254,16 +273,34 @@ export default function SpotPostModal({ onClose, onCreated }: Props) {
             <input value={title} onChange={(e)=>setTitle(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="場所の名前"/>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-            <div>
-            <label className="block text-sm font-medium mb-1">タグ（複数可・最低1つ）</label>
-            <div className="flex flex-wrap gap-2">
-              {["海辺","高台","夕日","公園","寺社","公共施設","川沿い/湖畔","展望台","花畑","桜","紅葉","散歩道","オブジェ"].map((c)=>(
-                <button type="button" key={c} onClick={()=>setCategories(prev=>prev.includes(c)?prev.filter(x=>x!==c):[...prev,c])} className={`px-3 py-1 rounded-full border text-sm ${categories.includes(c)?'bg-blue-600 text-white border-blue-600':'bg-white text-gray-700 border-gray-300'}`}>{c}</button>
-              ))}
+          {/* ワンちゃん同伴 可/不可 */}
+          <div>
+            <label className="block text-sm font-medium mb-1">ワンちゃん同伴</label>
+            <div className="flex items-center gap-6 text-sm">
+              <label className="inline-flex items-center gap-2">
+                <input type="radio" name="dog_allowed" checked={dogAllowed} onChange={()=>setDogAllowed(true)} /> 可
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input type="radio" name="dog_allowed" checked={!dogAllowed} onChange={()=>setDogAllowed(false)} /> 不可
+              </label>
             </div>
-            </div>
+            {!dogAllowed && (
+              <p className="mt-1 text-xs text-gray-600">不可の場合はタグ選択は無効、説明は固定文になります。画像は白黒で掲載されます。</p>
+            )}
           </div>
+
+          {dogAllowed && (
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">タグ（複数可・最低1つ）</label>
+                <div className="flex flex-wrap gap-2">
+                  {["海辺","高台","夕日","公園","寺社","公共施設","川沿い/湖畔","展望台","花畑","桜","紅葉","散歩道","オブジェ"].map((c)=>(
+                    <button type="button" key={c} onClick={()=>setCategories(prev=>prev.includes(c)?prev.filter(x=>x!==c):[...prev,c])} className={`px-3 py-1 rounded-full border text-sm ${categories.includes(c)?'bg-blue-600 text-white border-blue-600':'bg-white text-gray-700 border-gray-300'}`}>{c}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium mb-1">コメント（任意）</label>

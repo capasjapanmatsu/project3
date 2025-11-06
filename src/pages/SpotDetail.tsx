@@ -1,4 +1,5 @@
 import { AlertTriangle, Edit3, ExternalLink, Flag, ImageIcon, MapPin } from 'lucide-react';
+import { PARK_PLACEHOLDER_SVG } from '../utils/placeholders';
 import { useEffect as ReactUseEffect, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Button from '../components/Button';
@@ -141,10 +142,10 @@ export default function SpotDetail() {
           {/* swipeable gallery (basic horizontal scroll) */}
           <div ref={scrollerRef} className="relative overflow-x-auto whitespace-nowrap snap-x snap-mandatory mb-4">
             {media.length === 0 ? (
-              <div className="h-64 bg-gray-100 flex items-center justify-center text-gray-400"><ImageIcon className="w-10 h-10"/></div>
+              <img src={PARK_PLACEHOLDER_SVG} alt="画像を準備中です" className={`h-64 w-auto inline-block mr-2 rounded snap-center object-cover ${spot?.dog_allowed === false ? 'filter grayscale' : ''}`} />
             ) : (
               media.map((m) => (
-                <img key={m.id} src={m.url} alt={spot.title} className="h-64 w-auto inline-block mr-2 rounded snap-center object-cover" loading="lazy" decoding="async"/>
+                <img key={m.id} src={m.url} alt={spot.title} className={`h-64 w-auto inline-block mr-2 rounded snap-center object-cover ${spot?.dog_allowed === false ? 'filter grayscale' : ''}`} loading="lazy" decoding="async"/>
               ))
             )}
           </div>
