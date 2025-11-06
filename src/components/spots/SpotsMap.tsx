@@ -89,12 +89,14 @@ export default function SpotsMap({ spots, thumbMap, className = '' }: Props) {
       if (!s.latitude || !s.longitude) return;
       const icon = (s.dogAllowed === false)
         ? {
-            path: win.google.maps.SymbolPath.CIRCLE,
-            fillColor: '#111111',
+            // Drop-pin shape (24x24-ish) in gray
+            path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z M12 12.5c-1.93 0-3.5-1.57-3.5-3.5S10.07 5.5 12 5.5s3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z',
+            fillColor: '#9ca3af', // gray-400
             fillOpacity: 1,
-            strokeColor: '#111111',
+            strokeColor: '#6b7280', // gray-500
             strokeWeight: 1,
-            scale: 7,
+            anchor: new win.google.maps.Point(12, 22),
+            scale: 1.2,
           }
         : undefined;
       const marker = new win.google.maps.Marker({
