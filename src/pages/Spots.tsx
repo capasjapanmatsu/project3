@@ -19,6 +19,7 @@ type Spot = {
   longitude: number | null;
   address: string | null;
   is_hidden: boolean;
+  dog_allowed?: boolean | null;
   created_at: string;
 };
 
@@ -50,6 +51,9 @@ export default function Spots() {
       return (s.category || '') === category || cats.includes(category);
     });
   }, [spots, category]);
+
+  // 一覧カードは「ワンちゃん同伴不可」を非表示（マップには表示）
+  const listSpots = useMemo(() => filteredSpots.filter((s: any) => s.dog_allowed !== false), [filteredSpots]);
 
   useEffect(() => {
     (async () => {
@@ -185,7 +189,7 @@ export default function Spots() {
 
       {/* マップがメイン */}
       <SpotsMap
-        spots={filteredSpots.map(s => ({ id: s.id, title: s.title, latitude: s.latitude, longitude: s.longitude }))}
+        spots={filteredSpots.map(s => ({ id: s.id, title: s.title, latitude: s.latitude, longitude: s.longitude, dogAllowed: (s as any).dog_allowed }))}
         thumbMap={thumbMap}
         className="mb-6"
       />
@@ -193,7 +197,7 @@ export default function Spots() {
         <div className="py-16 text-center text-gray-500">読み込み中...</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredSpots.map((s) => {
+          {listSpots.map((s) => {
             const thumb = thumbMap[s.id];
             const dist = userLoc && s.latitude && s.longitude ? distanceKm(userLoc, { lat: s.latitude as number, lng: s.longitude as number }) : null;
             return (

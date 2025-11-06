@@ -9,6 +9,7 @@ export type SpotForMap = {
   title: string;
   latitude: number | null;
   longitude: number | null;
+  dogAllowed?: boolean | null;
 };
 
 type Props = {
@@ -86,10 +87,21 @@ export default function SpotsMap({ spots, thumbMap, className = '' }: Props) {
     const markers: any[] = [];
     spots.forEach((s) => {
       if (!s.latitude || !s.longitude) return;
+      const icon = (s.dogAllowed === false)
+        ? {
+            path: win.google.maps.SymbolPath.CIRCLE,
+            fillColor: '#111111',
+            fillOpacity: 1,
+            strokeColor: '#111111',
+            strokeWeight: 1,
+            scale: 7,
+          }
+        : undefined;
       const marker = new win.google.maps.Marker({
         position: { lat: s.latitude, lng: s.longitude },
         map: mapObj,
         title: s.title,
+        icon,
       });
       marker.addListener('click', () => {
         infoWindow.setContent(createInfoContent(s));

@@ -17,6 +17,7 @@ export default function SpotAdminEditModal({ spot, onClose, onSaved, onDeleted }
   const [address, setAddress] = useState(spot?.address || '');
   const [lat, setLat] = useState<number | null>(spot?.latitude ?? null);
   const [lng, setLng] = useState<number | null>(spot?.longitude ?? null);
+  const [dogAllowed, setDogAllowed] = useState<boolean>(spot?.dog_allowed !== false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -64,6 +65,7 @@ export default function SpotAdminEditModal({ spot, onClose, onSaved, onDeleted }
         address: address || null,
         latitude: lat,
         longitude: lng,
+        dog_allowed: dogAllowed,
       }).eq('id', spot.id);
       if (error) throw error;
       onSaved();
@@ -101,6 +103,17 @@ export default function SpotAdminEditModal({ spot, onClose, onSaved, onDeleted }
           <div>
             <label className="block text-sm font-medium mb-1">タイトル</label>
             <input value={title} onChange={(e)=>setTitle(e.target.value)} className="w-full border rounded px-3 py-2"/>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">ワンちゃん同伴</label>
+            <div className="flex items-center gap-6 text-sm">
+              <label className="inline-flex items-center gap-2">
+                <input type="radio" name="dog_allowed_admin" checked={dogAllowed} onChange={()=>setDogAllowed(true)} /> 可
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input type="radio" name="dog_allowed_admin" checked={!dogAllowed} onChange={()=>setDogAllowed(false)} /> 不可
+              </label>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">説明（任意）</label>
