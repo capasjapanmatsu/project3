@@ -1,4 +1,4 @@
-import { Plus, Save, Trash2, Upload } from 'lucide-react';
+import { Save, Trash2, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -13,6 +13,7 @@ type Banner = {
   start_date: string | null;
   end_date: string | null;
   created_at?: string;
+  slot?: number | null;
 };
 
 export default function AdminBanners() {
@@ -24,6 +25,7 @@ export default function AdminBanners() {
   const [link, setLink] = useState('');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
+  const [slot, setSlot] = useState<number>(1);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -32,10 +34,11 @@ export default function AdminBanners() {
       try {
         setLoading(true);
         setError('');
-        const { data, error } = await supabase
+         const { data, error } = await supabase
           .from('banners')
           .select('*')
-          .order('start_date', { ascending: false });
+           .order('slot', { ascending: true })
+           .order('start_date', { ascending: false });
         if (error) throw error;
         setBanners((data || []) as any);
       } catch (e: any) {
@@ -67,7 +70,7 @@ export default function AdminBanners() {
     try {
       setSaving(true);
       setError('');
-      const key = `banners/${Date.now()}_${file.name}`;
+       const key = `banners/${Date.now()}_${file.name}`;
       const { data: up, error: upErr } = await supabase.storage.from('banner-images').upload(key, file, {
         cacheControl: '86400',
         upsert: false,
@@ -80,13 +83,14 @@ export default function AdminBanners() {
         link_url: link || null,
         start_date: start,
         end_date: end,
+         slot,
       });
       if (insErr) throw insErr;
       // refresh
-      const { data } = await supabase.from('banners').select('*').order('start_date', { ascending: false });
+       const { data } = await supabase.from('banners').select('*').order('slot', { ascending: true }).order('start_date', { ascending: false });
       setBanners((data || []) as any);
       // reset
-      setFile(null); setLink(''); setStart(''); setEnd('');
+       setFile(null); setLink(''); setStart(''); setEnd(''); setSlot(1);
     } catch (e: any) {
       setError(e?.message || '保存に失敗しました（ストレージやテーブルを確認してください）');
     } finally {
@@ -98,10 +102,10 @@ export default function AdminBanners() {
     if (!confirm('このバナーを削除しますか？')) return;
     try {
       await supabase.from('banners').delete().eq('id', id);
-      if (storageKey) {
+       if (storageKey) {
         try { await supabase.storage.from('banner-images').remove([storageKey]); } catch {}
       }
-      const { data } = await supabase.from('banners').select('*').order('start_date', { ascending: false });
+       const { data } = await supabase.from('banners').select('*').order('slot', { ascending: true }).order('start_date', { ascending: false });
       setBanners((data || []) as any);
     } catch {}
   };
@@ -135,6 +139,9 @@ export default function AdminBanners() {
             </div>
             <input value={link} onChange={(e)=>setLink(e.target.value)} className="border rounded px-3 py-2" placeholder="リンク先URL（任意）"/>
             <div className="flex items-center gap-2">
+             <select value={slot} onChange={(e)=>setSlot(Number(e.target.value))} className="border rounded px-2 py-1">
+               {Array.from({length: 10}).map((_,i)=>(<option key={i+1} value={i+1}>バナー {i+1}</option>))}
+             </select>
               <input type="datetime-local" value={start} onChange={(e)=>setStart(e.target.value)} className="border rounded px-2 py-1"/>
               <span>〜</span>
               <input type="datetime-local" value={end} onChange={(e)=>setEnd(e.target.value)} className="border rounded px-2 py-1"/>
@@ -148,8 +155,9 @@ export default function AdminBanners() {
         <Card className="p-0 overflow-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50">
-              <tr>
+               <tr>
                 <th className="px-3 py-2 text-left">サムネイル</th>
+                 <th className="px-3 py-2 text-left">スロット</th>
                 <th className="px-3 py-2 text-left">ファイル名</th>
                 <th className="px-3 py-2 text-left">リンク先</th>
                 <th className="px-3 py-2 text-left">掲載期間</th>
@@ -162,12 +170,13 @@ export default function AdminBanners() {
               ) : banners.length === 0 ? (
                 <tr><td className="px-3 py-6 text-gray-500" colSpan={5}>バナーがありません</td></tr>
               ) : banners.map(b => {
-                const filename = b.storage_key ? b.storage_key.split('/').slice(-1)[0] : '';
+                 const filename = b.storage_key ? b.storage_key.split('/').slice(-1)[0] : '';
                 return (
                   <tr key={b.id}>
                     <td className="px-3 py-2">
                       {b.image_url ? <img src={b.image_url} alt="banner" className="w-40 h-16 object-cover rounded border"/> : <div className="w-40 h-16 bg-gray-100 rounded"/>}
                     </td>
+                     <td className="px-3 py-2">{b.slot ?? '-'}</td>
                     <td className="px-3 py-2">{filename || '-'}</td>
                     <td className="px-3 py-2">
                       {b.link_url ? <a href={b.link_url} target="_blank" className="text-blue-600 underline" rel="noreferrer">{b.link_url}</a> : <span className="text-gray-500">-</span>}
