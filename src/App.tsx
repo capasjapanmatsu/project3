@@ -143,6 +143,7 @@ const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy').then(modu
 const BusinessInformation = React.lazy(() => import('./pages/BusinessInformation').then(module => ({ default: module.BusinessInformation })));
 const SponsorApplication = React.lazy(() => import('./pages/SponsorApplication').then(module => ({ default: module.SponsorApplication })));
 const SponsorInquiry = React.lazy(() => import('./pages/SponsorInquiry'));
+const SponsorPurchase = React.lazy(() => import('./pages/SponsorPurchase'));
 const LegalTokushoho = React.lazy(() => import('./pages/LegalTokushoho'));
 const NotFound = React.lazy(() => import('./pages/NotFound').then(module => ({ default: module.NotFound })));
 
@@ -165,6 +166,7 @@ const MyReservations = React.lazy(() => import('./pages/MyReservations'));
 const OrderHistory = React.lazy(() => import('./pages/OrderHistory').then(module => ({ default: module.OrderHistory })));
 const PointsHistory = React.lazy(() => import('./pages/PointsHistory'));
 const PhotoGallery = React.lazy(() => import('./pages/PhotoGallery'));
+const BannerUpload = React.lazy(() => import('./pages/BannerUpload'));
 const PrefBoard = React.lazy(() => import('./pages/PrefBoard'));
 const PrefThread = React.lazy(() => import('./pages/PrefThread'));
 const ParkReservation = React.lazy(() => import('./pages/ParkReservation').then(module => ({ default: module.ParkReservation })));
@@ -580,6 +582,13 @@ const App: React.FC = () => {
                   <SponsorApplication />
                 </Suspense>
               } />
+              <Route path="/sponsor-purchase" element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <SponsorPurchase />
+                  </Suspense>
+                </ProtectedRoute>
+              } />
               
               {/* 💳 決済・サブスクリプション */}
               <Route path="/subscription-intro" element={
@@ -717,6 +726,13 @@ const App: React.FC = () => {
                 <ProtectedRoute>
                   <Suspense fallback={<DashboardSkeleton />}>
                     <PhotoGallery />
+                  </Suspense>
+                </ProtectedRoute>
+              } />
+              <Route path="/banner-upload" element={
+                <ProtectedRoute>
+                  <Suspense fallback={<DashboardSkeleton />}>
+                    <BannerUpload />
                   </Suspense>
                 </ProtectedRoute>
               } />

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../utils/supabase';
 
 interface SponsorBanner {
   id: string;
@@ -72,10 +73,43 @@ interface SponsorBannerProps {
 
 export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanners }) => {
   const navigate = useNavigate();
-  const [banners] = useState<SponsorBanner[]>(recruitmentBanners);
+  const [banners, setBanners] = useState<SponsorBanner[]>(recruitmentBanners);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isHovering, setIsHovering] = useState(false);
+
+  // DBから掲載中バナーを取得して先頭に詰める（足りない分は募集中で埋める）
+  useEffect(() => {
+    (async () => {
+      try {
+        const nowIso = new Date().toISOString();
+        const { data, error } = await supabase
+          .from('banners')
+          .select('id,image_url,link_url,start_date,end_date')
+          .lte('start_date', nowIso)
+          .gte('end_date', nowIso)
+          .order('start_date', { ascending: false })
+          .limit(10);
+        if (error) throw error;
+        const actives = (data || []).map((r: any, idx: number) => ({
+          id: r.id,
+          title: '', // スライドは入稿画像を全面表示、文言は不要
+          description: '',
+          image_url: r.image_url || '',
+          website_url: r.link_url || '/sponsor-inquiry',
+          is_active: true,
+          display_order: idx + 1,
+          created_at: r.start_date || new Date().toISOString(),
+        })) as SponsorBanner[];
+        // 5枠に満たない分を募集中で埋める
+        const need = Math.max(0, 5 - actives.length);
+        const filled = [...actives, ...recruitmentBanners.slice(0, need)];
+        if (filled.length > 0) setBanners(filled);
+      } catch {
+        // 失敗時は募集中のまま
+      }
+    })();
+  }, []);
 
   // 自動スライド機能（右から左へループ）
   useEffect(() => {
@@ -174,15 +208,26 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
                   opacity,
                   zIndex
                 }}
-                onClick={handleBannerClick}
+                onClick={() => {
+                  if (banner.image_url) {
+                    // 入稿済み広告はリンクへ飛ばす
+                    window.location.assign(banner.website_url || '/sponsor-inquiry');
+                  } else {
+                    handleBannerClick();
+                  }
+                }}
               >
                 <div className="w-full h-full rounded-lg relative overflow-hidden shadow-lg">
-                  {/* グラデーション背景 */}
-                  <div className={`absolute inset-0 ${
-                    position === 0 ? 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500' :
-                    position === -1 || position === 1 ? 'bg-gradient-to-r from-green-500 via-blue-500 to-purple-500' :
-                    'bg-gradient-to-r from-gray-400 to-gray-600'
-                  }`}></div>
+                  {/* 入稿済み画像 or 募集中プレースホルダー */}
+                  {banner.image_url ? (
+                    <img src={banner.image_url} alt="スポンサー" className="absolute inset-0 w-full h-full object-cover" />
+                  ) : (
+                    <div className={`absolute inset-0 ${
+                      position === 0 ? 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500' :
+                      position === -1 || position === 1 ? 'bg-gradient-to-r from-green-500 via-blue-500 to-purple-500' :
+                      'bg-gradient-to-r from-gray-400 to-gray-600'
+                    }`}></div>
+                  )}
                   
                   {/* ドット模様のオーバーレイ */}
                   <div className="absolute inset-0 opacity-20" style={{
@@ -190,38 +235,33 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
                     backgroundSize: '20px 20px'
                   }}></div>
                   
-                  {/* コンテンツ */}
+                  {/* コンテンツ（募集中のみ表示） */}
                   <div className="relative z-10 h-full flex items-center justify-center text-center px-4">
-                    <div>
-                      <h3 className={`font-bold text-white drop-shadow-lg mb-2 ${
-                        isCenter ? 'text-xl' : isAdjacent ? 'text-base' : 'text-lg'
-                      }`}>
-                        {banner.title}
-                      </h3>
-                      {isCenter && (
-                        <>
-                          <p className="text-sm text-white opacity-90 drop-shadow-md max-w-sm mb-3">
-                            {banner.description}
-                          </p>
+                    {!banner.image_url && (
+                      <div>
+                        <h3 className={`font-bold text-white drop-shadow-lg mb-2 ${isCenter ? 'text-xl' : isAdjacent ? 'text-base' : 'text-lg'}`}>
+                          スポンサー募集中
+                        </h3>
+                        {isCenter && (
                           <div>
                             <span className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm hover:bg-opacity-30 transition-all">
                               詳細を見る →
                             </span>
                           </div>
-                        </>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {/* スポンサー募集ラベル（中央のみ） */}
-                  {isCenter && (
+                  {/* スポンサー募集ラベル（中央・募集中のみ） */}
+                  {isCenter && !banner.image_url && (
                     <div className="absolute top-3 left-3 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold">
                       募集中
                     </div>
                   )}
 
-                  {/* 右下のアイコン（中央のみ） */}
-                  {isCenter && (
+                  {/* 右下のアイコン（中央・募集中のみ） */}
+                  {isCenter && !banner.image_url && (
                     <div className="absolute bottom-3 right-3">
                       <svg 
                         className="w-5 h-5 text-white opacity-70" 
