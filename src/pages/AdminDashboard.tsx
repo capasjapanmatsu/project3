@@ -519,6 +519,8 @@ export function AdminDashboard() {
               { id: 'fraud', label: '不正検知', icon: ShieldAlert },
               { id: 'maintenance', label: 'メンテナンス', icon: Settings },
               { id: 'sponsors', label: 'スポンサー', icon: Monitor },
+              // バナー管理ページへリンク
+              { id: 'banners-link', label: 'バナー管理', icon: Monitor, to: '/admin/banners' },
               // 新着情報（トップページの新着管理画面へリンク）
               { id: 'news-link', label: '新着情報', icon: FileText, to: '/admin/news' },
               { id: 'inquiries', label: 'お問い合わせ', icon: Mail },

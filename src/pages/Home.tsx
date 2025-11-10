@@ -5,6 +5,7 @@ import { DogInfoCorner } from '../components/home/DogInfoCorner';
 import { FacilityRecruitmentBanner } from '../components/home/FacilityRecruitmentBanner';
 import { FeaturesSection } from '../components/home/FeaturesSection';
 import { HeroSection } from '../components/home/HeroSection';
+import TopBanner from '../components/home/TopBanner';
 import { MarqueeDogsSection } from '../components/home/MarqueeDogsSection';
 import { NetworkErrorBanner } from '../components/home/NetworkErrorBanner';
 import { NewsSection } from '../components/home/NewsSection';
@@ -151,6 +152,8 @@ export function Home() {
         )}
 
         <div className="w-full">
+          {/* ホーム上部バナー（管理画面で切り替え。なければ募集中バナー） */}
+          <TopBanner />
           {/* ヒーローセクション */}
           <section
             id="hero-section"

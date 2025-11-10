@@ -194,6 +194,7 @@ const AdminSponsors = React.lazy(() => import('./pages/AdminSponsors').then(modu
 const AdminSalesOverview = React.lazy(() => import('./pages/AdminSalesOverview'));
 const AdminOwnerPayoutDetail = React.lazy(() => import('./pages/AdminOwnerPayoutDetail'));
 const AdminParkRevenueDetail = React.lazy(() => import('./pages/AdminParkRevenueDetail'));
+const AdminBanners = React.lazy(() => import('./pages/AdminBanners'));
 
 // オーナー・運営関連
 const MyParksManagement = React.lazy(() => import('./pages/MyParksManagement').then(module => ({ default: module.MyParksManagement })));
@@ -950,6 +951,13 @@ const App: React.FC = () => {
                 <AdminRoute>
                   <Suspense fallback={<DashboardSkeleton />}>
                     <AdminNewsManagement />
+                  </Suspense>
+                </AdminRoute>
+              } />
+              <Route path="/admin/banners" element={
+                <AdminRoute>
+                  <Suspense fallback={<DashboardSkeleton />}>
+                    <AdminBanners />
                   </Suspense>
                 </AdminRoute>
               } />
