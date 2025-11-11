@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import useAuth from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
+import { useLocation } from 'react-router-dom';
 
 export default function BannerUpload() {
   const { user } = useAuth();
+  const location = useLocation();
   const [orders, setOrders] = useState<Array<any>>([]);
   const [selectedOrder, setSelectedOrder] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
@@ -13,6 +15,13 @@ export default function BannerUpload() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // 初期orderIdをクエリから
+  useEffect(() => {
+    const sp = new URLSearchParams(location.search);
+    const id = sp.get('orderId');
+    if (id) setSelectedOrder(id);
+  }, [location.search]);
 
   useEffect(() => {
     (async () => {

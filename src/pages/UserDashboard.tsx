@@ -11,6 +11,7 @@ import {
     Heart,
     History,
     MapPin,
+    Monitor,
     ShoppingBag,
     Ticket,
     User,
@@ -68,6 +69,9 @@ export function UserDashboard() {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  // 広告（バナー）注文
+  const [bannerOrders, setBannerOrders] = useState<any[]>([]);
+  const [loadingBannerOrders, setLoadingBannerOrders] = useState(false);
   
   // Local UI state
   const [selectedPark, setSelectedPark] = useState<DogPark | null>(null);
@@ -346,6 +350,25 @@ export function UserDashboard() {
       }, 5000);
     }
   }, [location, fetchDashboardData, addNotification]);
+
+  // 支払い済みのバナー注文を取得
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!user) return;
+        setLoadingBannerOrders(true);
+        const { data, error } = await supabase
+          .from('banner_orders')
+          .select('id, slot, months, status, created_at')
+          .eq('user_id', user.id)
+          .eq('status', 'paid')
+          .order('created_at', { ascending: false });
+        if (!error) setBannerOrders((data as any) || []);
+      } finally {
+        setLoadingBannerOrders(false);
+      }
+    })();
+  }, [user]);
 
   // 🐕 Dog Management Handlers  
   const handleDogSelect = (dog: Dog) => {
@@ -695,6 +718,47 @@ export function UserDashboard() {
           操作が正常に完了しました！
         </div>
       )}
+
+      {/* 広告管理（最上部） */}
+      <Card className="p-6 bg-white border-blue-200">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xl font-semibold flex items-center">
+            <Monitor className="w-6 h-6 text-blue-600 mr-2" />
+            広告管理
+          </h2>
+        </div>
+        {loadingBannerOrders ? (
+          <div className="text-sm text-gray-600">読み込み中...</div>
+        ) : bannerOrders.length === 0 ? (
+          <div className="flex items-center justify-between">
+            <p className="text-gray-700">購入済みの広告はまだありません。スライドバナーを購入できます。</p>
+            <Link to="/sponsor-purchase">
+              <Button className="bg-blue-600 hover:bg-blue-700">購入ページへ</Button>
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-2">
+              {bannerOrders.slice(0, 5).map((o) => (
+                <div key={o.id} className="p-3 rounded border border-blue-100 flex items-center justify-between">
+                  <div className="text-sm text-gray-800">
+                    <div className="font-medium">バナー {o.slot} / {o.months}カ月</div>
+                    <div className="text-xs text-gray-500">購入日: {new Date(o.created_at).toLocaleDateString()}</div>
+                  </div>
+                  <Link to={`/banner-upload?orderId=${o.id}`}>
+                    <Button size="sm">入稿する</Button>
+                  </Link>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 text-right">
+              <Link to="/banner-upload">
+                <Button variant="secondary" size="sm">すべての広告を管理</Button>
+              </Link>
+            </div>
+          </>
+        )}
+      </Card>
 
       {error && (
         <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 text-red-800 rounded-lg flex items-center">
