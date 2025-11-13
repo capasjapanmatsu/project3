@@ -111,16 +111,14 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
     })();
   }, []);
 
-  // 自動スライド機能（右から左へループ）
+  // 自動スライド機能（安定版：常時稼働）
   useEffect(() => {
-    if (!isPlaying || isHovering || banners.length <= 1) return;
-
-    const slideInterval = setInterval(() => {
+    if (banners.length <= 1) return;
+    const id = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % banners.length);
-    }, 3000); // 3秒間隔
-
-    return () => clearInterval(slideInterval);
-  }, [isPlaying, isHovering, banners.length]);
+    }, 3000);
+    return () => clearInterval(id);
+  }, [banners.length]);
 
   // バナークリックハンドラー（スポンサーお問い合わせ画面へ遷移）
   const handleBannerClick = useCallback(() => {
