@@ -197,7 +197,7 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
 
             return (
               <div
-                key={`${banner.id}-${index}`}
+                key={`pos-${position}`}  /* 位置でDOMを安定化させ、transformのアニメーションを有効化 */
                 className={`absolute transition-all duration-700 ease-in-out cursor-pointer marquee-allow ${
                   isCenter ? 'w-[28rem] h-28' : isAdjacent ? 'w-96 h-24' : 'w-[28rem] h-28'
                 }`}
