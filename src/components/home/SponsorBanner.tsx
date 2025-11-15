@@ -75,7 +75,6 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
   const navigate = useNavigate();
   const [banners, setBanners] = useState<SponsorBanner[]>(recruitmentBanners);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
   const [isHovering, setIsHovering] = useState(false);
 
   // DBから掲載中バナーを取得して先頭に詰める（足りない分は募集中で埋める）
@@ -125,160 +124,54 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
     navigate('/sponsor-inquiry');
   }, [navigate]);
 
-  // インデックス計算ヘルパー（循環）
-  const getCircularIndex = useCallback((index: number) => {
-    return ((index % banners.length) + banners.length) % banners.length;
-  }, [banners.length]);
-
-  // 表示するバナーを計算（中央±2の5つ）
-  const getVisibleBanners = useCallback(() => {
-    const visible = [];
-    for (let i = -2; i <= 2; i++) {
-      const index = getCircularIndex(currentIndex + i);
-      visible.push({
-        banner: banners[index],
-        position: i,
-        index: index
-      });
-    }
-    return visible;
-  }, [currentIndex, banners, getCircularIndex]);
-
   if (banners.length === 0) {
     return null;
   }
 
-  const visibleBanners = getVisibleBanners();
+  const slides = banners.length ? banners : recruitmentBanners;
 
   return (
     <section 
-      className="w-full mb-8 relative pt-3 marquee-allow"
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
+      className="w-full mb-8 relative pt-3"
       aria-label="スポンサー募集カルーセル"
     >
       {/* カルーセルコンテナ */}
       <div className="relative w-full h-36 overflow-hidden">
-        {/* バナー表示エリア */}
-        <div className="flex items-center justify-center h-full">
-          {visibleBanners.map(({ banner, position, index }) => {
-            // バナーが存在しない場合はスキップ
-            if (!banner) return null;
-            
-            const isCenter = position === 0;
-            const isAdjacent = Math.abs(position) === 1;
-            const isEdge = Math.abs(position) === 2;
-
-            // 位置とサイズの計算
-            let transform = '';
-            let opacity = 1;
-            let scale = 1;
-            let zIndex = 10;
-
-            if (isCenter) {
-              // 中央バナー
-              transform = 'translateX(0)';
-              opacity = 1;
-              scale = 1;
-              zIndex = 20;
-            } else if (isAdjacent) {
-              // 隣接バナー（チラ見せ）- 適切な隙間を確保
-              transform = `translateX(${position * 260}px)`;
-              opacity = 0.7;
-              scale = 0.85;
-              zIndex = 15;
-            } else if (isEdge) {
-              // 端バナー（実際サイズで少し見える）- 適切な隙間を確保
-              transform = `translateX(${position * 300}px)`;
-              opacity = 0.4;
-              scale = 1.0;
-              zIndex = 10;
-            }
-
-            return (
-              <div
-                key={banner.id}  /* バナーIDでDOMを安定化 → 位置が変化するとtransformがアニメーション */
-                className={`absolute transition-transform duration-700 ease-in-out cursor-pointer marquee-allow ${
-                  isCenter ? 'w-[28rem] h-28' : isAdjacent ? 'w-96 h-24' : 'w-[28rem] h-28'
-                }`}
-                style={{
-                  transform: `${transform} scale(${scale})`,
-                  willChange: 'transform',
-                  opacity,
-                  zIndex
-                }}
-                onClick={() => {
-                  if (banner.image_url) {
-                    // 入稿済み広告はリンクへ飛ばす
-                    window.location.assign(banner.website_url || '/sponsor-inquiry');
-                  } else {
-                    handleBannerClick();
-                  }
-                }}
-              >
-                <div className="w-full h-full rounded-lg relative overflow-hidden shadow-lg">
-                  {/* 入稿済み画像 or 募集中プレースホルダー */}
-                  {banner.image_url ? (
-                    <img src={banner.image_url} alt="スポンサー" className="absolute inset-0 w-full h-full object-cover" />
-                  ) : (
-                    <div className={`absolute inset-0 ${
-                      position === 0 ? 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500' :
-                      position === -1 || position === 1 ? 'bg-gradient-to-r from-green-500 via-blue-500 to-purple-500' :
-                      'bg-gradient-to-r from-gray-400 to-gray-600'
-                    }`}></div>
-                  )}
-                  
-                  {/* ドット模様のオーバーレイ */}
-                  <div className="absolute inset-0 opacity-20" style={{
-                    backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
-                    backgroundSize: '20px 20px'
-                  }}></div>
-                  
-                  {/* コンテンツ（募集中のみ表示） */}
-                  <div className="relative z-10 h-full flex items-center justify-center text-center px-4">
-                    {!banner.image_url && (
-                      <div>
-                        <h3 className={`font-bold text-white drop-shadow-lg mb-2 ${isCenter ? 'text-xl' : isAdjacent ? 'text-base' : 'text-lg'}`}>
-                          スポンサー募集中
-                        </h3>
-                        {isCenter && (
-                          <div>
-                            <span className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm hover:bg-opacity-30 transition-all">
-                              詳細を見る →
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* スポンサー募集ラベル（中央・募集中のみ） */}
-                  {isCenter && !banner.image_url && (
-                    <div className="absolute top-3 left-3 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold">
-                      募集中
-                    </div>
-                  )}
-
-                  {/* 右下のアイコン（中央・募集中のみ） */}
-                  {isCenter && !banner.image_url && (
-                    <div className="absolute bottom-3 right-3">
-                      <svg 
-                        className="w-5 h-5 text-white opacity-70" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                    </div>
-                  )}
+        <div
+          className="flex h-full transition-transform duration-700 ease-out"
+          style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+        >
+          {slides.map((banner) => (
+            <div
+              key={banner.id}
+              className="min-w-full h-full relative cursor-pointer"
+              onClick={() => {
+                if (banner.website_url) {
+                  window.location.assign(banner.website_url);
+                } else {
+                  handleBannerClick();
+                }
+              }}
+            >
+              {banner.image_url ? (
+                <img
+                  src={banner.image_url}
+                  alt="スポンサー"
+                  className="absolute inset-0 w-full h-full object-cover rounded-lg shadow-lg"
+                />
+              ) : (
+                <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 shadow-lg" />
+              )}
+              {!banner.image_url && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="bg-white/20 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm">
+                    詳細を見る →
+                  </span>
                 </div>
-              </div>
-            );
-          })}
+              )}
+            </div>
+          ))}
         </div>
-
-        {/* スライド方向インジケーターは非表示にして高さを節約 */}
       </div>
 
       {/* インジケーターはモバイルで視認性が低く高さを圧迫するため非表示 */}
