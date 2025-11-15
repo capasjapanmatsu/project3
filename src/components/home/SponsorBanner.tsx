@@ -197,12 +197,13 @@ export const SponsorBanner: React.FC<SponsorBannerProps> = ({ banners: propBanne
 
             return (
               <div
-                key={`pos-${position}`}  /* 位置ごとにDOMノードを固定し、transformの変更だけでアニメーションさせる */
-                className={`absolute transition-all duration-700 ease-in-out cursor-pointer marquee-allow ${
+                key={banner.id}  /* バナーIDでDOMを安定化 → 位置が変化するとtransformがアニメーション */
+                className={`absolute transition-transform duration-700 ease-in-out cursor-pointer marquee-allow ${
                   isCenter ? 'w-[28rem] h-28' : isAdjacent ? 'w-96 h-24' : 'w-[28rem] h-28'
                 }`}
                 style={{
                   transform: `${transform} scale(${scale})`,
+                  willChange: 'transform',
                   opacity,
                   zIndex
                 }}
